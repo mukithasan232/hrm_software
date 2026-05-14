@@ -15,3 +15,5 @@ yarn-error.log*
 *.swp
 *.swo
 uploads/
+.vercel
+.env*.local
