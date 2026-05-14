@@ -45,12 +45,18 @@ app.get('/', (req, res) => {
 const startServer = async () => {
   await connectDB();
   
-  // Initialize Background Jobs
-  initCronJobs();
+  // Initialize Background Jobs (Note: These won't work on Vercel Serverless)
+  if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_CRON === 'true') {
+    initCronJobs();
+  }
   
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  });
+  if (process.env.VERCEL !== '1') {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    });
+  }
 };
 
 startServer();
+
+export default app;
