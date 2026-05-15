@@ -88,9 +88,9 @@ export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
 export const fetchDeviceUsers = async (req: Request, res: Response) => {
   try {
     const users = await getDeviceUsers();
-    res.status(200).json({ count: users.length, users });
+    res.status(200).json(users);
   } catch (error: any) {
-    res.status(503).json({ message: 'Failed to fetch device users', error: error.message });
+    res.status(503).json({ message: 'Failed to fetch users from device', error: error.message });
   }
 };
 
@@ -114,7 +114,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const checkedIn = new Set();
     const checkedOut = new Set();
 
-    logs.forEach(log => {
+    logs.forEach((log: any) => {
       if (log.punchType === 'CheckIn') checkedIn.add(log.employeeId);
       if (log.punchType === 'CheckOut') checkedOut.add(log.employeeId);
     });
@@ -185,32 +185,34 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         take,
         include: {
           user: {
-            select: { name: true }
+            select: { name: true, employeeId: true, department: true }
           }
         }
       }),
-      prisma.attendanceLog.count({ where }),
+      prisma.attendanceLog.count({ where })
     ]);
 
-    const formattedLogs = logs.map((log: any) => ({
-      id: log.id,
-      employeeId: log.employeeId,
-      timestamp: log.timestamp,
-      punchType: log.punchType,
-      deviceId: log.deviceId,
-      employeeName: log.user?.name || 'N/A'
+    // Map logs to include employee name from user relation
+    const formattedLogs = logs.map(log => ({
+      ...log,
+      employeeName: log.user?.name || 'Unknown'
     }));
 
-    res.status(200).json({ total, page: parseInt(page as string), logs: formattedLogs });
+    res.status(200).json({
+      logs: formattedLogs,
+      total,
+      page: parseInt(page as string),
+      pages: Math.ceil(total / take)
+    });
   } catch (error: any) {
-    console.error('❌ [getAttendanceLogs] Prisma Error:', error);
-    res.status(500).json({ error: 'Failed to fetch logs', details: error.message });
+    console.error('❌ [getAttendanceLogs] Error:', error);
+    res.status(500).json({ message: 'Error fetching attendance logs', error: error.message });
   }
 };
 
-// @desc    Create manual attendance log
+// @desc    Create manual attendance record
 // @route   POST /api/attendance/manual
-// @access  Admin/HR
+// @access  Admin
 export const createManualLog = async (req: Request, res: Response) => {
   try {
     const { employeeId, timestamp, punchType } = req.body;
@@ -228,8 +230,8 @@ export const createManualLog = async (req: Request, res: Response) => {
       }
     });
 
-    res.status(201).json({ message: 'Manual log created successfully', log });
+    res.status(201).json({ message: 'Manual entry created', log });
   } catch (error: any) {
-    res.status(500).json({ message: 'Failed to create manual log', error: error.message });
+    res.status(500).json({ message: 'Error creating manual entry', error: error.message });
   }
 };

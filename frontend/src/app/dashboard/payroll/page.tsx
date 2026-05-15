@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calculator, Calendar as CalendarIcon, FileText, CheckCircle2 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -9,6 +9,22 @@ export default function PayrollPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [generating, setGenerating] = useState(false);
   const [payrollResults, setPayrollResults] = useState<any[]>([]);
+
+  const fetchPayrolls = async () => {
+    try {
+      setGenerating(true);
+      const res = await api.get(`/payroll?month=${month}&year=${year}`);
+      setPayrollResults(res.data);
+    } catch (error) {
+      console.error('Failed to fetch payroll history');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPayrolls();
+  }, [month, year]);
 
   const handleGenerate = async () => {
     try {
@@ -86,20 +102,32 @@ export default function PayrollPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-black/40 text-gray-400 text-sm uppercase tracking-wider">
-                  <th className="px-6 py-4 font-medium">Employee Name</th>
+                  <th className="px-6 py-4 font-medium">Employee</th>
+                  <th className="px-6 py-4 font-medium">Attendance</th>
                   <th className="px-6 py-4 font-medium">Base Salary</th>
-                  <th className="px-6 py-4 font-medium text-orange-400">Deductions</th>
-                  <th className="px-6 py-4 font-medium text-green-400">Final Payable</th>
+                  <th className="px-6 py-4 font-medium text-green-400">Gross Salary</th>
                   <th className="px-6 py-4 font-medium">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {payrollResults.map((row) => (
                   <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4 text-white font-medium">{row.name}</td>
-                    <td className="px-6 py-4 text-gray-300">${row.baseSalary?.toFixed(2)}</td>
-                    <td className="px-6 py-4 text-orange-400">-${row.deductionsAmount?.toFixed(2)}</td>
-                    <td className="px-6 py-4 font-bold text-green-400">${row.netPayable?.toFixed(2)}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="text-white font-medium">{row.name}</span>
+                        <span className="text-gray-500 text-xs">ID: {row.employeeId}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 font-bold">{row.presentDays}P</span>
+                        <span className="text-gray-600">/</span>
+                        <span className="text-red-400">{row.absentDays}A</span>
+                        <span className="text-gray-500 text-xs ml-2">({row.totalDays} days)</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-300">৳{row.baseSalary?.toLocaleString()}</td>
+                    <td className="px-6 py-4 font-bold text-green-400">৳{row.grossSalary?.toLocaleString()}</td>
                     <td className="px-6 py-4">
                       <span className="px-3 py-1 rounded-full text-xs font-medium border bg-blue-500/10 text-blue-400 border-blue-500/20 flex items-center w-fit gap-1">
                         <CheckCircle2 className="w-3 h-3" /> {row.status}

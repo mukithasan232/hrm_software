@@ -39,7 +39,7 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
 
       // Count unique dates worked
       const uniqueDates = new Set(
-        logs.map(log => log.timestamp.toISOString().split('T')[0])
+        logs.map((log: any) => log.timestamp.toISOString().split('T')[0])
       );
       
       const presentDays = uniqueDates.size;
