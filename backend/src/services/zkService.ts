@@ -111,40 +111,45 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     }
     console.log(`[ZKService] 📋 ${rawLogs.length} raw record(s) from device.`);
 
-    let synced = 0, skipped = 0;
+    let synced = 0;
+    let skipped = 0;
 
-    for (const log of rawLogs) {
-      try {
-        const employeeId = String(log.user_id);
-        const timestamp = new Date(log.record_time);
+    // Process in chunks of 100 for better performance
+    const chunkSize = 100;
+    for (let i = 0; i < rawLogs.length; i += chunkSize) {
+      const chunk = rawLogs.slice(i, i + chunkSize);
+      
+      const results = await Promise.all(chunk.map(async (log: any) => {
+        try {
+          const employeeId = String(log.user_id);
+          const timestamp = new Date(log.record_time);
 
-        if (isNaN(timestamp.getTime())) {
-          console.warn(`[ZKService] ⚠️ Invalid date for user ${employeeId}:`, log.record_time);
-          skipped++;
-          continue;
-        }
+          if (isNaN(timestamp.getTime())) return { success: false, skipped: true };
 
-        // Use upsert to avoid duplicates based on unique(employeeId, timestamp)
-        await prisma.attendanceLog.upsert({
-          where: {
-            employeeId_timestamp: {
+          await prisma.attendanceLog.upsert({
+            where: {
+              employeeId_timestamp: {
+                employeeId,
+                timestamp,
+              },
+            },
+            update: {},
+            create: {
               employeeId,
               timestamp,
+              punchType: getPunchType(log.type ?? -1),
+              deviceId: ZK_IP,
             },
-          },
-          update: {}, // No changes if exists
-          create: {
-            employeeId,
-            timestamp,
-            punchType: getPunchType(log.type ?? -1),
-            deviceId: ZK_IP,
-          },
-        });
-        synced++;
-      } catch (err: any) {
-        console.error('[ZKService] Sync error:', err.message);
-        skipped++;
-      }
+          });
+          return { success: true };
+        } catch (err) {
+          return { success: false };
+        }
+      }));
+
+      synced += results.filter(r => r.success).length;
+      skipped += results.filter(r => !r.success).length;
+      console.log(`[ZKService] Chunks progress: ${Math.min(i + chunkSize, rawLogs.length)}/${rawLogs.length}`);
     }
 
     console.log(`[ZKService] ✔  Synced: ${synced} | Total: ${rawLogs.length}`);

@@ -22,42 +22,21 @@ export const syncDeviceLogs = async (req: Request, res: Response) => {
 // @route   POST /api/attendance/sync-live
 // @access  Admin
 export const syncLive = async (req: Request, res: Response) => {
-  const startedAt = new Date();
-  try {
-    const { synced, skipped, total } = await getDeviceAttendance();
+  res.status(200).json({
+    message: 'Biometric sync started in the background. Please wait a few moments for the logs to populate.',
+    status: 'processing'
+  });
 
-    // 2. Try to also pull device users and match against our DB
-    let matchedUsers: { deviceId: string; dbName?: string }[] = [];
+  // Background execution
+  (async () => {
     try {
-      const deviceUsers = await getDeviceUsers();
-      const employeeList = await prisma.user.findMany({
-        select: { employeeId: true, name: true }
-      });
-
-      matchedUsers = deviceUsers.map((du: any) => {
-        const match = employeeList.find((e: any) => e.employeeId === String(du.userId));
-        return { deviceId: String(du.userId), dbName: match?.name };
-      });
-    } catch (_) {
-      // Non-fatal — attendance was already synced
+      console.log('[BackgroundSync] Starting full device sync...');
+      await getDeviceAttendance();
+      console.log('[BackgroundSync] ✅ Sync complete.');
+    } catch (err: any) {
+      console.error('[BackgroundSync] ❌ Sync failed:', err.message);
     }
-
-    const finishedAt = new Date();
-    const duration = ((finishedAt.getTime() - startedAt.getTime()) / 1000).toFixed(2);
-
-    res.status(200).json({
-      message: `Live sync complete in ${duration}s`,
-      stats: { total, synced, skipped },
-      matchedUsers,
-      syncedAt: finishedAt,
-    });
-  } catch (error: any) {
-    res.status(503).json({
-      message: 'Device sync failed',
-      error: error.message,
-      tip: 'Ensure the device is powered on and reachable at 192.168.10.185:4370',
-    });
-  }
+  })();
 };
 
 // @desc    Ping the ZKTeco device
@@ -120,7 +99,7 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
 // @access  Admin
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
-    const { page = '1', limit = '50', employeeId } = req.query;
+    const { page = '1', limit = '50', employeeId, startDate, endDate, range } = req.query;
     
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const take = parseInt(limit as string);
@@ -128,17 +107,37 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const where: any = {};
     if (employeeId) where.employeeId = employeeId as string;
 
-    // Filter by Today by default if no date range is provided
-    if (!req.query.startDate && !req.query.endDate) {
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
+    // Handle Date Filtering
+    if (range === 'all-time') {
+      // Do nothing, fetch everything
+    } else if (startDate || endDate) {
+      where.timestamp = {};
+      if (startDate) where.timestamp.gte = new Date(startDate as string);
+      if (endDate) {
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        where.timestamp.lte = end;
+      }
+    } else {
+      // Range presets (Today, Yesterday, Week, Month)
+      const tzOffset = 6 * 60 * 60 * 1000; // +06:00
+      const todayLocal = new Date(new Date().getTime() + tzOffset).toISOString().split('T')[0];
       
-      where.timestamp = {
-        gte: startOfToday,
-        lte: endOfToday
-      };
+      const start = new Date(`${todayLocal}T00:00:00+06:00`);
+      const end = new Date(`${todayLocal}T23:59:59.999+06:00`);
+
+      if (range === 'yesterday') {
+        start.setDate(start.getDate() - 1);
+        end.setDate(end.getDate() - 1);
+      } else if (range === 'week') {
+        start.setDate(start.getDate() - 7);
+      } else if (range === 'month') {
+        start.setMonth(start.getMonth() - 1);
+      } else {
+        // Default: Today (already set)
+      }
+
+      where.timestamp = { gte: start, lte: end };
     }
 
     const [logs, total] = await Promise.all([

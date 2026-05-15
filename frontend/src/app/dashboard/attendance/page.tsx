@@ -18,11 +18,12 @@ export default function AttendancePage() {
     punchType: 'CheckIn',
     timestamp: new Date().toISOString().slice(0, 16)
   });
+  const [dateRange, setDateRange] = useState('today');
 
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/attendance/logs');
+      const res = await api.get(`/attendance/logs?range=${dateRange}`);
       const data = res.data;
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
       setLogs(logsArray);
@@ -45,6 +46,9 @@ export default function AttendancePage() {
 
   useEffect(() => {
     fetchLogs();
+  }, [dateRange]);
+
+  useEffect(() => {
     fetchEmployees();
 
     // Socket.io Real-time connection
@@ -74,9 +78,16 @@ export default function AttendancePage() {
     try {
       setSyncing(true);
       const res = await api.post('/attendance/sync-live');
-      const { stats } = res.data;
-      toast.success(`Synced ${stats?.synced ?? 0} new records (${stats?.skipped ?? 0} duplicates skipped)`);
-      fetchLogs();
+      
+      if (res.data.status === 'processing') {
+        toast.success(res.data.message, { duration: 5000 });
+        // Optionally refresh after a delay
+        setTimeout(fetchLogs, 5000);
+      } else {
+        const { stats } = res.data;
+        toast.success(`Synced ${stats?.synced ?? 0} new records`);
+        fetchLogs();
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Device sync failed — check network/device connection');
     } finally {
@@ -159,6 +170,19 @@ export default function AttendancePage() {
           >
             <Plus className="w-4 h-4" /> Manual Entry
           </button>
+          
+          <select 
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="bg-white/10 border border-white/10 text-white text-sm rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
+          >
+            <option value="today" className="bg-slate-900">Today</option>
+            <option value="yesterday" className="bg-slate-900">Yesterday</option>
+            <option value="week" className="bg-slate-900">This Week</option>
+            <option value="month" className="bg-slate-900">This Month</option>
+            <option value="all-time" className="bg-slate-900">All Time</option>
+          </select>
+
           <button 
             onClick={handleSync}
             disabled={syncing}
