@@ -1,13 +1,124 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
-export const getPendingPayroll = async (req: Request, res: Response) => {
+/**
+ * @desc    Generate/Upsert payroll for all active employees for a specific month
+ * @route   POST /api/payroll/generate
+ * @access  Admin
+ */
+export const generateMonthlyPayroll = async (req: Request, res: Response) => {
   try {
-    const history = await prisma.payroll.findMany({
-      where: { status: 'Pending' },
+    const { month, year } = req.body;
+
+    if (!month || !year) {
+      return res.status(400).json({ message: 'Please provide month (1-12) and year.' });
+    }
+
+    const employees = await prisma.user.findMany({
+      where: { isActive: true }
+    });
+
+    const results = [];
+    const totalDaysInMonth = new Date(year, month, 0).getDate();
+    
+    const startOfMonth = new Date(year, month - 1, 1);
+    const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+
+    for (const emp of employees) {
+      // 1. Calculate Present Days from biometric logs
+      const logs = await prisma.attendanceLog.findMany({
+        where: {
+          employeeId: emp.employeeId,
+          timestamp: {
+            gte: startOfMonth,
+            lte: endOfMonth
+          }
+        },
+        select: { timestamp: true }
+      });
+
+      // Count unique dates worked
+      const uniqueDates = new Set(
+        logs.map(log => log.timestamp.toISOString().split('T')[0])
+      );
+      
+      const presentDays = uniqueDates.size;
+      const absentDays = totalDaysInMonth - presentDays;
+      
+      // 2. Calculate Gross Salary: (Base / Total) * Present
+      const grossSalary = Math.round((emp.baseSalary / totalDaysInMonth) * presentDays);
+
+      // 3. Upsert Payroll Record
+      const payroll = await prisma.payroll.upsert({
+        where: {
+          employeeId_month_year: {
+            employeeId: emp.employeeId,
+            month: Number(month),
+            year: Number(year)
+          }
+        },
+        update: {
+          totalDays: totalDaysInMonth,
+          presentDays,
+          absentDays,
+          baseSalary: emp.baseSalary,
+          grossSalary,
+          status: 'Pending'
+        },
+        create: {
+          employeeId: emp.employeeId,
+          month: Number(month),
+          year: Number(year),
+          totalDays: totalDaysInMonth,
+          presentDays,
+          absentDays,
+          baseSalary: emp.baseSalary,
+          grossSalary,
+          status: 'Pending'
+        }
+      });
+
+      results.push({
+        id: emp.id,
+        name: emp.name,
+        employeeId: emp.employeeId,
+        baseSalary: emp.baseSalary,
+        presentDays,
+        absentDays,
+        grossSalary,
+        status: payroll.status
+      });
+    }
+
+    res.status(200).json({
+      message: `Payroll generated for ${results.length} employees for ${month}/${year}`,
+      data: results
+    });
+  } catch (error: any) {
+    console.error('❌ [generateMonthlyPayroll] Error:', error);
+    res.status(500).json({ message: 'Error generating payroll', error: error.message });
+  }
+};
+
+/**
+ * @desc    Get all payroll records
+ * @route   GET /api/payroll
+ * @access  Admin/HR
+ */
+export const getAllPayrolls = async (req: Request, res: Response) => {
+  try {
+    const { month, year, status } = req.query;
+    
+    const where: any = {};
+    if (month) where.month = Number(month);
+    if (year) where.year = Number(year);
+    if (status) where.status = status as string;
+
+    const payrolls = await prisma.payroll.findMany({
+      where,
       include: {
         user: {
-          select: { name: true, employeeId: true }
+          select: { name: true, employeeId: true, department: true, designation: true }
         }
       },
       orderBy: [
@@ -15,105 +126,30 @@ export const getPendingPayroll = async (req: Request, res: Response) => {
         { month: 'desc' }
       ]
     });
-    res.status(200).json(history);
+
+    res.status(200).json(payrolls);
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching pending payroll', error: error.message });
+    res.status(500).json({ message: 'Error fetching payrolls', error: error.message });
   }
 };
 
-export const getPayrollHistory = async (req: Request, res: Response) => {
+/**
+ * @desc    Update payroll status (e.g., mark as Paid)
+ * @route   PATCH /api/payroll/:id
+ * @access  Admin
+ */
+export const updatePayrollStatus = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
-    const history = await prisma.payroll.findMany({
-      where: { userId },
-      orderBy: [
-        { year: 'desc' },
-        { month: 'desc' }
-      ]
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const payroll = await prisma.payroll.update({
+      where: { id: id as string },
+      data: { status }
     });
-    res.status(200).json(history);
+
+    res.status(200).json({ message: 'Payroll status updated', payroll });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching payroll history', error: error.message });
-  }
-};
-
-export const generatePayroll = async (req: Request, res: Response) => {
-  try {
-    const { month, year } = req.body;
-    const generatedBy = (req as any).user.id;
-
-    if (!month || !year) {
-      return res.status(400).json({ message: 'Please provide month and year' });
-    }
-
-    const employees = await prisma.user.findMany({
-      where: { isActive: true }
-    });
-    
-    const results = [];
-
-    for (const emp of employees) {
-      // Logic: (Base Salary / 30) * Present Days. 
-      // If late entries > 3, deduct half a day's pay.
-      const presentDays = 22; // Hardcoded mock
-      const totalDays = 30;
-      const lateEntries = 4; // Hardcoded mock to trigger late penalty
-      
-      const perDaySalary = emp.baseSalary / totalDays;
-      let finalSalary = perDaySalary * presentDays; // This implicitly deducts for unpaid leaves (absences)
-      
-      const deductionsArr: any[] = [];
-      let totalDeductionsAmt = 0;
-      
-      // Unpaid leaves deduction
-      if (lateEntries > 3) {
-        const latePenalty = perDaySalary / 2;
-        deductionsArr.push({ name: 'Late Penalty (>3 Lates)', amount: latePenalty });
-        totalDeductionsAmt += latePenalty;
-        finalSalary -= latePenalty;
-      }
-
-      // Upsert Payroll record
-      const payrollRecord = await prisma.payroll.upsert({
-        where: {
-          userId_month_year: {
-            userId: emp.id,
-            month: Number(month),
-            year: Number(year)
-          }
-        },
-        create: {
-          userId: emp.id,
-          month: Number(month),
-          year: Number(year),
-          basicSalary: emp.baseSalary,
-          deductions: deductionsArr,
-          netSalary: finalSalary,
-          status: 'Pending',
-          generatedById: generatedBy
-        },
-        update: {
-          basicSalary: emp.baseSalary,
-          deductions: deductionsArr,
-          netSalary: finalSalary,
-          generatedById: generatedBy
-        }
-      });
-      
-      results.push({
-        id: emp.id,
-        name: emp.name,
-        baseSalary: emp.baseSalary,
-        presentDays,
-        lateEntries,
-        deductionsAmount: totalDeductionsAmt,
-        netPayable: finalSalary,
-        status: payrollRecord.status
-      });
-    }
-
-    res.status(200).json({ message: 'Payroll generated successfully', data: results });
-  } catch (error: any) {
-    res.status(500).json({ message: 'Error generating payroll', error: error.message });
+    res.status(500).json({ message: 'Error updating payroll', error: error.message });
   }
 };

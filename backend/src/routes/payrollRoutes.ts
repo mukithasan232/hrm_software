@@ -1,10 +1,16 @@
 import express from 'express';
-import { getPendingPayroll, generatePayroll } from '../controllers/payrollController';
+import { 
+  generateMonthlyPayroll, 
+  getAllPayrolls, 
+  updatePayrollStatus 
+} from '../controllers/payrollController';
 import { protect, authorizeRoles } from '../middlewares/authMiddleware';
 
 const router = express.Router();
-router.get('/', protect, authorizeRoles('Admin', 'HR'), getPendingPayroll);
-router.get('/pending', protect, authorizeRoles('Admin', 'HR'), getPendingPayroll);
-router.post('/generate', protect, authorizeRoles('Admin', 'HR'), generatePayroll);
+
+// Admin & HR can generate and view all payrolls
+router.get('/', protect, authorizeRoles('Admin', 'HR'), getAllPayrolls);
+router.post('/generate', protect, authorizeRoles('Admin', 'HR'), generateMonthlyPayroll);
+router.patch('/:id', protect, authorizeRoles('Admin'), updatePayrollStatus);
 
 export default router;

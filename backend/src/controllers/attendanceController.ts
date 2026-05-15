@@ -94,6 +94,43 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
   }
 };
 
+// @desc    Get active presence stats for dashboard
+// @route   GET /api/attendance/active-today
+// @access  Admin/HR
+export const getActivePresence = async (req: Request, res: Response) => {
+  try {
+    const tzOffset = 6 * 60 * 60 * 1000;
+    const todayLocal = new Date(new Date().getTime() + tzOffset).toISOString().split('T')[0];
+    const startOfToday = new Date(`${todayLocal}T00:00:00+06:00`);
+    const endOfToday = new Date(`${todayLocal}T23:59:59.999+06:00`);
+
+    const logs = await prisma.attendanceLog.findMany({
+      where: {
+        timestamp: { gte: startOfToday, lte: endOfToday }
+      },
+      orderBy: { timestamp: 'desc' }
+    });
+
+    const checkedIn = new Set();
+    const checkedOut = new Set();
+
+    logs.forEach(log => {
+      if (log.punchType === 'CheckIn') checkedIn.add(log.employeeId);
+      if (log.punchType === 'CheckOut') checkedOut.add(log.employeeId);
+    });
+
+    const activeNow = Array.from(checkedIn).filter(id => !checkedOut.has(id)).length;
+
+    res.status(200).json({
+      totalToday: checkedIn.size,
+      activeNow,
+      recent: logs.slice(0, 5)
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error fetching presence stats', error: error.message });
+  }
+};
+
 // @desc    Get all stored attendance logs from MongoDB
 // @route   GET /api/attendance/logs
 // @access  Admin

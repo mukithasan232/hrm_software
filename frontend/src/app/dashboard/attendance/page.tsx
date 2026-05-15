@@ -19,6 +19,7 @@ export default function AttendancePage() {
     timestamp: new Date().toISOString().slice(0, 16)
   });
   const [dateRange, setDateRange] = useState('today');
+  const [deviceStatus, setDeviceStatus] = useState<{ reachable: boolean; error?: string } | null>(null);
 
   const fetchLogs = async () => {
     try {
@@ -44,11 +45,21 @@ export default function AttendancePage() {
     }
   };
 
+  const checkDeviceHealth = async () => {
+    try {
+      const res = await api.get('/attendance/device-status');
+      setDeviceStatus(res.data);
+    } catch (error) {
+      setDeviceStatus({ reachable: false, error: 'Unreachable' });
+    }
+  };
+
   useEffect(() => {
     fetchLogs();
   }, [dateRange]);
 
   useEffect(() => {
+    checkDeviceHealth();
     fetchEmployees();
 
     // Socket.io Real-time connection
@@ -161,7 +172,18 @@ export default function AttendancePage() {
             </span>
             <span className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">Live</span>
           </div>
-          <p className="text-gray-400 mt-1 text-sm">{totalLogs} total records in database.</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-gray-400 text-sm">{totalLogs} total records.</p>
+            <span className="text-gray-600">•</span>
+            {deviceStatus ? (
+              <span className={`text-xs flex items-center gap-1.5 ${deviceStatus.reachable ? 'text-emerald-500' : 'text-red-500'}`}>
+                <div className={`h-1.5 w-1.5 rounded-full ${deviceStatus.reachable ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
+                {deviceStatus.reachable ? 'Device Online' : 'Device Offline'}
+              </span>
+            ) : (
+              <span className="text-xs text-gray-500 animate-pulse italic">Checking device...</span>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap gap-3">
           <button 

@@ -59,7 +59,7 @@ model User {
   role            Role             @default(Executive)
   department      String?
   designation     String?
-  baseSalary      Float
+  baseSalary      Int              @default(0)
   isActive        Boolean          @default(true)
   joiningDate     DateTime         @default(now())
   profileImage    String?          @default("")
@@ -72,7 +72,6 @@ model User {
   reviewedLeaves   Leave[]          @relation("ReviewedLeaves")
   notifications    Notification[]
   payrolls         Payroll[]        @relation("UserPayrolls")
-  generatedPayrolls Payroll[]       @relation("GeneratedPayrolls")
   performances     Performance[]
 }
 
@@ -135,22 +134,21 @@ model Notification {
 }
 
 model Payroll {
-  id             String        @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String        @db.ObjectId
-  user           User          @relation("UserPayrolls", fields: [userId], references: [id])
-  month          Int
-  year           Int
-  basicSalary    Float
-  additions      Json[]
-  deductions     Json[]
-  netSalary      Float
-  status         PayrollStatus @default(Pending)
-  generatedById  String?       @db.ObjectId
-  generatedBy    User?         @relation("GeneratedPayrolls", fields: [generatedById], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  @@unique([userId, month, year])
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId    String
+  month         Int      // e.g., 5 for May
+  year          Int      // e.g., 2026
+  totalDays     Int      // Days in the month
+  presentDays   Int      // Counted from AttendanceLogs
+  absentDays    Int
+  baseSalary    Int
+  grossSalary   Int      // Calculated (baseSalary / totalDays) * presentDays
+  status        String   @default("Pending") // Pending, Paid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation("UserPayrolls", fields: [employeeId], references: [employeeId])
+  @@unique([employeeId, month, year]) // Prevent duplicate payrolls per month
 }
 
 model Performance {

@@ -7,6 +7,7 @@ import {
   getAttendanceLogs,
   createManualLog,
   syncDeviceUsersToDB,
+  getActivePresence,
 } from '../controllers/attendanceController';
 import { protect, adminOnly, authorizeRoles } from '../middlewares/authMiddleware';
 
@@ -30,5 +31,6 @@ router.get('/test-users',     protect, adminOnly, fetchDeviceUsers); // Temporar
 
 // Logs — Admin/HR can view
 router.get('/logs',           protect, authorizeRoles('Admin', 'HR', 'Manager'), getAttendanceLogs);
+router.get('/active-today',   protect, authorizeRoles('Admin', 'HR', 'Manager'), getActivePresence);
 
 export default router;
