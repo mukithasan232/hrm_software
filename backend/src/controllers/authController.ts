@@ -51,16 +51,30 @@ export const registerUser = async (req: Request, res: Response) => {
 export const loginUser = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
+    console.log(`[Auth] Login attempt for: ${email}`);
 
-    const user = await User.findOne({ email });
+    // Support both email and employeeId
+    const user = await User.findOne({
+      $or: [
+        { email: email },
+        { employeeId: email }
+      ]
+    });
+
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      console.log(`[Auth] ❌ User not found: ${email}`);
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      console.log(`[Auth] ❌ Password mismatch for: ${email}`);
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    console.log(`[Auth] ✅ Login success: ${user.email} (Role: ${user.role})`);
+
+
 
     res.json({
       _id: user.id,

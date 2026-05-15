@@ -6,8 +6,9 @@ import { User } from '../models/User';
 // ─── Device Configuration ──────────────────────────────────────────────────────
 const ZK_IP      = process.env.ZK_DEVICE_IP   || '192.168.10.185';
 const ZK_PORT    = parseInt(process.env.ZK_DEVICE_PORT || '4370');
-const ZK_TIMEOUT = 10000;
-const ZK_INPORT  = 5200; 
+const ZK_TIMEOUT = 40000; // Increased to 40s to prevent TIMEOUT_ON_WRITING_MESSAGE
+const ZK_INPORT  = 0; // Set to 0 to allow OS to pick an available port and avoid conflicts
+const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');
 
 // ─── Error Classification ──────────────────────────────────────────────────────
 function classifyError(err: any): string {
@@ -23,7 +24,9 @@ function classifyError(err: any): string {
 // ─── Factory ──────────────────────────────────────────────────────────────────
 function createZK(): InstanceType<typeof ZKLib> {
   const zk = new ZKLib(ZK_IP, ZK_PORT, ZK_TIMEOUT, ZK_INPORT);
-  zk.connectionType = 'udp';
+  zk.password = ZK_PASSWORD; // Using env key (default 0)
+  zk.connectionType = 'udp';  // Switching back to UDP as it is more standard for ZKTeco K60
+
   return zk;
 }
 
@@ -36,26 +39,53 @@ function resolvePunchType(type: number): 'CheckIn' | 'CheckOut' | 'Unknown' {
 
 // ─── Connection Helper ────────────────────────────────────────────────────────
 async function connectProperly(zk: any): Promise<void> {
-  // We use UDP because TCP was timing out/crashing with this device
-  await zk.zudp.createSocket();
-  await zk.zudp.connect();
-  zk.connectionType = 'udp';
+  // Use appropriate socket creation based on protocol
+  if (zk.connectionType === 'udp') {
+    await zk.createSocket();
+  } else {
+    await zk.zudp.createSocket();
+  }
+  
+  // Give the socket a moment to breathe
+  await new Promise(r => setTimeout(r, 1000));
+
+  await zk.connect();
+  console.log(`[ZKService] 🔌 Connected using ${zk.connectionType.toUpperCase()}`);
+
+  // Log real-time logs to catch punches as they happen
+  zk.getRealTimeLogs((data: any) => {
+    console.log('[ZKService] 🕒 Real-time Log Received:', data);
+  });
 }
 
 /**
- * Robust wrapper for fetching attendance
+ * Robust wrapper for fetching attendance with retry logic
  */
 async function getAttendanceAsync(zk: any): Promise<any[]> {
-  try {
-    const { data } = await zk.getAttendances();
-    return Array.isArray(data) ? data : [];
-  } catch (err: any) {
-    if (err.message === 'zero' || err.message === 'zero length reply') {
-      console.log("[ZKService] ⚠️ ডিভাইস থেকে কোনো ডেটা পাওয়া যায়নি (Empty logs).");
-      return [];
+  let attempts = 3;
+  while (attempts > 0) {
+    try {
+      const response = await zk.getAttendances();
+      console.log('[ZKService] 🔍 Raw Attendance Response:', JSON.stringify(response, null, 2));
+      const { data } = response;
+      return Array.isArray(data) ? data : [];
+    } catch (err: any) {
+      const isTimeout = (err.message || '').includes('TIMEOUT');
+      if (isTimeout && attempts > 1) {
+        console.warn(`[ZKService] ⏳ Timeout detected. Retrying... (${attempts - 1} left)`);
+        await new Promise(r => setTimeout(r, 3000)); // Wait 3s before retry
+        attempts--;
+        continue;
+      }
+
+      if (err.message === 'zero' || err.message === 'zero length reply') {
+        console.log("[ZKService] ⚠️ ডিভাইস থেকে কোনো ডেটা পাওয়া যায়নি (Empty logs).");
+        return [];
+      }
+      throw err;
     }
-    throw err;
   }
+  return [];
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -121,7 +151,9 @@ export const getDeviceUsers = async (): Promise<any[]> => {
   const zk = createZK();
   try {
     await connectProperly(zk);
-    const { data } = await zk.getUsers();
+    const response = await zk.getUsers();
+    console.log('[ZKService] 🔍 Raw Users Response:', JSON.stringify(response, null, 2));
+    const { data } = response;
     // zkteco-js returns users as { user_id, name, cardno, role, password, ... }
     const users: any[] = (data ?? []).map((u: any) => ({
       userId: u.user_id,

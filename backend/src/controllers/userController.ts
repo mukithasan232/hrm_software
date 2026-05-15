@@ -128,3 +128,36 @@ export const toggleEmployeeStatus = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to toggle status', error: error.message });
   }
 };
+
+// @desc    Seed a specific test user for biometric matching
+// @route   POST /api/users/seed-test-user
+// @access  Public (for dev/testing)
+export const seedTestUser = async (req: Request, res: Response) => {
+  try {
+    const targetEmployeeId = "5";
+    const hashedPassword = await bcrypt.hash('password123', 10);
+
+    const userData = {
+      name: 'Tushar',
+      email: 'tushar@example.com',
+      password: hashedPassword,
+      role: 'Employee',
+      employeeId: targetEmployeeId,
+      baseSalary: 45000,
+      department: 'Engineering',
+      designation: 'Software Developer',
+      isActive: true
+    };
+
+    const user = await User.findOneAndUpdate(
+      { employeeId: targetEmployeeId },
+      userData,
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    console.log('[UserController] ✅ Seeded Test User:', user.employeeId);
+    res.status(200).json({ message: 'Test user seeded successfully', user });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to seed test user', error: error.message });
+  }
+};

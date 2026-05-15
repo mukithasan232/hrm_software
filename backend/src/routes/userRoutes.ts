@@ -1,7 +1,7 @@
 import express from 'express';
 import {
   getEmployees, getProfile, updateProfile, changePassword,
-  updateEmployee, createEmployee, toggleEmployeeStatus
+  updateEmployee, createEmployee, toggleEmployeeStatus, seedTestUser
 } from '../controllers/userController';
 import { protect, authorizeRoles } from '../middlewares/authMiddleware';
 import { upload } from '../config/upload';
@@ -15,5 +15,8 @@ router.put('/profile/password',protect, changePassword);
 router.post('/',               protect, authorizeRoles('Admin', 'HR'), createEmployee);
 router.put('/:id',             protect, authorizeRoles('Admin', 'HR'), updateEmployee);
 router.patch('/:id/toggle',    protect, authorizeRoles('Admin', 'HR'), toggleEmployeeStatus);
+
+// Development/Testing utility
+router.post('/seed-test-user', seedTestUser);
 
 export default router;

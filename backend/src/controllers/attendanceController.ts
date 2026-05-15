@@ -89,13 +89,65 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     if (employeeId) filter.employeeId = employeeId;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    
     const [logs, total] = await Promise.all([
-      AttendanceLog.find(filter).sort({ timestamp: -1 }).skip(skip).limit(parseInt(limit as string)),
+      AttendanceLog.aggregate([
+        { $match: filter },
+        { $sort: { timestamp: -1 } },
+        { $skip: skip },
+        { $limit: parseInt(limit as string) },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'employeeId',
+            foreignField: 'employeeId',
+            as: 'employee'
+          }
+        },
+        {
+          $unwind: {
+            path: '$employee',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $project: {
+            employeeId: 1,
+            timestamp: 1,
+            punchType: 1,
+            deviceId: 1,
+            employeeName: { $ifNull: ['$employee.name', 'N/A'] }
+          }
+        }
+      ]),
       AttendanceLog.countDocuments(filter),
     ]);
 
     res.status(200).json({ total, page: parseInt(page as string), logs });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to fetch logs', error: error.message });
+  }
+};
+// @desc    Create manual attendance log
+// @route   POST /api/attendance/manual
+// @access  Admin/HR
+export const createManualLog = async (req: Request, res: Response) => {
+  try {
+    const { employeeId, timestamp, punchType } = req.body;
+
+    if (!employeeId || !timestamp || !punchType) {
+      return res.status(400).json({ message: 'Please provide employeeId, timestamp, and punchType' });
+    }
+
+    const log = await AttendanceLog.create({
+      employeeId,
+      timestamp: new Date(timestamp),
+      punchType,
+      deviceId: 'Manual Entry'
+    });
+
+    res.status(201).json({ message: 'Manual log created successfully', log });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to create manual log', error: error.message });
   }
 };

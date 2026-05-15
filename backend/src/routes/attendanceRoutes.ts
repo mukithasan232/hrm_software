@@ -5,12 +5,17 @@ import {
   getDeviceStatus,
   fetchDeviceUsers,
   getAttendanceLogs,
+  createManualLog,
 } from '../controllers/attendanceController';
 import { protect, adminOnly, authorizeRoles } from '../middlewares/authMiddleware';
 
 const router = express.Router();
 
+// Manual Entry
+router.post('/manual',        protect, authorizeRoles('Admin', 'HR'), createManualLog);
+
 // Existing (cron-safe)
+
 router.post('/sync',          protect, adminOnly, syncDeviceLogs);
 
 // New live-sync endpoint (Admin-only, your requirement)

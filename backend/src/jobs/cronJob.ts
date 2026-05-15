@@ -2,16 +2,17 @@ import cron from 'node-cron';
 import { fetchDeviceLogs } from '../services/zkService';
 
 export const initCronJobs = () => {
-  // Schedule to run every day at 11:50 PM server time
-  cron.schedule('50 23 * * *', async () => {
-    console.log('🕒 Running daily cron job: Fetching ZKTeco Logs...');
+  // Schedule to run every 5 minutes
+  cron.schedule('*/5 * * * *', async () => {
+    console.log('🕒 Running periodic sync: Fetching ZKTeco Logs (Every 5 min)...');
     try {
-      await fetchDeviceLogs();
-      console.log('✅ Daily cron job completed successfully.');
+      const syncedCount = await fetchDeviceLogs();
+      console.log(`✅ Periodic sync completed. ${syncedCount} new logs fetched.`);
     } catch (error) {
-      console.error('❌ Daily cron job failed.', error);
+      console.error('❌ Periodic sync failed.', error);
     }
   });
+
 
   console.log('⏰ Cron jobs initialized.');
 };
