@@ -54,7 +54,7 @@ export default function AttendancePage() {
     socket.on('new-attendance', (newLog) => {
       setLogs((prev) => {
         // Avoid duplicates if possible
-        const exists = prev.some(l => l._id === newLog._id);
+        const exists = prev.some(l => l.id === newLog.id);
         if (exists) return prev;
         return [newLog, ...prev];
       });
@@ -234,11 +234,11 @@ export default function AttendancePage() {
                 <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-400">No logs found.</td></tr>
               ) : (
                 filteredLogs.map((row, idx) => (
-                  <tr key={row._id || idx} className="hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
+                  <tr key={row.id || idx} className="hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-white font-medium">{row.employeeName || 'N/A'}</span>
-                        <span className="text-gray-500 text-xs">ID: {row.employeeId}</span>
+                        <span className="text-white font-medium">{row?.employeeName || 'N/A'}</span>
+                        <span className="text-gray-500 text-xs">ID: {row?.employeeId || 'Unknown'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-300">
@@ -255,7 +255,7 @@ export default function AttendancePage() {
                         ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
                         : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                       }`}>
-                        {row.punchType}
+                        {row?.punchType || 'Unknown'}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-mono text-gray-500 text-sm">
@@ -296,7 +296,7 @@ export default function AttendancePage() {
                   >
                     <option value="">Select an employee...</option>
                     {employees.map(emp => (
-                      <option key={emp._id} value={emp.employeeId}>{emp.name} (ID: {emp.employeeId})</option>
+                      <option key={emp.id} value={emp.employeeId}>{emp.name} (ID: {emp.employeeId})</option>
                     ))}
                   </select>
                 </div>

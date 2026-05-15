@@ -6,6 +6,7 @@ import {
   fetchDeviceUsers,
   getAttendanceLogs,
   createManualLog,
+  syncDeviceUsersToDB,
 } from '../controllers/attendanceController';
 import { protect, adminOnly, authorizeRoles } from '../middlewares/authMiddleware';
 
@@ -23,6 +24,7 @@ router.post('/sync-live',     protect, adminOnly, syncLive);
 
 // Device health + user endpoints
 router.get('/device-status',  protect, adminOnly, getDeviceStatus);
+router.post('/sync-users',     protect, adminOnly, syncDeviceUsersToDB);
 router.get('/device-users',   protect, adminOnly, fetchDeviceUsers);
 router.get('/test-users',     protect, adminOnly, fetchDeviceUsers); // Temporary test route
 

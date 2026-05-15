@@ -1,10 +1,10 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { prisma } from '../lib/prisma';
+import { connectDB } from '../config/db';
+
 // Load .env from backend root
 dotenv.config({ path: path.join(__dirname, '../../.env') });
-
-import { connectDB } from '../config/db';
-import { User } from '../models/User';
 
 /**
  * Migration Script: Update Employee ID for Biometric Sync
@@ -18,10 +18,13 @@ async function migrateUser() {
   
   try {
     await connectDB();
-    console.log('✅ Connected to MongoDB.');
 
     // 1. Find User
-    const user = await User.findOne({ name: new RegExp(TARGET_NAME, 'i') });
+    const user = await prisma.user.findFirst({
+      where: {
+        name: { contains: TARGET_NAME, mode: 'insensitive' }
+      }
+    });
     
     if (!user) {
       console.error(`❌ User "${TARGET_NAME}" not found in database.`);
@@ -35,13 +38,15 @@ async function migrateUser() {
       console.log(`ℹ️  User already has Employee ID "${TARGET_ID}". No change needed.`);
     } else {
       const oldId = user.employeeId;
-      user.employeeId = TARGET_ID;
-      await user.save();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { employeeId: TARGET_ID }
+      });
       console.log(`🚀 SUCCESS: Updated ID from "${oldId}" to "${TARGET_ID}"`);
     }
 
     // 3. Log final state for verification
-    const verifiedUser = await User.findById(user._id);
+    const verifiedUser = await prisma.user.findUnique({ where: { id: user.id } });
     console.log('\n--- 🔍 Final Database Verification ---');
     console.log(JSON.stringify(verifiedUser, null, 2));
     
@@ -50,8 +55,10 @@ async function migrateUser() {
     console.error('Reason:', err.message);
   } finally {
     console.log('\n--- Migration End ---');
+    await prisma.$disconnect();
     process.exit(0);
   }
 }
 
 migrateUser();
+

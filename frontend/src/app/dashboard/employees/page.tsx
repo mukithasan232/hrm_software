@@ -85,7 +85,7 @@ export default function EmployeesPage() {
       if (editTarget) {
         // Update existing
         const { password, employeeId, ...updateData } = form;
-        await api.put(`/users/${editTarget._id}`, { ...updateData, baseSalary: Number(form.baseSalary) });
+        await api.put(`/users/${editTarget.id}`, { ...updateData, baseSalary: Number(form.baseSalary) });
         toast.success('Employee updated!');
       } else {
         // Create new
@@ -103,9 +103,9 @@ export default function EmployeesPage() {
 
   const handleToggleStatus = async (emp: any) => {
     try {
-      const res = await api.patch(`/users/${emp._id}/toggle`);
+      const res = await api.patch(`/users/${emp.id}/toggle`);
       toast.success(res.data.message);
-      setEmployees(prev => prev.map(e => e._id === emp._id ? { ...e, isActive: res.data.isActive } : e));
+      setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, isActive: res.data.isActive } : e));
     } catch {
       toast.error('Failed to update status');
     }
@@ -197,7 +197,7 @@ export default function EmployeesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(emp => (
             <div
-              key={emp._id}
+              key={emp.id}
               className={`bg-white/5 backdrop-blur-xl border rounded-2xl p-5 transition-all group relative ${
                 emp.isActive ? 'border-white/10 hover:border-blue-500/40' : 'border-white/5 opacity-60'
               }`}

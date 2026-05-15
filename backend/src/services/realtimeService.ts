@@ -1,9 +1,8 @@
 import { Server } from 'socket.io';
 // @ts-ignore
 import ZKLib from 'zkteco-js';
-import { AttendanceLog } from '../models/AttendanceLog';
-import { User } from '../models/User';
-import { fetchDeviceLogs } from './zkService';
+import { prisma } from '../lib/prisma';
+import { fetchDeviceLogs, getPunchType } from './zkService';
 
 const ZK_IP = process.env.ZK_DEVICE_IP || '192.168.10.185';
 const ZK_PORT = parseInt(process.env.ZK_DEVICE_PORT || '4370');
@@ -30,13 +29,6 @@ export const initRealtimeAttendance = async (socketIo: Server) => {
   connectAndListen();
 };
 
-
-const resolvePunchType = (type: number): 'CheckIn' | 'CheckOut' | 'Unknown' => {
-  if (type === 0) return 'CheckIn';
-  if (type === 1) return 'CheckOut';
-  return 'Unknown';
-};
-
 let isConnecting = false;
 
 const connectAndListen = async () => {
@@ -60,7 +52,7 @@ const connectAndListen = async () => {
       await zkInstance.zudp.createSocket();
     }
     
-    await new Promise(r => setTimeout(r, 2000)); // Increased wait for socket
+    await new Promise(r => setTimeout(r, 2000));
     await zkInstance.connect();
 
     console.log(`[RealtimeService] ✅ Connected to device at ${ZK_IP}`);
@@ -70,40 +62,46 @@ const connectAndListen = async () => {
       
       const employeeId = String(data.userId);
       const timestamp = data.attTime ? new Date(data.attTime) : new Date();
+      const punchType = getPunchType(data.type);
       
-      let punchType: 'CheckIn' | 'CheckOut' | 'Unknown' = 'Unknown';
-      if (data.type === 0) punchType = 'CheckIn';
-      else if (data.type === 1) punchType = 'CheckOut';
-      else punchType = 'CheckIn';
-      
-      const user = await User.findOne({ employeeId });
+      const user = await prisma.user.findUnique({
+        where: { employeeId }
+      });
       const employeeName = user?.name || 'N/A';
 
       try {
-        const newLog = await AttendanceLog.create({
-          employeeId,
-          timestamp,
-          punchType,
-          deviceId: ZK_IP,
+        const newLog = await prisma.attendanceLog.upsert({
+          where: {
+            employeeId_timestamp: {
+              employeeId,
+              timestamp,
+            },
+          },
+          update: {},
+          create: {
+            employeeId,
+            timestamp,
+            punchType,
+            deviceId: ZK_IP,
+          }
         });
 
         if (io) {
           io.emit('new-attendance', {
-            ...newLog.toObject(),
+            ...newLog,
             employeeName,
           });
+          console.log(`[RealtimeService] 📡 Emitted to frontend: ${employeeName} [${punchType}]`);
         }
       } catch (err: any) {
-        if (err.code !== 11000) {
-          console.error('[RealtimeService] DB Error:', err.message);
-        }
+        console.error('[RealtimeService] DB Error:', err.message);
       }
     });
 
     // Keepalive / Heartbeat
     const heartbeat = setInterval(async () => {
         try {
-            await zkInstance.getTime(); // Simple command to check if alive
+            if (zkInstance) await zkInstance.getTime();
         } catch (e) {
             console.log('[RealtimeService] 💔 Heartbeat failed, reconnecting...');
             clearInterval(heartbeat);
@@ -115,8 +113,8 @@ const connectAndListen = async () => {
   } catch (err: any) {
     console.error(`[RealtimeService] ❌ Connection failed: ${err.message}`);
     isConnecting = false;
-    // Retry after 10 seconds
     setTimeout(connectAndListen, 10000);
   }
 };
+
 

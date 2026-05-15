@@ -30,7 +30,7 @@ export default function PerformancePage() {
           
           // Fetch performance for all (mocking by fetching first employee for now)
           if (empRes.data.length > 0) {
-            setSelectedEmp(empRes.data[0]._id);
+            setSelectedEmp(empRes.data[0].id);
           }
         } else if (user) {
           const res = await api.get(`/performance/${user.id}`);
@@ -128,7 +128,7 @@ export default function PerformancePage() {
                     className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
                   >
                     {employees.map(emp => (
-                      <option key={emp._id} value={emp._id} className="bg-slate-900">{emp.name} ({emp.employeeId})</option>
+                      <option key={emp.id} value={emp.id} className="bg-slate-900">{emp.name} ({emp.employeeId})</option>
                     ))}
                   </select>
                 </div>

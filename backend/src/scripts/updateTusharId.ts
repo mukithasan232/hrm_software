@@ -1,20 +1,23 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { prisma } from '../lib/prisma';
+import { connectDB } from '../config/db';
+
 // Load .env from backend root
 dotenv.config({ path: path.join(__dirname, '../../.env') });
-
-import { connectDB } from '../config/db';
-import { User } from '../models/User';
 
 async function updateTushar() {
   console.log('--- Database Migration: Update Tushar Device ID ---');
   try {
-    // 1. Connect to MongoDB
+    // 1. Connect to DB
     await connectDB();
-    console.log('✅ Connected to MongoDB.');
 
     // 2. Search for Tushar (Case-insensitive)
-    const user = await User.findOne({ name: /Tushar/i });
+    const user = await prisma.user.findFirst({
+      where: {
+        name: { contains: 'Tushar', mode: 'insensitive' }
+      }
+    });
     
     if (!user) {
       console.log('❌ Error: User "Tushar" not found in the database.');
@@ -25,24 +28,23 @@ async function updateTushar() {
     console.log(`🔍 Found User: ${user.name} | Current ID: ${user.employeeId}`);
 
     // 3. Update the employeeId to match the device (5)
-    // We store it as a String as required.
-    user.employeeId = "5";
-    await user.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { employeeId: "5" }
+    });
 
     console.log(`\n🚀 SUCCESS: Updated "${user.name}" with Employee ID: "5"`);
     console.log('This will now correctly match the logs from the ZKTeco K60 device.');
     
   } catch (err: any) {
     console.error('\n❌ Update Failed!');
-    if (err.code === 11000) {
-      console.error('Error: Another user already has Employee ID "5". (Duplicate Key)');
-    } else {
-      console.error('Reason:', err.message);
-    }
+    console.error('Reason:', err.message);
   } finally {
     console.log('--- Migration End ---');
+    await prisma.$disconnect();
     process.exit(0);
   }
 }
 
 updateTushar();
+

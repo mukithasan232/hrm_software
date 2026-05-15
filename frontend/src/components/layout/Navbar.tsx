@@ -87,7 +87,7 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
                   <p className="p-6 text-sm text-gray-500 text-center">All caught up! 🎉</p>
                 ) : (
                   notifications.map(n => (
-                    <div key={n._id} className={`p-3 border-b border-white/5 text-xs ${!n.read ? 'bg-blue-500/5 text-white' : 'text-gray-400'}`}>
+                    <div key={n.id} className={`p-3 border-b border-white/5 text-xs ${!n.read ? 'bg-blue-500/5 text-white' : 'text-gray-400'}`}>
                       <p>{n.message}</p>
                       <p className="text-gray-500 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
                     </div>

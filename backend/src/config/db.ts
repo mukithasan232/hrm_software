@@ -1,20 +1,12 @@
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { prisma } from '../lib/prisma';
 
 export const connectDB = async () => {
-  const uri = process.env.MONGO_URI as string;
-
   try {
-    const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-    });
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    await prisma.$connect();
+    console.log('✅ Prisma connected to MongoDB successfully.');
   } catch (error: any) {
-    console.error(`❌ Error connecting to MongoDB: ${error.message}`);
-
+    console.error(`❌ Prisma connection error: ${error.message}`);
+    
     if (error.message?.includes('whitelist') || error.message?.includes('ECONNREFUSED')) {
       console.error('   👉 Add your current IP to MongoDB Atlas → Network Access → IP Allowlist.');
     }
@@ -22,3 +14,4 @@ export const connectDB = async () => {
     process.exit(1);
   }
 };
+

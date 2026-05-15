@@ -1,38 +1,54 @@
 import { Request, Response } from 'express';
-import { User } from '../models/User';
-import { Payroll } from '../models/Payroll';
+import { prisma } from '../lib/prisma';
 
 export const getPendingPayroll = async (req: Request, res: Response) => {
   try {
-    // All non-admin roles are payroll-eligible
-    const employees = await User.find({ role: { $in: ['Executive', 'Manager', 'HR', 'Employee'] } }).select('-password');
-    
-    const pendingList = employees.map(emp => ({
-      _id: emp._id,
-      name: emp.name,
-      designation: (emp as any).designation,
-      department: (emp as any).department,
-      base: emp.baseSalary,
-      daysWorked: 22,
-      lates: 4,
-      status: 'Ready'
-    }));
-
-    res.status(200).json(pendingList);
+    const history = await prisma.payroll.findMany({
+      where: { status: 'Pending' },
+      include: {
+        user: {
+          select: { name: true, employeeId: true }
+        }
+      },
+      orderBy: [
+        { year: 'desc' },
+        { month: 'desc' }
+      ]
+    });
+    res.status(200).json(history);
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching payroll', error: error.message });
+    res.status(500).json({ message: 'Error fetching pending payroll', error: error.message });
+  }
+};
+
+export const getPayrollHistory = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const history = await prisma.payroll.findMany({
+      where: { userId },
+      orderBy: [
+        { year: 'desc' },
+        { month: 'desc' }
+      ]
+    });
+    res.status(200).json(history);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error fetching payroll history', error: error.message });
   }
 };
 
 export const generatePayroll = async (req: Request, res: Response) => {
   try {
-    const { month, year, employeeId } = req.body;
-    
-    // Auth user id from protect middleware
+    const { month, year } = req.body;
     const generatedBy = (req as any).user.id;
 
-    const query: any = employeeId ? { _id: employeeId } : { role: { $in: ['Executive', 'Manager', 'HR', 'Employee'] } };
-    const employees = await User.find(query);
+    if (!month || !year) {
+      return res.status(400).json({ message: 'Please provide month and year' });
+    }
+
+    const employees = await prisma.user.findMany({
+      where: { isActive: true }
+    });
     
     const results = [];
 
@@ -46,7 +62,7 @@ export const generatePayroll = async (req: Request, res: Response) => {
       const perDaySalary = emp.baseSalary / totalDays;
       let finalSalary = perDaySalary * presentDays; // This implicitly deducts for unpaid leaves (absences)
       
-      const deductionsArr = [];
+      const deductionsArr: any[] = [];
       let totalDeductionsAmt = 0;
       
       // Unpaid leaves deduction
@@ -58,23 +74,34 @@ export const generatePayroll = async (req: Request, res: Response) => {
       }
 
       // Upsert Payroll record
-      const payrollRecord = await Payroll.findOneAndUpdate(
-        { user: emp._id, month, year },
-        {
-          user: emp._id,
-          month,
-          year,
+      const payrollRecord = await prisma.payroll.upsert({
+        where: {
+          userId_month_year: {
+            userId: emp.id,
+            month: Number(month),
+            year: Number(year)
+          }
+        },
+        create: {
+          userId: emp.id,
+          month: Number(month),
+          year: Number(year),
           basicSalary: emp.baseSalary,
           deductions: deductionsArr,
           netSalary: finalSalary,
           status: 'Pending',
-          generatedBy
+          generatedById: generatedBy
         },
-        { new: true, upsert: true }
-      );
+        update: {
+          basicSalary: emp.baseSalary,
+          deductions: deductionsArr,
+          netSalary: finalSalary,
+          generatedById: generatedBy
+        }
+      });
       
       results.push({
-        id: emp._id,
+        id: emp.id,
         name: emp.name,
         baseSalary: emp.baseSalary,
         presentDays,

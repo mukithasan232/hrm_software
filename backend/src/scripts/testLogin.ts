@@ -1,23 +1,20 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import path from 'path';
+import { prisma } from '../lib/prisma';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-import { User } from '../models/User';
-
 async function testLogin() {
-  const uri = process.env.MONGO_URI;
-  if (!uri) return console.log('No URI');
-  
-  await mongoose.connect(uri);
-  console.log('Connected.');
+  console.log('Testing login via Prisma...');
 
   const email = 'aiden.khan@hrm.test';
   const pass = 'password123';
 
-  const user = await User.findOne({ email });
+  const user = await prisma.user.findUnique({
+    where: { email }
+  });
+
   if (!user) {
     console.log('User not found:', email);
   } else {
@@ -25,7 +22,8 @@ async function testLogin() {
     console.log('Login Result for', email, ':', isMatch ? 'SUCCESS' : 'FAILED');
   }
 
-  await mongoose.disconnect();
+  await prisma.$disconnect();
 }
 
 testLogin();
+

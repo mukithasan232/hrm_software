@@ -1,11 +1,26 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { User } from '../models/User';
-import path from 'path';
+import { prisma } from '../lib/prisma';
 
 export const getEmployees = async (req: Request, res: Response) => {
   try {
-    const users = await User.find().select('-password');
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        employeeId: true,
+        name: true,
+        email: true,
+        role: true,
+        department: true,
+        designation: true,
+        baseSalary: true,
+        isActive: true,
+        joiningDate: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    });
     res.status(200).json(users);
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to fetch employees', error: error.message });
@@ -15,7 +30,22 @@ export const getEmployees = async (req: Request, res: Response) => {
 export const getProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const user = await User.findById(userId).select('-password');
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        employeeId: true,
+        name: true,
+        email: true,
+        role: true,
+        department: true,
+        designation: true,
+        baseSalary: true,
+        isActive: true,
+        joiningDate: true,
+        profileImage: true,
+      }
+    });
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.status(200).json(user);
   } catch (error: any) {
@@ -28,18 +58,30 @@ export const updateProfile = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     const { name, designation, department, phone } = req.body;
 
-    const updates: any = {};
-    if (name) updates.name = name;
-    if (designation) updates.designation = designation;
-    if (department) updates.department = department;
-    if (phone) updates.phone = phone;
+    const data: any = {};
+    if (name) data.name = name;
+    if (designation) data.designation = designation;
+    if (department) data.department = department;
+    // Note: Phone is not in the Prisma schema yet, I'll ignore it or update schema later if needed.
+    // Based on User.ts, phone wasn't there either, only in the controller's body destructuring.
 
-    // If a file was uploaded, set its URL
     if ((req as any).file) {
-      updates.profileImage = `/uploads/avatars/${(req as any).file.filename}`;
+      data.profileImage = `/uploads/avatars/${(req as any).file.filename}`;
     }
 
-    const user = await User.findByIdAndUpdate(userId, updates, { new: true }).select('-password');
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        department: true,
+        designation: true,
+        profileImage: true,
+      }
+    });
     res.status(200).json({ message: 'Profile updated successfully', user });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to update profile', error: error.message });
@@ -51,14 +93,19 @@ export const changePassword = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     const { currentPassword, newPassword } = req.body;
 
-    const user = await User.findById(userId);
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
 
-    user.password = await bcrypt.hash(newPassword, 10);
-    await user.save();
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
 
     res.status(200).json({ message: 'Password changed successfully' });
   } catch (error: any) {
@@ -71,11 +118,28 @@ export const updateEmployee = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, role, department, designation, baseSalary, isActive } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      { name, role, department, designation, baseSalary, isActive },
-      { new: true }
-    ).select('-password');
+    const user = await prisma.user.update({
+      where: { id: id as string },
+      data: {
+        name,
+        role,
+        department,
+        designation,
+        baseSalary: baseSalary ? Number(baseSalary) : undefined,
+        isActive
+      },
+      select: {
+        id: true,
+        employeeId: true,
+        name: true,
+        email: true,
+        role: true,
+        department: true,
+        designation: true,
+        baseSalary: true,
+        isActive: true,
+      }
+    });
 
     if (!user) return res.status(404).json({ message: 'Employee not found' });
     res.status(200).json({ message: 'Employee updated', user });
@@ -88,28 +152,36 @@ export const createEmployee = async (req: Request, res: Response) => {
   try {
     const { employeeId, name, email, password, role, department, designation, baseSalary } = req.body;
 
-    const exists = await User.findOne({ $or: [{ email }, { employeeId }] });
+    const exists = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { employeeId }]
+      }
+    });
+
     if (exists) {
       return res.status(400).json({ message: 'An employee with this email or Employee ID already exists.' });
     }
 
     const hashed = await bcrypt.hash(password || 'password123', 10);
 
-    const user = await User.create({
-      employeeId,
-      name,
-      email,
-      password: hashed,
-      role: role || 'Executive',
-      department,
-      designation,
-      baseSalary: Number(baseSalary) || 0,
-      joiningDate: new Date(),
+    const user = await prisma.user.create({
+      data: {
+        employeeId,
+        name,
+        email,
+        password: hashed,
+        role: role || 'Executive',
+        department,
+        designation,
+        baseSalary: Number(baseSalary) || 0,
+        joiningDate: new Date(),
+      }
     });
 
+    const { password: _, ...userWithoutPassword } = user;
     res.status(201).json({
       message: 'Employee created successfully',
-      user: { ...user.toObject(), password: undefined },
+      user: userWithoutPassword,
     });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to create employee', error: error.message });
@@ -119,11 +191,15 @@ export const createEmployee = async (req: Request, res: Response) => {
 export const toggleEmployeeStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const emp = await User.findById(id);
+    const emp = await prisma.user.findUnique({ where: { id: id as string } });
     if (!emp) return res.status(404).json({ message: 'Employee not found' });
-    emp.isActive = !emp.isActive;
-    await emp.save();
-    res.status(200).json({ message: `Employee ${emp.isActive ? 'activated' : 'deactivated'}`, isActive: emp.isActive });
+    
+    const updated = await prisma.user.update({
+      where: { id: id as string },
+      data: { isActive: !emp.isActive }
+    });
+
+    res.status(200).json({ message: `Employee ${updated.isActive ? 'activated' : 'deactivated'}`, isActive: updated.isActive });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to toggle status', error: error.message });
   }
@@ -141,7 +217,7 @@ export const seedTestUser = async (req: Request, res: Response) => {
       name: 'Tushar',
       email: 'tushar@example.com',
       password: hashedPassword,
-      role: 'Employee',
+      role: 'Employee' as const,
       employeeId: targetEmployeeId,
       baseSalary: 45000,
       department: 'Engineering',
@@ -149,11 +225,11 @@ export const seedTestUser = async (req: Request, res: Response) => {
       isActive: true
     };
 
-    const user = await User.findOneAndUpdate(
-      { employeeId: targetEmployeeId },
-      userData,
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    const user = await prisma.user.upsert({
+      where: { employeeId: targetEmployeeId },
+      update: userData,
+      create: userData
+    });
 
     console.log('[UserController] ✅ Seeded Test User:', user.employeeId);
     res.status(200).json({ message: 'Test user seeded successfully', user });

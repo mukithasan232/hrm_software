@@ -48,7 +48,7 @@ export default function LoginPage() {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token, ...userData } = response.data;
-      const normalizedUser = { ...userData, id: userData._id };
+      const normalizedUser = { ...userData, id: userData.id || userData._id };
       login(normalizedUser, token);
 
       const role: string = userData.role;

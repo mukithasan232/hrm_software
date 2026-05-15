@@ -1,11 +1,9 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import path from 'path';
+import { prisma } from '../lib/prisma';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-
-import { User } from '../models/User';
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
@@ -47,7 +45,7 @@ interface EmployeeSeed {
   name: string;
   email: string;
   password: string;
-  role: string;
+  role: any;
   department: string;
   designation: string;
   baseSalary: number;
@@ -76,7 +74,7 @@ const buildEmployees = async (): Promise<EmployeeSeed[]> => {
         name,
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@hrm.test`,
         password: hashed,
-        role,
+        role: role as any,
         department,
         designation,
         baseSalary: getRandomSalary(salaryMin, salaryMax),
@@ -101,7 +99,7 @@ const buildEmployees = async (): Promise<EmployeeSeed[]> => {
       name,
       email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@hrm.test`,
       password: hashed,
-      role: 'Manager',
+      role: 'Manager' as any,
       department: departments[i],
       designation: managerDesignations[i],
       baseSalary: getRandomSalary(90000, 120000),
@@ -118,7 +116,7 @@ const buildEmployees = async (): Promise<EmployeeSeed[]> => {
       name,
       email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@hrm.test`,
       password: hashed,
-      role: 'Executive',
+      role: 'Executive' as any,
       department: getRandomItem(departments),
       designation: getRandomItem(executiveDesignations),
       baseSalary: getRandomSalary(50000, 80000),
@@ -132,36 +130,35 @@ const buildEmployees = async (): Promise<EmployeeSeed[]> => {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const seed = async () => {
-  const uri = process.env.MONGO_URI;
-  if (!uri) {
-    console.error('❌  MONGO_URI not found in .env');
+  try {
+    console.log('🔌  Connecting to Database via Prisma…');
+    await prisma.$connect();
+    console.log('✅  Connected.\n');
+
+    // Wipe existing seed data
+    const deleted = await prisma.user.deleteMany({});
+    console.log(`🗑   Cleared ${deleted.count} existing user(s).\n`);
+
+    const employees = await buildEmployees();
+    await prisma.user.createMany({
+      data: employees
+    });
+
+    console.log('🌱  Seeded 30 employees:');
+    console.log('   • 1  Admin  (EMP001) — aiden.khan@hrm.test');
+    console.log('   • 2  HRs   (EMP002–EMP003)');
+    console.log('   • 5  Managers (EMP004–EMP008)');
+    console.log('   • 22 Executives (EMP009–EMP030)');
+    console.log('\n🔑  Universal password: password123');
+    console.log('\n✔   Done!\n');
+
+    await prisma.$disconnect();
+    process.exit(0);
+  } catch (err) {
+    console.error('❌  Seed failed:', err);
     process.exit(1);
   }
-
-  console.log('🔌  Connecting to MongoDB…');
-  await mongoose.connect(uri);
-  console.log('✅  Connected.\n');
-
-  // Wipe existing seed data (keep real users if you prefer — comment this out)
-  const deleted = await User.deleteMany({});
-  console.log(`🗑   Cleared ${deleted.deletedCount} existing user(s).\n`);
-
-  const employees = await buildEmployees();
-  await User.insertMany(employees);
-
-  console.log('🌱  Seeded 30 employees:');
-  console.log('   • 1  Admin  (EMP001) — admin.khan@hrm.test');
-  console.log('   • 2  HRs   (EMP002–EMP003)');
-  console.log('   • 5  Managers (EMP004–EMP008)');
-  console.log('   • 22 Executives (EMP009–EMP030)');
-  console.log('\n🔑  Universal password: password123');
-  console.log('\n✔   Done! Check your MongoDB collection.\n');
-
-  await mongoose.disconnect();
-  process.exit(0);
 };
 
-seed().catch((err) => {
-  console.error('❌  Seed failed:', err);
-  process.exit(1);
-});
+seed();
+

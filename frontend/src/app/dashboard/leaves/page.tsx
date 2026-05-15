@@ -164,10 +164,10 @@ export default function LeavesPage() {
                     <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">No leaves found.</td></tr>
                   ) : (
                     leaves.map((l) => (
-                      <tr key={l._id} className="hover:bg-white/[0.02] transition-colors">
+                      <tr key={l.id} className="hover:bg-white/[0.02] transition-colors">
                         {isManagerOrHR && (
                           <td className="px-6 py-4 text-white font-medium">
-                            {l.employeeId?.name} <span className="block text-xs text-gray-500">{l.employeeId?.employeeId}</span>
+                            {l.employee?.name} <span className="block text-xs text-gray-500">{l.employee?.employeeId}</span>
                           </td>
                         )}
                         <td className="px-6 py-4 text-gray-300">{l.type}</td>
@@ -200,8 +200,8 @@ export default function LeavesPage() {
                           <td className="px-6 py-4 text-right">
                             {l.status === 'Pending' ? (
                               <div className="flex items-center justify-end gap-2">
-                                <button onClick={() => updateStatus(l._id, 'Approved')} className="p-1 text-green-400 hover:bg-green-500/20 rounded transition-colors"><CheckCircle className="w-5 h-5" /></button>
-                                <button onClick={() => updateStatus(l._id, 'Rejected')} className="p-1 text-red-400 hover:bg-red-500/20 rounded transition-colors"><XCircle className="w-5 h-5" /></button>
+                                <button onClick={() => updateStatus(l.id, 'Approved')} className="p-1 text-green-400 hover:bg-green-500/20 rounded transition-colors"><CheckCircle className="w-5 h-5" /></button>
+                                <button onClick={() => updateStatus(l.id, 'Rejected')} className="p-1 text-red-400 hover:bg-red-500/20 rounded transition-colors"><XCircle className="w-5 h-5" /></button>
                               </div>
                             ) : (
                               <span className="text-gray-500 italic">Reviewed</span>

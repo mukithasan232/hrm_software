@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGO_URI")
+}
+
+enum Role {
+  Admin
+  HR
+  Manager
+  Executive
+  Employee
+}
+
+enum PunchType {
+  CheckIn
+  CheckOut
+  BreakOut
+  BreakIn
+  OvertimeIn
+  OvertimeOut
+  Unknown
+}
+
+enum AttendanceStatus {
+  Present
+  Absent
+  Late
+  Half_Day @map("Half-Day")
+}
+
+enum LeaveType {
+  Sick
+  Casual
+  Annual
+}
+
+enum LeaveStatus {
+  Pending
+  Approved
+  Rejected
+}
+
+enum PayrollStatus {
+  Pending
+  Approved
+  Paid
+}
+
+model User {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId      String           @unique
+  name            String
+  email           String           @unique
+  password        String
+  role            Role             @default(Executive)
+  department      String?
+  designation     String?
+  baseSalary      Float
+  isActive        Boolean          @default(true)
+  joiningDate     DateTime         @default(now())
+  profileImage    String?          @default("")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  dailyAttendances DailyAttendance[]
+  attendanceLogs   AttendanceLog[]
+  leaves           Leave[]          @relation("EmployeeLeaves")
+  reviewedLeaves   Leave[]          @relation("ReviewedLeaves")
+  notifications    Notification[]
+  payrolls         Payroll[]        @relation("UserPayrolls")
+  generatedPayrolls Payroll[]       @relation("GeneratedPayrolls")
+  performances     Performance[]
+}
+
+model AttendanceLog {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId String
+  user       User?     @relation(fields: [employeeId], references: [employeeId])
+  timestamp  DateTime
+  punchType  PunchType @default(Unknown)
+  deviceId   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([employeeId, timestamp])
+  @@index([employeeId])
+  @@index([timestamp])
+}
+
+model DailyAttendance {
+  id                  String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId              String           @db.ObjectId
+  user                User             @relation(fields: [userId], references: [id])
+  date                DateTime
+  firstPunch          DateTime?
+  lastPunch           DateTime?
+  totalWorkingMinutes Int              @default(0)
+  status              AttendanceStatus
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@unique([userId, date])
+}
+
+model Leave {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId   String      @db.ObjectId
+  employee     User        @relation("EmployeeLeaves", fields: [employeeId], references: [id])
+  type         LeaveType
+  startDate    DateTime
+  endDate      DateTime
+  totalDays    Int         @default(1)
+  reason       String
+  status       LeaveStatus @default(Pending)
+  reviewedById String?     @db.ObjectId
+  reviewedBy   User?       @relation("ReviewedLeaves", fields: [reviewedById], references: [id])
+  attachment   String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  message   String
+  read      Boolean  @default(false)
+  type      String   @default("Info")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payroll {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String        @db.ObjectId
+  user           User          @relation("UserPayrolls", fields: [userId], references: [id])
+  month          Int
+  year           Int
+  basicSalary    Float
+  additions      Json[]
+  deductions     Json[]
+  netSalary      Float
+  status         PayrollStatus @default(Pending)
+  generatedById  String?       @db.ObjectId
+  generatedBy    User?         @relation("GeneratedPayrolls", fields: [generatedById], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([userId, month, year])
+}
+
+model Performance {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId            String   @db.ObjectId
+  employee              User     @relation(fields: [employeeId], references: [id])
+  month                 Int
+  year                  Int
+  punctualityScore      Float    @default(0)
+  taskScore             Float    @default(0)
+  managerRating         Float    @default(3)
+  feedback              String?
+  calculatedOverallScore Float    @default(0)
+  isEOTM                Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([employeeId, month, year])
+}

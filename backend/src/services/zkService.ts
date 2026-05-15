@@ -1,7 +1,6 @@
 // @ts-ignore
 import ZKLib from 'zkteco-js';
-import { AttendanceLog } from '../models/AttendanceLog';
-import { User } from '../models/User';
+import { prisma } from '../lib/prisma';
 
 // ─── Device Configuration ──────────────────────────────────────────────────────
 const ZK_IP      = process.env.ZK_DEVICE_IP   || '192.168.10.185';
@@ -31,10 +30,16 @@ function createZK(): InstanceType<typeof ZKLib> {
 }
 
 // ─── Punch type resolver ───────────────────────────────────────────────────────
-function resolvePunchType(type: number): 'CheckIn' | 'CheckOut' | 'Unknown' {
-  if (type === 0) return 'CheckIn';
-  if (type === 1) return 'CheckOut';
-  return 'Unknown';
+export function getPunchType(state: number): any {
+  switch (state) {
+    case 0:  return 'CheckIn';
+    case 1:  return 'CheckOut';
+    case 2:  return 'BreakOut';
+    case 3:  return 'BreakIn';
+    case 4:  return 'OvertimeIn';
+    case 5:  return 'OvertimeOut';
+    default: return 'Unknown';
+  }
 }
 
 // ─── Connection Helper ────────────────────────────────────────────────────────
@@ -110,7 +115,6 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     for (const log of rawLogs) {
       try {
-        // zkteco-js returns { user_id, record_time, type, state }
         const employeeId = String(log.user_id);
         const timestamp = new Date(log.record_time);
 
@@ -120,20 +124,30 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
           continue;
         }
 
-        await AttendanceLog.create({
-          employeeId,
-          timestamp,
-          punchType:  resolvePunchType(log.type ?? -1),
-          deviceId:   ZK_IP,
+        // Use upsert to avoid duplicates based on unique(employeeId, timestamp)
+        await prisma.attendanceLog.upsert({
+          where: {
+            employeeId_timestamp: {
+              employeeId,
+              timestamp,
+            },
+          },
+          update: {}, // No changes if exists
+          create: {
+            employeeId,
+            timestamp,
+            punchType: getPunchType(log.type ?? -1),
+            deviceId: ZK_IP,
+          },
         });
         synced++;
       } catch (err: any) {
-        if (err.code === 11000) skipped++;
-        else console.error('[ZKService] Insert error:', err.message);
+        console.error('[ZKService] Sync error:', err.message);
+        skipped++;
       }
     }
 
-    console.log(`[ZKService] ✔  Synced: ${synced} | Skipped (dup): ${skipped}`);
+    console.log(`[ZKService] ✔  Synced: ${synced} | Total: ${rawLogs.length}`);
     return { synced, skipped, total: rawLogs.length };
   } catch (err: any) {
     const reason = classifyError(err);

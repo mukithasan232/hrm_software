@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs } from '../services/zkService';
-import { AttendanceLog } from '../models/AttendanceLog';
-import { User } from '../models/User';
+import { prisma } from '../lib/prisma';
+import bcrypt from 'bcryptjs';
 
 // @desc    Legacy sync (used by cron job)
 // @route   POST /api/attendance/sync
@@ -30,10 +30,12 @@ export const syncLive = async (req: Request, res: Response) => {
     let matchedUsers: { deviceId: string; dbName?: string }[] = [];
     try {
       const deviceUsers = await getDeviceUsers();
-      const employeeList = await User.find().select('employeeId name');
+      const employeeList = await prisma.user.findMany({
+        select: { employeeId: true, name: true }
+      });
 
       matchedUsers = deviceUsers.map((du: any) => {
-        const match = employeeList.find(e => e.employeeId === String(du.userId));
+        const match = employeeList.find((e: any) => e.employeeId === String(du.userId));
         return { deviceId: String(du.userId), dbName: match?.name };
       });
     } catch (_) {
@@ -67,6 +69,40 @@ export const getDeviceStatus = async (req: Request, res: Response) => {
   res.status(status).json(result);
 };
 
+// @desc    Sync device users to Prisma DB
+// @route   POST /api/attendance/sync-users
+// @access  Admin
+export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
+  try {
+    const deviceUsers = await getDeviceUsers();
+    let synced = 0;
+    
+    // Hash a default password
+    const hashedPassword = await bcrypt.hash('123456', 10);
+
+    for (const dUser of deviceUsers) {
+      const employeeId = String(dUser.userId);
+      await prisma.user.upsert({
+        where: { employeeId },
+        update: { name: dUser.name },
+        create: {
+          employeeId,
+          name: dUser.name || `User ${employeeId}`,
+          email: `${employeeId}@hrm.test`,
+          password: hashedPassword,
+          role: 'Executive',
+          baseSalary: 0
+        }
+      });
+      synced++;
+    }
+
+    res.status(200).json({ message: 'Users synced successfully', count: synced });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to sync users', error: error.message });
+  }
+};
+
 // @desc    Fetch device users
 // @route   GET /api/attendance/device-users
 // @access  Admin
@@ -85,49 +121,57 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
     const { page = '1', limit = '50', employeeId } = req.query;
-    const filter: any = {};
-    if (employeeId) filter.employeeId = employeeId;
-
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const take = parseInt(limit as string);
+
+    const where: any = {};
+    if (employeeId) where.employeeId = employeeId as string;
+
+    // Filter by Today by default if no date range is provided
+    if (!req.query.startDate && !req.query.endDate) {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      
+      where.timestamp = {
+        gte: startOfToday,
+        lte: endOfToday
+      };
+    }
+
     const [logs, total] = await Promise.all([
-      AttendanceLog.aggregate([
-        { $match: filter },
-        { $sort: { timestamp: -1 } },
-        { $skip: skip },
-        { $limit: parseInt(limit as string) },
-        {
-          $lookup: {
-            from: 'users',
-            localField: 'employeeId',
-            foreignField: 'employeeId',
-            as: 'employee'
-          }
-        },
-        {
-          $unwind: {
-            path: '$employee',
-            preserveNullAndEmptyArrays: true
-          }
-        },
-        {
-          $project: {
-            employeeId: 1,
-            timestamp: 1,
-            punchType: 1,
-            deviceId: 1,
-            employeeName: { $ifNull: ['$employee.name', 'N/A'] }
+      prisma.attendanceLog.findMany({
+        where,
+        orderBy: { timestamp: 'desc' },
+        skip,
+        take,
+        include: {
+          user: {
+            select: { name: true }
           }
         }
-      ]),
-      AttendanceLog.countDocuments(filter),
+      }),
+      prisma.attendanceLog.count({ where }),
     ]);
 
-    res.status(200).json({ total, page: parseInt(page as string), logs });
+    const formattedLogs = logs.map((log: any) => ({
+      id: log.id,
+      employeeId: log.employeeId,
+      timestamp: log.timestamp,
+      punchType: log.punchType,
+      deviceId: log.deviceId,
+      employeeName: log.user?.name || 'N/A'
+    }));
+
+    res.status(200).json({ total, page: parseInt(page as string), logs: formattedLogs });
   } catch (error: any) {
-    res.status(500).json({ message: 'Failed to fetch logs', error: error.message });
+    console.error('❌ [getAttendanceLogs] Prisma Error:', error);
+    res.status(500).json({ error: 'Failed to fetch logs', details: error.message });
   }
 };
+
 // @desc    Create manual attendance log
 // @route   POST /api/attendance/manual
 // @access  Admin/HR
@@ -139,11 +183,13 @@ export const createManualLog = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Please provide employeeId, timestamp, and punchType' });
     }
 
-    const log = await AttendanceLog.create({
-      employeeId,
-      timestamp: new Date(timestamp),
-      punchType,
-      deviceId: 'Manual Entry'
+    const log = await prisma.attendanceLog.create({
+      data: {
+        employeeId,
+        timestamp: new Date(timestamp),
+        punchType,
+        deviceId: 'Manual Entry'
+      }
     });
 
     res.status(201).json({ message: 'Manual log created successfully', log });
