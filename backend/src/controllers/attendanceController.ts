@@ -171,10 +171,6 @@ export const getActivePresence = async (req: Request, res: Response) => {
 // @access  Admin
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
-    // CRITICAL DATA WIPE: Temporary command to delete all logs
-    await prisma.attendanceLog.deleteMany({});
-    console.log("🧹 [getAttendanceLogs] Wiped all attendance logs for a clean fresh load!");
-
     const { page = '1', limit = '50', employeeId, startDate, endDate, range, filter } = req.query;
     
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);

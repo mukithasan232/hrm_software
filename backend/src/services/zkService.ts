@@ -67,10 +67,18 @@ export async function resolvePunchType(
   const localDateStr = new Date(timestamp.getTime() + tzOffset).toISOString().split('T')[0];
 
   const cacheKey = `${employeeId}:${localDateStr}`;
-  if (processedEmpDays && processedEmpDays.has(cacheKey)) {
-    return 'CheckOut';
+
+  // If processedEmpDays cache is provided (for bulk imports), use it exclusively
+  if (processedEmpDays) {
+    if (processedEmpDays.has(cacheKey)) {
+      return 'CheckOut';
+    } else {
+      processedEmpDays.add(cacheKey);
+      return 'CheckIn';
+    }
   }
 
+  // Fallback for single real-time punch logic (e.g. from websocket socket hook)
   const startOfDay = new Date(`${localDateStr}T00:00:00+06:00`);
   const endOfDay = new Date(`${localDateStr}T23:59:59.999+06:00`);
 
@@ -83,10 +91,6 @@ export async function resolvePunchType(
       },
     },
   });
-
-  if (processedEmpDays) {
-    processedEmpDays.add(cacheKey);
-  }
 
   if (count === 0) {
     return 'CheckIn';
@@ -250,6 +254,9 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       return { synced: 0, skipped: 0, total: 0 };
     }
     console.log(`[ZKService] 📋 ${rawLogs.length} raw record(s) from device.`);
+
+    // Sort logs chronologically ascending (earliest to latest) to guarantee correct CheckIn/CheckOut determination
+    rawLogs.sort((a: any, b: any) => new Date(a.record_time).getTime() - new Date(b.record_time).getTime());
 
     let synced = 0;
     let skipped = 0;
