@@ -74,7 +74,7 @@ export async function resolvePunchType(
   const startOfDay = new Date(`${localDateStr}T00:00:00+06:00`);
   const endOfDay = new Date(`${localDateStr}T23:59:59.999+06:00`);
 
-  const existingPunch = await prisma.attendanceLog.findFirst({
+  const count = await prisma.attendanceLog.count({
     where: {
       employeeId,
       timestamp: {
@@ -88,7 +88,7 @@ export async function resolvePunchType(
     processedEmpDays.add(cacheKey);
   }
 
-  if (!existingPunch) {
+  if (count === 0) {
     return 'CheckIn';
   }
 
@@ -226,6 +226,26 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     const rawLogs = await getAttendanceAsync(zk);
     
+    // Clear today's logs for fresh start before sync
+    const tzOffset = 6 * 60 * 60 * 1000; // GMT+6
+    const nowBD = new Date(new Date().getTime() + tzOffset);
+    const year = nowBD.getUTCFullYear();
+    const month = nowBD.getUTCMonth();
+    const date = nowBD.getUTCDate();
+
+    const startOfToday = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
+    const endOfToday = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
+
+    console.log(`[ZKService] 🗑️ Deleting today's logs for clean slate: ${startOfToday.toISOString()} to ${endOfToday.toISOString()}`);
+    await prisma.attendanceLog.deleteMany({
+      where: {
+        timestamp: {
+          gte: startOfToday,
+          lte: endOfToday
+        }
+      }
+    });
+    
     if (rawLogs.length === 0) {
       return { synced: 0, skipped: 0, total: 0 };
     }
@@ -242,7 +262,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       
       for (const log of chunk) {
         try {
-          const employeeId = String(log.user_id);
+          const employeeId = String(log.user_id ?? log.userId ?? log.uid);
           const timestamp = new Date(log.record_time);
 
           if (isNaN(timestamp.getTime())) {
@@ -306,7 +326,7 @@ export const getDeviceUsers = async (): Promise<any[]> => {
     const { data } = response;
     // zkteco-js returns users as { user_id, name, cardno, role, password, ... }
     const users: any[] = (data ?? []).map((u: any) => ({
-      userId: u.user_id,
+      userId: String(u.user_id ?? u.userId ?? u.uid),
       name: u.name,
       role: u.role
     }));

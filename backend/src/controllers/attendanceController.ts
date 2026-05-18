@@ -78,7 +78,7 @@ export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
 
     res.status(200).json({ message: 'Users synced successfully', count: synced });
   } catch (error: any) {
-    res.status(500).json({ message: 'Failed to sync users', error: error.message });
+    res.status(503).json({ message: 'Failed to sync users (biometric device offline or unreachable)', error: error.message });
   }
 };
 
@@ -112,6 +112,11 @@ export const getActivePresence = async (req: Request, res: Response) => {
       where: {
         timestamp: { gte: startOfToday, lte: endOfToday }
       },
+      include: {
+        user: {
+          select: { name: true }
+        }
+      },
       orderBy: { timestamp: 'desc' }
     });
 
@@ -125,10 +130,15 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     const activeNow = Array.from(checkedIn).filter(id => !checkedOut.has(id)).length;
 
+    const formattedRecent = logs.slice(0, 5).map((log: any) => ({
+      ...log,
+      employeeName: log.user?.name || `User ${log.employeeId}`
+    }));
+
     res.status(200).json({
       totalToday: checkedIn.size,
       activeNow,
-      recent: logs.slice(0, 5)
+      recent: formattedRecent
     });
   } catch (error: any) {
     res.status(500).json({ message: 'Error fetching presence stats', error: error.message });

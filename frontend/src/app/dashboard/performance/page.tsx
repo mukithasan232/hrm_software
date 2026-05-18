@@ -101,11 +101,11 @@ export default function PerformancePage() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-white">Performance Analytics</h1>
-          <p className="text-gray-400 mt-1">Track, analyze, and manage employee performance metrics.</p>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Performance Analytics</h1>
+          <p className="text-slate-500 dark:text-gray-400 mt-1 text-sm">Track, analyze, and manage employee performance metrics.</p>
         </div>
         {isManager && (
-          <button onClick={handleCalculateEOTM} className="px-6 py-2.5 bg-yellow-600 hover:bg-yellow-500 text-white font-semibold rounded-xl flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(202,138,4,0.3)]">
+          <button onClick={handleCalculateEOTM} className="px-6 py-2.5 bg-yellow-650 hover:bg-yellow-600 text-white font-semibold rounded-xl flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(202,138,4,0.3)]">
             <Award className="w-5 h-5" /> Calculate EOTM
           </button>
         )}
@@ -116,35 +116,35 @@ export default function PerformancePage() {
           
           {/* Rate Employee Card */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-              <h2 className="text-xl font-semibold text-white flex items-center gap-2 mb-6">
-                <Star className="w-5 h-5 text-yellow-400" /> Rate Employee
+            <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-6">
+                <Star className="w-5 h-5 text-yellow-500 dark:text-yellow-400" /> Rate Employee
               </h2>
               <form onSubmit={handleRate} className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-sm text-gray-400">Select Employee</label>
+                  <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Select Employee</label>
                   <select 
                     value={selectedEmp} onChange={(e) => fetchSpecificEmpStats(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-medium"
                   >
                     {employees.map(emp => (
-                      <option key={emp.id} value={emp.id} className="bg-slate-900">{emp.name} ({emp.employeeId})</option>
+                      <option key={emp.id} value={emp.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{emp.name} ({emp.employeeId})</option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm text-gray-400">Task Completion Score (0-100)</label>
-                  <input type="number" min="0" max="100" required value={taskScore} onChange={(e) => setTaskScore(Number(e.target.value))} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Task Completion Score (0-100)</label>
+                  <input type="number" min="0" max="100" required value={taskScore} onChange={(e) => setTaskScore(Number(e.target.value))} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-medium" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm text-gray-400">Manager Rating (1-5 Stars)</label>
-                  <select value={managerRating} onChange={(e) => setManagerRating(Number(e.target.value))} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none">
-                    {[1,2,3,4,5].map(v => <option key={v} value={v} className="bg-slate-900">{v} Stars</option>)}
+                  <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Manager Rating (1-5 Stars)</label>
+                  <select value={managerRating} onChange={(e) => setManagerRating(Number(e.target.value))} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-medium">
+                    {[1,2,3,4,5].map(v => <option key={v} value={v} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{v} Stars</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm text-gray-400">Feedback</label>
-                  <textarea required value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+                  <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Feedback</label>
+                  <textarea required value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-medium"></textarea>
                 </div>
                 <button type="submit" disabled={submitting} className="w-full py-3 mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all">
                   Submit Rating
@@ -155,17 +155,17 @@ export default function PerformancePage() {
 
           {/* Performance Data Display */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl h-96">
-              <h2 className="text-xl font-semibold text-white mb-6">Historical Trends (Selected Employee)</h2>
+            <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl h-96">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6">Historical Trends (Selected Employee)</h2>
               {performanceData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-400">No performance data recorded yet.</div>
+                <div className="h-full flex items-center justify-center text-slate-500 dark:text-gray-400 font-medium">No performance data recorded yet.</div>
               ) : (
                 <ResponsiveContainer width="100%" height="80%">
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                    <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" />
-                    <YAxis stroke="rgba(255,255,255,0.5)" domain={[0, 100]} />
-                    <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: 'white' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" />
+                    <XAxis dataKey="name" stroke="rgba(128,128,128,0.6)" />
+                    <YAxis stroke="rgba(128,128,128,0.6)" domain={[0, 100]} />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--tooltip-bg, #0f172a)', borderColor: 'var(--tooltip-border, rgba(255,255,255,0.1))', borderRadius: '0.75rem', color: 'var(--tooltip-color, white)' }} />
                     <Legend />
                     <Line type="monotone" dataKey="Overall" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 8 }} />
                     <Line type="monotone" dataKey="Task" stroke="#10b981" strokeWidth={2} />
@@ -177,42 +177,42 @@ export default function PerformancePage() {
 
             {/* Latest Record Summary */}
             {performanceData.length > 0 && (
-              <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/20 rounded-2xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Latest Evaluation ({performanceData[0].month}/{performanceData[0].year})</h3>
+              <div className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-500/20 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Latest Evaluation ({performanceData[0].month}/{performanceData[0].year})</h3>
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="p-4 bg-black/20 rounded-xl border border-white/5">
-                    <p className="text-gray-400 text-sm">Overall Score</p>
-                    <p className="text-3xl font-bold text-blue-400">{performanceData[0].calculatedOverallScore.toFixed(1)}%</p>
+                  <div className="p-4 bg-slate-50 dark:bg-black/20 rounded-xl border border-slate-150 dark:border-white/5">
+                    <p className="text-slate-500 dark:text-gray-400 text-sm font-semibold">Overall Score</p>
+                    <p className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mt-1">{performanceData[0].calculatedOverallScore.toFixed(1)}%</p>
                   </div>
-                  <div className="p-4 bg-black/20 rounded-xl border border-white/5">
-                    <p className="text-gray-400 text-sm">Manager Rating</p>
-                    <div className="flex text-yellow-400 text-xl mt-1">
+                  <div className="p-4 bg-slate-50 dark:bg-black/20 rounded-xl border border-slate-150 dark:border-white/5">
+                    <p className="text-slate-500 dark:text-gray-400 text-sm font-semibold">Manager Rating</p>
+                    <div className="flex text-yellow-500 dark:text-yellow-400 text-xl mt-2">
                       {[...Array(5)].map((_, i) => <Star key={i} className={i < performanceData[0].managerRating ? "fill-current" : "opacity-20"} />)}
                     </div>
                   </div>
-                  <div className="p-4 bg-black/20 rounded-xl border border-white/5">
-                    <p className="text-gray-400 text-sm">Punctuality</p>
-                    <p className="text-3xl font-bold text-green-400">{performanceData[0].punctualityScore}%</p>
+                  <div className="p-4 bg-slate-50 dark:bg-black/20 rounded-xl border border-slate-150 dark:border-white/5">
+                    <p className="text-slate-500 dark:text-gray-400 text-sm font-semibold">Punctuality</p>
+                    <p className="text-3xl font-extrabold text-green-600 dark:text-green-400 mt-1">{performanceData[0].punctualityScore}%</p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm text-gray-300 italic border-l-2 border-blue-500 pl-3">"{performanceData[0].feedback}"</p>
+                <p className="mt-4 text-sm text-slate-650 dark:text-gray-300 italic border-l-2 border-indigo-650 dark:border-blue-500 pl-3 font-semibold">"{performanceData[0].feedback}"</p>
               </div>
             )}
           </div>
         </div>
       ) : (
         /* Executive / Employee View */
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl h-[500px]">
-          <h2 className="text-xl font-semibold text-white mb-6">My Performance Trends</h2>
+        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl h-[500px]">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6">My Performance Trends</h2>
           {performanceData.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-gray-400">No performance evaluations yet. Keep up the good work!</div>
+            <div className="h-full flex items-center justify-center text-slate-500 dark:text-gray-400 font-medium">No performance evaluations yet. Keep up the good work!</div>
           ) : (
             <ResponsiveContainer width="100%" height="90%">
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" />
-                <YAxis stroke="rgba(255,255,255,0.5)" domain={[0, 100]} />
-                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '0.75rem', color: 'white' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" />
+                <XAxis dataKey="name" stroke="rgba(128,128,128,0.6)" />
+                <YAxis stroke="rgba(128,128,128,0.6)" domain={[0, 100]} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--tooltip-bg, #0f172a)', borderColor: 'var(--tooltip-border, rgba(255,255,255,0.1))', borderRadius: '0.75rem', color: 'var(--tooltip-color, white)' }} />
                 <Legend />
                 <Line type="monotone" dataKey="Overall" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 8 }} />
                 <Line type="monotone" dataKey="Task" stroke="#10b981" strokeWidth={2} />

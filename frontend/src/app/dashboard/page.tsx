@@ -217,8 +217,8 @@ export default function DashboardOverview() {
                     {log.employeeId}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-slate-800 dark:text-white font-semibold truncate text-sm">User {log.employeeId}</p>
-                    <p className="text-slate-400 dark:text-gray-500 text-xs flex items-center gap-1 mt-0.5">
+                    <p className="text-slate-800 dark:text-white font-bold truncate text-sm">{log.employeeName || `User ${log.employeeId}`}</p>
+                    <p className="text-slate-400 dark:text-gray-500 text-xs flex items-center gap-1 mt-0.5 font-medium">
                       <Clock className="w-3 h-3" /> {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>

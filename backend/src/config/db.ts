@@ -4,6 +4,37 @@ export const connectDB = async () => {
   try {
     await prisma.$connect();
     console.log('✅ Prisma connected to MongoDB successfully.');
+
+    // Heal any dirty legacy null-value employeeId records in database collections
+    try {
+      console.log('🧹 Running database cleanup for dirty logs...');
+      const cleanedLogs = await prisma.attendanceLog.deleteMany({
+        where: {
+          OR: [
+            { employeeId: { equals: null as any } },
+            { employeeId: "" }
+          ]
+        }
+      });
+      if (cleanedLogs.count > 0) {
+        console.log(`🧹 Cleaned up ${cleanedLogs.count} invalid attendance logs.`);
+      }
+
+      const cleanedPayrolls = await prisma.payroll.deleteMany({
+        where: {
+          OR: [
+            { employeeId: { equals: null as any } },
+            { employeeId: "" }
+          ]
+        }
+      });
+      if (cleanedPayrolls.count > 0) {
+        console.log(`🧹 Cleaned up ${cleanedPayrolls.count} invalid payroll records.`);
+      }
+    } catch (e: any) {
+      console.warn('⚠️ [Cleanup] Error running dirty logs cleanup:', e.message);
+    }
+
   } catch (error: any) {
     console.error(`❌ Prisma connection error: ${error.message}`);
     
