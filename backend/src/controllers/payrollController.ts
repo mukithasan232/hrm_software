@@ -25,6 +25,8 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
     const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
     for (const emp of employees) {
+      if (!emp.employeeId) continue; // Skip orphan users
+
       // 1. Calculate Present Days from biometric logs
       const logs = await prisma.attendanceLog.findMany({
         where: {
@@ -46,53 +48,68 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
       const absentDays = totalDaysInMonth - presentDays;
       
       // 2. Calculate Gross Salary: (Base / Total) * Present
-      const grossSalary = Math.round((emp.baseSalary / totalDaysInMonth) * presentDays);
+      const grossSalary = totalDaysInMonth > 0 
+        ? Math.round((emp.baseSalary / totalDaysInMonth) * presentDays)
+        : 0;
 
-      // 3. Upsert Payroll Record
-      const payroll = await prisma.payroll.upsert({
+      // 3. Manual Upsert (IDE-Safe)
+      // We check for existence first to avoid Prisma's complex upsert unique input types
+      // which sometimes cause IDE cache issues in monorepos.
+      const existingPayroll = await prisma.payroll.findFirst({
         where: {
-          employeeId_month_year: {
-            employeeId: emp.employeeId,
-            month: Number(month),
-            year: Number(year)
-          }
-        },
-        update: {
-          totalDays: totalDaysInMonth,
-          presentDays,
-          absentDays,
-          baseSalary: emp.baseSalary,
-          grossSalary,
-          status: 'Pending'
-        },
-        create: {
           employeeId: emp.employeeId,
           month: Number(month),
-          year: Number(year),
-          totalDays: totalDaysInMonth,
-          presentDays,
-          absentDays,
-          baseSalary: emp.baseSalary,
-          grossSalary,
-          status: 'Pending'
+          year: Number(year)
         }
       });
 
-      results.push({
-        id: emp.id,
-        name: emp.name,
-        employeeId: emp.employeeId,
-        baseSalary: emp.baseSalary,
-        presentDays,
-        absentDays,
-        grossSalary,
-        status: payroll.status
-      });
+      let payroll;
+      if (existingPayroll) {
+        payroll = await prisma.payroll.update({
+          where: { id: existingPayroll.id },
+          data: {
+            totalDays: totalDaysInMonth,
+            presentDays,
+            absentDays,
+            baseSalary: emp.baseSalary,
+            grossSalary,
+            status: 'Pending'
+          }
+        });
+      } else {
+        payroll = await prisma.payroll.create({
+          data: {
+            employeeId: emp.employeeId,
+            month: Number(month),
+            year: Number(year),
+            totalDays: totalDaysInMonth,
+            presentDays,
+            absentDays,
+            baseSalary: emp.baseSalary,
+            grossSalary,
+            status: 'Pending'
+          }
+        });
+      }
+
     }
 
+    // Fetch and return the fully populated payroll records for this month & year
+    const finalPayrolls = await prisma.payroll.findMany({
+      where: {
+        month: Number(month),
+        year: Number(year)
+      },
+      include: {
+        user: {
+          select: { name: true, employeeId: true, department: true, designation: true }
+        }
+      }
+    });
+
     res.status(200).json({
-      message: `Payroll generated for ${results.length} employees for ${month}/${year}`,
-      data: results
+      message: `Payroll generated successfully for ${finalPayrolls.length} employees for ${month}/${year}`,
+      data: finalPayrolls
     });
   } catch (error: any) {
     console.error('❌ [generateMonthlyPayroll] Error:', error);

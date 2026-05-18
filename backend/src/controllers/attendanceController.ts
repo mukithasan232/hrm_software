@@ -100,9 +100,13 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
     const tzOffset = 6 * 60 * 60 * 1000;
-    const todayLocal = new Date(new Date().getTime() + tzOffset).toISOString().split('T')[0];
-    const startOfToday = new Date(`${todayLocal}T00:00:00+06:00`);
-    const endOfToday = new Date(`${todayLocal}T23:59:59.999+06:00`);
+    const nowBD = new Date(new Date().getTime() + tzOffset);
+    const year = nowBD.getUTCFullYear();
+    const month = nowBD.getUTCMonth();
+    const date = nowBD.getUTCDate();
+
+    const startOfToday = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
+    const endOfToday = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
 
     const logs = await prisma.attendanceLog.findMany({
       where: {
@@ -136,7 +140,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
 // @access  Admin
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
-    const { page = '1', limit = '50', employeeId, startDate, endDate, range } = req.query;
+    const { page = '1', limit = '50', employeeId, startDate, endDate, range, filter } = req.query;
     
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const take = parseInt(limit as string);
@@ -144,8 +148,10 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const where: any = {};
     if (employeeId) where.employeeId = employeeId as string;
 
+    const activeRange = (range || filter || 'today').toString().toLowerCase();
+
     // Handle Date Filtering
-    if (range === 'all-time') {
+    if (activeRange === 'all-time') {
       // Do nothing, fetch everything
     } else if (startDate || endDate) {
       where.timestamp = {};
@@ -156,22 +162,23 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         where.timestamp.lte = end;
       }
     } else {
-      // Range presets (Today, Yesterday, Week, Month)
-      const tzOffset = 6 * 60 * 60 * 1000; // +06:00
-      const todayLocal = new Date(new Date().getTime() + tzOffset).toISOString().split('T')[0];
-      
-      const start = new Date(`${todayLocal}T00:00:00+06:00`);
-      const end = new Date(`${todayLocal}T23:59:59.999+06:00`);
+      // Range presets (Today, Yesterday, Week, Month) accurately calculated for GMT+6
+      const tzOffset = 6 * 60 * 60 * 1000;
+      const nowBD = new Date(new Date().getTime() + tzOffset);
+      const year = nowBD.getUTCFullYear();
+      const month = nowBD.getUTCMonth();
+      const date = nowBD.getUTCDate();
 
-      if (range === 'yesterday') {
-        start.setDate(start.getDate() - 1);
-        end.setDate(end.getDate() - 1);
-      } else if (range === 'week') {
-        start.setDate(start.getDate() - 7);
-      } else if (range === 'month') {
-        start.setMonth(start.getMonth() - 1);
-      } else {
-        // Default: Today (already set)
+      let start = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
+      let end = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
+
+      if (activeRange === 'yesterday') {
+        start = new Date(Date.UTC(year, month, date - 2, 18, 0, 0, 0));
+        end = new Date(Date.UTC(year, month, date - 1, 17, 59, 59, 999));
+      } else if (activeRange === 'week') {
+        start = new Date(Date.UTC(year, month, date - 7, 18, 0, 0, 0));
+      } else if (activeRange === 'month') {
+        start = new Date(Date.UTC(year, month - 1, date, 18, 0, 0, 0));
       }
 
       where.timestamp = { gte: start, lte: end };
@@ -193,7 +200,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     ]);
 
     // Map logs to include employee name from user relation
-    const formattedLogs = logs.map(log => ({
+    const formattedLogs = logs.map((log: any) => ({
       ...log,
       employeeName: log.user?.name || 'Unknown'
     }));

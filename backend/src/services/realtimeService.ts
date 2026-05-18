@@ -2,7 +2,7 @@ import { Server } from 'socket.io';
 // @ts-ignore
 import ZKLib from 'zkteco-js';
 import { prisma } from '../lib/prisma';
-import { fetchDeviceLogs, getPunchType } from './zkService';
+import { fetchDeviceLogs, getPunchType, resolvePunchType } from './zkService';
 
 const ZK_IP = process.env.ZK_DEVICE_IP || '192.168.10.185';
 const ZK_PORT = parseInt(process.env.ZK_DEVICE_PORT || '4370');
@@ -62,7 +62,8 @@ const connectAndListen = async () => {
       
       const employeeId = String(data.userId);
       const timestamp = data.attTime ? new Date(data.attTime) : new Date();
-      const punchType = getPunchType(data.type);
+      const stateValue = data.state !== undefined && data.state !== null ? data.state : (data.type !== undefined && data.type !== null ? data.type : -1);
+      const punchType = await resolvePunchType(employeeId, timestamp, stateValue);
       
       const user = await prisma.user.findUnique({
         where: { employeeId }
@@ -81,7 +82,7 @@ const connectAndListen = async () => {
           create: {
             employeeId,
             timestamp,
-            punchType,
+            punchType: punchType as any,
             deviceId: ZK_IP,
           }
         });

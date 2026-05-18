@@ -30,8 +30,9 @@ function createZK(): InstanceType<typeof ZKLib> {
 }
 
 // ─── Punch type resolver ───────────────────────────────────────────────────────
-export function getPunchType(state: number): any {
-  switch (state) {
+export function getPunchType(state: any): string {
+  const numericState = typeof state === 'number' ? state : parseInt(state, 10);
+  switch (numericState) {
     case 0:  return 'CheckIn';
     case 1:  return 'CheckOut';
     case 2:  return 'BreakOut';
@@ -40,6 +41,44 @@ export function getPunchType(state: number): any {
     case 5:  return 'OvertimeOut';
     default: return 'Unknown';
   }
+}
+
+/**
+ * Resolves the punch type with a fallback. If the device state is not reliable
+ * (e.g. always returns CheckOut), we check if a CheckIn exists for today.
+ * If no CheckIn exists, this first punch of the day is mapped as CheckIn.
+ * Subsequent punches are mapped as CheckOut.
+ */
+export async function resolvePunchType(employeeId: string, timestamp: Date, deviceState: any): Promise<string> {
+  const devicePunchType = getPunchType(deviceState);
+
+  // If the device is sending specific break or overtime states, preserve them
+  if (['BreakOut', 'BreakIn', 'OvertimeIn', 'OvertimeOut'].includes(devicePunchType)) {
+    return devicePunchType;
+  }
+
+  // Otherwise, apply fallback logic for CheckIn, CheckOut, or Unknown states
+  const tzOffset = 6 * 60 * 60 * 1000; // GMT+6
+  const localDateStr = new Date(timestamp.getTime() + tzOffset).toISOString().split('T')[0];
+  const startOfDay = new Date(`${localDateStr}T00:00:00+06:00`);
+  const endOfDay = new Date(`${localDateStr}T23:59:59.999+06:00`);
+
+  const existingCheckIn = await prisma.attendanceLog.findFirst({
+    where: {
+      employeeId,
+      timestamp: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+      punchType: 'CheckIn',
+    },
+  });
+
+  if (!existingCheckIn) {
+    return 'CheckIn';
+  }
+
+  return 'CheckOut';
 }
 
 // ─── Connection Helper ────────────────────────────────────────────────────────
@@ -126,6 +165,9 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
           if (isNaN(timestamp.getTime())) return { success: false, skipped: true };
 
+          const stateValue = log.state !== undefined && log.state !== null ? log.state : (log.type !== undefined && log.type !== null ? log.type : -1);
+          const punchType = await resolvePunchType(employeeId, timestamp, stateValue);
+
           await prisma.attendanceLog.upsert({
             where: {
               employeeId_timestamp: {
@@ -137,7 +179,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
             create: {
               employeeId,
               timestamp,
-              punchType: getPunchType(log.type ?? -1),
+              punchType: punchType as any,
               deviceId: ZK_IP,
             },
           });

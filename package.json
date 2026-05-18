@@ -18,6 +18,7 @@
     "dev": "concurrently -c \"cyan.bold,magenta.bold\" -n \"DEV-BACKEND,DEV-FRONTEND\" \"npm run dev:backend\" \"npm run dev:frontend\""
   },
   "dependencies": {
+    "@prisma/client": "^5.20.0",
     "next": "latest"
   },
   "version": "1.0.0",
