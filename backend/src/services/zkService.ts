@@ -49,7 +49,12 @@ export function getPunchType(state: any): string {
  * If no CheckIn exists, this first punch of the day is mapped as CheckIn.
  * Subsequent punches are mapped as CheckOut.
  */
-export async function resolvePunchType(employeeId: string, timestamp: Date, deviceState: any): Promise<string> {
+export async function resolvePunchType(
+  employeeId: string, 
+  timestamp: Date, 
+  deviceState: any,
+  processedEmpDays?: Set<string>
+): Promise<string> {
   const devicePunchType = getPunchType(deviceState);
 
   // If the device is sending specific break or overtime states, preserve them
@@ -57,28 +62,104 @@ export async function resolvePunchType(employeeId: string, timestamp: Date, devi
     return devicePunchType;
   }
 
-  // Otherwise, apply fallback logic for CheckIn, CheckOut, or Unknown states
+  // Otherwise, apply smart inference logic for CheckIn/CheckOut
   const tzOffset = 6 * 60 * 60 * 1000; // GMT+6
   const localDateStr = new Date(timestamp.getTime() + tzOffset).toISOString().split('T')[0];
+  
+  const cacheKey = `${employeeId}:${localDateStr}`;
+  if (processedEmpDays && processedEmpDays.has(cacheKey)) {
+    return 'CheckOut';
+  }
+
   const startOfDay = new Date(`${localDateStr}T00:00:00+06:00`);
   const endOfDay = new Date(`${localDateStr}T23:59:59.999+06:00`);
 
-  const existingCheckIn = await prisma.attendanceLog.findFirst({
+  const existingPunch = await prisma.attendanceLog.findFirst({
     where: {
       employeeId,
       timestamp: {
         gte: startOfDay,
         lte: endOfDay,
       },
-      punchType: 'CheckIn',
     },
   });
 
-  if (!existingCheckIn) {
+  if (processedEmpDays) {
+    processedEmpDays.add(cacheKey);
+  }
+
+  if (!existingPunch) {
     return 'CheckIn';
   }
 
   return 'CheckOut';
+}
+
+/**
+ * Self-healing routine to group today's logs by employeeId,
+ * sort them by timestamp ascending, and strictly update the
+ * earliest log to CheckIn and subsequent logs to CheckOut.
+ */
+export async function healTodaysData(): Promise<void> {
+  try {
+    const tzOffset = 6 * 60 * 60 * 1000;
+    const nowBD = new Date(new Date().getTime() + tzOffset);
+    const year = nowBD.getUTCFullYear();
+    const month = nowBD.getUTCMonth();
+    const date = nowBD.getUTCDate();
+
+    const startOfToday = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
+    const endOfToday = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
+
+    // 1. Fetch all attendance logs for today
+    const logs = await prisma.attendanceLog.findMany({
+      where: {
+        timestamp: {
+          gte: startOfToday,
+          lte: endOfToday,
+        },
+      },
+      orderBy: {
+        timestamp: 'asc',
+      },
+    });
+
+    // 2. Group by employeeId
+    const employeeLogs: Record<string, typeof logs> = {};
+    for (const log of logs) {
+      if (!employeeLogs[log.employeeId]) {
+        employeeLogs[log.employeeId] = [];
+      }
+      employeeLogs[log.employeeId].push(log);
+    }
+
+    // 3. Update punchTypes: Earliest -> CheckIn, Rest -> CheckOut
+    for (const employeeId in employeeLogs) {
+      const list = employeeLogs[employeeId];
+      if (list.length === 0) continue;
+
+      // First log of the day becomes CheckIn
+      const firstLog = list[0];
+      await prisma.attendanceLog.update({
+        where: { id: firstLog.id },
+        data: { punchType: 'CheckIn' },
+      });
+
+      // Subsequent logs of the day become CheckOut (unless they are break or overtime)
+      for (let i = 1; i < list.length; i++) {
+        const log = list[i];
+        if (['CheckIn', 'CheckOut', 'Unknown'].includes(log.punchType)) {
+          await prisma.attendanceLog.update({
+            where: { id: log.id },
+            data: { punchType: 'CheckOut' },
+          });
+        }
+      }
+    }
+    console.log(`[zkService] 🏥 Healed today's attendance data for ${Object.keys(employeeLogs).length} employees.`);
+  } catch (err: any) {
+    console.error('❌ [healTodaysData] Error healing today\'s logs:', err);
+  }
 }
 
 // ─── Connection Helper ────────────────────────────────────────────────────────
@@ -152,21 +233,25 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     let synced = 0;
     let skipped = 0;
+    const processedEmpDays = new Set<string>();
 
     // Process in chunks of 100 for better performance
     const chunkSize = 100;
     for (let i = 0; i < rawLogs.length; i += chunkSize) {
       const chunk = rawLogs.slice(i, i + chunkSize);
       
-      const results = await Promise.all(chunk.map(async (log: any) => {
+      for (const log of chunk) {
         try {
           const employeeId = String(log.user_id);
           const timestamp = new Date(log.record_time);
 
-          if (isNaN(timestamp.getTime())) return { success: false, skipped: true };
+          if (isNaN(timestamp.getTime())) {
+            skipped++;
+            continue;
+          }
 
           const stateValue = log.state !== undefined && log.state !== null ? log.state : (log.type !== undefined && log.type !== null ? log.type : -1);
-          const punchType = await resolvePunchType(employeeId, timestamp, stateValue);
+          const punchType = await resolvePunchType(employeeId, timestamp, stateValue, processedEmpDays);
 
           await prisma.attendanceLog.upsert({
             where: {
@@ -175,7 +260,9 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
                 timestamp,
               },
             },
-            update: {},
+            update: {
+              punchType: punchType as any
+            },
             create: {
               employeeId,
               timestamp,
@@ -183,18 +270,20 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
               deviceId: ZK_IP,
             },
           });
-          return { success: true };
+          synced++;
         } catch (err) {
-          return { success: false };
+          skipped++;
         }
-      }));
+      }
 
-      synced += results.filter(r => r.success).length;
-      skipped += results.filter(r => !r.success).length;
       console.log(`[ZKService] Chunks progress: ${Math.min(i + chunkSize, rawLogs.length)}/${rawLogs.length}`);
     }
 
     console.log(`[ZKService] ✔  Synced: ${synced} | Total: ${rawLogs.length}`);
+    
+    // Automatically self-heal today's attendance logs to guarantee earliest = CheckIn, latest = CheckOut
+    await healTodaysData();
+
     return { synced, skipped, total: rawLogs.length };
   } catch (err: any) {
     const reason = classifyError(err);
