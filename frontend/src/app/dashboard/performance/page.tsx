@@ -101,8 +101,8 @@ export default function PerformancePage() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Performance Analytics</h1>
-          <p className="text-slate-500 dark:text-gray-400 mt-1 text-sm">Track, analyze, and manage employee performance metrics.</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Performance Analytics</h1>
+          <p className="text-slate-550 dark:text-gray-400 mt-1 text-sm font-medium">Track, analyze, and manage employee performance metrics.</p>
         </div>
         {isManager && (
           <button onClick={handleCalculateEOTM} className="px-6 py-2.5 bg-yellow-650 hover:bg-yellow-600 text-white font-semibold rounded-xl flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(202,138,4,0.3)]">
@@ -117,7 +117,7 @@ export default function PerformancePage() {
           {/* Rate Employee Card */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
                 <Star className="w-5 h-5 text-yellow-500 dark:text-yellow-400" /> Rate Employee
               </h2>
               <form onSubmit={handleRate} className="space-y-4">
@@ -125,26 +125,26 @@ export default function PerformancePage() {
                   <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Select Employee</label>
                   <select 
                     value={selectedEmp} onChange={(e) => fetchSpecificEmpStats(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-medium"
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-semibold"
                   >
                     {employees.map(emp => (
-                      <option key={emp.id} value={emp.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{emp.name} ({emp.employeeId})</option>
+                      <option key={emp.id} value={emp.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{emp.name} ({emp.employeeId})</option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Task Completion Score (0-100)</label>
-                  <input type="number" min="0" max="100" required value={taskScore} onChange={(e) => setTaskScore(Number(e.target.value))} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-medium" />
+                  <input type="number" min="0" max="100" required value={taskScore} onChange={(e) => setTaskScore(Number(e.target.value))} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-semibold" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Manager Rating (1-5 Stars)</label>
-                  <select value={managerRating} onChange={(e) => setManagerRating(Number(e.target.value))} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-medium">
-                    {[1,2,3,4,5].map(v => <option key={v} value={v} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{v} Stars</option>)}
+                  <select value={managerRating} onChange={(e) => setManagerRating(Number(e.target.value))} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-semibold">
+                    {[1,2,3,4,5].map(v => <option key={v} value={v} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{v} Stars</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Feedback</label>
-                  <textarea required value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-medium"></textarea>
+                  <textarea required value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-semibold"></textarea>
                 </div>
                 <button type="submit" disabled={submitting} className="w-full py-3 mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all">
                   Submit Rating
@@ -156,7 +156,7 @@ export default function PerformancePage() {
           {/* Performance Data Display */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl h-96">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6">Historical Trends (Selected Employee)</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Historical Trends (Selected Employee)</h2>
               {performanceData.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-slate-500 dark:text-gray-400 font-medium">No performance data recorded yet.</div>
               ) : (
@@ -178,7 +178,7 @@ export default function PerformancePage() {
             {/* Latest Record Summary */}
             {performanceData.length > 0 && (
               <div className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-500/20 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Latest Evaluation ({performanceData[0].month}/{performanceData[0].year})</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Latest Evaluation ({performanceData[0].month}/{performanceData[0].year})</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="p-4 bg-slate-50 dark:bg-black/20 rounded-xl border border-slate-150 dark:border-white/5">
                     <p className="text-slate-500 dark:text-gray-400 text-sm font-semibold">Overall Score</p>
@@ -195,7 +195,7 @@ export default function PerformancePage() {
                     <p className="text-3xl font-extrabold text-green-600 dark:text-green-400 mt-1">{performanceData[0].punctualityScore}%</p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm text-slate-650 dark:text-gray-300 italic border-l-2 border-indigo-650 dark:border-blue-500 pl-3 font-semibold">"{performanceData[0].feedback}"</p>
+                <p className="mt-4 text-sm text-slate-650 dark:text-gray-300 italic border-l-2 border-indigo-650 dark:border-blue-500 pl-3 font-bold">"{performanceData[0].feedback}"</p>
               </div>
             )}
           </div>
@@ -203,7 +203,7 @@ export default function PerformancePage() {
       ) : (
         /* Executive / Employee View */
         <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl h-[500px]">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6">My Performance Trends</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">My Performance Trends</h2>
           {performanceData.length === 0 ? (
             <div className="h-full flex items-center justify-center text-slate-500 dark:text-gray-400 font-medium">No performance evaluations yet. Keep up the good work!</div>
           ) : (

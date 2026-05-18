@@ -72,18 +72,18 @@ export default function LeavesPage() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Leave Management</h1>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Leave Management</h1>
         <p className="text-slate-500 dark:text-gray-400 mt-1">
           {isManagerOrHR ? 'Review and manage employee leave requests.' : 'Submit a new leave request and view history.'}
         </p>
       </div>
-
+ 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Application Form for Executives/Employees */}
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl h-fit">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-6">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
               <Calendar className="w-5 h-5 text-indigo-650 dark:text-blue-400" /> Apply for Leave
             </h2>
             <form onSubmit={handleApply} className="space-y-4">
@@ -91,26 +91,26 @@ export default function LeavesPage() {
                 <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Leave Type</label>
                 <select 
                   value={type} onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-medium"
+                  className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-semibold"
                 >
-                  <option value="Sick" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Sick Leave</option>
-                  <option value="Casual" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Casual Leave</option>
-                  <option value="Annual" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Annual Leave</option>
+                  <option value="Sick" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Sick Leave</option>
+                  <option value="Casual" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Casual Leave</option>
+                  <option value="Annual" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Annual Leave</option>
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Start Date</label>
-                  <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:[&::-webkit-calendar-picker-indicator]:filter-[invert(1)] font-medium" />
+                  <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:[&::-webkit-calendar-picker-indicator]:filter-[invert(1)] font-semibold" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">End Date</label>
-                  <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:[&::-webkit-calendar-picker-indicator]:filter-[invert(1)] font-medium" />
+                  <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:[&::-webkit-calendar-picker-indicator]:filter-[invert(1)] font-semibold" />
                 </div>
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Reason</label>
-                <textarea required value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-medium"></textarea>
+                <textarea required value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-semibold"></textarea>
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Document (Optional)</label>
@@ -136,25 +136,25 @@ export default function LeavesPage() {
             </form>
           </div>
         </div>
-
+ 
         {/* Leave Requests Table */}
         <div className="lg:col-span-2">
           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm dark:shadow-2xl">
             <div className="p-6 border-b border-slate-100 dark:border-white/10">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                 {isManagerOrHR ? 'All Leave Requests' : 'My Leave History'}
               </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-black/40 text-slate-600 dark:text-gray-400 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10">
-                    {isManagerOrHR && <th className="px-6 py-4 font-semibold">Employee</th>}
-                    <th className="px-6 py-4 font-semibold">Type</th>
-                    <th className="px-6 py-4 font-semibold">Duration</th>
-                    <th className="px-6 py-4 font-semibold">Doc</th>
-                    <th className="px-6 py-4 font-semibold">Status</th>
-                    {isManagerOrHR && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
+                  <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
+                    {isManagerOrHR && <th className="px-6 py-4 font-bold">Employee</th>}
+                    <th className="px-6 py-4 font-bold">Type</th>
+                    <th className="px-6 py-4 font-bold">Duration</th>
+                    <th className="px-6 py-4 font-bold">Doc</th>
+                    <th className="px-6 py-4 font-bold">Status</th>
+                    {isManagerOrHR && <th className="px-6 py-4 font-bold text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-sm">
@@ -166,11 +166,11 @@ export default function LeavesPage() {
                     leaves.map((l) => (
                       <tr key={l.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
                         {isManagerOrHR && (
-                          <td className="px-6 py-4 text-slate-850 dark:text-white font-semibold">
+                          <td className="px-6 py-4 text-slate-900 dark:text-white font-bold">
                             {l.employee?.name} <span className="block text-xs text-slate-500 dark:text-gray-500 font-normal mt-0.5">{l.employee?.employeeId}</span>
                           </td>
                         )}
-                        <td className="px-6 py-4 text-slate-700 dark:text-gray-300 font-medium">{l.type}</td>
+                        <td className="px-6 py-4 text-slate-900 dark:text-gray-200 font-semibold">{l.type}</td>
                         <td className="px-6 py-4 text-slate-500 dark:text-gray-400">
                           {new Date(l.startDate).toLocaleDateString()} - {new Date(l.endDate).toLocaleDateString()}
                         </td>
