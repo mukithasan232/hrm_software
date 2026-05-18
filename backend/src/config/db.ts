@@ -5,15 +5,12 @@ export const connectDB = async () => {
     await prisma.$connect();
     console.log('✅ Prisma connected to MongoDB successfully.');
 
-    // Heal any dirty legacy null-value employeeId records in database collections
+    // Heal any dirty legacy empty-string employeeId records in database collections
     try {
       console.log('🧹 Running database cleanup for dirty logs...');
       const cleanedLogs = await prisma.attendanceLog.deleteMany({
         where: {
-          OR: [
-            { employeeId: { equals: null as any } },
-            { employeeId: "" }
-          ]
+          employeeId: ""
         }
       });
       if (cleanedLogs.count > 0) {
@@ -22,10 +19,7 @@ export const connectDB = async () => {
 
       const cleanedPayrolls = await prisma.payroll.deleteMany({
         where: {
-          OR: [
-            { employeeId: { equals: null as any } },
-            { employeeId: "" }
-          ]
+          employeeId: ""
         }
       });
       if (cleanedPayrolls.count > 0) {

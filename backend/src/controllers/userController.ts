@@ -237,3 +237,41 @@ export const seedTestUser = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to seed test user', error: error.message });
   }
 };
+
+export const deleteEmployee = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    
+    // Find the user first to retrieve their unique employeeId
+    const emp = await prisma.user.findUnique({ where: { id } });
+    if (!emp) return res.status(404).json({ message: 'Employee not found' });
+    
+    const employeeId = emp.employeeId as string;
+
+    console.log(`🗑️ [deleteEmployee] Initiating transactional cascade delete for employee ${emp.name} (ID: ${employeeId})`);
+
+    // Delete in a single Prisma transaction to maintain relational integrity
+    await prisma.$transaction([
+      // 1. Delete Daily Attendance records
+      prisma.dailyAttendance.deleteMany({ where: { userId: id } }),
+      // 2. Delete Attendance Logs
+      prisma.attendanceLog.deleteMany({ where: { employeeId } }),
+      // 3. Delete Leaves (both requested by employee and reviewed by them if HR/Admin)
+      prisma.leave.deleteMany({ where: { OR: [{ employeeId: id }, { reviewedById: id }] } }),
+      // 4. Delete Notifications
+      prisma.notification.deleteMany({ where: { userId: id } }),
+      // 5. Delete Payroll history
+      prisma.payroll.deleteMany({ where: { employeeId } }),
+      // 6. Delete Performance evaluations
+      prisma.performance.deleteMany({ where: { employeeId: id } }),
+      // 7. Finally, delete the User record
+      prisma.user.delete({ where: { id } })
+    ]);
+
+    console.log(`✅ [deleteEmployee] Successfully deleted employee ${emp.name} and all related records.`);
+    res.status(200).json({ message: 'Employee and all associated records deleted successfully.' });
+  } catch (error: any) {
+    console.error('❌ [deleteEmployee] Error deleting employee:', error);
+    res.status(500).json({ message: 'Failed to delete employee', error: error.message });
+  }
+};

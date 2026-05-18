@@ -1,32 +1,25 @@
 {
   "name": "hrm-software-monorepo",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "scripts": {
-    "install:all": "npm install --prefix backend && npm install --prefix frontend",
-    "build:backend": "npm run build --prefix backend",
-    "build:frontend": "npm run build --prefix frontend",
-    "build": "npm run build:backend && npm run build:frontend",
-    "start:backend": "npm run start --prefix backend",
-    "start:frontend": "npm run start --prefix frontend",
-    "start": "concurrently -c \"green.bold,blue.bold\" -n \"PROD-BACKEND,PROD-FRONTEND\" \"npm run start:backend\" \"npm run start:frontend\"",
-    "dev:backend": "npm run dev --prefix backend",
-    "dev:frontend": "npm run dev --prefix frontend",
-    "dev": "concurrently -c \"cyan.bold,magenta.bold\" -n \"DEV-BACKEND,DEV-FRONTEND\" \"npm run dev:backend\" \"npm run dev:frontend\""
+    "build:backend": "pnpm --filter backend build",
+    "build:frontend": "pnpm --filter frontend build",
+    "build": "pnpm build:backend && pnpm build:frontend",
+    "start:backend": "pnpm --filter backend start",
+    "start:frontend": "pnpm --filter frontend start",
+    "start": "concurrently -c \"green.bold,blue.bold\" -n \"PROD-BACKEND,PROD-FRONTEND\" \"pnpm start:backend\" \"pnpm start:frontend\"",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev": "concurrently -c \"cyan.bold,magenta.bold\" -n \"DEV-BACKEND,DEV-FRONTEND\" \"pnpm dev:backend\" \"pnpm dev:frontend\""
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
-    "next": "latest"
+    "next": "latest",
+    "concurrently": "^9.2.1"
   },
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "devDependencies": {
-    "concurrently": "^9.2.1"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Sakkhor909/fap-hrm.git"

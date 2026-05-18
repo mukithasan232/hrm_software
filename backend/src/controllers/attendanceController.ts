@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs } from '../services/zkService';
+import { runWithDeviceLock } from '../services/realtimeService';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 
@@ -12,7 +13,7 @@ export const syncDeviceLogs = async (req: Request, res: Response) => {
     await prisma.attendanceLog.deleteMany({});
     console.log("🧹 [syncDeviceLogs] Wiped all attendance logs for fresh sync!");
 
-    const newRecordsCount = await fetchDeviceLogs();
+    const newRecordsCount = await runWithDeviceLock(() => fetchDeviceLogs());
     res.status(200).json({
       message: 'Sync completed successfully',
       newRecordsSynced: newRecordsCount,
@@ -43,7 +44,7 @@ export const syncLive = async (req: Request, res: Response) => {
   (async () => {
     try {
       console.log('[BackgroundSync] Starting full device sync...');
-      await getDeviceAttendance();
+      await runWithDeviceLock(() => getDeviceAttendance());
       console.log('[BackgroundSync] ✅ Sync complete.');
     } catch (err: any) {
       console.error('[BackgroundSync] ❌ Sync failed:', err.message);
@@ -55,7 +56,7 @@ export const syncLive = async (req: Request, res: Response) => {
 // @route   GET /api/attendance/device-status
 // @access  Admin
 export const getDeviceStatus = async (req: Request, res: Response) => {
-  const result = await pingDevice();
+  const result = await runWithDeviceLock(() => pingDevice());
   const status = result.reachable ? 200 : 503;
   res.status(status).json(result);
 };
@@ -65,7 +66,7 @@ export const getDeviceStatus = async (req: Request, res: Response) => {
 // @access  Admin
 export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
   try {
-    const deviceUsers = await getDeviceUsers();
+    const deviceUsers = await runWithDeviceLock(() => getDeviceUsers());
     let synced = 0;
     
     // Hash a default password
@@ -108,7 +109,7 @@ export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
 // @access  Admin
 export const fetchDeviceUsers = async (req: Request, res: Response) => {
   try {
-    const users = await getDeviceUsers();
+    const users = await runWithDeviceLock(() => getDeviceUsers());
     res.status(200).json(users);
   } catch (error: any) {
     res.status(503).json({ message: 'Failed to fetch users from device', error: error.message });

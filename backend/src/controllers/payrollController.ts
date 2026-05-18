@@ -47,9 +47,11 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
       const presentDays = uniqueDates.size;
       const absentDays = totalDaysInMonth - presentDays;
       
+      const baseSalary = emp.baseSalary || 0;
+
       // 2. Calculate Gross Salary: (Base / Total) * Present
       const grossSalary = totalDaysInMonth > 0 
-        ? Math.round((emp.baseSalary / totalDaysInMonth) * presentDays)
+        ? Math.round((baseSalary / totalDaysInMonth) * presentDays)
         : 0;
 
       // 3. Manual Upsert (IDE-Safe)
@@ -71,7 +73,7 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
             totalDays: totalDaysInMonth,
             presentDays,
             absentDays,
-            baseSalary: emp.baseSalary,
+            baseSalary,
             grossSalary,
             status: 'Pending'
           }
@@ -85,7 +87,7 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
             totalDays: totalDaysInMonth,
             presentDays,
             absentDays,
-            baseSalary: emp.baseSalary,
+            baseSalary,
             grossSalary,
             status: 'Pending'
           }

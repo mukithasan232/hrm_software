@@ -1,0 +1,10 @@
+packages:
+  - 'frontend'
+  - 'backend'
+allowBuilds:
+  '@prisma/client': false
+  '@prisma/engines': false
+  core-js: false
+  prisma: false
+  sharp: false
+  unrs-resolver: false

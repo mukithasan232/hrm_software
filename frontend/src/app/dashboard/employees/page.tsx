@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import {
   Plus, Search, Mail, Briefcase, Building2, Edit2,
-  UserX, UserCheck, X, Save, ChevronDown
+  UserX, UserCheck, X, Save, ChevronDown, Trash2
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -108,6 +108,20 @@ export default function EmployeesPage() {
       setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, isActive: res.data.isActive } : e));
     } catch {
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleDeleteEmployee = async (emp: any) => {
+    if (!window.confirm(`Are you absolutely sure you want to permanently delete ${emp.name} (ID: ${emp.employeeId})?\n\nThis action CANNOT be undone and will permanently erase this employee and all associated daily attendance logs, leaves, payroll history, performance evaluations, and notifications.`)) {
+      return;
+    }
+
+    try {
+      const res = await api.delete(`/users/${emp.id}`);
+      toast.success(res.data.message);
+      fetchEmployees();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to delete employee');
     }
   };
 
@@ -242,22 +256,30 @@ export default function EmployeesPage() {
 
               {/* Actions (Admin/HR only) */}
               {canEdit && (
-                <div className="mt-3 flex items-center gap-2">
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEdit(emp)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg transition-all"
+                    >
+                      <Edit2 className="w-3 h-3" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleToggleStatus(emp)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                        emp.isActive
+                          ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20'
+                          : 'text-green-600 dark:text-green-400 bg-green-500/10 hover:bg-green-500/20 border-green-500/20'
+                      }`}
+                    >
+                      {emp.isActive ? <><UserX className="w-3 h-3" /> Deactivate</> : <><UserCheck className="w-3 h-3" /> Activate</>}
+                    </button>
+                  </div>
                   <button
-                    onClick={() => openEdit(emp)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg transition-all"
+                    onClick={() => handleDeleteEmployee(emp)}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all hover:shadow-[0_0_10px_rgba(239,68,68,0.15)]"
                   >
-                    <Edit2 className="w-3 h-3" /> Edit
-                  </button>
-                  <button
-                    onClick={() => handleToggleStatus(emp)}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
-                      emp.isActive
-                        ? 'text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 border-red-500/20'
-                        : 'text-green-600 dark:text-green-400 bg-green-500/10 hover:bg-green-500/20 border-green-500/20'
-                    }`}
-                  >
-                    {emp.isActive ? <><UserX className="w-3 h-3" /> Deactivate</> : <><UserCheck className="w-3 h-3" /> Activate</>}
+                    <Trash2 className="w-3.5 h-3.5" /> Delete Employee
                   </button>
                 </div>
               )}

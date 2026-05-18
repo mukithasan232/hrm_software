@@ -31,6 +31,27 @@ export const initRealtimeAttendance = async (socketIo: Server) => {
 
 let isConnecting = false;
 
+export const runWithDeviceLock = async <T>(operation: () => Promise<T>): Promise<T> => {
+  if (zkInstance) {
+    console.log('[RealtimeService] ⏸️ Pausing real-time listener to free up device port...');
+    try {
+      await zkInstance.disconnect();
+    } catch (_) {}
+    zkInstance = null;
+  }
+  // Mark as connecting/active lock to block any concurrent auto-reconnects
+  isConnecting = true; 
+
+  try {
+    return await operation();
+  } finally {
+    console.log('[RealtimeService] ▶️ Device operation completed. Resuming real-time listener...');
+    isConnecting = false;
+    // Allow a small delay before reconnecting to let the device socket fully close/release
+    setTimeout(connectAndListen, 1500);
+  }
+};
+
 const connectAndListen = async () => {
   if (isConnecting) return;
   isConnecting = true;
