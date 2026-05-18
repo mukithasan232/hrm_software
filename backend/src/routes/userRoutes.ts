@@ -15,6 +15,7 @@ router.put('/profile/password',protect, changePassword);
 router.post('/',               protect, authorizeRoles('Admin', 'HR'), createEmployee);
 router.put('/:id',             protect, authorizeRoles('Admin', 'HR'), updateEmployee);
 router.patch('/:id/toggle',    protect, authorizeRoles('Admin', 'HR'), toggleEmployeeStatus);
+router.patch('/:id',           protect, authorizeRoles('Admin', 'HR'), toggleEmployeeStatus);
 
 // Development/Testing utility
 router.post('/seed-test-user', seedTestUser);

@@ -8,6 +8,10 @@ import bcrypt from 'bcryptjs';
 // @access  Admin
 export const syncDeviceLogs = async (req: Request, res: Response) => {
   try {
+    // CRITICAL DATA WIPE: Temporary command to start fresh
+    await prisma.attendanceLog.deleteMany({});
+    console.log("🧹 [syncDeviceLogs] Wiped all attendance logs for fresh sync!");
+
     const newRecordsCount = await fetchDeviceLogs();
     res.status(200).json({
       message: 'Sync completed successfully',
@@ -22,6 +26,14 @@ export const syncDeviceLogs = async (req: Request, res: Response) => {
 // @route   POST /api/attendance/sync-live
 // @access  Admin
 export const syncLive = async (req: Request, res: Response) => {
+  try {
+    // CRITICAL DATA WIPE: Temporary command to start fresh
+    await prisma.attendanceLog.deleteMany({});
+    console.log("🧹 [syncLive] Wiped all attendance logs for fresh live sync!");
+  } catch (err: any) {
+    console.error('[SyncLive] Error wiping logs:', err.message);
+  }
+
   res.status(200).json({
     message: 'Biometric sync started in the background. Please wait a few moments for the logs to populate.',
     status: 'processing'
@@ -150,6 +162,10 @@ export const getActivePresence = async (req: Request, res: Response) => {
 // @access  Admin
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
+    // CRITICAL DATA WIPE: Temporary command to delete all logs
+    await prisma.attendanceLog.deleteMany({});
+    console.log("🧹 [getAttendanceLogs] Wiped all attendance logs for a clean fresh load!");
+
     const { page = '1', limit = '50', employeeId, startDate, endDate, range, filter } = req.query;
     
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);

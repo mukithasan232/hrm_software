@@ -3,20 +3,20 @@ import ZKLib from 'zkteco-js';
 import { prisma } from '../lib/prisma';
 
 // ─── Device Configuration ──────────────────────────────────────────────────────
-const ZK_IP      = process.env.ZK_DEVICE_IP   || '192.168.10.185';
-const ZK_PORT    = parseInt(process.env.ZK_DEVICE_PORT || '4370');
+const ZK_IP = process.env.ZK_DEVICE_IP || '192.168.10.185';
+const ZK_PORT = parseInt(process.env.ZK_DEVICE_PORT || '4370');
 const ZK_TIMEOUT = 40000; // Increased to 40s to prevent TIMEOUT_ON_WRITING_MESSAGE
-const ZK_INPORT  = 0; // Set to 0 to allow OS to pick an available port and avoid conflicts
+const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid conflicts
 const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');
 
 // ─── Error Classification ──────────────────────────────────────────────────────
 function classifyError(err: any): string {
   console.error('[ZKService] Raw Error:', err);
   const msg: string = (err?.message || '').toLowerCase();
-  if (msg.includes('econnrefused'))                       return 'Connection refused — device offline or wrong port.';
+  if (msg.includes('econnrefused')) return 'Connection refused — device offline or wrong port.';
   if (msg.includes('etimedout') || msg.includes('timeout')) return 'Connection timed out — device unreachable on the network.';
-  if (msg.includes('enotfound'))                          return 'Host not found — check the IP address.';
-  if (msg.includes('subarray') || msg.includes('null'))   return 'Device returned an unreadable packet. Check firmware compatibility.';
+  if (msg.includes('enotfound')) return 'Host not found — check the IP address.';
+  if (msg.includes('subarray') || msg.includes('null')) return 'Device returned an unreadable packet. Check firmware compatibility.';
   return err?.message || 'Unknown ZKTeco device error.';
 }
 
@@ -33,12 +33,12 @@ function createZK(): InstanceType<typeof ZKLib> {
 export function getPunchType(state: any): string {
   const numericState = typeof state === 'number' ? state : parseInt(state, 10);
   switch (numericState) {
-    case 0:  return 'CheckIn';
-    case 1:  return 'CheckOut';
-    case 2:  return 'BreakOut';
-    case 3:  return 'BreakIn';
-    case 4:  return 'OvertimeIn';
-    case 5:  return 'OvertimeOut';
+    case 0: return 'CheckIn';
+    case 1: return 'CheckOut';
+    case 2: return 'BreakOut';
+    case 3: return 'BreakIn';
+    case 4: return 'OvertimeIn';
+    case 5: return 'OvertimeOut';
     default: return 'Unknown';
   }
 }
@@ -50,8 +50,8 @@ export function getPunchType(state: any): string {
  * Subsequent punches are mapped as CheckOut.
  */
 export async function resolvePunchType(
-  employeeId: string, 
-  timestamp: Date, 
+  employeeId: string,
+  timestamp: Date,
   deviceState: any,
   processedEmpDays?: Set<string>
 ): Promise<string> {
@@ -65,7 +65,7 @@ export async function resolvePunchType(
   // Otherwise, apply smart inference logic for CheckIn/CheckOut
   const tzOffset = 6 * 60 * 60 * 1000; // GMT+6
   const localDateStr = new Date(timestamp.getTime() + tzOffset).toISOString().split('T')[0];
-  
+
   const cacheKey = `${employeeId}:${localDateStr}`;
   if (processedEmpDays && processedEmpDays.has(cacheKey)) {
     return 'CheckOut';
@@ -170,7 +170,7 @@ async function connectProperly(zk: any): Promise<void> {
   } else {
     await zk.zudp.createSocket();
   }
-  
+
   // Give the socket a moment to breathe
   await new Promise(r => setTimeout(r, 1000));
 
@@ -225,7 +225,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     console.log(`[ZKService] ✅ Connected to ${ZK_IP}:${ZK_PORT} (${zk.connectionType})`);
 
     const rawLogs = await getAttendanceAsync(zk);
-    
+
     // Clear today's logs for fresh start before sync
     const tzOffset = 6 * 60 * 60 * 1000; // GMT+6
     const nowBD = new Date(new Date().getTime() + tzOffset);
@@ -245,7 +245,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
         }
       }
     });
-    
+
     if (rawLogs.length === 0) {
       return { synced: 0, skipped: 0, total: 0 };
     }
@@ -259,7 +259,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     const chunkSize = 100;
     for (let i = 0; i < rawLogs.length; i += chunkSize) {
       const chunk = rawLogs.slice(i, i + chunkSize);
-      
+
       for (const log of chunk) {
         try {
           const employeeId = String(log.user_id ?? log.userId ?? log.uid);
@@ -300,7 +300,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     }
 
     console.log(`[ZKService] ✔  Synced: ${synced} | Total: ${rawLogs.length}`);
-    
+
     // Automatically self-heal today's attendance logs to guarantee earliest = CheckIn, latest = CheckOut
     await healTodaysData();
 
@@ -310,7 +310,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     console.error(`[ZKService] ❌ ${reason}`);
     throw new Error(reason);
   } finally {
-    try { await zk.disconnect(); } catch (_) {}
+    try { await zk.disconnect(); } catch (_) { }
   }
 };
 
@@ -335,7 +335,7 @@ export const getDeviceUsers = async (): Promise<any[]> => {
   } catch (err: any) {
     throw new Error(classifyError(err));
   } finally {
-    try { await zk.disconnect(); } catch (_) {}
+    try { await zk.disconnect(); } catch (_) { }
   }
 };
 
@@ -350,7 +350,7 @@ export const pingDevice = async (): Promise<{ reachable: boolean; info?: any; er
   } catch (err: any) {
     return { reachable: false, error: classifyError(err) };
   } finally {
-    try { await zk.disconnect(); } catch (_) {}
+    try { await zk.disconnect(); } catch (_) { }
   }
 };
 
