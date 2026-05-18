@@ -69,20 +69,29 @@ export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
     let synced = 0;
     
     // Hash a default password
-    const hashedPassword = await bcrypt.hash('123456', 10);
+    const hashedPassword = await bcrypt.hash('password123', 10);
 
     for (const dUser of deviceUsers) {
       const employeeId = String(dUser.userId);
+      const name = dUser.name || `User ${employeeId}`;
+      const normalizedEmail = name.toLowerCase().replace(/\s+/g, '') + '@hrm.test';
+      
+      // Map ZKTeco Admin role (typically 14) to Admin, others to Employee
+      const finalRole = dUser.role === 14 ? 'Admin' : 'Employee';
+
       await prisma.user.upsert({
         where: { employeeId },
-        update: { name: dUser.name },
+        update: { 
+          name
+        },
         create: {
           employeeId,
-          name: dUser.name || `User ${employeeId}`,
-          email: `${employeeId}@hrm.test`,
+          name,
+          email: normalizedEmail,
           password: hashedPassword,
-          role: 'Executive',
-          baseSalary: 0
+          role: finalRole as any,
+          baseSalary: 0,
+          isActive: true
         }
       });
       synced++;

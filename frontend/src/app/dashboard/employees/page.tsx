@@ -103,7 +103,7 @@ export default function EmployeesPage() {
 
   const handleToggleStatus = async (emp: any) => {
     try {
-      const res = await api.patch(`/employees/${emp.id}`);
+      const res = await api.patch(`/users/${emp.id}/toggle`);
       toast.success(res.data.message);
       setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, isActive: res.data.isActive } : e));
     } catch {
