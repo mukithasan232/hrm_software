@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-background: hsl(222.2, 84%, 4.9%);
   --color-foreground: hsl(210, 40%, 98%);
@@ -9,10 +11,16 @@
 
 @layer base {
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    background-image: radial-gradient(ellipse at top, #1b2735 0%, #090a0f 100%);
+    background-color: #f8fafc;
+    color: #0f172a;
     min-height: 100vh;
     font-family: Arial, Helvetica, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
+}
+
+.dark body {
+  background-color: #090a0f;
+  background-image: radial-gradient(ellipse at top, #1b2735 0%, #090a0f 100%);
+  color: #f8fafc;
 }

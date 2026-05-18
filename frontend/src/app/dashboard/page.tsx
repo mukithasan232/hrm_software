@@ -101,13 +101,13 @@ export default function DashboardOverview() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">System Overview</h1>
-          <p className="text-gray-400 mt-1">Welcome to the HRM & Payroll Control Center.</p>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-white">System Overview</h1>
+          <p className="text-slate-500 dark:text-gray-400 mt-1">Welcome to the HRM & Payroll Control Center.</p>
         </div>
         <button 
           onClick={handleSyncUsers}
           disabled={syncingUsers}
-          className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all border border-white/10 disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-800 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 disabled:opacity-50 font-medium"
         >
           <RefreshCw className={`w-4 h-4 ${syncingUsers ? 'animate-spin' : ''}`} /> 
           {syncingUsers ? 'Syncing Users...' : 'Sync Device Users'}
@@ -115,55 +115,55 @@ export default function DashboardOverview() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-emerald-500/50 transition-colors">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-gray-400 font-medium">Present Now</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Present Now</p>
             <div className="flex items-center gap-2 mt-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <p className="text-3xl font-bold text-white">{loading ? '-' : stats.activeNow}</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{loading ? '-' : stats.activeNow}</p>
             </div>
           </div>
-          <div className="p-4 bg-emerald-500/20 rounded-xl text-emerald-400">
+          <div className="p-4 bg-emerald-500/20 rounded-xl text-emerald-500 dark:text-emerald-400">
             <Clock className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-blue-500/50 transition-colors">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-gray-400 font-medium">Total Employees</p>
-            <p className="text-3xl font-bold text-white mt-2">{loading ? '-' : stats.employees}</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Total Employees</p>
+            <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.employees}</p>
           </div>
-          <div className="p-4 bg-blue-500/20 rounded-xl text-blue-400">
+          <div className="p-4 bg-blue-500/20 rounded-xl text-blue-500 dark:text-blue-400">
             <Users className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-purple-500/50 transition-colors">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-purple-500/50 dark:hover:border-purple-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-gray-400 font-medium">Pending Leaves</p>
-            <p className="text-3xl font-bold text-white mt-2">{loading ? '-' : stats.pendingLeaves}</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Pending Leaves</p>
+            <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.pendingLeaves}</p>
           </div>
-          <div className="p-4 bg-purple-500/20 rounded-xl text-purple-400">
+          <div className="p-4 bg-purple-500/20 rounded-xl text-purple-500 dark:text-purple-400">
             <CalendarRange className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-green-500/50 transition-colors">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-green-500/50 dark:hover:border-green-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-gray-400 font-medium">Payroll Status</p>
-            <p className="text-xl font-bold text-green-400 mt-2">Processed</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Payroll Status</p>
+            <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-2">Processed</p>
           </div>
-          <div className="p-4 bg-green-500/20 rounded-xl text-green-400">
+          <div className="p-4 bg-green-500/20 rounded-xl text-green-500 dark:text-green-400">
             <CreditCard className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-orange-500/50 transition-colors">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-orange-500/50 dark:hover:border-orange-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-gray-400 font-medium">Avg Performance</p>
-            <p className="text-3xl font-bold text-white mt-2">92%</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Avg Performance</p>
+            <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">92%</p>
           </div>
-          <div className="p-4 bg-orange-500/20 rounded-xl text-orange-400">
+          <div className="p-4 bg-orange-500/20 rounded-xl text-orange-500 dark:text-orange-400">
             <TrendingUp className="w-6 h-6" />
           </div>
         </div>
@@ -171,59 +171,59 @@ export default function DashboardOverview() {
 
       {/* Hall of Fame & Live Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 relative overflow-hidden rounded-3xl bg-gradient-to-r from-yellow-600/20 via-yellow-500/10 to-yellow-600/20 border border-yellow-500/30 p-8 shadow-[0_0_50px_rgba(234,179,8,0.15)]">
+        <div className="lg:col-span-2 relative overflow-hidden rounded-3xl bg-gradient-to-r from-yellow-500/10 via-yellow-400/5 to-yellow-500/10 dark:from-yellow-600/20 dark:via-yellow-500/10 dark:to-yellow-600/20 border border-yellow-500/30 p-8 shadow-md dark:shadow-[0_0_50px_rgba(234,179,8,0.15)]">
           <div className="absolute top-0 right-0 -mt-10 -mr-10 text-yellow-500/10">
             <Award className="w-64 h-64" />
           </div>
           
           <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
             <div className="h-24 w-24 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 p-1 shadow-2xl">
-              <div className="h-full w-full rounded-full bg-slate-900 flex items-center justify-center text-3xl font-bold text-yellow-500">
+              <div className="h-full w-full rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-3xl font-bold text-yellow-600 dark:text-yellow-500">
                 {stats.eotm?.name?.charAt(0) || '★'}
               </div>
             </div>
             
             <div className="text-center md:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs font-semibold mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-600 dark:text-yellow-400 text-xs font-semibold mb-2">
                 <Award className="w-3 h-3" /> Hall of Fame
               </div>
-              <h2 className="text-2xl font-bold text-white tracking-tight">Employee of the Month</h2>
-              <p className="text-yellow-400 font-medium">{stats.eotm?.name || 'TBD'}</p>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Employee of the Month</h2>
+              <p className="text-yellow-600 dark:text-yellow-400 font-semibold text-lg">{stats.eotm?.name || 'TBD'}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-md dark:shadow-2xl flex flex-col">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Live Activity
             </h3>
-            <span className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold px-2 py-1 bg-emerald-500/10 rounded-lg">Real-Time</span>
+            <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-500 font-bold px-2 py-1 bg-emerald-500/10 rounded-lg">Real-Time</span>
           </div>
 
           <div className="space-y-4 flex-1">
             {recentAttendance.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-2 opacity-50">
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-gray-500 gap-2 opacity-50">
                 <Clock className="w-8 h-8" />
                 <p className="text-sm italic">Waiting for punches...</p>
               </div>
             ) : (
               recentAttendance.map((log, i) => (
-                <div key={log.id || i} className="flex items-center gap-4 p-3 bg-white/5 rounded-2xl border border-white/5 animate-in slide-in-from-right-4 duration-300">
+                <div key={log.id || i} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 animate-in slide-in-from-right-4 duration-300">
                   <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-lg font-bold ${
-                    log.punchType === 'CheckIn' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
+                    log.punchType === 'CheckIn' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-orange-500/20 text-orange-600 dark:text-orange-400'
                   }`}>
                     {log.employeeId}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium truncate">User {log.employeeId}</p>
-                    <p className="text-gray-500 text-xs flex items-center gap-1">
+                    <p className="text-slate-800 dark:text-white font-semibold truncate text-sm">User {log.employeeId}</p>
+                    <p className="text-slate-400 dark:text-gray-500 text-xs flex items-center gap-1 mt-0.5">
                       <Clock className="w-3 h-3" /> {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
-                    log.punchType === 'CheckIn' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'
+                    log.punchType === 'CheckIn' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : 'bg-orange-500/10 text-orange-600 dark:text-orange-500'
                   }`}>
                     {log.punchType === 'CheckIn' ? 'IN' : 'OUT'}
                   </span>

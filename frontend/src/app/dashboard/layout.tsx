@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen overflow-hidden bg-background">
+      <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-transparent transition-colors duration-300">
         <Sidebar mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <Navbar onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
