@@ -215,24 +215,24 @@ export default function PayrollPage() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-3xl font-bold text-white">Payroll Management</h1>
-        <p className="text-gray-400 mt-1">Calculate and generate monthly salary slips.</p>
+        <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Payroll Management</h1>
+        <p className="text-slate-550 dark:text-gray-400 mt-1">Calculate and generate monthly salary slips.</p>
       </div>
-
+ 
       {/* Generation Card */}
-      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl">
         <div className="flex flex-col md:flex-row items-end gap-6">
           <div className="flex-1 w-full space-y-2">
-            <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
+            <label className="text-sm font-semibold text-slate-650 dark:text-gray-400 flex items-center gap-2">
               <CalendarIcon className="w-4 h-4" /> Select Month
             </label>
             <select 
               value={month} 
               onChange={(e) => setMonth(Number(e.target.value))}
-              className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none"
+              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all appearance-none font-medium"
             >
               {[...Array(12)].map((_, i) => (
-                <option key={i+1} value={i+1} className="bg-slate-900 text-white">
+                <option key={i+1} value={i+1} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
                   {new Date(0, i).toLocaleString('default', { month: 'long' })}
                 </option>
               ))}
@@ -240,15 +240,15 @@ export default function PayrollPage() {
           </div>
           
           <div className="flex-1 w-full space-y-2">
-            <label className="text-sm font-medium text-gray-400">Select Year</label>
+            <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Select Year</label>
             <input 
               type="number" 
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
             />
           </div>
-
+ 
           <button 
             onClick={handleGenerate}
             disabled={generating}
@@ -263,47 +263,47 @@ export default function PayrollPage() {
           </button>
         </div>
       </div>
-
+ 
       {/* Salary Summary Table */}
       {payrollResults.length > 0 && (
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-          <div className="p-6 border-b border-white/10 flex items-center gap-3">
-            <FileText className="w-5 h-5 text-blue-400" />
-            <h2 className="text-xl font-semibold text-white">Salary Summary (Generated)</h2>
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm dark:shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+          <div className="p-6 border-b border-slate-100 dark:border-white/10 flex items-center gap-3">
+            <FileText className="w-5 h-5 text-indigo-600 dark:text-blue-400" />
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Salary Summary (Generated)</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-black/40 text-gray-400 text-sm uppercase tracking-wider">
-                  <th className="px-6 py-4 font-medium">Employee</th>
-                  <th className="px-6 py-4 font-medium">Attendance</th>
-                  <th className="px-6 py-4 font-medium">Base Salary</th>
-                  <th className="px-6 py-4 font-medium text-green-400">Gross Salary</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+                <tr className="bg-slate-50 dark:bg-black/40 text-slate-600 dark:text-gray-400 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10">
+                  <th className="px-6 py-4 font-semibold">Employee</th>
+                  <th className="px-6 py-4 font-semibold">Attendance</th>
+                  <th className="px-6 py-4 font-semibold">Base Salary</th>
+                  <th className="px-6 py-4 font-semibold text-emerald-600 dark:text-green-400">Gross Salary</th>
+                  <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {payrollResults.map((row) => (
-                  <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
+                  <tr key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-white font-medium">{row.user?.name || row.name || 'N/A'}</span>
-                        <span className="text-gray-500 text-xs">ID: {row.employeeId}</span>
+                        <span className="text-slate-800 dark:text-white font-semibold">{row.user?.name || row.name || 'N/A'}</span>
+                        <span className="text-slate-500 dark:text-gray-500 text-xs">ID: {row.employeeId}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 font-bold">{row.presentDays}P</span>
-                        <span className="text-gray-600">/</span>
-                        <span className="text-red-400">{row.absentDays}A</span>
-                        <span className="text-gray-500 text-xs ml-2">({row.totalDays} days)</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">{row.presentDays}P</span>
+                        <span className="text-slate-300 dark:text-gray-600">/</span>
+                        <span className="text-red-500 dark:text-red-400">{row.absentDays}A</span>
+                        <span className="text-slate-400 dark:text-gray-500 text-xs ml-2">({row.totalDays} days)</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-300">৳{row.baseSalary?.toLocaleString()}</td>
-                    <td className="px-6 py-4 font-bold text-green-400">৳{row.grossSalary?.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-slate-700 dark:text-gray-300">৳{row.baseSalary?.toLocaleString()}</td>
+                    <td className="px-6 py-4 font-bold text-emerald-600 dark:text-green-400">৳{row.grossSalary?.toLocaleString()}</td>
                     <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-full text-xs font-medium border bg-blue-500/10 text-blue-400 border-blue-500/20 flex items-center w-fit gap-1">
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 flex items-center w-fit gap-1">
                         <CheckCircle2 className="w-3 h-3" /> {row.status}
                       </span>
                     </td>
@@ -311,7 +311,7 @@ export default function PayrollPage() {
                       <button
                         onClick={() => handleDownloadPDF(row)}
                         disabled={downloadingId === row.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded-xl transition-all border border-indigo-500/20 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white rounded-xl transition-all border border-indigo-500/20 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {downloadingId === row.id ? (
                           <span className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-current"></span>
@@ -328,7 +328,7 @@ export default function PayrollPage() {
           </div>
         </div>
       )}
-
+ 
       {/* Hidden Payslip Templates for PDF Capture (Rendered off-screen with absolute values) */}
       <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
         {payrollResults.map((row) => (

@@ -165,7 +165,7 @@ export default function AttendancePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-white">Attendance Logs</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">Attendance Logs</h1>
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -173,22 +173,22 @@ export default function AttendancePage() {
             <span className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">Live</span>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-gray-400 text-sm">{totalLogs} total records.</p>
-            <span className="text-gray-600">•</span>
+            <p className="text-slate-500 dark:text-gray-400 text-sm">{totalLogs} total records.</p>
+            <span className="text-slate-300 dark:text-gray-600">•</span>
             {deviceStatus ? (
-              <span className={`text-xs flex items-center gap-1.5 ${deviceStatus.reachable ? 'text-emerald-500' : 'text-red-500'}`}>
+              <span className={`text-xs flex items-center gap-1.5 ${deviceStatus.reachable ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-500'}`}>
                 <div className={`h-1.5 w-1.5 rounded-full ${deviceStatus.reachable ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
                 {deviceStatus.reachable ? 'Device Online' : 'Device Offline'}
               </span>
             ) : (
-              <span className="text-xs text-gray-500 animate-pulse italic">Checking device...</span>
+              <span className="text-xs text-slate-400 dark:text-gray-500 animate-pulse italic">Checking device...</span>
             )}
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all border border-white/10"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium"
           >
             <Plus className="w-4 h-4" /> Manual Entry
           </button>
@@ -196,68 +196,68 @@ export default function AttendancePage() {
           <select 
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="bg-white/10 border border-white/10 text-white text-sm rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
+            className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer font-medium"
           >
-            <option value="today" className="bg-slate-900">Today</option>
-            <option value="yesterday" className="bg-slate-900">Yesterday</option>
-            <option value="week" className="bg-slate-900">This Week</option>
-            <option value="month" className="bg-slate-900">This Month</option>
-            <option value="all-time" className="bg-slate-900">All Time</option>
+            <option value="today" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Today</option>
+            <option value="yesterday" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Yesterday</option>
+            <option value="week" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">This Week</option>
+            <option value="month" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">This Month</option>
+            <option value="all-time" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">All Time</option>
           </select>
-
+ 
           <button 
             onClick={handleSync}
             disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10"
           >
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Sync Device
           </button>
           <button 
             onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium"
           >
             <Download className="w-4 h-4" /> Export
           </button>
         </div>
       </div>
-
+ 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors">
-          <p className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Today's Check-Ins</p>
-          <p className="text-3xl font-bold text-white mt-1">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors shadow-sm dark:shadow-md">
+          <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">Today's Check-Ins</p>
+          <p className="text-3xl font-bold text-slate-800 dark:text-white mt-1">
             {logs.filter(l => l.punchType === 'CheckIn' && new Date(l.timestamp).toDateString() === new Date().toDateString()).length}
           </p>
         </div>
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 hover:border-orange-500/30 transition-colors">
-          <p className="text-orange-400 text-xs font-bold uppercase tracking-wider">Today's Check-Outs</p>
-          <p className="text-3xl font-bold text-white mt-1">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-orange-500/30 transition-colors shadow-sm dark:shadow-md">
+          <p className="text-orange-600 dark:text-orange-400 text-xs font-bold uppercase tracking-wider">Today's Check-Outs</p>
+          <p className="text-3xl font-bold text-slate-800 dark:text-white mt-1">
             {logs.filter(l => l.punchType === 'CheckOut' && new Date(l.timestamp).toDateString() === new Date().toDateString()).length}
           </p>
         </div>
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 hover:border-blue-500/30 transition-colors">
-          <p className="text-blue-400 text-xs font-bold uppercase tracking-wider">Manual Entries</p>
-          <p className="text-3xl font-bold text-white mt-1">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-blue-500/30 transition-colors shadow-sm dark:shadow-md">
+          <p className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">Manual Entries</p>
+          <p className="text-3xl font-bold text-slate-800 dark:text-white mt-1">
             {logs.filter(l => l.deviceId === 'Manual Entry').length}
           </p>
         </div>
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-colors">
-          <p className="text-purple-400 text-xs font-bold uppercase tracking-wider">Device Sync</p>
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-colors shadow-sm dark:shadow-md">
+          <p className="text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">Device Sync</p>
           <div className="flex items-center gap-2 mt-1">
              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-             <p className="text-xl font-bold text-white">Active</p>
+             <p className="text-xl font-bold text-slate-800 dark:text-white">Active</p>
           </div>
         </div>
       </div>
-
-      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+ 
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm dark:shadow-2xl">
+ 
+        <div className="p-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
           <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-450 dark:text-gray-500" />
             <input 
               type="text" 
               placeholder="Search ID or Name..." 
-              className="w-full bg-black/20 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary/50"
+              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -266,47 +266,47 @@ export default function AttendancePage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-black/40 text-gray-400 text-sm uppercase tracking-wider">
-                <th className="px-6 py-4 font-medium">Employee</th>
-                <th className="px-6 py-4 font-medium">Timestamp</th>
-                <th className="px-6 py-4 font-medium">Type</th>
-                <th className="px-6 py-4 font-medium">Device IP</th>
+              <tr className="bg-slate-50 dark:bg-black/40 text-slate-600 dark:text-gray-400 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10">
+                <th className="px-6 py-4 font-semibold">Employee</th>
+                <th className="px-6 py-4 font-semibold">Timestamp</th>
+                <th className="px-6 py-4 font-semibold">Type</th>
+                <th className="px-6 py-4 font-semibold">Device IP</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {loading && logs.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-400">Loading logs...</td></tr>
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">Loading logs...</td></tr>
               ) : filteredLogs.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-400">No logs found.</td></tr>
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">No logs found.</td></tr>
               ) : (
                 filteredLogs.map((row, idx) => (
-                  <tr key={row.id || idx} className="hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
+                  <tr key={row.id || idx} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-white font-medium">{row?.employeeName || 'N/A'}</span>
-                        <span className="text-gray-500 text-xs">ID: {row?.employeeId || 'Unknown'}</span>
+                        <span className="text-slate-800 dark:text-white font-semibold">{row?.employeeName || 'N/A'}</span>
+                        <span className="text-slate-500 dark:text-gray-500 text-xs">ID: {row?.employeeId || 'Unknown'}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-300">
+                    <td className="px-6 py-4 text-slate-700 dark:text-gray-300">
                       <div className="flex flex-col text-sm">
-                        <span>{new Date(row.timestamp).toLocaleDateString()}</span>
-                        <span className="text-gray-500">{new Date(row.timestamp).toLocaleTimeString()}</span>
+                        <span className="font-medium">{new Date(row.timestamp).toLocaleDateString()}</span>
+                        <span className="text-slate-550 dark:text-gray-500 mt-0.5">{new Date(row.timestamp).toLocaleTimeString()}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
                         row.punchType === 'CheckIn' 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
                         : row.punchType === 'CheckOut'
-                        ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-                        : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                        ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
+                        : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                       }`}>
                         {row?.punchType || 'Unknown'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-mono text-gray-500 text-sm">
+                    <td className="px-6 py-4 font-mono text-slate-500 dark:text-gray-500 text-sm">
                       {row.deviceId === 'Manual Entry' ? (
-                        <span className="flex items-center gap-1 text-purple-400/70">
+                        <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
                           <Clock className="w-3 h-3" /> Manual
                         </span>
                       ) : row.deviceId}
@@ -318,64 +318,64 @@ export default function AttendancePage() {
           </table>
         </div>
       </div>
-
+ 
       {/* Manual Entry Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Manual Attendance</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white transition-colors">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Manual Attendance</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
             <form onSubmit={handleManualSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Select Employee</label>
+                <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400 mb-2">Select Employee</label>
                 <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500" />
                   <select 
                     required
-                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 appearance-none"
+                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none"
                     value={manualEntry.employeeId}
                     onChange={(e) => setManualEntry({...manualEntry, employeeId: e.target.value})}
                   >
-                    <option value="">Select an employee...</option>
+                    <option value="" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Select an employee...</option>
                     {employees.map(emp => (
-                      <option key={emp.id} value={emp.employeeId}>{emp.name} (ID: {emp.employeeId})</option>
+                      <option key={emp.id} value={emp.employeeId} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{emp.name} (ID: {emp.employeeId})</option>
                     ))}
                   </select>
                 </div>
               </div>
-
+ 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Punch Type</label>
+                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400 mb-2">Punch Type</label>
                   <select 
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 appearance-none"
+                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none"
                     value={manualEntry.punchType}
                     onChange={(e) => setManualEntry({...manualEntry, punchType: e.target.value})}
                   >
-                    <option value="CheckIn">Check In</option>
-                    <option value="CheckOut">Check Out</option>
+                    <option value="CheckIn" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Check In</option>
+                    <option value="CheckOut" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Check Out</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Time</label>
+                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400 mb-2">Time</label>
                   <input 
                     type="datetime-local" 
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     value={manualEntry.timestamp}
                     onChange={(e) => setManualEntry({...manualEntry, timestamp: e.target.value})}
                   />
                 </div>
               </div>
-
+ 
               <div className="pt-4 flex gap-3">
                 <button 
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-all border border-white/10 font-medium"
+                  className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium"
                 >
                   Cancel
                 </button>

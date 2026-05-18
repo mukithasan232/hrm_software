@@ -72,8 +72,8 @@ export default function LeavesPage() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-3xl font-bold text-white">Leave Management</h1>
-        <p className="text-gray-400 mt-1">
+        <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Leave Management</h1>
+        <p className="text-slate-500 dark:text-gray-400 mt-1">
           {isManagerOrHR ? 'Review and manage employee leave requests.' : 'Submit a new leave request and view history.'}
         </p>
       </div>
@@ -82,46 +82,46 @@ export default function LeavesPage() {
         
         {/* Application Form for Executives/Employees */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl h-fit">
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2 mb-6">
-              <Calendar className="w-5 h-5 text-blue-400" /> Apply for Leave
+          <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl h-fit">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-6">
+              <Calendar className="w-5 h-5 text-indigo-650 dark:text-blue-400" /> Apply for Leave
             </h2>
             <form onSubmit={handleApply} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-sm text-gray-400">Leave Type</label>
+                <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Leave Type</label>
                 <select 
                   value={type} onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+                  className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-medium"
                 >
-                  <option value="Sick" className="bg-slate-900">Sick Leave</option>
-                  <option value="Casual" className="bg-slate-900">Casual Leave</option>
-                  <option value="Annual" className="bg-slate-900">Annual Leave</option>
+                  <option value="Sick" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Sick Leave</option>
+                  <option value="Casual" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Casual Leave</option>
+                  <option value="Annual" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Annual Leave</option>
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-sm text-gray-400">Start Date</label>
-                  <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 [&::-webkit-calendar-picker-indicator]:filter-[invert(1)]" />
+                  <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Start Date</label>
+                  <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:[&::-webkit-calendar-picker-indicator]:filter-[invert(1)] font-medium" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm text-gray-400">End Date</label>
-                  <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 [&::-webkit-calendar-picker-indicator]:filter-[invert(1)]" />
+                  <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">End Date</label>
+                  <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:[&::-webkit-calendar-picker-indicator]:filter-[invert(1)] font-medium" />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-sm text-gray-400">Reason</label>
-                <textarea required value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+                <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Reason</label>
+                <textarea required value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-medium"></textarea>
               </div>
               <div className="space-y-1">
-                <label className="text-sm text-gray-400">Document (Optional)</label>
+                <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Document (Optional)</label>
                 <div className="flex items-center gap-2">
-                  <label className="flex-1 flex items-center gap-2 bg-black/20 border border-dashed border-white/20 hover:border-blue-500/50 rounded-xl px-4 py-3 text-gray-400 cursor-pointer transition-all">
-                    <Paperclip className="w-4 h-4" />
-                    <span className="text-sm truncate">{attachment ? attachment.name : 'Select PDF/Image/Doc'}</span>
+                  <label className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-black/20 border border-dashed border-slate-350 dark:border-white/20 hover:border-indigo-500/50 dark:hover:border-blue-500/50 rounded-xl px-4 py-3 text-slate-500 dark:text-gray-400 cursor-pointer transition-all">
+                    <Paperclip className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm truncate font-medium">{attachment ? attachment.name : 'Select PDF/Image/Doc'}</span>
                     <input type="file" className="hidden" onChange={(e) => setAttachment(e.target.files?.[0] || null)} />
                   </label>
                   {attachment && (
-                    <button type="button" onClick={() => setAttachment(null)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg">
+                    <button type="button" onClick={() => setAttachment(null)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg">
                       <XCircle className="w-5 h-5" />
                     </button>
                   )}
@@ -139,39 +139,39 @@ export default function LeavesPage() {
 
         {/* Leave Requests Table */}
         <div className="lg:col-span-2">
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-white/10">
-              <h2 className="text-xl font-semibold text-white">
+          <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm dark:shadow-2xl">
+            <div className="p-6 border-b border-slate-100 dark:border-white/10">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white">
                 {isManagerOrHR ? 'All Leave Requests' : 'My Leave History'}
               </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-black/40 text-gray-400 text-sm uppercase tracking-wider">
-                    {isManagerOrHR && <th className="px-6 py-4 font-medium">Employee</th>}
-                    <th className="px-6 py-4 font-medium">Type</th>
-                    <th className="px-6 py-4 font-medium">Duration</th>
-                    <th className="px-6 py-4 font-medium">Doc</th>
-                    <th className="px-6 py-4 font-medium">Status</th>
-                    {isManagerOrHR && <th className="px-6 py-4 font-medium text-right">Actions</th>}
+                  <tr className="bg-slate-50 dark:bg-black/40 text-slate-600 dark:text-gray-400 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10">
+                    {isManagerOrHR && <th className="px-6 py-4 font-semibold">Employee</th>}
+                    <th className="px-6 py-4 font-semibold">Type</th>
+                    <th className="px-6 py-4 font-semibold">Duration</th>
+                    <th className="px-6 py-4 font-semibold">Doc</th>
+                    <th className="px-6 py-4 font-semibold">Status</th>
+                    {isManagerOrHR && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-sm">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-sm">
                   {loading ? (
-                    <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">Loading...</td></tr>
+                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">Loading...</td></tr>
                   ) : leaves.length === 0 ? (
-                    <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400">No leaves found.</td></tr>
+                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">No leaves found.</td></tr>
                   ) : (
                     leaves.map((l) => (
-                      <tr key={l.id} className="hover:bg-white/[0.02] transition-colors">
+                      <tr key={l.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
                         {isManagerOrHR && (
-                          <td className="px-6 py-4 text-white font-medium">
-                            {l.employee?.name} <span className="block text-xs text-gray-500">{l.employee?.employeeId}</span>
+                          <td className="px-6 py-4 text-slate-850 dark:text-white font-semibold">
+                            {l.employee?.name} <span className="block text-xs text-slate-500 dark:text-gray-500 font-normal mt-0.5">{l.employee?.employeeId}</span>
                           </td>
                         )}
-                        <td className="px-6 py-4 text-gray-300">{l.type}</td>
-                        <td className="px-6 py-4 text-gray-400">
+                        <td className="px-6 py-4 text-slate-700 dark:text-gray-300 font-medium">{l.type}</td>
+                        <td className="px-6 py-4 text-slate-500 dark:text-gray-400">
                           {new Date(l.startDate).toLocaleDateString()} - {new Date(l.endDate).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4">
@@ -179,19 +179,19 @@ export default function LeavesPage() {
                             <a 
                               href={`http://localhost:5001${l.attachment}`} 
                               target="_blank" rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                              className="text-indigo-650 dark:text-blue-400 hover:text-indigo-850 dark:hover:text-blue-300 flex items-center gap-1 font-semibold"
                             >
                               <FileText className="w-4 h-4" /> View
                             </a>
                           ) : (
-                            <span className="text-gray-600">None</span>
+                            <span className="text-slate-400 dark:text-gray-600">None</span>
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                            l.status === 'Approved' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                            l.status === 'Rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                            'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                            l.status === 'Approved' ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' :
+                            l.status === 'Rejected' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' :
+                            'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
                           }`}>
                             {l.status}
                           </span>
@@ -200,11 +200,11 @@ export default function LeavesPage() {
                           <td className="px-6 py-4 text-right">
                             {l.status === 'Pending' ? (
                               <div className="flex items-center justify-end gap-2">
-                                <button onClick={() => updateStatus(l.id, 'Approved')} className="p-1 text-green-400 hover:bg-green-500/20 rounded transition-colors"><CheckCircle className="w-5 h-5" /></button>
-                                <button onClick={() => updateStatus(l.id, 'Rejected')} className="p-1 text-red-400 hover:bg-red-500/20 rounded transition-colors"><XCircle className="w-5 h-5" /></button>
+                                <button onClick={() => updateStatus(l.id, 'Approved')} className="p-1 text-green-500 hover:bg-green-500/20 rounded transition-colors"><CheckCircle className="w-5 h-5" /></button>
+                                <button onClick={() => updateStatus(l.id, 'Rejected')} className="p-1 text-red-500 hover:bg-red-500/20 rounded transition-colors"><XCircle className="w-5 h-5" /></button>
                               </div>
                             ) : (
-                              <span className="text-gray-500 italic">Reviewed</span>
+                              <span className="text-slate-400 dark:text-gray-500 italic">Reviewed</span>
                             )}
                           </td>
                         )}
