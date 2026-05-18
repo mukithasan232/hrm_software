@@ -29,9 +29,9 @@ export const SalarySlipPDF: React.FC<SalarySlipPDFProps> = ({ payroll, monthName
       {/* Header */}
       <div className="flex justify-between items-start border-b-2 border-indigo-600 pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-indigo-900">CoderNest Digital Solutions</h1>
-          <p className="text-xs text-slate-500 mt-1">Level 12, Premium IT Tower, Dhaka, Bangladesh</p>
-          <p className="text-xs text-slate-500">Email: hr@codernest.net | Web: www.codernest.net</p>
+          <h1 className="text-2xl font-bold text-indigo-900">Fix  Any Photo</h1>
+          <p className="text-xs text-slate-500 mt-1">Rangpur, Bangladesh</p>
+          <p className="text-xs text-slate-500">Email: hr@fixanyphoto.net | Web: www.fixanyphoto.net</p>
         </div>
         <div className="text-right">
           <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg inline-block font-semibold text-sm tracking-wider uppercase">
@@ -120,7 +120,7 @@ export const SalarySlipPDF: React.FC<SalarySlipPDFProps> = ({ payroll, monthName
         <div className="text-center w-40">
           <div className="border-b border-slate-400 pb-1 mb-1.5 h-8"></div>
           <p className="text-xs font-bold text-indigo-900">HR Manager</p>
-          <p className="text-[10px] text-slate-400">CoderNest Digital Solutions</p>
+          <p className="text-[10px] text-slate-400">Fix Any Photo</p>
         </div>
       </div>
     </div>
