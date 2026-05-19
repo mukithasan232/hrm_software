@@ -1,3 +1,6 @@
+// Load environment variables immediately
+require('dotenv').config();
+
 // Programmatically register ts-node so Node can run TypeScript backend files directly
 require('ts-node').register({
   compilerOptions: {
