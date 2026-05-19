@@ -53,16 +53,6 @@
     "typescript": "^5.9.3"
   },
   "pnpm": {
-    "allowedNonResolvableDependencies": [],
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "prisma",
-      "@prisma/engines",
-      "bcryptjs",
-      "core-js",
-      "unrs-resolver",
-      "sharp"
-    ],
-    "neverBuiltDependencies": []
+    "allowedNonResolvableDependencies": []
   }
 }
