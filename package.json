@@ -53,6 +53,13 @@
     "typescript": "^5.9.3"
   },
   "pnpm": {
-    "allowedNonResolvableDependencies": []
+    "allowedNonResolvableDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "core-js",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }
