@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "build": "prisma generate && next build",
+    "build": "pnpm approve-builds && pnpm prisma generate && next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "next lint"
   },
@@ -53,6 +53,7 @@
     "typescript": "^5.9.3"
   },
   "pnpm": {
+    "allowedNonResolvableDependencies": [],
     "onlyBuiltDependencies": [
       "@prisma/client",
       "prisma",
@@ -60,6 +61,7 @@
       "core-js",
       "unrs-resolver",
       "sharp"
-    ]
+    ],
+    "neverBuiltDependencies": []
   }
 }
