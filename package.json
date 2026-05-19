@@ -58,7 +58,8 @@
       "prisma",
       "bcryptjs",
       "core-js",
-      "unrs-resolver"
+      "unrs-resolver",
+      "sharp"
     ]
   }
 }
