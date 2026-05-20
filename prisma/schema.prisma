@@ -3,168 +3,79 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
-  url      = env("MONGO_URI")
-}
-
-enum Role {
-  Admin
-  HR
-  Manager
-  Executive
-  Employee
-}
-
-enum PunchType {
-  CheckIn
-  CheckOut
-  BreakOut
-  BreakIn
-  OvertimeIn
-  OvertimeOut
-  Unknown
-}
-
-enum AttendanceStatus {
-  Present
-  Absent
-  Late
-  Half_Day @map("Half-Day")
-}
-
-enum LeaveType {
-  Sick
-  Casual
-  Annual
-}
-
-enum LeaveStatus {
-  Pending
-  Approved
-  Rejected
-}
-
-enum PayrollStatus {
-  Pending
-  Approved
-  Paid
-}
-
-model User {
-  id              String           @id @default(auto()) @map("_id") @db.ObjectId
-  employeeId      String           @unique
-  name            String
-  email           String           @unique
-  password        String
-  role            Role             @default(Executive)
-  department      String?
-  designation     String?
-  baseSalary      Int              @default(0)
-  isActive        Boolean          @default(true)
-  joiningDate     DateTime         @default(now())
-  profileImage    String?          @default("")
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  dailyAttendances DailyAttendance[]
-  attendanceLogs   AttendanceLog[]
-  leaves           Leave[]          @relation("EmployeeLeaves")
-  reviewedLeaves   Leave[]          @relation("ReviewedLeaves")
-  notifications    Notification[]
-  payrolls         Payroll[]        @relation("UserPayrolls")
-  performances     Performance[]
+  provider = "mysql"
 }
 
 model AttendanceLog {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  id         String   @id @default(uuid())
+  createdAt  DateTime @db.Date
+  deviceId   String
   employeeId String
-  user       User?     @relation(fields: [employeeId], references: [employeeId])
-  timestamp  DateTime
-  punchType  PunchType @default(Unknown)
-  deviceId   String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  @@unique([employeeId, timestamp])
-  @@index([employeeId])
-  @@index([timestamp])
-}
-
-model DailyAttendance {
-  id                  String           @id @default(auto()) @map("_id") @db.ObjectId
-  userId              String           @db.ObjectId
-  user                User             @relation(fields: [userId], references: [id])
-  date                DateTime
-  firstPunch          DateTime?
-  lastPunch           DateTime?
-  totalWorkingMinutes Int              @default(0)
-  status              AttendanceStatus
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-
-  @@unique([userId, date])
+  user       User     @relation("UserAttendance", fields: [employeeId], references: [id], onDelete: Cascade)
+  punchType  String
+  timestamp  DateTime @db.Date
+  updatedAt  DateTime @db.Date
 }
 
 model Leave {
-  id           String      @id @default(auto()) @map("_id") @db.ObjectId
-  employeeId   String      @db.ObjectId
-  employee     User        @relation("EmployeeLeaves", fields: [employeeId], references: [id])
-  type         LeaveType
-  startDate    DateTime
-  endDate      DateTime
-  totalDays    Int         @default(1)
-  reason       String
-  status       LeaveStatus @default(Pending)
-  reviewedById String?     @db.ObjectId
-  reviewedBy   User?       @relation("ReviewedLeaves", fields: [reviewedById], references: [id])
-  attachment   String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id         String   @id @default(uuid())
+  createdAt  DateTime @db.Date
+  employeeId String
+  user       User     @relation("UserLeaves", fields: [employeeId], references: [id], onDelete: Cascade)
+  endDate    DateTime @db.Date
+  reason     String
+  startDate  DateTime @db.Date
+  status     String
+  totalDays  BigInt
+  type       String
+  updatedAt  DateTime @db.Date
 }
 
 model Notification {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id])
+  id        String   @id @default(uuid())
+  createdAt DateTime @db.Date
   message   String
-  read      Boolean  @default(false)
-  type      String   @default("Info")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  read      Boolean
+  type      String
+  updatedAt DateTime @db.Date
+  userId    String
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Payroll {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  employeeId    String
-  month         Int      // e.g., 5 for May
-  year          Int      // e.g., 2026
-  totalDays     Int      // Days in the month
-  presentDays   Int      // Counted from AttendanceLogs
-  absentDays    Int
-  baseSalary    Int
-  grossSalary   Int      // Calculated (baseSalary / totalDays) * presentDays
-  status        String   @default("Pending") // Pending, Paid
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  user          User     @relation("UserPayrolls", fields: [employeeId], references: [employeeId])
-  @@unique([employeeId, month, year]) // Prevent duplicate payrolls per month
+  id          String   @id @default(uuid())
+  absentDays  BigInt
+  baseSalary  BigInt
+  createdAt   DateTime @db.Date
+  employeeId  String
+  user        User     @relation("UserPayrolls", fields: [employeeId], references: [id], onDelete: Cascade)
+  grossSalary BigInt
+  month       BigInt
+  presentDays BigInt
+  status      String
+  totalDays   BigInt
+  updatedAt   DateTime @db.Date
+  year        BigInt
 }
 
-model Performance {
-  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
-  employeeId            String   @db.ObjectId
-  employee              User     @relation(fields: [employeeId], references: [id])
-  month                 Int
-  year                  Int
-  punctualityScore      Float    @default(0)
-  taskScore             Float    @default(0)
-  managerRating         Float    @default(3)
-  feedback              String?
-  calculatedOverallScore Float    @default(0)
-  isEOTM                Boolean  @default(false)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+model User {
+  id           String   @id @default(uuid())
+  baseSalary   BigInt
+  createdAt    DateTime @db.Date
+  department   String?
+  designation  String?
+  email        String   @unique
+  employeeId   String   @unique
+  isActive     Boolean
+  joiningDate  DateTime @db.Date
+  name         String
+  password     String
+  profileImage String
+  role         String
+  updatedAt    DateTime @db.Date
 
-  @@unique([employeeId, month, year])
+  attendanceLogs AttendanceLog[] @relation("UserAttendance")
+  leaves         Leave[]         @relation("UserLeaves")
+  notifications  Notification[]  @relation("UserNotifications")
+  payrolls       Payroll[]       @relation("UserPayrolls")
 }
