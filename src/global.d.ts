@@ -1,3 +1,4 @@
+import 'multer';
 // Global ambient type declarations to bypass missing prod-build types
 declare module 'js-cookie';
 declare module 'canvas-confetti';
