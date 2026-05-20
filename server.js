@@ -1,3 +1,13 @@
+// server.js-এর একদম প্রথম লাইনে এটি বসান
+if (process.env.NEXT_PHASE === 'phase-production-build' || process.argv.includes('--build')) {
+  console.log('🚀 [Build Guard] Next.js build phase detected. Skipping monolithic server execution.');
+  process.exit(0); // কোনো এরর ছাড়াই প্রসেসটি এখানে সুন্দরভাবে বন্ধ হয়ে যাবে
+}
+
+// আপনার এক্সিস্টিং বাকি সব কোড (Express/Http Server initialization) এর নিচ থেকে শুরু হবে...
+const express = require('express');
+// ... বাকি কোড
+
 // Load environment variables immediately
 require('dotenv').config();
 
