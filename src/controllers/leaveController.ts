@@ -15,7 +15,8 @@ export const applyLeave = async (req: Request, res: Response) => {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         reason,
-        attachment
+        status: 'Pending',
+        totalDays: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
       }
     });
 
@@ -27,7 +28,8 @@ export const applyLeave = async (req: Request, res: Response) => {
       }
     });
 
-    const notifications = hrAndManagers.map((u: any) => ({
+    const safeHrAndManagers = Array.isArray(hrAndManagers) ? hrAndManagers : [];
+    const notifications = safeHrAndManagers.map((u: any) => ({
       userId: u.id,
       message: `${applyingUser?.name || 'An employee'} applied for ${type} leave.`,
       type: 'LeaveRequest'
@@ -50,7 +52,7 @@ export const getLeaves = async (req: Request, res: Response) => {
     if (['HR', 'Manager', 'Admin'].includes(userRole)) {
       leaves = await prisma.leave.findMany({
         include: {
-          employee: {
+          user: {
             select: { name: true, employeeId: true, department: true }
           }
         },
@@ -76,9 +78,9 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
 
     const leave = await prisma.leave.update({
       where: { id: id as string },
-      data: { status, reviewedById: reviewerId },
+      data: { status },
       include: {
-        employee: {
+        user: {
           select: { name: true, id: true }
         }
       }

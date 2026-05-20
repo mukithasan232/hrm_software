@@ -3,7 +3,7 @@ import path from 'path';
 import { prisma } from '../lib/prisma';
 import { connectDB } from '../config/db';
 
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /**
  * user-provided logic to update device ID

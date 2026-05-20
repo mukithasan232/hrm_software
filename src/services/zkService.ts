@@ -257,7 +257,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     console.log(`[ZKService] 📋 ${rawLogs.length} raw record(s) from device.`);
 
     // Sort logs chronologically ascending (earliest to latest) to guarantee correct CheckIn/CheckOut determination
-    rawLogs.sort((a: any, b: any) => new Date(a.record_time).getTime() - new Date(b.record_time).getTime());
+    const sortedRawLogs = Array.isArray(rawLogs) ? [...rawLogs].sort((a: any, b: any) => new Date(a.record_time).getTime() - new Date(b.record_time).getTime()) : [];
 
     let synced = 0;
     let skipped = 0;
@@ -265,8 +265,8 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     // Process in chunks of 100 for better performance
     const chunkSize = 100;
-    for (let i = 0; i < rawLogs.length; i += chunkSize) {
-      const chunk = rawLogs.slice(i, i + chunkSize);
+    for (let i = 0; i < sortedRawLogs.length; i += chunkSize) {
+      const chunk = sortedRawLogs.slice(i, i + chunkSize);
 
       for (const log of chunk) {
         try {
@@ -304,10 +304,10 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
         }
       }
 
-      console.log(`[ZKService] Chunks progress: ${Math.min(i + chunkSize, rawLogs.length)}/${rawLogs.length}`);
+      console.log(`[ZKService] Chunks progress: ${Math.min(i + chunkSize, sortedRawLogs.length)}/${sortedRawLogs.length}`);
     }
 
-    console.log(`[ZKService] ✔  Synced: ${synced} | Total: ${rawLogs.length}`);
+    console.log(`[ZKService] ✔  Synced: ${synced} | Total: ${sortedRawLogs.length}`);
 
     // Automatically self-heal today's attendance logs to guarantee earliest = CheckIn, latest = CheckOut
     await healTodaysData();

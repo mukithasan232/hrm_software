@@ -17,16 +17,28 @@ export const initRealtimeAttendance = async (socketIo: Server) => {
   io = socketIo;
   console.log('[RealtimeService] Initializing...');
   
-  // Perform initial sync to catch any logs missed while server was down
-  try {
-    console.log('[RealtimeService] 🔄 Performing initial sync...');
-    const synced = await fetchDeviceLogs();
-    console.log(`[RealtimeService] ✅ Initial sync complete. ${synced} new logs.`);
-  } catch (err) {
-    console.error('[RealtimeService] ⚠️ Initial sync failed:', err);
-  }
+  const initializeWithRetry = async (retryCount = 0) => {
+    try {
+      // Test DB connection before starting sync
+      await prisma.$queryRaw`SELECT 1`;
+      
+      console.log('[RealtimeService] 🔄 Performing initial sync...');
+      const synced = await fetchDeviceLogs();
+      console.log(`[RealtimeService] ✅ Initial sync complete. ${synced} new logs.`);
+      connectAndListen();
+    } catch (err) {
+      console.error(`[RealtimeService] ⚠️ DB not ready or sync failed (Attempt ${retryCount + 1}):`, err);
+      if (retryCount < 5) {
+        console.log('[RealtimeService] Retrying initialization in 2 seconds...');
+        setTimeout(() => initializeWithRetry(retryCount + 1), 2000);
+      } else {
+        console.error('[RealtimeService] ❌ Max retries reached. Realtime service may be degraded.');
+        connectAndListen(); // Try to connect device anyway
+      }
+    }
+  };
 
-  connectAndListen();
+  initializeWithRetry();
 };
 
 let isConnecting = false;
@@ -81,17 +93,19 @@ const connectAndListen = async () => {
     zkInstance.getRealTimeLogs(async (data: any) => {
       console.log('[RealtimeService] 🕒 New Punch Received:', data);
       
-      const employeeId = String(data.userId);
-      const timestamp = data.attTime ? new Date(data.attTime) : new Date();
-      const stateValue = data.state !== undefined && data.state !== null ? data.state : (data.type !== undefined && data.type !== null ? data.type : -1);
-      const punchType = await resolvePunchType(employeeId, timestamp, stateValue);
-      
-      const user = await prisma.user.findUnique({
-        where: { employeeId }
-      });
-      const employeeName = user?.name || 'N/A';
-
       try {
+        const employeeId = String(data.userId);
+        const timestamp = data.attTime ? new Date(data.attTime) : new Date();
+        const stateValue = data.state !== undefined && data.state !== null ? data.state : (data.type !== undefined && data.type !== null ? data.type : -1);
+        
+        // Wrap everything in try/catch to prevent unhandled promise rejections crashing the monolithic server
+        const punchType = await resolvePunchType(employeeId, timestamp, stateValue);
+        
+        const user = await prisma.user.findUnique({
+          where: { employeeId }
+        });
+        const employeeName = user?.name || 'N/A';
+
         const newLog = await prisma.attendanceLog.upsert({
           where: {
             employeeId_timestamp: {
@@ -109,14 +123,17 @@ const connectAndListen = async () => {
         });
 
         if (io) {
-          io.emit('new-attendance', {
-            ...newLog,
-            employeeName,
+          // Offload socket emission from the main DB thread slightly
+          setImmediate(() => {
+            io.emit('new-attendance', {
+              ...newLog,
+              employeeName,
+            });
+            console.log(`[RealtimeService] 📡 Emitted to frontend: ${employeeName} [${punchType}]`);
           });
-          console.log(`[RealtimeService] 📡 Emitted to frontend: ${employeeName} [${punchType}]`);
         }
       } catch (err: any) {
-        console.error('[RealtimeService] DB Error:', err.message);
+        console.error('[RealtimeService] ❌ DB/Operation Error in realtime loop:', err.message);
       }
     });
 

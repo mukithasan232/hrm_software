@@ -8,6 +8,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "axios": "^1.16.1",
     "bcryptjs": "^3.0.3",

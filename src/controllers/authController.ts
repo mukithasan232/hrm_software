@@ -42,7 +42,7 @@ export const registerUser = async (req: Request, res: Response) => {
     });
 
     res.status(201).json({
-      _id: user.id,
+      id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -91,10 +91,13 @@ export const loginUser = async (req: Request, res: Response) => {
     console.log(`[Auth] ✅ Login success: ${user.email} (Role: ${user.role})`);
 
     res.json({
-      _id: user.id,
+      id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
+      department: user.department,
+      designation: user.designation,
+      profileImage: user.profileImage,
       token: generateToken(user.id, user.role),
     });
   } catch (error: any) {

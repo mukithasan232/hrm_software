@@ -40,8 +40,9 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
       });
 
       // Count unique dates worked
+      const safeLogsForPayroll = Array.isArray(logs) ? logs : [];
       const uniqueDates = new Set(
-        logs.map((log: any) => log.timestamp.toISOString().split('T')[0])
+        safeLogsForPayroll.map((log: any) => log.timestamp.toISOString().split('T')[0])
       );
       
       const presentDays = uniqueDates.size;

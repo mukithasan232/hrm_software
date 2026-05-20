@@ -1,9 +1,9 @@
-import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import path from 'path';
-import { prisma } from '../lib/prisma';
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+import bcrypt from 'bcryptjs';
+import { prisma } from '../lib/prisma';
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 

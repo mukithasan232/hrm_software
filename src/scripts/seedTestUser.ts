@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma';
 import { connectDB } from '../config/db';
 
 // Load .env from backend root
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /**
  * Script: Seed Test User for Biometric Verification

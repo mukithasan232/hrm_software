@@ -252,12 +252,11 @@ export const deleteEmployee = async (req: Request, res: Response) => {
 
     // Delete in a single Prisma transaction to maintain relational integrity
     await prisma.$transaction([
-      // 1. Delete Daily Attendance records
-      prisma.dailyAttendance.deleteMany({ where: { userId: id } }),
+      // 1. Delete Daily Attendance records (removed)
       // 2. Delete Attendance Logs
       prisma.attendanceLog.deleteMany({ where: { employeeId } }),
-      // 3. Delete Leaves (both requested by employee and reviewed by them if HR/Admin)
-      prisma.leave.deleteMany({ where: { OR: [{ employeeId: id }, { reviewedById: id }] } }),
+      // 3. Delete Leaves (requested by employee)
+      prisma.leave.deleteMany({ where: { employeeId: id } }),
       // 4. Delete Notifications
       prisma.notification.deleteMany({ where: { userId: id } }),
       // 5. Delete Payroll history

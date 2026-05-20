@@ -145,14 +145,16 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const checkedIn = new Set();
     const checkedOut = new Set();
 
-    logs.forEach((log: any) => {
+    const safeLogs = Array.isArray(logs) ? [...logs] : [];
+    
+    safeLogs.forEach((log: any) => {
       if (log.punchType === 'CheckIn') checkedIn.add(log.employeeId);
       if (log.punchType === 'CheckOut') checkedOut.add(log.employeeId);
     });
 
     const activeNow = Array.from(checkedIn).filter(id => !checkedOut.has(id)).length;
 
-    const formattedRecent = logs.slice(0, 5).map((log: any) => ({
+    const formattedRecent = safeLogs.slice(0, 5).map((log: any) => ({
       ...log,
       employeeName: log.user?.name || `User ${log.employeeId}`
     }));
@@ -232,7 +234,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     ]);
 
     // Map logs to include employee name from user relation
-    const formattedLogs = logs.map((log: any) => ({
+    const safeLogsList = Array.isArray(logs) ? [...logs] : [];
+    const formattedLogs = safeLogsList.map((log: any) => ({
       ...log,
       employeeName: log.user?.name || 'Unknown'
     }));

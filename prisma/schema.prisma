@@ -8,74 +8,95 @@ datasource db {
 
 model AttendanceLog {
   id         String   @id @default(uuid())
-  createdAt  DateTime @db.Date
+  createdAt  DateTime @default(now())
   deviceId   String
   employeeId String
   user       User     @relation("UserAttendance", fields: [employeeId], references: [id], onDelete: Cascade)
   punchType  String
-  timestamp  DateTime @db.Date
-  updatedAt  DateTime @db.Date
+  timestamp  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, timestamp])
 }
 
 model Leave {
   id         String   @id @default(uuid())
-  createdAt  DateTime @db.Date
+  createdAt  DateTime @default(now())
   employeeId String
   user       User     @relation("UserLeaves", fields: [employeeId], references: [id], onDelete: Cascade)
-  endDate    DateTime @db.Date
+  endDate    DateTime
   reason     String
-  startDate  DateTime @db.Date
+  startDate  DateTime
   status     String
-  totalDays  BigInt
+  totalDays  Int
   type       String
-  updatedAt  DateTime @db.Date
+  updatedAt  DateTime @updatedAt
 }
 
 model Notification {
   id        String   @id @default(uuid())
-  createdAt DateTime @db.Date
+  createdAt DateTime @default(now())
   message   String
-  read      Boolean
+  read      Boolean  @default(false)
   type      String
-  updatedAt DateTime @db.Date
+  updatedAt DateTime @updatedAt
   userId    String
   user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Payroll {
   id          String   @id @default(uuid())
-  absentDays  BigInt
-  baseSalary  BigInt
-  createdAt   DateTime @db.Date
+  absentDays  Int
+  baseSalary  Float
+  createdAt   DateTime @default(now())
   employeeId  String
   user        User     @relation("UserPayrolls", fields: [employeeId], references: [id], onDelete: Cascade)
-  grossSalary BigInt
-  month       BigInt
-  presentDays BigInt
+  grossSalary Float
+  month       Int
+  presentDays Int
   status      String
-  totalDays   BigInt
-  updatedAt   DateTime @db.Date
-  year        BigInt
+  totalDays   Int
+  updatedAt   DateTime @updatedAt
+  year        Int
+}
+
+model Performance {
+  id                     String   @id @default(uuid())
+  employeeId             String
+  employee               User     @relation("UserPerformances", fields: [employeeId], references: [id], onDelete: Cascade)
+  month                  Int
+  year                   Int
+  taskScore              Float
+  managerRating          Float
+  feedback               String
+  punctualityScore       Float
+  calculatedOverallScore Float
+  isEOTM                 Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([employeeId, month, year])
 }
 
 model User {
   id           String   @id @default(uuid())
-  baseSalary   BigInt
-  createdAt    DateTime @db.Date
+  baseSalary   Float    @default(0)
+  createdAt    DateTime @default(now())
   department   String?
   designation  String?
   email        String   @unique
   employeeId   String   @unique
-  isActive     Boolean
-  joiningDate  DateTime @db.Date
+  isActive     Boolean  @default(true)
+  joiningDate  DateTime @default(now())
   name         String
   password     String
-  profileImage String
-  role         String
-  updatedAt    DateTime @db.Date
+  profileImage String?
+  role         String   @default("Employee")
+  updatedAt    DateTime @updatedAt
 
   attendanceLogs AttendanceLog[] @relation("UserAttendance")
   leaves         Leave[]         @relation("UserLeaves")
   notifications  Notification[]  @relation("UserNotifications")
   payrolls       Payroll[]       @relation("UserPayrolls")
+  performances   Performance[]   @relation("UserPerformances")
 }

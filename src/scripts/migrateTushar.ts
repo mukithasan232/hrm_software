@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 import { connectDB } from '../config/db';
 
 // Load .env from backend root
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /**
  * Migration Script: Update Employee ID for Biometric Sync
@@ -22,7 +22,7 @@ async function migrateUser() {
     // 1. Find User
     const user = await prisma.user.findFirst({
       where: {
-        name: { contains: TARGET_NAME, mode: 'insensitive' }
+        name: { contains: TARGET_NAME }
       }
     });
     

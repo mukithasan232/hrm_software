@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 import { connectDB } from '../config/db';
 
 // Load .env from backend root
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 async function updateTushar() {
   console.log('--- Database Migration: Update Tushar Device ID ---');
@@ -15,7 +15,7 @@ async function updateTushar() {
     // 2. Search for Tushar (Case-insensitive)
     const user = await prisma.user.findFirst({
       where: {
-        name: { contains: 'Tushar', mode: 'insensitive' }
+        name: { contains: 'Tushar' }
       }
     });
     

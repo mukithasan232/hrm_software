@@ -26,11 +26,9 @@ export const GET = wrapHandler(async (req: any, res: any) => {
 
     if (userIds.length > 0) {
       console.log(`🧹 [CleanupDev] Deleting child records for ${testUsers.length} test employees...`);
-      await prisma.dailyAttendance.deleteMany({ where: { userId: { in: userIds } } });
-      await prisma.leave.deleteMany({ where: { OR: [{ employeeId: { in: userIds } }, { reviewedById: { in: userIds } }] } });
+      await prisma.leave.deleteMany({ where: { employeeId: { in: userIds } } });
       await prisma.notification.deleteMany({ where: { userId: { in: userIds } } });
       await prisma.payroll.deleteMany({ where: { employeeId: { in: employeeIds } } });
-      await prisma.performance.deleteMany({ where: { employeeId: { in: userIds } } });
 
       const deletedUsers = await prisma.user.deleteMany({
         where: {

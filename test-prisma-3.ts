@@ -2,11 +2,6 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-// Parse the DATABASE_URL to connection options
 const dbUrl = new URL(process.env.DATABASE_URL || 'mysql://username:password@localhost:3306/hrm_database');
 const poolConfig = {
   host: dbUrl.hostname,
@@ -17,13 +12,12 @@ const poolConfig = {
   connectionLimit: 10,
 };
 
-const adapter = new PrismaMariaDb(poolConfig);
+const adapter = new PrismaMariaDb(poolConfig, { database: poolConfig.database });
+const prisma = new PrismaClient({ adapter });
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  });
+async function main() {
+  const users = await prisma.user.findMany();
+  console.log("Users:", users.length);
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+main().catch(console.error).finally(() => prisma.$disconnect());

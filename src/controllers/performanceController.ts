@@ -100,7 +100,8 @@ export const calculateEOTM = async (req: Request, res: Response) => {
     });
 
     const allUsers = await prisma.user.findMany();
-    const notifications = allUsers.map(u => ({
+    const safeAllUsers = Array.isArray(allUsers) ? allUsers : [];
+    const notifications = safeAllUsers.map((u: any) => ({
       userId: u.id,
       message: `🎉 ${winner.employee.name} has been awarded Employee of the Month for ${month}/${year}!`,
       type: 'Announcement'

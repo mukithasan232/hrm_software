@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import { prisma } from '../lib/prisma';
 
@@ -57,15 +57,10 @@ async function runCleanup() {
     if (userIds.length > 0) {
       console.log('🧹 Deleting child records for test employees (cascade delete)...');
 
-      // Delete Daily Attendance
-      await executeWithRetry(
-        () => prisma.dailyAttendance.deleteMany({ where: { userId: { in: userIds } } }),
-        'DeleteDailyAttendance'
-      );
-      
+      // Removed Delete Daily Attendance
       // Delete Leaves
       await executeWithRetry(
-        () => prisma.leave.deleteMany({ where: { OR: [{ employeeId: { in: userIds } }, { reviewedById: { in: userIds } }] } }),
+        () => prisma.leave.deleteMany({ where: { employeeId: { in: userIds } } }),
         'DeleteLeaves'
       );
 

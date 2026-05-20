@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { prisma } from '../lib/prisma';
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 async function testLogin() {
   console.log('Testing login via Prisma...');
