@@ -1,12 +1,8 @@
-// server.js-এর একদম প্রথম লাইনে এটি বসান
+// Build Guard — exit immediately during Next.js static build phase
 if (process.env.NEXT_PHASE === 'phase-production-build' || process.argv.includes('--build')) {
   console.log('🚀 [Build Guard] Next.js build phase detected. Skipping monolithic server execution.');
-  process.exit(0); // কোনো এরর ছাড়াই প্রসেসটি এখানে সুন্দরভাবে বন্ধ হয়ে যাবে
+  process.exit(0);
 }
-
-// আপনার এক্সিস্টিং বাকি সব কোড (Express/Http Server initialization) এর নিচ থেকে শুরু হবে...
-const express = require('express');
-// ... বাকি কোড
 
 // Load environment variables immediately
 require('dotenv').config();
@@ -29,7 +25,7 @@ const next = require('next');
 const { Server } = require('socket.io');
 
 const dev = process.env.NODE_ENV !== 'production';
-const port = process.env.PORT || 3000;
+const port = parseInt(process.env.PORT || '3000', 10);
 
 const app = next({ dev });
 const handle = app.getRequestHandler();
@@ -42,7 +38,7 @@ app.prepare().then(async () => {
 
   const io = new Server(httpServer, {
     cors: {
-      origin: '*',
+      origin: process.env.ALLOWED_ORIGIN || '*',
       methods: ['GET', 'POST']
     }
   });
@@ -55,17 +51,16 @@ app.prepare().then(async () => {
     // 1. Establish database connection and run dirty logs cleanup
     await connectDB();
 
-    // 2. Initialize Background Cron Jobs
-    if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_CRON === 'true') {
-      initCronJobs();
-    }
+    // 2. Initialize Background Cron Jobs (always enabled — has its own error handling)
+    initCronJobs();
 
-    // 3. Initialize Realtime Biometric Device Sync
+    // 3. Initialize Realtime Biometric Device Sync (non-blocking — will retry on failure)
     initRealtimeAttendance(io).catch(err => {
       console.error('[Main] Realtime biometric listener init failed:', err.message);
     });
   } catch (err) {
     console.error('[Server Startup] Failed to load backend modules:', err);
+    // Do NOT exit — let Hostinger keep the process alive for HTTP traffic
   }
 
   httpServer.listen(port, () => {

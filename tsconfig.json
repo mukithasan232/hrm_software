@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "test-prisma.ts", "test-prisma-2.ts"]
+  "exclude": ["node_modules", "test-prisma.ts", "test-prisma-2.ts", "test-prisma-3.ts", "test-prisma-4.ts"]
 }
