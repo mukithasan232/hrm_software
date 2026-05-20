@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "build": "pnpm install --no-frozen-lockfile && pnpm prisma generate && next build",
+    "build": "pnpm install --no-frozen-lockfile && pnpm prisma generate && pnpm next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "next lint"
   },
