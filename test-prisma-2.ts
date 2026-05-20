@@ -22,13 +22,9 @@ const poolConfig: mysql.PoolOptions = {
 // সরাসরি mysql2 এর প্রমিস পুল ক্রিয়েট করুন
 const pool = mysql.createPool(poolConfig);
 
-// ✅ Prisma v7-এর অফিশিয়াল স্ট্যান্ডার্ড অনুযায়ী datasourceUrl পাস করুন
+// ✅ Prisma v7 uses top-level `datasourceUrl` — `datasources` was removed
 const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: currentDbUrl,
-    },
-  },
+  datasourceUrl: currentDbUrl,
   log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
 } as any);
 
