@@ -1,7 +1,12 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
-export const applyLeave = async (req: Request, res: Response) => {
+interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+  files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
+}
+
+export const applyLeave = async (req: MulterRequest, res: Response) => {
   try {
     const { type, startDate, endDate, reason } = req.body;
     const employeeId = (req as any).user.id;

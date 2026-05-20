@@ -11,7 +11,15 @@ const ZK_INPORT = 0;
 const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');
 
 let io: Server;
-let zkInstance: any;
+let zkInstance: any = null;
+let isConnecting = false;
+let isListenerActive = false;
+let activeReconnectTimeout: NodeJS.Timeout | null = null;
+let heartbeatInterval: NodeJS.Timeout | null = null;
+
+// Promise-based Mutex to completely serialize all ZKTeco socket connections,
+// disconnections, and commands. This guarantees no overlapping connections.
+let deviceMutex = Promise.resolve();
 
 export const initRealtimeAttendance = async (socketIo: Server) => {
   io = socketIo;
@@ -23,7 +31,8 @@ export const initRealtimeAttendance = async (socketIo: Server) => {
       await prisma.$queryRaw`SELECT 1`;
       
       console.log('[RealtimeService] 🔄 Performing initial sync...');
-      const synced = await fetchDeviceLogs();
+      isListenerActive = true;
+      const synced = await runWithDeviceLock(() => fetchDeviceLogs());
       console.log(`[RealtimeService] ✅ Initial sync complete. ${synced} new logs.`);
       connectAndListen();
     } catch (err) {
@@ -33,6 +42,7 @@ export const initRealtimeAttendance = async (socketIo: Server) => {
         setTimeout(() => initializeWithRetry(retryCount + 1), 2000);
       } else {
         console.error('[RealtimeService] ❌ Max retries reached. Realtime service may be degraded.');
+        isListenerActive = true;
         connectAndListen(); // Try to connect device anyway
       }
     }
@@ -41,119 +51,164 @@ export const initRealtimeAttendance = async (socketIo: Server) => {
   initializeWithRetry();
 };
 
-let isConnecting = false;
-
 export const runWithDeviceLock = async <T>(operation: () => Promise<T>): Promise<T> => {
-  if (zkInstance) {
-    console.log('[RealtimeService] ⏸️ Pausing real-time listener to free up device port...');
-    try {
-      await zkInstance.disconnect();
-    } catch (_) {}
-    zkInstance = null;
-  }
-  // Mark as connecting/active lock to block any concurrent auto-reconnects
-  isConnecting = true; 
+  return new Promise((resolve, reject) => {
+    deviceMutex = deviceMutex.then(async () => {
+      console.log('[RealtimeService] 🔒 Mutex acquired for operation.');
+      
+      // 1. Temporarily pause the real-time listener and clear any pending reconnects
+      isListenerActive = false;
+      if (activeReconnectTimeout) {
+        clearTimeout(activeReconnectTimeout);
+        activeReconnectTimeout = null;
+      }
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
 
-  try {
-    return await operation();
-  } finally {
-    console.log('[RealtimeService] ▶️ Device operation completed. Resuming real-time listener...');
-    isConnecting = false;
-    // Allow a small delay before reconnecting to let the device socket fully close/release
-    setTimeout(connectAndListen, 1500);
-  }
+      if (zkInstance) {
+        console.log('[RealtimeService] ⏸️ Disconnecting real-time listener to free up device port...');
+        try {
+          await zkInstance.disconnect();
+        } catch (_) {}
+        zkInstance = null;
+      }
+
+      // Allow a brief moment for the port/socket to be fully released by the OS
+      await new Promise(r => setTimeout(r, 1500));
+
+      try {
+        const result = await operation();
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      } finally {
+        // 2. Schedule resuming the real-time listener
+        isListenerActive = true;
+        isConnecting = false;
+        console.log('[RealtimeService] 🔓 Mutex released. Resuming real-time listener in 2s...');
+        if (activeReconnectTimeout) clearTimeout(activeReconnectTimeout);
+        activeReconnectTimeout = setTimeout(connectAndListen, 2000);
+      }
+    });
+  });
 };
 
 const connectAndListen = async () => {
+  if (!isListenerActive) return;
   if (isConnecting) return;
   isConnecting = true;
 
-  try {
-    if (zkInstance) {
-      try { await zkInstance.disconnect(); } catch (_) {}
-      zkInstance = null;
+  deviceMutex = deviceMutex.then(async () => {
+    if (!isListenerActive) {
+      isConnecting = false;
+      return;
     }
 
-    console.log(`[RealtimeService] 🔌 Attempting to connect to ${ZK_IP}:${ZK_PORT}...`);
-    zkInstance = new ZKLib(ZK_IP, ZK_PORT, ZK_TIMEOUT, ZK_INPORT);
-    zkInstance.password = ZK_PASSWORD;
-    zkInstance.connectionType = 'udp';
+    try {
+      if (zkInstance) {
+        try { await zkInstance.disconnect(); } catch (_) {}
+        zkInstance = null;
+      }
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
 
-    if (zkInstance.connectionType === 'tcp') {
-      await zkInstance.createSocket();
-    } else {
-      await zkInstance.zudp.createSocket();
-    }
-    
-    await new Promise(r => setTimeout(r, 2000));
-    await zkInstance.connect();
+      console.log(`[RealtimeService] 🔌 Attempting to connect to ${ZK_IP}:${ZK_PORT}...`);
+      const zk = new ZKLib(ZK_IP, ZK_PORT, ZK_TIMEOUT, ZK_INPORT);
+      zk.password = ZK_PASSWORD;
+      zk.connectionType = 'udp';
 
-    console.log(`[RealtimeService] ✅ Connected to device at ${ZK_IP}`);
-
-    zkInstance.getRealTimeLogs(async (data: any) => {
-      console.log('[RealtimeService] 🕒 New Punch Received:', data);
+      if (zk.connectionType === 'tcp') {
+        await zk.createSocket();
+      } else {
+        await zk.zudp.createSocket();
+      }
       
-      try {
-        const employeeId = String(data.userId);
-        const timestamp = data.attTime ? new Date(data.attTime) : new Date();
-        const stateValue = data.state !== undefined && data.state !== null ? data.state : (data.type !== undefined && data.type !== null ? data.type : -1);
-        
-        // Wrap everything in try/catch to prevent unhandled promise rejections crashing the monolithic server
-        const punchType = await resolvePunchType(employeeId, timestamp, stateValue);
-        
-        const user = await prisma.user.findUnique({
-          where: { employeeId }
-        });
-        const employeeName = user?.name || 'N/A';
+      await new Promise(r => setTimeout(r, 1500));
+      await zk.connect();
 
-        const newLog = await prisma.attendanceLog.upsert({
-          where: {
-            employeeId_timestamp: {
+      zkInstance = zk;
+      console.log(`[RealtimeService] ✅ Connected to device at ${ZK_IP}`);
+
+      zkInstance.getRealTimeLogs(async (data: any) => {
+        console.log('[RealtimeService] 🕒 New Punch Received:', data);
+        
+        try {
+          const employeeId = String(data.userId);
+          const timestamp = data.attTime ? new Date(data.attTime) : new Date();
+          const stateValue = data.state !== undefined && data.state !== null ? data.state : (data.type !== undefined && data.type !== null ? data.type : -1);
+          
+          const punchType = await resolvePunchType(employeeId, timestamp, stateValue);
+          
+          const user = await prisma.user.findUnique({
+            where: { employeeId }
+          });
+          const employeeName = user?.name || 'N/A';
+
+          const newLog = await prisma.attendanceLog.upsert({
+            where: {
+              employeeId_timestamp: {
+                employeeId,
+                timestamp,
+              },
+            },
+            update: {},
+            create: {
               employeeId,
               timestamp,
-            },
-          },
-          update: {},
-          create: {
-            employeeId,
-            timestamp,
-            punchType: punchType as any,
-            deviceId: ZK_IP,
-          }
-        });
-
-        if (io) {
-          // Offload socket emission from the main DB thread slightly
-          setImmediate(() => {
-            io.emit('new-attendance', {
-              ...newLog,
-              employeeName,
-            });
-            console.log(`[RealtimeService] 📡 Emitted to frontend: ${employeeName} [${punchType}]`);
+              punchType: punchType as any,
+              deviceId: ZK_IP,
+            }
           });
-        }
-      } catch (err: any) {
-        console.error('[RealtimeService] ❌ DB/Operation Error in realtime loop:', err.message);
-      }
-    });
 
-    // Keepalive / Heartbeat
-    const heartbeat = setInterval(async () => {
+          if (io) {
+            setImmediate(() => {
+              io.emit('new-attendance', {
+                ...newLog,
+                employeeName,
+              });
+              console.log(`[RealtimeService] 📡 Emitted to frontend: ${employeeName} [${punchType}]`);
+            });
+          }
+        } catch (err: any) {
+          console.error('[RealtimeService] ❌ DB/Operation Error in realtime loop:', err.message);
+        }
+      });
+
+      // Heartbeat/Keepalive
+      heartbeatInterval = setInterval(async () => {
         try {
-            if (zkInstance) await zkInstance.getTime();
+          if (zkInstance) await zkInstance.getTime();
         } catch (e) {
-            console.log('[RealtimeService] 💔 Heartbeat failed, reconnecting...');
-            clearInterval(heartbeat);
-            isConnecting = false;
-            connectAndListen();
+          console.log('[RealtimeService] 💔 Heartbeat failed, reconnecting...');
+          if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+          }
+          isConnecting = false;
+          zkInstance = null;
+          if (isListenerActive) {
+            if (activeReconnectTimeout) clearTimeout(activeReconnectTimeout);
+            activeReconnectTimeout = setTimeout(connectAndListen, 5000);
+          }
         }
-    }, 60000);
+      }, 60000);
 
-  } catch (err: any) {
-    console.error(`[RealtimeService] ❌ Connection failed: ${err.message}`);
-    isConnecting = false;
-    setTimeout(connectAndListen, 10000);
-  }
+      isConnecting = false;
+    } catch (err: any) {
+      console.error(`[RealtimeService] ❌ Connection failed: ${err.message}`);
+      isConnecting = false;
+      zkInstance = null;
+      if (isListenerActive) {
+        if (activeReconnectTimeout) clearTimeout(activeReconnectTimeout);
+        activeReconnectTimeout = setTimeout(connectAndListen, 10000);
+      }
+    }
+  });
 };
+
 
 
