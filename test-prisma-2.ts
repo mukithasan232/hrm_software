@@ -1,28 +1,49 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
-import * as mariadb from 'mariadb';
+import mysql from 'mysql2/promise';
 
-const dbUrl = new URL(process.env.DATABASE_URL || 'mysql://username:password@localhost:3306/hrm_database');
-console.log("DB URL from env:", process.env.DATABASE_URL);
-const poolConfig = {
+const defaultUrl = 'mysql://tushar:password123@localhost:3306/hrm_database';
+const currentDbUrl = process.env.DATABASE_URL || defaultUrl;
+
+const dbUrl = new URL(currentDbUrl);
+console.log("DB URL from env:", process.env.DATABASE_URL || "Using local fallback");
+
+const poolConfig: mysql.PoolOptions = {
   host: dbUrl.hostname,
   port: Number(dbUrl.port) || 3306,
   user: dbUrl.username,
   password: dbUrl.password,
   database: dbUrl.pathname.slice(1),
+  waitForConnections: true,
   connectionLimit: 10,
+  queueLimit: 0,
 };
-console.log("Pool config:", poolConfig);
 
-const pool = mariadb.createPool(poolConfig);
-const adapter = new PrismaMariaDb(pool);
+// সরাসরি mysql2 এর প্রমিস পুল ক্রিয়েট করুন
+const pool = mysql.createPool(poolConfig);
 
-const prisma = new PrismaClient({ adapter });
+// ✅ Prisma v7-এর অফিশিয়াল স্ট্যান্ডার্ড অনুযায়ী datasourceUrl পাস করুন
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: currentDbUrl,
+    },
+  },
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+} as any);
 
 async function main() {
+  console.log("🔄 Querying MariaDB via Prisma...");
   const users = await prisma.user.findMany();
-  console.log("Users:", users.length);
+  console.log(`✅ Success! Total Users found in MariaDB: ${users.length}`);
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect());
+main()
+  .catch((error) => {
+    console.error("❌ Database query failed:", error);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+    await pool.end();
+    console.log("🔒 Database connection closed cleanly.");
+  });
