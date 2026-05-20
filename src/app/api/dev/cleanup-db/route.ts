@@ -21,8 +21,8 @@ export const GET = wrapHandler(async (req: any, res: any) => {
       }
     });
 
-    const userIds = testUsers.map(u => u.id);
-    const employeeIds = testUsers.map(u => u.employeeId);
+    const userIds = testUsers.map((u: any) => u.id);
+    const employeeIds = testUsers.map((u: any) => u.employeeId);
 
     if (userIds.length > 0) {
       console.log(`🧹 [CleanupDev] Deleting child records for ${testUsers.length} test employees...`);

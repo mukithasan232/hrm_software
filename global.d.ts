@@ -1,5 +1,5 @@
-import 'multer';
 // Global ambient type declarations to bypass missing prod-build types
+declare module 'express';
 declare module 'js-cookie';
 declare module 'canvas-confetti';
 declare module 'node-zklib';
