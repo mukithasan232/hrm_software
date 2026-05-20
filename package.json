@@ -2,11 +2,11 @@
   "name": "fap-hrm-monolith",
   "private": true,
   "scripts": {
-    "dev": "node server.js",
-    "build": "pnpm install --no-frozen-lockfile && pnpm prisma generate && pnpm next build",
-    "start": "NODE_ENV=production node server.js",
-    "lint": "next lint"
-  },
+  "dev": "npx prisma generate && node server.js",
+  "build": "npm install --no-frozen-lockfile && npx prisma generate && npm run build:next",
+  "build:next": "next build",
+  "start": "NODE_ENV=production node server.js"
+},
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^7.8.0",
