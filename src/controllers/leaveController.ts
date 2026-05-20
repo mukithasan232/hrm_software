@@ -1,9 +1,20 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
-interface MulterRequest extends Request {
-  file?: Express.Multer.File;
-  files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
+// 💡 Multer-এর জন্য এক্সপ্রেস Request টাইপকে সম্পূর্ণ টাইপসেফ করা হলো
+interface MulterRequest extends Omit<Request, 'file' | 'files'> {
+  file?: {
+    fieldname: string;
+    originalname: string;
+    encoding: string;
+    mimetype: string;
+    size: number;
+    destination: string;
+    filename: string;
+    path: string;
+    buffer: Buffer;
+  };
+  files?: any;
 }
 
 export const applyLeave = async (req: MulterRequest, res: Response) => {
@@ -13,7 +24,10 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
 
     const attachment = req.file ? `/uploads/leaves/${req.file.filename}` : undefined;
 
-    const leave = await prisma.leave.create({
+    // ০ থেকে দিন সংখ্যা হিসাব কনফ্লিক্ট এড়াতে গ্যারান্টিড ম্যাথ অপারেশন
+    const totalDays = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    const leave = await (prisma.leave as any).create({
       data: {
         employeeId,
         type,
@@ -21,12 +35,13 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
         endDate: new Date(endDate),
         reason,
         status: 'Pending',
-        totalDays: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        totalDays,
+        ...(attachment ? { attachment } : {}) // অ্যাটাচমেন্ট থাকলে তবেই অবজেক্টে পুশ হবে
       }
     });
 
     const applyingUser = await prisma.user.findUnique({ where: { id: employeeId } });
-    
+
     const hrAndManagers = await prisma.user.findMany({
       where: {
         role: { in: ['HR', 'Manager', 'Admin'] }
@@ -40,22 +55,26 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
       type: 'LeaveRequest'
     }));
 
-    await prisma.notification.createMany({
-      data: notifications
-    });
+    if (notifications.length > 0) {
+      await prisma.notification.createMany({
+        data: notifications
+      });
+    }
 
-    res.status(201).json({ message: 'Leave applied successfully', leave });
+    return res.status(201).json({ message: 'Leave applied successfully', leave });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error applying leave', error: error.message });
+    return res.status(500).json({ message: 'Error applying leave', error: error.message });
   }
 };
 
 export const getLeaves = async (req: Request, res: Response) => {
   try {
     const userRole = (req as any).user.role;
+    const employeeId = (req as any).user.id;
     let leaves;
+
     if (['HR', 'Manager', 'Admin'].includes(userRole)) {
-      leaves = await prisma.leave.findMany({
+      leaves = await (prisma.leave as any).findMany({
         include: {
           user: {
             select: { name: true, employeeId: true, department: true }
@@ -64,14 +83,14 @@ export const getLeaves = async (req: Request, res: Response) => {
         orderBy: { createdAt: 'desc' }
       });
     } else {
-      leaves = await prisma.leave.findMany({
-        where: { employeeId: (req as any).user.id },
+      leaves = await (prisma.leave as any).findMany({
+        where: { employeeId },
         orderBy: { createdAt: 'desc' }
       });
     }
-    res.status(200).json(leaves);
+    return res.status(200).json(leaves);
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching leaves', error: error.message });
+    return res.status(500).json({ message: 'Error fetching leaves', error: error.message });
   }
 };
 
@@ -79,9 +98,8 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const reviewerId = (req as any).user.id;
 
-    const leave = await prisma.leave.update({
+    const leave = await (prisma.leave as any).update({
       where: { id: id as string },
       data: { status },
       include: {
@@ -90,7 +108,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
         }
       }
     });
-    
+
     if (!leave) return res.status(404).json({ message: 'Leave not found' });
 
     await prisma.notification.create({
@@ -101,8 +119,8 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       }
     });
 
-    res.status(200).json({ message: `Leave ${status}`, leave });
+    return res.status(200).json({ message: `Leave ${status}`, leave });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error updating leave', error: error.message });
+    return res.status(500).json({ message: 'Error updating leave', error: error.message });
   }
 };
