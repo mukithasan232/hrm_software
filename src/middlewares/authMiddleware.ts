@@ -31,7 +31,8 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
 };
 
 export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (req.user && req.user.role === 'Admin') {
+  const ADMIN_ROLES = ['Admin', 'Superadmin'];
+  if (req.user && ADMIN_ROLES.includes(req.user.role)) {
     next();
   } else {
     res.status(403).json({ message: 'Not authorized as an admin' });

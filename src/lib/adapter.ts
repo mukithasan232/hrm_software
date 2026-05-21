@@ -178,7 +178,8 @@ export function wrapHandler(
           return NextResponse.json({ message: 'Not authorized, token failed' }, { status: 401 });
         }
 
-        if (options.adminOnly && mockReq.user.role !== 'Admin') {
+        const ADMIN_ROLES = ['Admin', 'Superadmin'];
+        if (options.adminOnly && !ADMIN_ROLES.includes(mockReq.user.role)) {
           return NextResponse.json({ message: 'Not authorized as an admin' }, { status: 403 });
         }
 

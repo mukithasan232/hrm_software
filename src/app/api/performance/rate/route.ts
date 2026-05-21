@@ -3,5 +3,5 @@ import { rateEmployee } from '@/controllers/performanceController';
 
 export const POST = wrapHandler(rateEmployee, {
   protect: true,
-  allowedRoles: ['Admin', 'Manager', 'HR']
+  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager']
 });

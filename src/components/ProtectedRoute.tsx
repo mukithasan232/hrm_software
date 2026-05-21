@@ -6,21 +6,22 @@ import { useEffect } from 'react';
 
 // Define which roles can access each route prefix
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
-  '/dashboard/payroll':     ['Admin', 'HR'],
-  '/dashboard/employees':   ['Admin', 'HR', 'Manager'],
-  '/dashboard/performance': ['Admin', 'HR', 'Manager', 'Executive'],
-  '/dashboard/leaves':      ['Admin', 'HR', 'Manager', 'Executive'],
-  '/dashboard/attendance':  ['Admin', 'HR', 'Manager', 'Executive'],
-  '/dashboard/profile':     ['Admin', 'HR', 'Manager', 'Executive'],
-  '/dashboard':             ['Admin', 'HR', 'Manager', 'Executive'],
+  '/dashboard/payroll':     ['Admin', 'Superadmin', 'HRM Manager'],
+  '/dashboard/employees':   ['Admin', 'Superadmin', 'HRM Manager'],
+  '/dashboard/performance': ['Admin', 'Superadmin', 'HRM Manager', 'Stakeholder', 'Employee'],
+  '/dashboard/leaves':      ['Admin', 'Superadmin', 'HRM Manager', 'Employee'],
+  '/dashboard/attendance':  ['Admin', 'Superadmin', 'HRM Manager', 'Employee'],
+  '/dashboard/profile':     ['Admin', 'Superadmin', 'HRM Manager', 'Stakeholder', 'Employee'],
+  '/dashboard':             ['Admin', 'Superadmin', 'HRM Manager', 'Stakeholder', 'Employee'],
 };
 
 // Where each role lands after login
 export const ROLE_HOME: Record<string, string> = {
-  Admin:     '/dashboard',
-  HR:        '/dashboard',
-  Manager:   '/dashboard',
-  Executive: '/dashboard',
+  Admin:         '/dashboard',
+  Superadmin:    '/dashboard',
+  Stakeholder:   '/dashboard',
+  'HRM Manager': '/dashboard',
+  Employee:      '/dashboard',
 };
 
 function getSpinner() {

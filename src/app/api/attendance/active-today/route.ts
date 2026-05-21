@@ -3,5 +3,5 @@ import { getActivePresence } from '@/controllers/attendanceController';
 
 export const GET = wrapHandler(getActivePresence, {
   protect: true,
-  allowedRoles: ['Admin', 'HR', 'Manager']
+  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager', 'Stakeholder', 'Employee']
 });

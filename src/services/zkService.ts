@@ -23,11 +23,11 @@ function classifyError(err: any): string {
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
-function createZK(): InstanceType<typeof ZKLib> {
+function createZK(forceTCP = false): InstanceType<typeof ZKLib> {
   const zk = new ZKLib(ZK_IP, ZK_PORT, ZK_TIMEOUT, ZK_INPORT);
-  zk.password = ZK_PASSWORD; // Using env key (default 0)
-  zk.connectionType = 'udp';  // Switching back to UDP as it is more standard for ZKTeco K60
-
+  zk.password = ZK_PASSWORD;
+  // UDP is the default for attendance logs (faster); TCP is more reliable for user data
+  zk.connectionType = forceTCP ? 'tcp' : 'udp';
   return zk;
 }
 
@@ -168,13 +168,17 @@ export async function healTodaysData(): Promise<void> {
   }
 }
 
-// ─── Connection Helper ────────────────────────────────────────────────────────
+// ─── Connection Helper ─────────────────────────────────────────────────────────────────
 async function connectProperly(zk: any): Promise<void> {
-  // Use appropriate socket creation based on protocol
   if (zk.connectionType === 'udp') {
     await zk.createSocket();
   } else {
-    await zk.zudp.createSocket();
+    // TCP: use the ztcp sub-socket (not zudp)
+    if (zk.ztcp?.createSocket) {
+      await zk.ztcp.createSocket();
+    } else {
+      await zk.createSocket();
+    }
   }
 
   // Give the socket a moment to breathe
@@ -190,12 +194,35 @@ async function connectProperly(zk: any): Promise<void> {
 }
 
 // ─── Helper to fetch raw users directly ───────────────────────────────────────
+// K60 devices often return empty user lists over UDP — retry with TCP if needed.
 async function getDeviceUsersRaw(zk: any): Promise<any[]> {
   try {
     const response = await zk.getUsers();
-    console.log('[ZKService] 🔍 Raw Users Response:', JSON.stringify(response, null, 2));
+    console.log(`[ZKService] 🔍 Raw Users Response (${zk.connectionType.toUpperCase()}):`, JSON.stringify(response, null, 2));
     const { data } = response;
-    return Array.isArray(data) ? data : [];
+    const users = Array.isArray(data) ? data : [];
+
+    // K60 firmware quirk: UDP sometimes returns empty user list even when users exist.
+    // Fall back to a separate TCP connection to fetch users.
+    if (users.length === 0 && zk.connectionType === 'udp') {
+      console.warn('[ZKService] ⚠️ UDP returned 0 users. Retrying with TCP fallback...');
+      const zkTcp = createZK(true); // force TCP
+      try {
+        await connectProperly(zkTcp);
+        const tcpResponse = await zkTcp.getUsers();
+        console.log('[ZKService] 🔍 Raw Users Response (TCP):', JSON.stringify(tcpResponse, null, 2));
+        const tcpData = Array.isArray(tcpResponse?.data) ? tcpResponse.data : [];
+        console.log(`[ZKService] 👥 TCP returned ${tcpData.length} user(s).`);
+        return tcpData;
+      } catch (tcpErr) {
+        console.warn('[ZKService] ⚠️ TCP user fetch also failed:', tcpErr);
+        return [];
+      } finally {
+        try { await zkTcp.disconnect(); } catch (_) {}
+      }
+    }
+
+    return users;
   } catch (err) {
     console.warn('[ZKService] ⚠️ Failed to fetch users from device:', err);
     return [];
@@ -406,20 +433,25 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
 /**
  * Fetch all users stored on the device and sync them to database.
+ * Uses TCP directly as it is more reliable for user data on K60 devices.
  */
 export const getDeviceUsers = async (): Promise<any[]> => {
-  const zk = createZK();
+  // Try TCP first for user fetching — more reliable on K60 firmware
+  const zk = createZK(true);
   try {
     await connectProperly(zk);
     const response = await zk.getUsers();
-    console.log('[ZKService] 🔍 Raw Users Response:', JSON.stringify(response, null, 2));
+    console.log('[ZKService] 🔍 Raw Users Response (TCP):', JSON.stringify(response, null, 2));
     const { data } = response;
-    // zkteco-js returns users as { user_id, name, cardno, role, password, ... }
     const users: any[] = (data ?? []).map((u: any) => ({
       userId: String(u.user_id ?? u.userId ?? u.uid),
       name: u.name,
       role: u.role
     }));
+
+    if (users.length === 0) {
+      console.warn('[ZKService] ⚠️ Device returned 0 users via TCP. The device user list may be empty or firmware returned no data.');
+    }
 
     // Upsert into DB
     const hashedPassword = await bcrypt.hash('password123', 10);
