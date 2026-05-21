@@ -32,7 +32,13 @@ require('ts-node').register({
     /\/\/(.*?)@localhost(:\d+)?\//,
     (_, creds, port) => `//${creds}@127.0.0.1${port || ':3306'}/`
   );
-  const env = { ...process.env, DATABASE_URL: fixedUrl };
+
+  // Pass DB_SOCKET_PATH through to CLI if set (for Hostinger Unix socket mode)
+  const env = {
+    ...process.env,
+    DATABASE_URL: fixedUrl,
+    ...(process.env.DB_SOCKET_PATH ? { DB_SOCKET_PATH: process.env.DB_SOCKET_PATH } : {}),
+  };
 
   try {
     console.log('🔧 [Bootstrap] Running prisma db push...');
@@ -40,7 +46,7 @@ require('ts-node').register({
     console.log('✅ [Bootstrap] Schema synced to live database.');
   } catch (e) {
     console.error('⚠️  [Bootstrap] prisma db push failed — server will continue, but DB may be uninitialized.');
-    console.error('   Check DATABASE_URL and that MariaDB is running on port 3306.');
+    console.error('   → Run: npx ts-node src/scripts/test-connection.ts  to diagnose the connection.');
     return; // Skip seed if schema push failed
   }
 
@@ -56,6 +62,7 @@ require('ts-node').register({
   }
 })();
 // ─────────────────────────────────────────────────────────────────────────────
+
 
 const { createServer } = require('http');
 const { parse } = require('url');
