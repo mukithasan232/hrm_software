@@ -18,3 +18,4 @@ uploads/
 .vercel
 .env*.local
 tsconfig.tsbuildinfo
+.env.live
