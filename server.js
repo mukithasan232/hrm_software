@@ -19,6 +19,44 @@ require('ts-node').register({
   },
 });
 
+// ─── Auto-Bootstrap DB on startup ────────────────────────────────────────────
+// Runs prisma db push + seed every time the server starts.
+// Idempotent — safe to re-run. Ensures live DB is always in sync after deploy.
+// Uses execSync so HTTP server only starts AFTER schema is confirmed ready.
+(function bootstrapDatabase() {
+  const { execSync } = require('child_process');
+
+  // Fix IPv6: replace `localhost` with `127.0.0.1` in DATABASE_URL for CLI commands
+  const rawUrl = process.env.DATABASE_URL || '';
+  const fixedUrl = rawUrl.replace(
+    /\/\/(.*?)@localhost(:\d+)?\//,
+    (_, creds, port) => `//${creds}@127.0.0.1${port || ':3306'}/`
+  );
+  const env = { ...process.env, DATABASE_URL: fixedUrl };
+
+  try {
+    console.log('🔧 [Bootstrap] Running prisma db push...');
+    execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit', env });
+    console.log('✅ [Bootstrap] Schema synced to live database.');
+  } catch (e) {
+    console.error('⚠️  [Bootstrap] prisma db push failed — server will continue, but DB may be uninitialized.');
+    console.error('   Check DATABASE_URL and that MariaDB is running on port 3306.');
+    return; // Skip seed if schema push failed
+  }
+
+  try {
+    console.log('🌱 [Bootstrap] Running seedAdmins...');
+    execSync(
+      `npx ts-node --compiler-options '{"module":"CommonJS","moduleResolution":"node"}' src/scripts/seedAdmins.ts`,
+      { stdio: 'inherit', env }
+    );
+    console.log('✅ [Bootstrap] Seed complete.');
+  } catch (e) {
+    console.error('⚠️  [Bootstrap] Seed failed — accounts may not exist yet. Check logs above.');
+  }
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');

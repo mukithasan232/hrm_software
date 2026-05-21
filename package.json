@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev":           "npx prisma generate && node server.js",
-    "build":         "npm install --no-frozen-lockfile && npx prisma generate && npx prisma db push --accept-data-loss && npx ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' src/scripts/seedAdmins.ts && next build",
+    "build":         "npm install --no-frozen-lockfile && npx prisma generate && (npx prisma db push --accept-data-loss || echo '[build] DB push skipped — will retry on server start') && next build",
     "build:next":    "next build",
     "start":         "NODE_ENV=production node server.js",
     "db:push":       "npx prisma db push --accept-data-loss",
