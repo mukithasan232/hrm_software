@@ -25,12 +25,14 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
     const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
     for (const emp of employees) {
-      if (!emp.employeeId) continue; // Skip orphan users
+      // Schema constraint: Foreign keys like AttendanceLog.employeeId and Leave.employeeId
+      // actually reference User.id (UUID), not User.employeeId string.
+      if (!emp.id) continue;
 
       // 1. Calculate Present Days from biometric logs
       const logs = await prisma.attendanceLog.findMany({
         where: {
-          employeeId: emp.employeeId,
+          employeeId: emp.id, // Targeting employeeId field which references User.id
           timestamp: {
             gte: startOfMonth,
             lte: endOfMonth
@@ -46,55 +48,77 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
       );
       
       const presentDays = uniqueDates.size;
-      const absentDays = totalDaysInMonth - presentDays;
+
+      // 2. Calculate Total Leave Reductions
+      const leaves = await prisma.leave.findMany({
+        where: {
+          employeeId: emp.id, // Targeting employeeId field which references User.id
+          status: 'Approved', // Only count approved leaves
+          startDate: { lte: endOfMonth },
+          endDate: { gte: startOfMonth }
+        }
+      });
+
+      // Safely parse totalDays from Leave table
+      let approvedLeaveDays = 0;
+      for (const leave of leaves) {
+        // We only want to count leave days that fall within the current month
+        const leaveStart = leave.startDate < startOfMonth ? startOfMonth : leave.startDate;
+        const leaveEnd = leave.endDate > endOfMonth ? endOfMonth : leave.endDate;
+        
+        // Calculate days between leaveStart and leaveEnd
+        const diffTime = Math.abs(leaveEnd.getTime() - leaveStart.getTime());
+        const daysInMonth = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        
+        // Fallback to the requested constraint of safely parsing totalDays property 
+        // if exact date overlap is tricky or if the leave is entirely inside this month.
+        const effectiveDays = Math.min(daysInMonth, leave.totalDays || 0);
+        approvedLeaveDays += effectiveDays;
+      }
+
+      // Calculate absent days (Total - Present - Approved Leaves)
+      let absentDays = totalDaysInMonth - presentDays - approvedLeaveDays;
+      if (absentDays < 0) absentDays = 0;
       
       const baseSalary = emp.baseSalary || 0;
 
-      // 2. Calculate Gross Salary: (Base / Total) * Present
+      // 3. Calculate Gross Salary: (Base / Total) * (Present + Approved Leave)
+      const payableDays = presentDays + approvedLeaveDays;
       const grossSalary = totalDaysInMonth > 0 
-        ? Math.round((baseSalary / totalDaysInMonth) * presentDays)
+        ? Math.round((baseSalary / totalDaysInMonth) * payableDays)
         : 0;
 
-      // 3. Manual Upsert (IDE-Safe)
-      // We check for existence first to avoid Prisma's complex upsert unique input types
-      // which sometimes cause IDE cache issues in monorepos.
+      // 4. Manual Upsert strictly mapping schema-approved keys
       const existingPayroll = await prisma.payroll.findFirst({
         where: {
-          employeeId: emp.employeeId,
+          employeeId: emp.id,
           month: Number(month),
           year: Number(year)
         }
       });
 
-      let payroll;
+      const payloadData = {
+        employeeId: emp.id,
+        month: Number(month),
+        year: Number(year),
+        baseSalary,
+        grossSalary,
+        presentDays,
+        absentDays,
+        totalDays: totalDaysInMonth,
+        status: 'Pending'
+      };
+
       if (existingPayroll) {
-        payroll = await prisma.payroll.update({
+        await prisma.payroll.update({
           where: { id: existingPayroll.id },
-          data: {
-            totalDays: totalDaysInMonth,
-            presentDays,
-            absentDays,
-            baseSalary,
-            grossSalary,
-            status: 'Pending'
-          }
+          data: payloadData
         });
       } else {
-        payroll = await prisma.payroll.create({
-          data: {
-            employeeId: emp.employeeId,
-            month: Number(month),
-            year: Number(year),
-            totalDays: totalDaysInMonth,
-            presentDays,
-            absentDays,
-            baseSalary,
-            grossSalary,
-            status: 'Pending'
-          }
+        await prisma.payroll.create({
+          data: payloadData
         });
       }
-
     }
 
     // Fetch and return the fully populated payroll records for this month & year
