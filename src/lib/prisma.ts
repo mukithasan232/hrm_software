@@ -7,9 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 const getPrismaClient = () => {
-  // Pass the raw connection string to preserve all live hosting parameters (e.g. SSL, timeouts, sockets)
   const connectionString = process.env.DATABASE_URL || 'mysql://root:@localhost:3306/hrm_database';
-  
   const adapter = new PrismaMariaDb(connectionString);
   
   return new PrismaClient({
