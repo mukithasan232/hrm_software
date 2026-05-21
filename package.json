@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "npx prisma generate && node server.js",
-    "build": "npx prisma generate && next build",
+    "build": "npm install --no-frozen-lockfile && npx prisma generate && next build",
     "build:next": "next build",
     "start": "NODE_ENV=production node server.js"
   },
@@ -11,10 +11,12 @@
     "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@tailwindcss/postcss": "^4.1.8",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/express": "^5.0.6",
+    "@types/js-cookie": "^3.0.6",
     "axios": "^1.16.1",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
-    "@types/canvas-confetti": "^1.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -42,10 +44,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/canvas-confetti": "^1.9.0",
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/js-cookie": "^3.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
     "@types/node": "^20.19.41",

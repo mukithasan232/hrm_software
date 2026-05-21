@@ -59,6 +59,11 @@ export default function DashboardOverview() {
         setRecentAttendance(prev => [log, ...prev].slice(0, 5));
       });
 
+      socket.on('attendanceUpdate', () => {
+        console.log('🔄 Attendance update received from device socket, refreshing dashboard data...');
+        fetchDashboardData();
+      });
+
       return () => { socket.disconnect(); };
     }
   }, [user]);
@@ -212,23 +217,31 @@ export default function DashboardOverview() {
               </div>
             ) : (
               recentAttendance.map((log, i) => (
-                <div key={log.id || i} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 animate-in slide-in-from-right-4 duration-300">
-                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-lg font-bold ${
-                    log.punchType === 'CheckIn' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-orange-500/20 text-orange-600 dark:text-orange-400'
-                  }`}>
-                    {log.employeeId}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-slate-800 dark:text-white font-bold truncate text-sm">{log.employeeName || `User ${log.employeeId}`}</p>
-                    <p className="text-slate-400 dark:text-gray-500 text-xs flex items-center gap-1 mt-0.5 font-medium">
+                <div key={log.id || i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10 animate-in slide-in-from-right-4 duration-300">
+                  {/* Text Grouping Container */}
+                  <div className="flex flex-col gap-1 min-w-0 max-w-[75%]">
+                    {/* Muted Small ID */}
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500 font-mono truncate block">
+                      {log.employeeId}
+                    </span>
+                    {/* Employee Name */}
+                    <span className="font-semibold text-sm text-slate-800 dark:text-white truncate block">
+                      {log.employeeName || "Unknown Employee"}
+                    </span>
+                    {/* Check-in Timestamp */}
+                    <span className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    </span>
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
-                    log.punchType === 'CheckIn' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : 'bg-orange-500/10 text-orange-600 dark:text-orange-500'
+
+                  {/* Status Badge */}
+                  <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${
+                    log.punchType === 'CheckIn' 
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                      : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
                   }`}>
                     {log.punchType === 'CheckIn' ? 'IN' : 'OUT'}
-                  </span>
+                  </div>
                 </div>
               ))
             )}

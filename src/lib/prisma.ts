@@ -41,15 +41,15 @@ try {
   };
 }
 
-const adapter = new PrismaMariaDb(poolConfig);
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+const getPrismaClient = () => {
+  const adapter = new PrismaMariaDb(poolConfig);
+  return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
+};
 
-// Cache the instance in dev to avoid multiple instances during hot-reload
+export const prisma = globalForPrisma.prisma ?? getPrismaClient();
+
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 

@@ -4,7 +4,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import { prisma } from '../lib/prisma';
 import { toggleEmployeeStatus } from '../controllers/userController';
-import { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express-serve-static-core';
 
 async function testToggle() {
   console.log('--- Testing Employee Status Toggle Controller ---');

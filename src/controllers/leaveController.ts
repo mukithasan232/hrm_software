@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express-serve-static-core';
 import { prisma } from '../lib/prisma';
 
 // 💡 Multer-এর জন্য এক্সপ্রেস Request টাইপকে সম্পূর্ণ টাইপসেফ করা হলো

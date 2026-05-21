@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express-serve-static-core';
 import { prisma } from '../lib/prisma';
 
 export const getPerformanceStats = async (req: Request, res: Response) => {

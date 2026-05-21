@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import ZKLib from 'zkteco-js';
 import { prisma } from '../lib/prisma';
 import { fetchDeviceLogs, getPunchType, resolvePunchType } from './zkService';
+import bcrypt from 'bcryptjs';
 
 const ZK_IP = process.env.ZK_DEVICE_IP || '192.168.10.185';
 const ZK_PORT = parseInt(process.env.ZK_DEVICE_PORT || '4370');
@@ -23,6 +24,7 @@ let deviceMutex = Promise.resolve();
 
 export const initRealtimeAttendance = async (socketIo: Server) => {
   io = socketIo;
+  (global as any).io = socketIo;
   console.log('[RealtimeService] Initializing...');
   
   const initializeWithRetry = async (retryCount = 0) => {
@@ -137,28 +139,56 @@ const connectAndListen = async () => {
         console.log('[RealtimeService] 🕒 New Punch Received:', data);
         
         try {
-          const employeeId = String(data.userId);
-          const timestamp = data.attTime ? new Date(data.attTime) : new Date();
+          const deviceEmpId = String(data.userId);
+          const timestamp = data.attTime ? data.attTime : new Date();
+          const parsedTimestamp = timestamp instanceof Date ? timestamp : new Date(timestamp);
+
+          if (isNaN(parsedTimestamp.getTime())) {
+            console.error('[RealtimeService] ❌ Invalid timestamp in real-time punch:', timestamp);
+            return;
+          }
+
+          let user = await prisma.user.findUnique({
+            where: { employeeId: deviceEmpId }
+          });
+
+          if (!user) {
+            // Auto-create/upsert the user to prevent foreign key errors
+            const name = `User ${deviceEmpId}`;
+            const normalizedEmail = `user${deviceEmpId}-${Date.now()}@hrm.test`;
+            const hashedPassword = await bcrypt.hash('password123', 10);
+            user = await prisma.user.create({
+              data: {
+                employeeId: deviceEmpId,
+                name,
+                email: normalizedEmail,
+                password: hashedPassword,
+                role: 'Employee',
+                baseSalary: 0,
+                isActive: true
+              }
+            });
+          }
+
+          const employeeId = user.id; // DB UUID
+          const employeeName = user.name;
           const stateValue = data.state !== undefined && data.state !== null ? data.state : (data.type !== undefined && data.type !== null ? data.type : -1);
           
-          const punchType = await resolvePunchType(employeeId, timestamp, stateValue);
+          const punchType = await resolvePunchType(employeeId, parsedTimestamp, stateValue);
           
-          const user = await prisma.user.findUnique({
-            where: { employeeId }
-          });
-          const employeeName = user?.name || 'N/A';
-
           const newLog = await prisma.attendanceLog.upsert({
             where: {
               employeeId_timestamp: {
                 employeeId,
-                timestamp,
+                timestamp: parsedTimestamp,
               },
             },
-            update: {},
+            update: {
+              punchType: punchType as any
+            },
             create: {
               employeeId,
-              timestamp,
+              timestamp: parsedTimestamp,
               punchType: punchType as any,
               deviceId: ZK_IP,
             }
@@ -170,6 +200,7 @@ const connectAndListen = async () => {
                 ...newLog,
                 employeeName,
               });
+              io.emit('attendanceUpdate', { checkIn: true });
               console.log(`[RealtimeService] 📡 Emitted to frontend: ${employeeName} [${punchType}]`);
             });
           }

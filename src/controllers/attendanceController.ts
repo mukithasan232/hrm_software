@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express-serve-static-core';
 import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs } from '../services/zkService';
 import { runWithDeviceLock } from '../services/realtimeService';
 import { prisma } from '../lib/prisma';
@@ -66,39 +66,9 @@ export const getDeviceStatus = async (req: Request, res: Response) => {
 // @access  Admin
 export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
   try {
-    const deviceUsers = await runWithDeviceLock(() => getDeviceUsers());
-    let synced = 0;
-    
-    // Hash a default password
-    const hashedPassword = await bcrypt.hash('password123', 10);
-
-    for (const dUser of deviceUsers) {
-      const employeeId = String(dUser.userId);
-      const name = dUser.name || `User ${employeeId}`;
-      const normalizedEmail = name.toLowerCase().replace(/\s+/g, '') + '@hrm.test';
-      
-      // Map ZKTeco Admin role (typically 14) to Admin, others to Employee
-      const finalRole = dUser.role === 14 ? 'Admin' : 'Employee';
-
-      await prisma.user.upsert({
-        where: { employeeId },
-        update: { 
-          name
-        },
-        create: {
-          employeeId,
-          name,
-          email: normalizedEmail,
-          password: hashedPassword,
-          role: finalRole as any,
-          baseSalary: 0,
-          isActive: true
-        }
-      });
-      synced++;
-    }
-
-    res.status(200).json({ message: 'Users synced successfully', count: synced });
+    console.log('[syncDeviceUsersToDB] Starting manual sync of users and logs...');
+    await runWithDeviceLock(() => getDeviceAttendance());
+    res.status(200).json({ success: true, message: "Users and logs synced successfully to MariaDB" });
   } catch (error: any) {
     res.status(503).json({ message: 'Failed to sync users (biometric device offline or unreachable)', error: error.message });
   }

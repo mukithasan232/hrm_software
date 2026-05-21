@@ -1,6 +1,7 @@
 // @ts-ignore
 import ZKLib from 'zkteco-js';
 import { prisma } from '../lib/prisma';
+import bcrypt from 'bcryptjs';
 
 // ─── Device Configuration ──────────────────────────────────────────────────────
 const ZK_IP = process.env.ZK_DEVICE_IP || '192.168.10.185';
@@ -188,6 +189,19 @@ async function connectProperly(zk: any): Promise<void> {
   });
 }
 
+// ─── Helper to fetch raw users directly ───────────────────────────────────────
+async function getDeviceUsersRaw(zk: any): Promise<any[]> {
+  try {
+    const response = await zk.getUsers();
+    console.log('[ZKService] 🔍 Raw Users Response:', JSON.stringify(response, null, 2));
+    const { data } = response;
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[ZKService] ⚠️ Failed to fetch users from device:', err);
+    return [];
+  }
+}
+
 /**
  * Robust wrapper for fetching attendance with retry logic
  */
@@ -229,6 +243,40 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     await connectProperly(zk);
     console.log(`[ZKService] ✅ Connected to ${ZK_IP}:${ZK_PORT} (${zk.connectionType})`);
 
+    // 1. Fetch Users first and Upsert them into MariaDB
+    console.log('[ZKService] 👥 Syncing users from device to database...');
+    const rawUsers = await getDeviceUsersRaw(zk);
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    const userIdMap = new Map<string, string>(); // maps device employeeId -> User.id (UUID)
+
+    for (const u of rawUsers) {
+      const employeeId = String(u.user_id ?? u.userId ?? u.uid);
+      const name = u.name || `User ${employeeId}`;
+      const normalizedEmail = `user${employeeId}@hrm.test`;
+      const finalRole = u.role === 14 ? 'Admin' : 'Employee';
+
+      const dbUser = await prisma.user.upsert({
+        where: { employeeId },
+        update: { name },
+        create: {
+          employeeId,
+          name,
+          email: normalizedEmail,
+          password: hashedPassword,
+          role: finalRole as any,
+          baseSalary: 0,
+          isActive: true
+        }
+      });
+      userIdMap.set(employeeId, dbUser.id);
+    }
+
+    // Load any other existing users in database into the userIdMap
+    const dbUsers = await prisma.user.findMany({});
+    for (const user of dbUsers) {
+      userIdMap.set(user.employeeId, user.id);
+    }
+
     const rawLogs = await getAttendanceAsync(zk);
 
     // Clear today's logs for fresh start before sync
@@ -252,6 +300,11 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     });
 
     if (rawLogs.length === 0) {
+      // Emit socket event to frontend via global.io
+      const io = (global as any).io;
+      if (io) {
+        io.emit('attendanceUpdate', { checkIn: true });
+      }
       return { synced: 0, skipped: 0, total: 0 };
     }
     console.log(`[ZKService] 📋 ${rawLogs.length} raw record(s) from device.`);
@@ -270,12 +323,33 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
       for (const log of chunk) {
         try {
-          const employeeId = String(log.user_id ?? log.userId ?? log.uid);
+          const deviceEmpId = String(log.user_id ?? log.userId ?? log.uid);
           const timestamp = new Date(log.record_time);
 
           if (isNaN(timestamp.getTime())) {
             skipped++;
             continue;
+          }
+
+          // Map deviceEmpId (e.g. "5") to the actual DB User's UUID
+          let employeeId = userIdMap.get(deviceEmpId);
+          if (!employeeId) {
+            // Auto-create user if they are not in the DB to prevent foreign key errors
+            const name = `User ${deviceEmpId}`;
+            const normalizedEmail = `user${deviceEmpId}-${Date.now()}@hrm.test`;
+            const dbUser = await prisma.user.create({
+              data: {
+                employeeId: deviceEmpId,
+                name,
+                email: normalizedEmail,
+                password: hashedPassword,
+                role: 'Employee',
+                baseSalary: 0,
+                isActive: true
+              }
+            });
+            userIdMap.set(deviceEmpId, dbUser.id);
+            employeeId = dbUser.id;
           }
 
           const stateValue = log.state !== undefined && log.state !== null ? log.state : (log.type !== undefined && log.type !== null ? log.type : -1);
@@ -299,7 +373,8 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
             },
           });
           synced++;
-        } catch (err) {
+        } catch (err: any) {
+          console.error(`[ZKService] ❌ Failed to save log inside loop:`, err.message);
           skipped++;
         }
       }
@@ -312,6 +387,13 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     // Automatically self-heal today's attendance logs to guarantee earliest = CheckIn, latest = CheckOut
     await healTodaysData();
 
+    // Emit socket event to frontend via global.io
+    const io = (global as any).io;
+    if (io) {
+      io.emit('attendanceUpdate', { checkIn: true });
+      console.log('[ZKService] 📡 Emitted attendanceUpdate to frontend.');
+    }
+
     return { synced, skipped, total: rawLogs.length };
   } catch (err: any) {
     const reason = classifyError(err);
@@ -323,7 +405,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 };
 
 /**
- * Fetch all users stored on the device.
+ * Fetch all users stored on the device and sync them to database.
  */
 export const getDeviceUsers = async (): Promise<any[]> => {
   const zk = createZK();
@@ -338,7 +420,31 @@ export const getDeviceUsers = async (): Promise<any[]> => {
       name: u.name,
       role: u.role
     }));
-    console.log(`[ZKService] 👥 ${users.length} user(s) on device.`);
+
+    // Upsert into DB
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    for (const dUser of users) {
+      const employeeId = dUser.userId;
+      const name = dUser.name || `User ${employeeId}`;
+      const normalizedEmail = `user${employeeId}@hrm.test`;
+      const finalRole = dUser.role === 14 ? 'Admin' : 'Employee';
+
+      await prisma.user.upsert({
+        where: { employeeId },
+        update: { name },
+        create: {
+          employeeId,
+          name,
+          email: normalizedEmail,
+          password: hashedPassword,
+          role: finalRole as any,
+          baseSalary: 0,
+          isActive: true
+        }
+      });
+    }
+
+    console.log(`[ZKService] 👥 ${users.length} user(s) synced and saved to MariaDB.`);
     return users;
   } catch (err: any) {
     throw new Error(classifyError(err));
