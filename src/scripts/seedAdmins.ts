@@ -16,11 +16,20 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
  * Does NOT call process.exit(0) so it can be chained in build scripts.
  */
 
+// ─── Credentials from environment (override in Hostinger hPanel env vars) ────
+// Set these in your hosting panel to customise without changing code:
+//   SUPERADMIN_EMAIL    SUPERADMIN_PASSWORD
+//   ADMIN_EMAIL         ADMIN_PASSWORD
+const SUPERADMIN_EMAIL    = process.env.SUPERADMIN_EMAIL    || 'superadmin@hrm.test';
+const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || 'SuperAdminPassword123';
+const ADMIN_EMAIL         = process.env.ADMIN_EMAIL         || 'admin@fixanyphoto.com';
+const ADMIN_PASSWORD      = process.env.ADMIN_PASSWORD      || 'AdminPassword123';
+
 const SEED_USERS = [
   {
     name:        'Super Admin',
-    email:       'superadmin@hrm.test',
-    password:    'SuperAdminPassword123',
+    email:       SUPERADMIN_EMAIL,
+    password:    SUPERADMIN_PASSWORD,
     role:        'Superadmin',
     employeeId:  'SA-001',
     department:  'Management',
@@ -30,8 +39,8 @@ const SEED_USERS = [
   },
   {
     name:        'Admin',
-    email:       'admin@hrm.test',
-    password:    'AdminPassword123',
+    email:       ADMIN_EMAIL,
+    password:    ADMIN_PASSWORD,
     role:        'Admin',
     employeeId:  'ADM-001',
     department:  'Management',
