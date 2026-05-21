@@ -2,10 +2,14 @@
   "name": "fap-hrm-monolith",
   "private": true,
   "scripts": {
-    "dev": "npx prisma generate && node server.js",
-    "build": "npm install --no-frozen-lockfile && npx prisma generate && next build",
-    "build:next": "next build",
-    "start": "NODE_ENV=production node server.js"
+    "dev":           "npx prisma generate && node server.js",
+    "build":         "npm install --no-frozen-lockfile && npx prisma generate && npx prisma db push --accept-data-loss && npx ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' src/scripts/seedAdmins.ts && next build",
+    "build:next":    "next build",
+    "start":         "NODE_ENV=production node server.js",
+    "db:push":       "npx prisma db push --accept-data-loss",
+    "db:seed":       "npx ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' src/scripts/seedAdmins.ts",
+    "db:bootstrap":  "npx prisma generate && npm run db:push && npm run db:seed",
+    "db:studio":     "npx prisma studio"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.8.0",

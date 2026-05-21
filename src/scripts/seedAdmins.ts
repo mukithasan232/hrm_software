@@ -3,7 +3,8 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 
-// Load .env from project root
+// Load env — respects DATABASE_URL already set in the environment (production)
+// Falls back to .env file for local runs.
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /**
@@ -11,9 +12,8 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
  *
  * Supported roles: Admin | Superadmin | Stakeholder | HRM Manager | Employee
  *
- * Run with:
- *   npx ts-node --esm -e commonjs src/scripts/seedAdmins.ts
- *   — or via package.json script: npm run seed:admins
+ * Idempotent — uses upsert. Safe to run on every deployment.
+ * Does NOT call process.exit(0) so it can be chained in build scripts.
  */
 
 const SEED_USERS = [
@@ -84,10 +84,15 @@ async function seedAdmins() {
     if (err.code === 'P2002') {
       console.error('   → Unique constraint violation. Check employeeId or email duplicates.');
     }
+    if (err.code === 'P1001' || err.code === 'P1003') {
+      console.error('   → Cannot reach DB. Check DATABASE_URL and that the DB server is running.');
+    }
+    // Exit with error so the build pipeline fails visibly
     process.exit(1);
   } finally {
+    // Disconnect cleanly — do NOT call process.exit(0) here.
+    // Calling exit(0) would kill the parent build process before next build runs.
     await prisma.$disconnect();
-    process.exit(0);
   }
 }
 
