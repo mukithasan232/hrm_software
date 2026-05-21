@@ -7,16 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 const getPrismaClient = () => {
-  let connectionString = process.env.DATABASE_URL || 'mysql://root:@localhost:3306/hrm_database';
-  
-  // Fix Node.js IPv6 localhost resolution bug on Hostinger/LiteSpeed
-  connectionString = connectionString.replace('@localhost', '@127.0.0.1');
-
-  // Force 30s connect timeout and disable connection limits to prevent 10000ms driver pool exhaustion
-  if (!connectionString.includes('connectTimeout')) {
-    connectionString += (connectionString.includes('?') ? '&' : '?') + 'connectTimeout=30000';
-  }
-
+  const connectionString = process.env.DATABASE_URL || 'mysql://root:@localhost:3306/hrm_database';
   const adapter = new PrismaMariaDb(connectionString);
 
   return new PrismaClient({
