@@ -21,92 +21,50 @@ require('ts-node').register({
 
 // ─── Auto-Bootstrap DB on startup ────────────────────────────────────────────
 // Zero-configuration deployment pipeline:
-//   1. Imports prisma.ts which immediately starts probing all socket/TCP candidates.
-//   2. Awaits dbReady — the probe resolves with the first working config.
-//   3. Builds a reliable DATABASE_URL from the winning config and runs:
-//        prisma db push  → creates/migrates all tables
-//        seedAdmins.ts   → upserts default admin accounts
-//   4. HTTP server starts only AFTER schema + seed are confirmed.
-// No manual env vars or Hostinger panel changes are required.
+//   1. Requires prisma.ts which synchronously detects the best socket/TCP URL
+//      and sets process.env.DATABASE_URL before anything else runs.
+//   2. prisma db push uses that URL → tables created/synced.
+//   3. seedAdmins.ts child process inherits the same DATABASE_URL → seed runs.
+//   4. HTTP server starts only AFTER both steps complete successfully.
+// No manual env vars or Hostinger panel changes required.
 async function bootstrapDatabase() {
   const { execSync } = require('child_process');
 
-  // Trigger the connection probe (prisma.ts starts it at import time)
-  const { dbReady } = require('./src/lib/prisma');
-  console.log('[Bootstrap] 🔬 Waiting for DB connection probe...');
-  await dbReady;
+  // Import prisma.ts — this synchronously calls buildRuntimeUrl() which probes
+  // socket paths via fs.existsSync and sets process.env.DATABASE_URL to the
+  // best available connection string (socket or TCP).
+  require('./src/lib/prisma');
+  console.log(`[Bootstrap] 🔌 DATABASE_URL resolved to: ${(process.env.DATABASE_URL || '').replace(/:([^@]+)@/, ':****@')}`);
 
-  // Read the winning config that the prober stored on globalThis
-  const probed = global.prismaConfig || null;
+  // All child processes inherit process.env, so they automatically use the
+  // socket-aware DATABASE_URL set above — no extra env injection needed.
+  const env = { ...process.env };
 
-  // ── Build a reliable DATABASE_URL for CLI commands ────────────────────────
-  const rawUrl   = process.env.DATABASE_URL || '';
-  let resolvedUrl = rawUrl;
-
-  if (probed) {
-    if (probed.socketPath) {
-      // Socket winner: inject ?socket= so Prisma CLI uses it
-      try {
-        const u = new URL(rawUrl || 'mysql://localhost/hrm_database');
-        u.hostname = u.hostname || 'localhost';
-        u.searchParams.set('socket', probed.socketPath);
-        resolvedUrl = u.toString();
-        console.log(`[Bootstrap] 🔌 CLI will use Unix socket: ${probed.socketPath}`);
-      } catch {
-        resolvedUrl = rawUrl;
-      }
-    } else {
-      // TCP winner: rebuild URL with the working host
-      try {
-        const u = new URL(rawUrl || 'mysql://localhost/hrm_database');
-        u.hostname = probed.host || u.hostname;
-        u.port     = String(probed.port || 3306);
-        u.searchParams.delete('socket');
-        resolvedUrl = u.toString();
-        console.log(`[Bootstrap] 🔌 CLI will use TCP: ${probed.host}:${probed.port}`);
-      } catch {
-        resolvedUrl = rawUrl;
-      }
-    }
-  } else {
-    // No probe winner — apply IPv4 fix and hope for the best
-    resolvedUrl = rawUrl.replace(
-      /\/\/(.*?)@localhost(:\d+)?\//,
-      (_, creds, port) => `//${creds}@127.0.0.1${port || ':3306'}/`
-    );
-    console.warn('[Bootstrap] ⚠️  No working DB config found by probe. Falling back to DATABASE_URL as-is.');
-  }
-
-  const env = {
-    ...process.env,
-    DATABASE_URL: resolvedUrl,
-    ...(probed?.socketPath ? { DB_SOCKET_PATH: probed.socketPath } : {}),
-  };
-
-  // ── Sync schema ───────────────────────────────────────────────────────────
+  // ── Step 1: Sync schema (sequential, blocking) ────────────────────────────
   try {
     console.log('🔧 [Bootstrap] Running prisma db push...');
     execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit', env });
-    console.log('✅ [Bootstrap] Schema synced to live database.');
+    console.log('✅ [Bootstrap] Schema synced.');
   } catch {
-    console.error('⚠️  [Bootstrap] prisma db push failed — server will continue, but DB may be uninitialized.');
-    console.error('   Run:  npx ts-node src/scripts/test-connection.ts  on the server terminal to diagnose.');
-    return; // Skip seed if schema push failed
+    console.error('⚠️  [Bootstrap] prisma db push failed.');
+    console.error('   Run: npx ts-node src/scripts/test-connection.ts on the server to diagnose.');
+    return; // skip seed — DB is uninitialized
   }
 
-  // ── Seed default admin accounts ───────────────────────────────────────────
+  // ── Step 2: Seed admin accounts (sequential, blocking, isolated process) ──
   try {
     console.log('🌱 [Bootstrap] Running seedAdmins...');
     execSync(
       `npx ts-node --compiler-options '{"module":"CommonJS","moduleResolution":"node"}' src/scripts/seedAdmins.ts`,
       { stdio: 'inherit', env }
     );
-    console.log('✅ [Bootstrap] Seed complete.');
+    console.log('✅ [Bootstrap] Seed complete. Default accounts ready.');
   } catch {
-    console.error('⚠️  [Bootstrap] Seed failed — accounts may not exist yet. Check logs above.');
+    console.error('⚠️  [Bootstrap] Seed failed — accounts may not exist yet.');
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
+
 
 
 const { createServer } = require('http');
