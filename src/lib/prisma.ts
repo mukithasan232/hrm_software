@@ -1,27 +1,21 @@
 // ⚠️  DO NOT add top-level imports of 'fs' or 'os' here.
 // Turbopack evaluates this file during build. Native-module work is deferred
-// to runtime-only functions below.
+// to runtime-only functions guarded by NEXT_PHASE / window checks.
 
 import { PrismaClient } from '@prisma/client';
 
 // ─── NOTE: @prisma/adapter-mariadb is NOT used ────────────────────────────────
-// schema.prisma has no `driverAdapters` preview feature and no datasource url,
-// so Prisma's own native engine handles the MySQL connection perfectly.
-// The adapter was introduced to support Unix sockets but caused pool hangs on
-// Hostinger's restricted containers. The native engine supports socket URLs
-// natively via `?socket=<path>` in DATABASE_URL.
+// schema.prisma has no `driverAdapters` preview feature, so Prisma's own
+// native Rust engine handles all MySQL connectivity.
+// The adapter was removed because its internal mariadb Node.js pool exhausts
+// Hostinger container file-descriptor limits under concurrent initialization.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const globalForPrisma = globalThis as unknown as {
-  prisma:       PrismaClient | undefined;
-  prismaConfig: Record<string, any> | undefined;
+  prisma: PrismaClient | undefined;
 };
 
-// ─── Lazy runtime-only helpers ────────────────────────────────────────────────
-function getFs() { return require('fs') as typeof import('fs'); }
-function getOs() { return require('os') as typeof import('os'); }
-
-// ─── Credentials from DATABASE_URL ───────────────────────────────────────────
+// ─── Credentials parser ───────────────────────────────────────────────────────
 function parseCredentials() {
   const rawUrl = process.env.DATABASE_URL || '';
   let user     = 'root';
@@ -36,95 +30,66 @@ function parseCredentials() {
       user     = decodeURIComponent(u.username) || user;
       password = decodeURIComponent(u.password) || password;
       database = u.pathname.slice(1)             || database;
-      host     = u.hostname                      || host;
+      // Always use 127.0.0.1 — `localhost` can resolve to ::1 (IPv6) on Linux
+      // which MariaDB typically doesn't listen on.
+      host     = (u.hostname === 'localhost' ? '127.0.0.1' : u.hostname) || host;
       port     = Number(u.port)                  || port;
     } catch {
-      console.error('[Prisma] ❌ Could not parse DATABASE_URL.');
+      console.error('[Prisma] ❌ Could not parse DATABASE_URL — using fallback credentials.');
     }
   }
-  if (host === 'localhost') host = '127.0.0.1';
+
   return { user, password, database, host, port };
 }
 
-// ─── Build a working DATABASE_URL for Prisma's native engine ─────────────────
-// Priority:
-//  1. DB_SOCKET_PATH env var (manual override)
-//  2. ?socket= already in DATABASE_URL
-//  3. Auto-probe known socket filesystem paths
-//  4. TCP with localhost→127.0.0.1 fix
+// ─── Runtime DATABASE_URL builder ────────────────────────────────────────────
+// Strategy: always use standard TCP (127.0.0.1:3306) with Prisma's native
+// connection URL parameters. This avoids Unix socket file-descriptor exhaustion
+// on Hostinger containers where multiple concurrent initializations (cron jobs,
+// realtime service, Prisma runtime) all compete for the same FD slots.
 //
-// The native engine accepts:
-//   mysql://user:pass@localhost/db?socket=/tmp/mysql.sock
+// Prisma's native Rust engine handles TCP pooling correctly under concurrency
+// where the Node.js mariadb driver + adapter previously stalled.
+//
+// URL parameters (Prisma native engine syntax):
+//   connection_limit  — max pool size (keep low on shared VPS)
+//   pool_timeout      — seconds to wait before "pool timeout" error
+//   connect_timeout   — seconds for the TCP handshake
 // ─────────────────────────────────────────────────────────────────────────────
-
-const SOCKET_PATHS = [
-  '/var/run/mysqld/mysqld.sock',
-  '/run/mysqld/mysqld.sock',
-  '/var/lib/mysql/mysql.sock',
-  '/tmp/mysql.sock',
-  '/tmp/mysqld.sock',
-  '/opt/alt/mysql80/var/lib/mysql/mysql.sock',
-  '/opt/alt/mysql57/var/lib/mysql/mysql.sock',
-];
-
 function buildRuntimeUrl(): string {
-  const rawUrl = process.env.DATABASE_URL || '';
   const { user, password, database, host, port } = parseCredentials();
 
-  // 1. Explicit env override
-  const envSocket = process.env.DB_SOCKET_PATH || '';
-  if (envSocket) {
-    console.log(`[Prisma] 🔌 Using socket from DB_SOCKET_PATH: ${envSocket}`);
-    return buildSocketUrl(user, password, database, envSocket);
-  }
-
-  // 2. ?socket= already in DATABASE_URL
-  try {
-    const existingSocket = new URL(rawUrl).searchParams.get('socket') || '';
-    if (existingSocket) {
-      console.log(`[Prisma] 🔌 Using socket from DATABASE_URL param: ${existingSocket}`);
-      return buildSocketUrl(user, password, database, existingSocket);
-    }
-  } catch { /* ignore */ }
-
-  // 3. Auto-probe filesystem socket paths
-  const fs = getFs();
-  for (const p of SOCKET_PATHS) {
-    try {
-      if (fs.existsSync(p)) {
-        console.log(`[Prisma] 🔍 Auto-detected socket: ${p}`);
-        return buildSocketUrl(user, password, database, p);
-      }
-    } catch { /* ignore */ }
-  }
-
-  // 4. TCP fallback — force localhost → 127.0.0.1 (IPv4)
-  console.log(`[Prisma] 🔌 No socket found. Using TCP: ${host}:${port}`);
-  const encodedPass = encodeURIComponent(password);
-  const encodedUser = encodeURIComponent(user);
-  return `mysql://${encodedUser}:${encodedPass}@${host}:${port}/${database}`;
-}
-
-function buildSocketUrl(user: string, password: string, database: string, socketPath: string): string {
-  // Prisma native engine socket URL format:
-  // mysql://user:pass@localhost/db?socket=/path/to/mysql.sock
   const encodedUser = encodeURIComponent(user);
   const encodedPass = encodeURIComponent(password);
-  return `mysql://${encodedUser}:${encodedPass}@localhost/${database}?socket=${encodeURIComponent(socketPath)}`;
+
+  const url = [
+    `mysql://${encodedUser}:${encodedPass}@${host}:${port}/${database}`,
+    `connection_limit=2`,   // max 2 pooled connections — safe for shared VPS
+    `pool_timeout=30`,      // wait up to 30 s for a free connection
+    `connect_timeout=30`,   // TCP connect timeout in seconds
+  ].join('?') .replace('?', '?').replace(/\?(.+)/, (_, q) => '?' + q.replace(/\?/g, '&'));
+
+  // Simpler construction:
+  return (
+    `mysql://${encodedUser}:${encodedPass}@${host}:${port}/${database}` +
+    `?connection_limit=2&pool_timeout=30&connect_timeout=30`
+  );
 }
 
 // ─── Prisma Client Factory ────────────────────────────────────────────────────
-// Sets process.env.DATABASE_URL to the resolved URL so Prisma's native engine
-// picks it up. This is the standard pattern for runtime URL overrides.
 function createPrismaClient(): PrismaClient {
   const isBuildPhase  = process.env.NEXT_PHASE === 'phase-production-build';
   const isBrowserSide = typeof window !== 'undefined';
 
-  // Don't probe or override DATABASE_URL during build or in browser
   if (!isBuildPhase && !isBrowserSide) {
+    // Override DATABASE_URL at runtime so the native engine uses our tuned URL.
+    // process.env is shared across the whole Node.js process including child
+    // processes spawned by server.js (seed script, etc.).
     const runtimeUrl = buildRuntimeUrl();
     process.env.DATABASE_URL = runtimeUrl;
-    console.log('[Prisma] ✅ DATABASE_URL set for native engine runtime.');
+    console.log(
+      `[Prisma] ✅ DATABASE_URL → ${runtimeUrl.replace(/:([^@]+)@/, ':****@')}`
+    );
   }
 
   return new PrismaClient({
@@ -134,11 +99,10 @@ function createPrismaClient(): PrismaClient {
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
 // Persisted on globalThis in ALL environments — prevents per-request
-// re-initialization in Next.js production workers.
+// re-initialization in Next.js production workers which would create a new
+// pool on every API request → "pool timeout active=0 idle=0".
 export const prisma: PrismaClient = globalForPrisma.prisma ?? createPrismaClient();
 globalForPrisma.prisma = prisma;
 
-// ─── dbReady ─────────────────────────────────────────────────────────────────
-// No async probe needed — buildRuntimeUrl() is synchronous (just fs.existsSync).
-// Exported so server.js interface stays compatible.
+// Exported for server.js compatibility (no async probe needed with TCP)
 export const dbReady: Promise<void> = Promise.resolve();
