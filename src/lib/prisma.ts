@@ -95,6 +95,7 @@ async function probeWorkingConfig(
     let conn: mariadb.PoolConnection | null = null;
     try {
       pool = mariadbPool.createPool({ ...config, connectionLimit: 1, connectTimeout: 3_000 });
+      if (!pool) throw new Error('Pool not initialized');
       conn = await pool.getConnection();
       await conn.query('SELECT 1');
       console.log(`[Prisma] ✅ Working connection: ${_label}`);
