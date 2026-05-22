@@ -289,7 +289,7 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="Wages_Sheet_${startStr.replace(/\\//g, '-')}_to_${endStr.replace(/\\//g, '-')}.xlsx"`,
+        'Content-Disposition': `attachment; filename="Wages_Sheet_${startStr.replace(/\//g, '-')}_to_${endStr.replace(/\//g, '-')}.xlsx"`,
       },
     });
   } catch (error) {

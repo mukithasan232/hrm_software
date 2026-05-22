@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
@@ -6,34 +7,63 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// ─── Pool config builder ──────────────────────────────────────────────────────
+// ─── Unix Socket Auto-Detection ───────────────────────────────────────────────
+// Probe common Linux socket locations in priority order.
+// This runs at module load time so every process finds the socket automatically
+// without any manual env-var injection or Hostinger panel changes.
+const KNOWN_SOCKET_PATHS = [
+  '/var/run/mysqld/mysqld.sock',       // Ubuntu / Debian default
+  '/run/mysqld/mysqld.sock',           // systemd-managed (same as above, alt path)
+  '/var/lib/mysql/mysql.sock',         // cPanel / CentOS stacks
+  '/tmp/mysql.sock',                   // Older systems & some cPanel setups
+  '/opt/alt/mysql80/var/lib/mysql/mysql.sock', // CloudLinux / LiteSpeed VPS
+];
+
+function detectUnixSocket(): string {
+  // 1. Explicit env override always wins (manual escape hatch)
+  if (process.env.DB_SOCKET_PATH) return process.env.DB_SOCKET_PATH;
+
+  // 2. ?socket= query param embedded in DATABASE_URL
+  const rawUrl = process.env.DATABASE_URL || '';
+  if (rawUrl) {
+    try {
+      const urlSocket = new URL(rawUrl).searchParams.get('socket') || '';
+      if (urlSocket) return urlSocket;
+    } catch { /* ignore parse errors */ }
+  }
+
+  // 3. Auto-probe known filesystem locations
+  for (const p of KNOWN_SOCKET_PATHS) {
+    if (fs.existsSync(p)) {
+      console.log(`[Prisma] 🔍 Auto-detected Unix socket: ${p}`);
+      return p;
+    }
+  }
+
+  return ''; // No socket found → fall through to TCP
+}
+
+// ─── Pool Config Builder ──────────────────────────────────────────────────────
 //
 // Resolution priority (highest → lowest):
+//  1. Auto-detected Unix socket  → fastest, bypasses all TCP firewall issues
+//  2. TCP via DATABASE_URL host  → localhost forced to 127.0.0.1 (IPv4)
+//  3. Hard fallback              → 127.0.0.1:3306 with env credentials
 //
-//  1. DB_SOCKET_PATH env var   → Unix socket (bypasses TCP entirely)
-//  2. DATABASE_URL ?socket=    → Unix socket embedded in URL query string
-//  3. DATABASE_URL host        → TCP with localhost→127.0.0.1 fix
-//  4. Hard fallback            → 127.0.0.1:3306 (never blocks startup)
-//
-// Hostinger LiteSpeed VPS note:
-//  On some Hostinger plans the Node.js process cannot reach MariaDB via TCP
-//  even on 127.0.0.1 (connection goes through an internal proxy). In that
-//  case, set DB_SOCKET_PATH to the socket file path shown by running:
-//    npx ts-node src/scripts/test-connection.ts
-//  on the server terminal, then add it to Hostinger's environment variables.
+// Pool is deliberately kept small (3 connections) for a shared Hostinger VPS
+// where MariaDB's max_connections is typically 50–100 and is shared by all
+// running Node.js workers.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildPoolConfig(): Record<string, any> {
-  const rawUrl     = process.env.DATABASE_URL || '';
-  const socketPath = process.env.DB_SOCKET_PATH || ''; // override via env panel
+  const rawUrl = process.env.DATABASE_URL || '';
 
-  // Base credentials from URL
+  // Parse credentials from DATABASE_URL (with safe fallbacks)
   let user     = 'root';
   let password = '';
   let database = 'hrm_database';
   let host     = '127.0.0.1';
   let port     = 3306;
-  let urlSocket = '';
 
   if (rawUrl) {
     try {
@@ -41,62 +71,65 @@ function buildPoolConfig(): Record<string, any> {
       user     = u.username || user;
       password = u.password || password;
       database = u.pathname.slice(1) || database;
-      host     = u.hostname || host;
+      host     = u.hostname  || host;
       port     = Number(u.port) || port;
-      // Support ?socket= query param in DATABASE_URL
-      urlSocket = u.searchParams.get('socket') || '';
-    } catch (e) {
-      console.error('❌ [Prisma] Could not parse DATABASE_URL — using fallback config.');
+    } catch {
+      console.error('[Prisma] ❌ Could not parse DATABASE_URL — using fallback credentials.');
     }
   }
 
-  const resolvedSocket = socketPath || urlSocket;
+  const resolvedSocket = detectUnixSocket();
 
-  // ── Unix socket path (highest priority) ──────────────────────────────────
+  // Shared pool tuning (safe for any Hostinger plan)
+  const poolTuning = {
+    connectionLimit: 3,
+    connectTimeout:  10_000,
+    acquireTimeout:  10_000,
+    idleTimeout:     60_000,
+    resetAfterUse:   true,
+  };
+
+  // ── Path A: Unix socket ────────────────────────────────────────────────────
   if (resolvedSocket) {
-    console.log(`[Prisma] 🔌 Using Unix socket: ${resolvedSocket}`);
-    return {
-      socketPath: resolvedSocket,
-      user,
-      password,
-      database,
-      connectionLimit:    5,
-      connectTimeout:     10000,
-      acquireTimeout:     10000,
-      idleTimeout:        30000,
-    };
+    console.log(`[Prisma] 🔌 Connecting via Unix socket: ${resolvedSocket}`);
+    return { socketPath: resolvedSocket, user, password, database, ...poolTuning };
   }
 
-  // ── TCP connection ────────────────────────────────────────────────────────
-  // Fix: `localhost` on Linux often resolves to ::1 (IPv6), but MariaDB
-  // listens only on 127.0.0.1 (IPv4). Force IPv4 explicitly.
+  // ── Path B: TCP connection ─────────────────────────────────────────────────
+  // `localhost` on Linux often resolves to ::1 (IPv6) but MariaDB only listens
+  // on 127.0.0.1 (IPv4). Force IPv4 to prevent silent connection drops.
   if (host === 'localhost') host = '127.0.0.1';
 
-  console.log(`[Prisma] 🔌 Using TCP: ${host}:${port} / db=${database}`);
-  return {
-    host,
-    port,
-    user,
-    password,
-    database,
-    connectionLimit:    10,
-    connectTimeout:     10000,
-    acquireTimeout:     10000,
-    idleTimeout:        30000,
-  };
+  console.log(`[Prisma] 🔌 Connecting via TCP: ${host}:${port} / db=${database}`);
+  return { host, port, user, password, database, ...poolTuning };
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
-const getPrismaClient = () => {
+// ⚠️  MUST be stored on globalThis in ALL environments (not just development).
+// In Next.js production, module evaluation can run fresh per-request if the
+// runtime garbage-collects module state. Without this guard, every request
+// creates a new PrismaClient + new pool → "pool timeout active=0 idle=0".
+// ─────────────────────────────────────────────────────────────────────────────
+function createPrismaClient(): PrismaClient {
   const poolConfig = buildPoolConfig();
   const adapter    = new PrismaMariaDb(poolConfig);
 
-  return new PrismaClient({
+  const client = new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
-};
 
-export const prisma = globalForPrisma.prisma ?? getPrismaClient();
+  // Absorb pool-level errors (e.g. ECONNRESET, lost connection) so they
+  // don't surface as unhandled rejections and crash the Node.js process.
+  try {
+    // @ts-ignore — internal pool reference exposed by the mariadb adapter
+    adapter.pool?.on?.('error', (err: Error) => {
+      console.error('[Prisma] Pool error (connection will auto-recover):', err.message);
+    });
+  } catch { /* adapter internals may vary across versions */ }
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+  return client;
+}
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+globalForPrisma.prisma = prisma; // Always persist — see comment above

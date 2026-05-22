@@ -14,7 +14,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-import mariadb from 'mariadb';
+import * as mariadb from 'mariadb';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
@@ -43,7 +43,7 @@ const TCP_HOSTS = [
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 async function probe(label: string, config: mariadb.PoolConfig): Promise<boolean> {
-  let conn: mariadb.Connection | null = null;
+  let conn: mariadb.PoolConnection | null = null;
   try {
     const pool = mariadb.createPool({ ...config, connectTimeout: 4000, connectionLimit: 1 });
     conn = await pool.getConnection();
