@@ -4,7 +4,7 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --no-frozen-lockfile
+RUN npm install --no-frozen-lockfile
 
 COPY . .
 
