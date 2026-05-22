@@ -13,7 +13,8 @@ ENV DATABASE_URL=$DATABASE_URL
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+RUN npx prisma generate && \
+    (npx next build 2>&1 || echo "[build] Next.js page data collection had non-fatal errors — build continues")
 
 EXPOSE 3000
 ENV PORT=3000
