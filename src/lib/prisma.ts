@@ -119,15 +119,6 @@ function createPrismaClient(): PrismaClient {
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 
-  // Absorb pool-level errors (e.g. ECONNRESET, lost connection) so they
-  // don't surface as unhandled rejections and crash the Node.js process.
-  try {
-    // @ts-ignore — internal pool reference exposed by the mariadb adapter
-    adapter.pool?.on?.('error', (err: Error) => {
-      console.error('[Prisma] Pool error (connection will auto-recover):', err.message);
-    });
-  } catch { /* adapter internals may vary across versions */ }
-
   return client;
 }
 
