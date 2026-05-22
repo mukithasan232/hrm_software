@@ -158,11 +158,15 @@ function buildPoolConfig(probed: Record<string, any> | null): Record<string, any
   console.log(`[Prisma] 🔌 Building pool → ${label}`);
   return {
     ...base,
-    connectionLimit: 3,       // safe for shared Hostinger VPS (max_connections ≈ 50–100)
-    connectTimeout:  30_000,  // 30 s — cold-start container tolerance
-    acquireTimeout:  30_000,  // 30 s — matches connectTimeout
-    idleTimeout:     60_000,  // 60 s — keep connections warm between requests
-    resetAfterUse:   true,    // auto-reset session state after each query
+    // ── Aggressive socket-release tuning for Hostinger restricted containers ──
+    // Hostinger's socket buffer and file-descriptor limits are very tight.
+    // Keeping fewer connections for a shorter time prevents ENOBUFS / hang.
+    connectionLimit: 2,      // max 2 concurrent socket bindings
+    minimumIdle:     0,      // don't proactively hold idle connections open
+    connectTimeout:  30_000, // 30 s — cold-start container tolerance
+    acquireTimeout:  30_000, // 30 s — queue wait before timeout
+    idleTimeout:     5_000,  // 5 s  — aggressively prune unused socket descriptors
+    resetAfterUse:   true,   // reset session state on release
   };
 }
 
@@ -173,10 +177,40 @@ function createPrismaClient(): PrismaClient {
   // server.js has already awaited dbReady, so the probe is guaranteed done.
   const poolConfig = buildPoolConfig(globalForPrisma.prismaConfig ?? null);
   const adapter    = new PrismaMariaDb(poolConfig);
-  return new PrismaClient({
+
+  const client = new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
+
+  // ── Aggressive connection-release extension (production only) ─────────────
+  // After every top-level query completes, schedule a $disconnect() on the
+  // next event-loop tick. This ensures the socket file descriptor is released
+  // back to the OS immediately instead of being held open for idleTimeout ms.
+  // On the next request, Prisma reconnects automatically (lazy connect).
+  // This trades a small reconnect overhead for reliable socket availability
+  // on Hostinger containers with very tight FD limits.
+  if (process.env.NODE_ENV === 'production') {
+    return client.$extends({
+      query: {
+        $allModels: {
+          async $allOperations({ args, query }: { args: any; query: (args: any) => Promise<any> }) {
+            const result = await query(args);
+            // Release the socket on the next tick (non-blocking).
+            // Clear the singleton so the next request gets a fresh pool
+            // built with the correct probed config.
+            setImmediate(() => {
+              client.$disconnect().catch(() => { /* ignore */ });
+              globalForPrisma.prisma = undefined;
+            });
+            return result;
+          },
+        },
+      },
+    }) as unknown as PrismaClient;
+  }
+
+  return client;
 }
 
 // ─── Lazy Singleton via Proxy ─────────────────────────────────────────────────
