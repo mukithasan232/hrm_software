@@ -1,17 +1,29 @@
-import 'dotenv/config';
-import fs from 'fs';
-import os from 'os';
-import mariadb from 'mariadb';
+// ⚠️  DO NOT add top-level imports of 'mariadb', 'os', or 'fs' here.
+// Next.js / Turbopack evaluates this file during the build phase when tracing
+// API route dependencies. Any top-level import of a native Node module that
+// tries to resolve a default export causes:
+//   "TypeError: Cannot read properties of undefined (reading 'default')"
+// All Node-native work is deferred inside runtime-only functions guarded by
+//   typeof window === 'undefined' && process.env.NEXT_PHASE !== 'phase-production-build'
+
 import { PrismaClient } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
-// ─── Fix mariadb default import (no default export in some bundler contexts) ──
-const mariadbPool = (mariadb as any).default ?? mariadb;
-
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma:       PrismaClient | undefined;
   prismaConfig: Record<string, any> | undefined;
 };
+
+// ─── Runtime-only: loaded lazily inside functions, never at module scope ──────
+// Using require() inside functions means they are only evaluated when the
+// function is actually called (at runtime on the server), not during build.
+function getMariadb() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const m = require('mariadb');
+  return (m.default ?? m) as typeof import('mariadb');
+}
+function getFs()  { return require('fs')  as typeof import('fs');  }
+function getOs()  { return require('os')  as typeof import('os');  }
 
 // ─── Credentials ──────────────────────────────────────────────────────────────
 function parseCredentials() {
@@ -41,13 +53,13 @@ function parseCredentials() {
 
 // ─── Candidate Config Matrix ──────────────────────────────────────────────────
 // Ordered from cheapest/most-likely to most expensive/least-likely.
-// The prober tries each in sequence and picks the FIRST one that actually
-// opens a real TCP or socket connection to MariaDB.
+// Called only at runtime (inside runProbeOnce), never during build.
 function buildCandidates(creds: ReturnType<typeof parseCredentials>): Array<Record<string, any>> {
+  const fs = getFs();
+  const os = getOs();
   const { user, password, database, host, port } = creds;
   const base = { user, password, database };
 
-  // ── Known Unix socket paths ────────────────────────────────────────────────
   const SOCKET_PATHS = [
     '/var/run/mysqld/mysqld.sock',
     '/run/mysqld/mysqld.sock',
@@ -62,96 +74,69 @@ function buildCandidates(creds: ReturnType<typeof parseCredentials>): Array<Reco
     .filter(p => { try { return fs.existsSync(p); } catch { return false; } })
     .map(p => ({ ...base, socketPath: p, _label: `socket:${p}` }));
 
-  // ── TCP host candidates ────────────────────────────────────────────────────
-  // Includes: URL host, loopback, container network aliases, system hostname.
   const tcpHosts = Array.from(new Set([
-    host,           // from DATABASE_URL (already normalised localhost→127.0.0.1)
+    host,
     '127.0.0.1',
-    'mysql',        // Docker / container network alias
-    'mariadb',      // Alternative Docker alias
-    os.hostname(),  // Container hostname may resolve to the DB bridge IP
+    'mysql',
+    'mariadb',
+    os.hostname(),
   ])).filter(Boolean);
 
   const tcpCandidates = tcpHosts.map(h => ({
-    ...base,
-    host: h,
-    port,
-    _label: `tcp:${h}:${port}`,
+    ...base, host: h, port, _label: `tcp:${h}:${port}`,
   }));
 
   return [...socketCandidates, ...tcpCandidates];
 }
 
-// ─── Synchronous-style Connection Prober ─────────────────────────────────────
-// Uses a short probe timeout (3 s) so we cycle through all candidates quickly
-// at startup. The winner is cached on globalThis so subsequent hot-module
-// reloads (Next.js dev) don't re-probe.
+// ─── Connection Prober ────────────────────────────────────────────────────────
+// Tests each candidate with a 3-second timeout using a raw mariadb pool.
+// Called only at runtime (inside runProbeOnce), never during build.
 async function probeWorkingConfig(
   candidates: Array<Record<string, any>>
 ): Promise<Record<string, any> | null> {
+  const mariadb = getMariadb();
+
   for (const candidate of candidates) {
     const { _label, ...config } = candidate;
-    let pool: mariadb.Pool | null = null;
-    let conn: mariadb.PoolConnection | null = null;
+    let pool: import('mariadb').Pool | null = null;
+    let conn: import('mariadb').PoolConnection | null = null;
     try {
-      pool = mariadbPool.createPool({ ...config, connectionLimit: 1, connectTimeout: 3_000 });
+      pool = mariadb.createPool({ ...config, connectionLimit: 1, connectTimeout: 3_000 });
       if (!pool) throw new Error('Pool not initialized');
       conn = await pool.getConnection();
       await conn.query('SELECT 1');
       console.log(`[Prisma] ✅ Working connection: ${_label}`);
-      return config; // ← this one works
+      return config;
     } catch {
       // silent — move to next candidate
     } finally {
       try { conn?.release(); } catch {}
-      try { await pool?.end(); }  catch {}
+      try { await pool?.end();  } catch {}
     }
   }
   return null;
 }
 
-// ─── Pool Config Builder ──────────────────────────────────────────────────────
-// If a working config was already probed (cached on globalThis), use it
-// immediately. Otherwise fall back to the DATABASE_URL host so the server
-// at least starts and shows useful error logs.
-function buildPoolConfig(probed: Record<string, any> | null): Record<string, any> {
-  const creds = parseCredentials();
-
-  const base = probed ?? {
-    host:     creds.host,
-    port:     creds.port,
-    user:     creds.user,
-    password: creds.password,
-    database: creds.database,
-  };
-
-  const label = probed
-    ? (probed.socketPath ? `socket:${probed.socketPath}` : `tcp:${probed.host}:${probed.port}`)
-    : `tcp:${creds.host}:${creds.port} (unprobed fallback)`;
-
-  console.log(`[Prisma] 🔌 Building pool → ${label}`);
-
-  return {
-    ...base,
-    connectionLimit: 3,      // safe for shared Hostinger VPS (max_connections ≈ 50–100)
-    connectTimeout:  30_000, // 30 s — allows for slow container-restart cold starts
-    acquireTimeout:  30_000, // 30 s — matches connectTimeout
-    idleTimeout:     60_000, // 60 s — keep connections warm between requests
-    resetAfterUse:   true,   // auto-reset session state after each query
-  };
-}
-
-// ─── Bootstrap (async, runs once at module load) ──────────────────────────────
-// We deliberately do NOT await this at module level (that would block Next.js
-// module evaluation). Instead the probe result is stored on globalThis and
-// used the first time createPrismaClient() is called, which happens lazily
-// inside the first API request after startup — by that time the probe is done.
+// ─── Bootstrap ────────────────────────────────────────────────────────────────
+// Runs once at server startup. Guarded so it is a no-op during:
+//   • Next.js build phase  (NEXT_PHASE === 'phase-production-build')
+//   • Browser-side bundles (typeof window !== 'undefined')
+// This means Turbopack never executes any mariadb/fs/os code while tracing.
 let probePromise: Promise<void> | null = null;
 
-function runProbeOnce() {
+function runProbeOnce(): Promise<void> {
   if (probePromise) return probePromise;
+
+  // Build-time / browser guard — return a resolved promise immediately
+  const isBuildPhase  = process.env.NEXT_PHASE === 'phase-production-build';
+  const isBrowserSide = typeof window !== 'undefined';
+  if (isBuildPhase || isBrowserSide) {
+    return (probePromise = Promise.resolve());
+  }
+
   probePromise = (async () => {
-    if (globalForPrisma.prismaConfig) return; // already have a winner
+    if (globalForPrisma.prismaConfig) return; // already probed
     const creds      = parseCredentials();
     const candidates = buildCandidates(creds);
     console.log(`[Prisma] 🔬 Probing ${candidates.length} connection candidate(s)...`);
@@ -163,11 +148,35 @@ function runProbeOnce() {
       console.error('   Run:  npx ts-node src/scripts/test-connection.ts  on the server for details.');
     }
   })();
+
   return probePromise;
 }
 
-// Start probing immediately so the result is ready before first request
-if (typeof window === 'undefined') runProbeOnce();
+// Kick off the probe at import time — but only on the server at runtime.
+// The build-phase guard above makes this a safe no-op during `next build`.
+runProbeOnce();
+
+// ─── Pool Config Builder ──────────────────────────────────────────────────────
+function buildPoolConfig(probed: Record<string, any> | null): Record<string, any> {
+  const creds = parseCredentials();
+  const base  = probed ?? {
+    host: creds.host, port: creds.port,
+    user: creds.user, password: creds.password, database: creds.database,
+  };
+  const label = probed
+    ? (probed.socketPath ? `socket:${probed.socketPath}` : `tcp:${probed.host}:${probed.port}`)
+    : `tcp:${creds.host}:${creds.port} (unprobed fallback)`;
+
+  console.log(`[Prisma] 🔌 Building pool → ${label}`);
+  return {
+    ...base,
+    connectionLimit: 3,       // safe for shared Hostinger VPS (max_connections ≈ 50–100)
+    connectTimeout:  30_000,  // 30 s — allows for slow container-restart cold starts
+    acquireTimeout:  30_000,  // 30 s — matches connectTimeout
+    idleTimeout:     60_000,  // 60 s — keep connections warm between requests
+    resetAfterUse:   true,    // auto-reset session state after each query
+  };
+}
 
 // ─── Prisma Client Factory ────────────────────────────────────────────────────
 function createPrismaClient(): PrismaClient {
