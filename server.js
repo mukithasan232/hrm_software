@@ -33,7 +33,7 @@ async function bootstrapDatabase() {
   // Import prisma.ts — this synchronously calls buildRuntimeUrl() which probes
   // socket paths via fs.existsSync and sets process.env.DATABASE_URL to the
   // best available connection string (socket or TCP).
-  require('./src/lib/prisma');
+  // DATABASE_URL is already provided natively by Neon in .env
   console.log(`[Bootstrap] 🔌 DATABASE_URL resolved to: ${(process.env.DATABASE_URL || '').replace(/:([^@]+)@/, ':****@')}`);
 
   // All child processes inherit process.env, so they automatically use the

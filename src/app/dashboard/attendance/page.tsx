@@ -123,38 +123,61 @@ export default function AttendancePage() {
     }
   };
 
-  const handleExport = () => {
-    if (logs.length === 0) {
-      toast.error('No data to export');
-      return;
+  const handleExport = async () => {
+    let startDate = new Date();
+    let endDate = new Date();
+
+    switch (dateRange) {
+      case 'today':
+        break;
+      case 'yesterday':
+        startDate.setDate(startDate.getDate() - 1);
+        endDate.setDate(endDate.getDate() - 1);
+        break;
+      case 'week':
+        const day = startDate.getDay();
+        const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+        startDate.setDate(diff);
+        break;
+      case 'month':
+        startDate.setDate(1);
+        break;
+      case 'all-time':
+        startDate = new Date(2020, 0, 1);
+        break;
+      default:
+        break;
     }
 
-    const headers = ['Employee ID', 'Employee Name', 'Timestamp', 'Date', 'Time', 'Type', 'Device IP'];
-    const csvData = logs.map(log => {
-      const dateObj = new Date(log.timestamp);
-      const row = [
-        log.employeeId,
-        log.employeeName || 'N/A',
-        log.timestamp,
-        dateObj.toLocaleDateString(),
-        dateObj.toLocaleTimeString(),
-        log.punchType,
-        log.deviceId
-      ];
-      return row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
-    });
+    const selectedStartDate = startDate.toISOString().split('T')[0];
+    const selectedEndDate = endDate.toISOString().split('T')[0];
 
-    const csvContent = [headers.join(','), ...csvData].join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `attendance_logs_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Exporting attendance logs...');
+    const toastId = toast.loading('Generating Wages Sheet...');
+
+    try {
+      const response = await fetch(`/api/attendance/export-wages?startDate=${selectedStartDate}&endDate=${selectedEndDate}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to export wages sheet.");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Wages_Sheet_${selectedStartDate}_to_${selectedEndDate}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      toast.success("Export successful!", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error("An error occurred during export.", { id: toastId });
+    }
   };
 
   const filteredLogs = logs.filter(log => 

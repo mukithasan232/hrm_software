@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../lib/prisma';
+import { prisma } from '../lib/prisma.js';
 
 // Load env — respects DATABASE_URL already set in the environment (production)
 // Falls back to .env file for local runs.
