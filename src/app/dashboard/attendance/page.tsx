@@ -123,7 +123,7 @@ export default function AttendancePage() {
     }
   };
 
-  const handleExport = async () => {
+  const handlePremiumExport = async () => {
     let startDate = new Date();
     let endDate = new Date();
 
@@ -149,33 +149,33 @@ export default function AttendancePage() {
         break;
     }
 
-    const selectedStartDate = startDate.toISOString().split('T')[0];
-    const selectedEndDate = endDate.toISOString().split('T')[0];
+    const activeStartDate = startDate.toISOString().split('T')[0];
+    const activeEndDate = endDate.toISOString().split('T')[0];
 
     const toastId = toast.loading('Generating Wages Sheet...');
 
     try {
-      const response = await fetch(`/api/attendance/export-wages?startDate=${selectedStartDate}&endDate=${selectedEndDate}`, {
-        method: "GET",
+      const queryParams = new URLSearchParams({
+        startDate: activeStartDate,
+        endDate: activeEndDate
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to export wages sheet.");
-      }
+      const response = await fetch(`/api/attendance/export-wages?${queryParams.toString()}`);
+      
+      if (!response.ok) throw new Error("Failed to fetch formatted sheet");
 
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Wages_Sheet_${selectedStartDate}_to_${selectedEndDate}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `Wages_Sheet_${activeStartDate}_to_${activeEndDate}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
 
       toast.success("Export successful!", { id: toastId });
     } catch (error) {
-      console.error(error);
+      console.error("Export error:", error);
       toast.error("An error occurred during export.", { id: toastId });
     }
   };
@@ -238,7 +238,7 @@ export default function AttendancePage() {
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Sync Device
           </button>
           <button 
-            onClick={handleExport}
+            onClick={handlePremiumExport}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium"
           >
             <Download className="w-4 h-4" /> Export
