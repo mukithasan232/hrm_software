@@ -52,14 +52,14 @@ export async function GET(request: Request) {
     // --- 1. COMPANY HEADER BLOCK ---
     worksheet.mergeCells('A1:P1'); // Assuming ~16 cols base + date cols
     const titleCell = worksheet.getCell('A1');
-    titleCell.value = 'Motahar Hossain Chowdhury Jute Mills Ltd.';
+    titleCell.value = 'Fix Any Photo';
     titleCell.font = { name: 'Arial', size: 16, bold: true };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
     worksheet.mergeCells('A2:P2');
     const addressCell = worksheet.getCell('A2');
-    addressCell.value = 'Factory Address (Placeholder)';
-    addressCell.font = { name: 'Arial', size: 12 };
+    addressCell.value = 'Mistiripara, Shalbon, Rangpur, Bangladesh';
+    addressCell.font = { name: 'Arial', size: 11 };
     addressCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
     worksheet.mergeCells('A3:P3');
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
     const startStr = startDate.toLocaleDateString('en-GB');
     const endStr = endDate.toLocaleDateString('en-GB');
     subtitleCell.value = `Worker Wages Sheet for the Day Between ${startStr} and ${endStr}`;
-    subtitleCell.font = { name: 'Arial', size: 11, bold: true };
+    subtitleCell.font = { name: 'Arial', size: 12, bold: true };
     subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Spacer
@@ -171,14 +171,46 @@ export async function GET(request: Request) {
       const basicSalaryRate = user.baseSalary > 0 ? user.baseSalary : 500; // default 500
       row.getCell(5).value = basicSalaryRate;
 
-      // Dates Mapping (Simplified to 8 hours if present, 0 if not for the sake of the template)
-      // Real logic would calculate hours based on punch-in / punch-out
+      let totalRegularHours = 0;
+      let totalOvertimeHours = 0;
+
+      // Real logic calculating actual hours based on earliest CheckIn and latest CheckOut
       days.forEach((day, i) => {
-        const hasLog = user.attendanceLogs.some(log => 
+        const logsForDay = user.attendanceLogs.filter(log => 
           new Date(log.timestamp).toDateString() === day.toDateString()
-        );
-        const hours = hasLog ? 8 : 0;
-        row.getCell(dateStartCol + i).value = hours;
+        ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        
+        let regularHours = 0;
+        let overtimeHours = 0;
+        let cellString = '0/0';
+        
+        if (logsForDay.length > 0) {
+          const checkIns = logsForDay.filter(l => l.punchType === 'CheckIn');
+          const checkOuts = logsForDay.filter(l => l.punchType === 'CheckOut');
+          
+          if (checkIns.length > 0 && checkOuts.length > 0) {
+            const firstCheckIn = new Date(checkIns[0].timestamp);
+            const lastCheckOut = new Date(checkOuts[checkOuts.length - 1].timestamp);
+            
+            if (lastCheckOut > firstCheckIn) {
+              const diffMs = lastCheckOut.getTime() - firstCheckIn.getTime();
+              const totalHours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
+              
+              if (totalHours > 8) {
+                regularHours = 8;
+                overtimeHours = Math.round((totalHours - 8) * 100) / 100;
+              } else {
+                regularHours = totalHours;
+              }
+              
+              cellString = `${regularHours}/${overtimeHours}`;
+            }
+          }
+        }
+        
+        totalRegularHours += regularHours;
+        totalOvertimeHours += overtimeHours;
+        row.getCell(dateStartCol + i).value = cellString;
       });
 
       // Let's build cell references for formulas
@@ -196,12 +228,10 @@ export async function GET(request: Request) {
       const attendBonusCol = getColLetter(dateEndCol + 7);
       const totalSalaryCol = getColLetter(dateEndCol + 8);
 
-      // Formulas
-      // Basic Work Hour: =SUM(F7:L7)
-      row.getCell(dateEndCol + 1).value = { formula: `SUM(${startDateLetter}${currentRow}:${endDateLetter}${currentRow})`, date1904: false };
-      
-      // Extra OT Hour (Placeholder mock data 0)
-      row.getCell(dateEndCol + 2).value = 0; 
+      // Formulas / Values
+      // Basic Work Hour & Extra OT Hour directly calculated instead of horizontal SUM
+      row.getCell(dateEndCol + 1).value = Math.round(totalRegularHours * 100) / 100;
+      row.getCell(dateEndCol + 2).value = Math.round(totalOvertimeHours * 100) / 100; 
       
       // Total Work Hour: Basic + Extra OT
       row.getCell(dateEndCol + 3).value = { formula: `${basicWorkHrCol}${currentRow}+${extraOtHrCol}${currentRow}`, date1904: false };

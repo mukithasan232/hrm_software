@@ -32,73 +32,26 @@ function createZK(forceTCP = false): InstanceType<typeof ZKLib> {
 }
 
 // ─── Punch type resolver ───────────────────────────────────────────────────────
-export function getPunchType(state: any): string {
+export function getPunchType(log: any): string {
+  // Enforce strict mapping based on device state or punch integer.
+  // The device typically returns 1 for Check-Out.
+  const state = log.state !== undefined ? log.state : (log.punch !== undefined ? log.punch : log.type);
   const numericState = typeof state === 'number' ? state : parseInt(state, 10);
-  switch (numericState) {
-    case 0: return 'CheckIn';
-    case 1: return 'CheckOut';
-    case 2: return 'BreakOut';
-    case 3: return 'BreakIn';
-    case 4: return 'OvertimeIn';
-    case 5: return 'OvertimeOut';
-    default: return 'Unknown';
-  }
+  
+  return numericState === 1 ? 'CheckOut' : 'CheckIn';
 }
 
 /**
- * Resolves the punch type with a fallback. If the device state is not reliable
- * (e.g. always returns CheckOut), we check if a CheckIn exists for today.
- * If no CheckIn exists, this first punch of the day is mapped as CheckIn.
- * Subsequent punches are mapped as CheckOut.
+ * Resolves the punch type securely directly from the device's log state.
+ * Deprecated DB fallback inference logic removed in favor of strict mapping.
  */
 export async function resolvePunchType(
   employeeId: string,
   timestamp: Date,
-  deviceState: any,
+  log: any,
   processedEmpDays?: Set<string>
 ): Promise<string> {
-  const devicePunchType = getPunchType(deviceState);
-
-  // If the device is sending specific break or overtime states, preserve them
-  if (['BreakOut', 'BreakIn', 'OvertimeIn', 'OvertimeOut'].includes(devicePunchType)) {
-    return devicePunchType;
-  }
-
-  // Otherwise, apply smart inference logic for CheckIn/CheckOut
-  const tzOffset = 6 * 60 * 60 * 1000; // GMT+6
-  const localDateStr = new Date(timestamp.getTime() + tzOffset).toISOString().split('T')[0];
-
-  const cacheKey = `${employeeId}:${localDateStr}`;
-
-  // If processedEmpDays cache is provided (for bulk imports), use it exclusively
-  if (processedEmpDays) {
-    if (processedEmpDays.has(cacheKey)) {
-      return 'CheckOut';
-    } else {
-      processedEmpDays.add(cacheKey);
-      return 'CheckIn';
-    }
-  }
-
-  // Fallback for single real-time punch logic (e.g. from websocket socket hook)
-  const startOfDay = new Date(`${localDateStr}T00:00:00+06:00`);
-  const endOfDay = new Date(`${localDateStr}T23:59:59.999+06:00`);
-
-  const count = await prisma.attendanceLog.count({
-    where: {
-      employeeId,
-      timestamp: {
-        gte: startOfDay,
-        lte: endOfDay,
-      },
-    },
-  });
-
-  if (count === 0) {
-    return 'CheckIn';
-  }
-
-  return 'CheckOut';
+  return getPunchType(log);
 }
 
 /**
@@ -379,8 +332,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
             employeeId = dbUser.id;
           }
 
-          const stateValue = log.state !== undefined && log.state !== null ? log.state : (log.type !== undefined && log.type !== null ? log.type : -1);
-          const punchType = await resolvePunchType(employeeId, timestamp, stateValue, processedEmpDays);
+          const punchType = await resolvePunchType(employeeId, timestamp, log, processedEmpDays);
 
           await prisma.attendanceLog.upsert({
             where: {

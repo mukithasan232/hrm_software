@@ -172,9 +172,7 @@ const connectAndListen = async () => {
 
           const employeeId = user.id; // DB UUID
           const employeeName = user.name;
-          const stateValue = data.state !== undefined && data.state !== null ? data.state : (data.type !== undefined && data.type !== null ? data.type : -1);
-          
-          const punchType = await resolvePunchType(employeeId, parsedTimestamp, stateValue);
+          const punchType = await resolvePunchType(employeeId, parsedTimestamp, data);
           
           const newLog = await prisma.attendanceLog.upsert({
             where: {
