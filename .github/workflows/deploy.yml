@@ -1,0 +1,39 @@
+name: Deploy to Hostinger Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USERNAME }}
+          password: ${{ secrets.HOSTINGER_PASSWORD }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          script: |
+            # Navigate to the project directory (Change this path to your actual folder path on Hostinger)
+            cd public_html/fap-hrm || cd fap-hrm
+            
+            # Pull latest changes from GitHub
+            git pull origin main
+            
+            # Install any new dependencies
+            pnpm install || npm install
+            
+            # Build the Next.js app (if required in your setup)
+            # npm run build
+            
+            # Restart the Node server (using PM2 or Hostinger's node restart command)
+            # pm2 restart server || pm2 restart all
+            
+            echo "Deployment completed successfully!"
