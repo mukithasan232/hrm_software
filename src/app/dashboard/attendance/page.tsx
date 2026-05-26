@@ -250,13 +250,13 @@ export default function AttendancePage() {
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors shadow-sm dark:shadow-md">
           <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">Today's Check-Ins</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            {logs.filter(l => l.punchType === 'CheckIn' && new Date(l.timestamp).toDateString() === new Date().toDateString()).length}
+            {logs.filter(l => l.punchType === 'CheckIn' && new Date(l.timestamp).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)).length}
           </p>
         </div>
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-orange-500/30 transition-colors shadow-sm dark:shadow-md">
           <p className="text-orange-600 dark:text-orange-400 text-xs font-bold uppercase tracking-wider">Today's Check-Outs</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            {logs.filter(l => l.punchType === 'CheckOut' && new Date(l.timestamp).toDateString() === new Date().toDateString()).length}
+            {logs.filter(l => l.punchType === 'CheckOut' && new Date(l.timestamp).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)).length}
           </p>
         </div>
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-blue-500/30 transition-colors shadow-sm dark:shadow-md">
@@ -314,8 +314,8 @@ export default function AttendancePage() {
                     </td>
                     <td className="px-6 py-4 text-slate-900 dark:text-gray-200">
                       <div className="flex flex-col text-sm">
-                        <span className="font-semibold">{new Date(row.timestamp).toLocaleDateString()}</span>
-                        <span className="text-slate-550 dark:text-gray-500 mt-0.5 font-medium">{new Date(row.timestamp).toLocaleTimeString()}</span>
+                        <span className="font-semibold">{new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(row.timestamp))}</span>
+                        <span className="text-slate-550 dark:text-gray-500 mt-0.5 font-medium">{new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'UTC' }).format(new Date(row.timestamp))}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">

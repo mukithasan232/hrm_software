@@ -10,6 +10,27 @@ const ZK_TIMEOUT = 40000; // Increased to 40s to prevent TIMEOUT_ON_WRITING_MESS
 const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid conflicts
 const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');
 
+// ─── Timezone Fix ─────────────────────────────────────────────────────────────
+// The ZKTeco device sends timestamps in local Bangladesh time (UTC+6).
+// JavaScript's `new Date(localTimeString)` incorrectly interprets them as UTC,
+// which would make every punch appear 6 hours later than it actually was.
+// This helper corrects that by subtracting the 6-hour offset so that the
+// resulting Date object represents the true UTC equivalent of the local punch time.
+const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
+
+export function parseDhakaTimestamp(rawTimestamp: any): Date {
+  // If already a proper Date object from the library, treat its numeric value
+  // as a local Bangladesh time integer and correct it.
+  if (rawTimestamp instanceof Date) {
+    // The library may have also misread it as UTC — subtract the offset.
+    return new Date(rawTimestamp.getTime() - DHAKA_OFFSET_MS);
+  }
+  // For string timestamps like "2025-05-26 14:59:00", new Date() treats them
+  // as UTC. Subtract 6 hours to get the real UTC equivalent.
+  const asUtc = new Date(rawTimestamp);
+  return new Date(asUtc.getTime() - DHAKA_OFFSET_MS);
+}
+
 // ─── Error Classification ──────────────────────────────────────────────────────
 function classifyError(err: any): string {
   console.error('[ZKService] Raw Error:', err);
@@ -304,7 +325,9 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       for (const log of chunk) {
         try {
           const deviceEmpId = String(log.user_id ?? log.userId ?? log.uid);
-          const timestamp = new Date(log.record_time);
+          // parseDhakaTimestamp converts the device's local UTC+6 time string
+          // into a proper UTC Date for storage in the database.
+          const timestamp = parseDhakaTimestamp(log.record_time);
 
           if (isNaN(timestamp.getTime())) {
             skipped++;

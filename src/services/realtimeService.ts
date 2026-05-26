@@ -2,7 +2,7 @@ import { Server } from 'socket.io';
 // @ts-ignore
 import ZKLib from 'zkteco-js';
 import { prisma } from '../lib/prisma';
-import { fetchDeviceLogs, getPunchType, resolvePunchType } from './zkService';
+import { fetchDeviceLogs, getPunchType, resolvePunchType, parseDhakaTimestamp } from './zkService';
 import bcrypt from 'bcryptjs';
 
 const ZK_IP = process.env.ZK_DEVICE_IP || '192.168.10.185';
@@ -140,11 +140,12 @@ const connectAndListen = async () => {
         
         try {
           const deviceEmpId = String(data.userId);
-          const timestamp = data.attTime ? data.attTime : new Date();
-          const parsedTimestamp = timestamp instanceof Date ? timestamp : new Date(timestamp);
+          // The device sends attTime as local Bangladesh time (UTC+6).
+          // parseDhakaTimestamp subtracts the 6-hour offset to store correct UTC.
+          const parsedTimestamp = parseDhakaTimestamp(data.attTime ?? new Date());
 
           if (isNaN(parsedTimestamp.getTime())) {
-            console.error('[RealtimeService] ❌ Invalid timestamp in real-time punch:', timestamp);
+            console.error('[RealtimeService] ❌ Invalid timestamp in real-time punch:', data.attTime);
             return;
           }
 

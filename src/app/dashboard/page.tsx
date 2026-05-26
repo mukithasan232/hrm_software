@@ -230,7 +230,7 @@ export default function DashboardOverview() {
                     </span>
                     {/* Check-in Timestamp */}
                     <span className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                       <Clock className="w-3 h-3" /> {new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' }).format(new Date(log.timestamp))}
                     </span>
                   </div>
 
