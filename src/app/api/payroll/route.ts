@@ -3,5 +3,5 @@ import { getAllPayrolls } from '@/controllers/payrollController';
 
 export const GET = wrapHandler(getAllPayrolls, {
   protect: true,
-  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager']
+  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
 });

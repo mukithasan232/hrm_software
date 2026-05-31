@@ -2,11 +2,15 @@
 
 @variant dark (&:where(.dark, .dark *));
 
-@theme {
+@theme inline {
   --color-background: hsl(222.2, 84%, 4.9%);
   --color-foreground: hsl(210, 40%, 98%);
   --color-primary: hsl(217.2, 91.2%, 59.8%);
   --color-border: hsl(217.2, 32.6%, 17.5%);
+
+  /* Dynamic brand colors — values are updated at runtime by BrandStyleInjector */
+  --color-brand-primary:   rgb(var(--brand-primary-rgb, 139 92 246));
+  --color-brand-secondary: rgb(var(--brand-secondary-rgb, 6 182 212));
 }
 
 @layer base {

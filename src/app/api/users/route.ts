@@ -3,10 +3,10 @@ import { getEmployees, createEmployee } from '@/controllers/userController';
 
 export const GET = wrapHandler(getEmployees, {
   protect: true,
-  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager', 'Stakeholder']
+  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'Stakeholder']
 });
 
 export const POST = wrapHandler(createEmployee, {
   protect: true,
-  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager']
+  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
 });

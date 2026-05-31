@@ -8,7 +8,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 export default function PerformancePage() {
   const { user } = useAuth();
-  const isManager = ['Admin', 'HR', 'Manager'].includes(user?.role || '');
+  const isManager = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Engineering Manager'].includes(user?.designation || '');
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [performanceData, setPerformanceData] = useState<any[]>([]);
@@ -26,11 +26,12 @@ export default function PerformancePage() {
       try {
         if (isManager) {
           const empRes = await api.get('/users');
-          setEmployees(empRes.data);
+          const empList = Array.isArray(empRes.data) ? empRes.data : (empRes.data.data || []);
+          setEmployees(empList);
           
           // Fetch performance for all (mocking by fetching first employee for now)
-          if (empRes.data.length > 0) {
-            setSelectedEmp(empRes.data[0].id);
+          if (empList.length > 0) {
+            setSelectedEmp(empList[0].id);
           }
         } else if (user) {
           const res = await api.get(`/performance/${user.id}`);

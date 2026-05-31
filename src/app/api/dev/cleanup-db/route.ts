@@ -16,7 +16,7 @@ export const GET = wrapHandler(async (req: any, res: any) => {
     // 3. Identify target test users
     const testUsers = await prisma.user.findMany({
       where: {
-        role: { not: 'Admin' },
+        customDesignation: { name: { not: 'Admin' } },
         employeeId: { startsWith: 'EMP' }
       }
     });

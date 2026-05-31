@@ -1,20 +1,32 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Users, Clock, CreditCard, LayoutDashboard, LogOut, CalendarRange, TrendingUp, X, User } from 'lucide-react';
+import {
+  Users, Clock, CreditCard, LayoutDashboard, LogOut, CalendarRange,
+  TrendingUp, X, User, UsersRound, Shield, ChevronDown
+} from 'lucide-react';
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useBrand } from '@/context/BrandContext';
 
 const BACKEND = 'http://localhost:5001';
 
 const NAV_ITEMS = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: [] },
-  { name: 'Attendance', href: '/dashboard/attendance', icon: Clock, roles: [] },
-  { name: 'Employees', href: '/dashboard/employees', icon: Users, roles: ['Admin', 'HR', 'Manager'] },
-  { name: 'Leaves', href: '/dashboard/leaves', icon: CalendarRange, roles: [] },
-  { name: 'Payroll', href: '/dashboard/payroll', icon: CreditCard, roles: ['Admin', 'HR'] },
-  { name: 'Performance', href: '/dashboard/performance', icon: TrendingUp, roles: [] },
-  { name: 'My Profile', href: '/dashboard/profile', icon: User, roles: [] },
+  { name: 'Dashboard',   href: '/dashboard',             icon: LayoutDashboard, designations: [] },
+  { name: 'Attendance',  href: '/dashboard/attendance',  icon: Clock,           designations: [] },
+  { name: 'Leaves',      href: '/dashboard/leaves',      icon: CalendarRange,   designations: [] },
+  { name: 'Payroll',     href: '/dashboard/payroll',     icon: CreditCard,      designations: ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Finance Manager'] },
+  { name: 'Performance', href: '/dashboard/performance', icon: TrendingUp,      designations: [] },
+  { name: 'My Profile',  href: '/dashboard/profile',     icon: User,            designations: [] },
 ];
+
+const TEAM_SUB_ITEMS = [
+  { name: 'Designations', href: '/dashboard/team/designations', icon: Shield },
+  { name: 'Users',       href: '/dashboard/team/users', icon: UsersRound },
+  { name: 'Employees',   href: '/dashboard/team/employees', icon: Users },
+];
+
+const TEAM_ALLOWED_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator'];
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -24,10 +36,19 @@ interface SidebarProps {
 export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { brand } = useBrand();
+
+  // Keep Team section open if we're on a /team/* route
+  const isTeamActive = pathname.startsWith('/dashboard/team');
+  const [teamOpen, setTeamOpen] = useState(isTeamActive);
+
+  const designationName = typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation;
 
   const filteredItems = NAV_ITEMS.filter(item =>
-    item.roles.length === 0 || item.roles.includes(user?.role || '')
+    item.designations.length === 0 || item.designations.includes(designationName || '')
   );
+
+  const canSeeTeam = TEAM_ALLOWED_DESIGNATIONS.includes(designationName || '');
 
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
   const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
@@ -36,14 +57,26 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
-            HRM & Payroll
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-gray-500 mt-0.5 font-medium">Management System</p>
+        <div className="flex items-center gap-2.5 min-w-0">
+          {brand.logoUrl ? (
+            <img
+              src={brand.logoUrl}
+              alt={brand.companyName}
+              className="h-8 max-w-[140px] object-contain"
+            />
+          ) : (
+            <div>
+              <h2
+                className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary"
+              >
+                {brand.companyName}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-gray-500 mt-0.5 font-medium">Management System</p>
+            </div>
+          )}
         </div>
         {onClose && (
-          <button onClick={onClose} className="md:hidden p-1 text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white">
+          <button onClick={onClose} className="md:hidden p-1 text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white flex-shrink-0">
             <X className="w-5 h-5" />
           </button>
         )}
@@ -54,13 +87,15 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         {avatarSrc ? (
           <img src={avatarSrc} alt="avatar" className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-white/20 flex-shrink-0" />
         ) : (
-          <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+          <div
+            className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 bg-gradient-to-tr from-brand-primary to-brand-secondary"
+          >
             {initials}
           </div>
         )}
         <div className="min-w-0">
           <p className="text-slate-800 dark:text-white text-sm font-medium truncate">{user?.name}</p>
-          <p className="text-slate-500 dark:text-gray-500 text-xs truncate">{user?.role}</p>
+          <p className="text-slate-500 dark:text-gray-500 text-xs truncate">{designationName}</p>
         </div>
       </div>
 
@@ -76,16 +111,86 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               onClick={onClose}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-sm font-medium group ${
                 isActive
-                  ? 'bg-indigo-600/10 text-indigo-600 dark:bg-blue-500/15 dark:text-blue-400 border border-indigo-500/20 dark:border-blue-500/25 shadow-sm'
+                  ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
                   : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-indigo-600 dark:text-blue-400' : 'group-hover:text-slate-900 dark:group-hover:text-white'}`} />
+              <Icon
+                className={`h-4 w-4 flex-shrink-0 transition-colors ${
+                  isActive ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
+                }`}
+              />
               <span>{item.name}</span>
-              {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500 dark:bg-blue-400" />}
+              {isActive && (
+                <span className="ml-auto h-1.5 w-1.5 rounded-full flex-shrink-0 bg-brand-primary" />
+              )}
             </Link>
           );
         })}
+
+        {/* ── Team Section (Admin / Superadmin only) ── */}
+        {canSeeTeam && (
+          <div className="pt-1">
+            {/* Separator label */}
+            <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-gray-600">
+              Administration
+            </p>
+
+            {/* Team accordion trigger */}
+            <button
+              onClick={() => setTeamOpen(prev => !prev)}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-sm font-medium group ${
+                isTeamActive
+                  ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20'
+                  : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <UsersRound
+                className={`h-4 w-4 flex-shrink-0 transition-colors ${
+                  isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
+                }`}
+              />
+              <span className="flex-1 text-left">Team</span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''} ${
+                  isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500'
+                }`}
+              />
+            </button>
+
+            {/* Sub-items with animated height */}
+            <div
+              style={{
+                maxHeight: teamOpen ? '200px' : '0px',
+                overflow: 'hidden',
+                transition: 'max-height 0.25s ease',
+              }}
+            >
+              <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-white/10 pl-3">
+                {TEAM_SUB_ITEMS.map(sub => {
+                  const isSubActive = pathname === sub.href || pathname.startsWith(sub.href);
+                  const SubIcon = sub.icon;
+                  return (
+                    <Link
+                      key={sub.name}
+                      href={sub.href}
+                      onClick={onClose}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-sm font-medium group ${
+                        isSubActive
+                          ? 'bg-indigo-500/10 text-indigo-500'
+                          : 'text-slate-500 dark:text-gray-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      <SubIcon className={`h-3.5 w-3.5 flex-shrink-0 ${isSubActive ? 'text-indigo-500' : ''}`} />
+                      <span>{sub.name}</span>
+                      {isSubActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Footer */}

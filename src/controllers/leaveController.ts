@@ -44,7 +44,7 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
 
     const hrAndManagers = await prisma.user.findMany({
       where: {
-        role: { in: ['HR', 'Manager', 'Admin'] }
+        customDesignation: { name: { in: ['HR', 'Manager', 'HRM Manager', 'Admin', 'Super Admin', 'System Administrator'] } }
       }
     });
 
@@ -69,11 +69,11 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
 
 export const getLeaves = async (req: Request, res: Response) => {
   try {
-    const userRole = (req as any).user.role;
+    const userRole = (req as any).user.designation;
     const employeeId = (req as any).user.id;
     let leaves;
 
-    if (['HR', 'Manager', 'Admin'].includes(userRole)) {
+    if (['HR', 'Manager', 'HRM Manager', 'Admin', 'Super Admin', 'System Administrator'].includes(userRole)) {
       leaves = await (prisma.leave as any).findMany({
         include: {
           user: {

@@ -115,8 +115,8 @@ bootstrapDatabase()
         // Do NOT exit — let Hostinger keep the process alive for HTTP traffic
       }
 
-      httpServer.listen(port, () => {
-        console.log(`🚀 Monolithic Server running on http://localhost:${port}`);
+     httpServer.listen(port, '0.0.0.0', () => {
+        console.log(`🚀 Monolithic Server running on http://0.0.0.0:${port} (Network Enabled)`);
       });
     });
   });

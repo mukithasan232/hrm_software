@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 export interface AuthRequest extends Request {
   user?: {
     id: string;
-    role: string;
+    designation: string;
   };
 }
 
@@ -18,7 +18,7 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
 
       req.user = {
         id: decoded.id,
-        role: decoded.role,
+        designation: decoded.designation,
       };
 
       next();
@@ -31,8 +31,8 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
 };
 
 export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const ADMIN_ROLES = ['Admin', 'Superadmin'];
-  if (req.user && ADMIN_ROLES.includes(req.user.role)) {
+  const ADMIN_ROLES = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin'];
+  if (req.user && ADMIN_ROLES.includes(req.user.designation)) {
     next();
   } else {
     res.status(403).json({ message: 'Not authorized as an admin' });
@@ -41,8 +41,8 @@ export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction) =
 
 export const authorizeRoles = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ message: `Role (${req.user?.role}) is not allowed to access this resource.` });
+    if (!req.user || !roles.includes(req.user.designation)) {
+      return res.status(403).json({ message: `Designation (${req.user?.designation}) is not allowed to access this resource.` });
     }
     next();
   };

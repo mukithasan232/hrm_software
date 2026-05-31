@@ -3,5 +3,5 @@ import { calculateEOTM } from '@/controllers/performanceController';
 
 export const POST = wrapHandler(calculateEOTM, {
   protect: true,
-  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager']
+  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
 });

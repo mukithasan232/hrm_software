@@ -12,7 +12,7 @@ export interface MockRequest {
   url: string;
   user?: {
     id: string;
-    role: string;
+    designation: string;
   };
   file?: {
     filename: string;
@@ -30,6 +30,21 @@ export interface MockResponse {
   status(code: number): MockResponse;
   json(data: any): MockResponse;
   send(data: any): MockResponse;
+}
+
+export function getCorsHeaders(): Record<string, string> {
+  return {
+    'access-control-allow-origin': process.env.ALLOWED_ORIGIN || '*',
+    'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'access-control-allow-headers': 'Content-Type, Authorization',
+  };
+}
+
+export function corsPreflight() {
+  return new Response(null, {
+    status: 204,
+    headers: getCorsHeaders(),
+  });
 }
 
 export async function parseRequest(
@@ -101,7 +116,7 @@ export async function parseRequest(
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
       user = {
         id: decoded.id,
-        role: decoded.role,
+        designation: decoded.designation,
       };
     } catch (_) {}
   }
@@ -126,7 +141,7 @@ export function createMockResponse(): { res: MockResponse; responsePromise: Prom
 
   const res: MockResponse = {
     _statusCode: 200,
-    _headers: {},
+    _headers: getCorsHeaders(),
     _body: null,
     status(code: number) {
       this._statusCode = code;
@@ -168,6 +183,10 @@ export function wrapHandler(
 ) {
   return async (req: NextRequest, { params }: { params?: any } = {}) => {
     try {
+      if (req.method === 'OPTIONS') {
+        return corsPreflight();
+      }
+
       const resolvedParams = params ? await params : {};
       const mockReq = await parseRequest(req, resolvedParams);
       const { res, responsePromise } = createMockResponse();
@@ -175,18 +194,24 @@ export function wrapHandler(
       // Middleware simulation
       if (options.protect) {
         if (!mockReq.user) {
-          return NextResponse.json({ message: 'Not authorized, token failed' }, { status: 401 });
-        }
-
-        const ADMIN_ROLES = ['Admin', 'Superadmin'];
-        if (options.adminOnly && !ADMIN_ROLES.includes(mockReq.user.role)) {
-          return NextResponse.json({ message: 'Not authorized as an admin' }, { status: 403 });
-        }
-
-        if (options.allowedRoles && !options.allowedRoles.includes(mockReq.user.role)) {
           return NextResponse.json(
-            { message: `Role (${mockReq.user.role}) is not allowed to access this resource.` },
-            { status: 403 }
+            { message: 'Not authorized, token failed' },
+            { status: 401, headers: getCorsHeaders() }
+          );
+        }
+
+        const ADMIN_ROLES = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin'];
+        if (options.adminOnly && !ADMIN_ROLES.includes(mockReq.user.designation)) {
+          return NextResponse.json(
+            { message: 'Not authorized as an admin' },
+            { status: 403, headers: getCorsHeaders() }
+          );
+        }
+
+        if (options.allowedRoles && !options.allowedRoles.includes(mockReq.user.designation)) {
+          return NextResponse.json(
+            { message: `Designation (${mockReq.user.designation}) is not allowed to access this resource.` },
+            { status: 403, headers: getCorsHeaders() }
           );
         }
       }
@@ -196,7 +221,10 @@ export function wrapHandler(
       return await responsePromise;
     } catch (error: any) {
       console.error('Error in route handler:', error);
-      return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { message: 'Internal Server Error', error: error.message },
+        { status: 500, headers: getCorsHeaders() }
+      );
     }
   };
 }

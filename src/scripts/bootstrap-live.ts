@@ -127,21 +127,19 @@ async function seedLive() {
         update: {
           name:        seedUser.name,
           password:    hashedPassword,
-          role:        seedUser.role,
           department:  seedUser.department,
-          designation: seedUser.designation,
           isActive:    seedUser.isActive,
+          documents:   {},
         },
         create: {
           name:        seedUser.name,
           email:       seedUser.email,
           password:    hashedPassword,
-          role:        seedUser.role,
-          employeeId:  seedUser.employeeId,
           department:  seedUser.department,
-          designation: seedUser.designation,
+          employeeId:  seedUser.employeeId,
           baseSalary:  seedUser.baseSalary,
           isActive:    seedUser.isActive,
+          documents:   {},
         },
       });
       console.log(`  ✅ [${user.role.padEnd(12)}]  ${user.email}`);

@@ -3,5 +3,5 @@ import { getAttendanceLogs } from '@/controllers/attendanceController';
 
 export const GET = wrapHandler(getAttendanceLogs, {
   protect: true,
-  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager', 'Stakeholder']
+  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'Stakeholder', 'Employee']
 });

@@ -1,18 +1,44 @@
 import type { Request, Response } from 'express-serve-static-core';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
+import { sendWelcomeEmail } from '../utils/mailer';
 
 export const getEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
+    const { cursor, limit = '20', search = '', designation = 'All' } = req.query;
+    
+    const take = parseInt(limit as string, 10);
+    
+    const where: any = {};
+    if (search) {
+      const q = (search as string).toLowerCase();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { employeeId: { contains: q, mode: 'insensitive' } },
+        { department: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+    if (designation !== 'All') {
+      where.OR = [
+        ...(where.OR || []),
+        { customDesignation: { name: designation as string } }
+      ];
+    }
+
     const users = await prisma.user.findMany({
+      take,
+      ...(cursor ? { skip: 1, cursor: { id: cursor as string } } : {}),
+      where,
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         employeeId: true,
         name: true,
         email: true,
-        role: true,
+        designationId: true,
+        customDesignation: { select: { id: true, name: true } },
         department: true,
-        designation: true,
         baseSalary: true,
         isActive: true,
         joiningDate: true,
@@ -21,7 +47,17 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
         updatedAt: true,
       }
     });
-    res.status(200).json(users);
+
+    const totalCount = await prisma.user.count({ where });
+    const nextCursor = users.length === take ? users[take - 1].id : null;
+
+    const mappedUsers = users.map(u => ({ ...u, designation: (u as any).customDesignation }));
+
+    res.status(200).json({
+      data: mappedUsers,
+      nextCursor,
+      totalCount
+    });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to fetch employees', error: error.message });
   }
@@ -37,9 +73,8 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         employeeId: true,
         name: true,
         email: true,
-        role: true,
+        customDesignation: { select: { id: true, name: true } },
         department: true,
-        designation: true,
         baseSalary: true,
         isActive: true,
         joiningDate: true,
@@ -50,7 +85,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
       res.status(404).json({ message: 'User not found' });
       return;
     }
-    res.status(200).json(user);
+    res.status(200).json({ ...user, designation: (user as any).customDesignation });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to fetch profile', error: error.message });
   }
@@ -59,11 +94,10 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const { name, designation, department, phone } = req.body as any;
+    const { name, department, phone } = req.body as any;
 
     const data: any = {};
     if (name) data.name = name;
-    if (designation) data.designation = designation;
     if (department) data.department = department;
     // Note: Phone is not in the Prisma schema yet, I'll ignore it or update schema later if needed.
     // Based on User.ts, phone wasn't there either, only in the controller's body destructuring.
@@ -79,13 +113,12 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
         id: true,
         name: true,
         email: true,
-        role: true,
         department: true,
-        designation: true,
+        customDesignation: { select: { id: true, name: true } },
         profileImage: true,
       }
     });
-    res.status(200).json({ message: 'Profile updated successfully', user });
+    res.status(200).json({ message: 'Profile updated successfully', user: { ...user, designation: (user as any).customDesignation } });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to update profile', error: error.message });
   }
@@ -125,15 +158,14 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, role, department, designation, baseSalary, isActive } = req.body as any;
+    const { name, designationId, department, baseSalary, isActive } = req.body as any;
 
     const user = await prisma.user.update({
       where: { id: id as string },
       data: {
         name,
-        role,
+        designationId: designationId !== undefined ? (designationId || null) : undefined,
         department,
-        designation,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,
         isActive
       },
@@ -142,9 +174,9 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         employeeId: true,
         name: true,
         email: true,
-        role: true,
+        designationId: true,
+        customDesignation: { select: { id: true, name: true } },
         department: true,
-        designation: true,
         baseSalary: true,
         isActive: true,
       }
@@ -154,7 +186,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       res.status(404).json({ message: 'Employee not found' });
       return;
     }
-    res.status(200).json({ message: 'Employee updated', user });
+    res.status(200).json({ message: 'Employee updated', user: { ...user, designation: (user as any).customDesignation } });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to update employee', error: error.message });
   }
@@ -162,7 +194,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
 export const createEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId, name, email, password, role, department, designation, baseSalary } = req.body as any;
+    const { employeeId, name, email, password, designationId, department, baseSalary, sendEmail } = req.body as any;
 
     const exists = await prisma.user.findFirst({
       where: {
@@ -175,7 +207,8 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const hashed = await bcrypt.hash(password || 'password123', 10);
+    const plainPassword = password || 'password123';
+    const hashed = await bcrypt.hash(plainPassword, 10);
 
     const user = await prisma.user.create({
       data: {
@@ -183,13 +216,16 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         name,
         email,
         password: hashed,
-        role: role || 'Executive',
+        designationId: designationId || null,
         department,
-        designation,
         baseSalary: Number(baseSalary) || 0,
         joiningDate: new Date(),
       }
     });
+
+    if (sendEmail) {
+      await sendWelcomeEmail(email, name, plainPassword);
+    }
 
     const { password: _, ...userWithoutPassword } = user;
     res.status(201).json({
@@ -229,15 +265,17 @@ export const seedTestUser = async (req: Request, res: Response): Promise<void> =
     const targetEmployeeId = "5";
     const hashedPassword = await bcrypt.hash('password123', 10);
 
+    // Fetch default designation 'Employee'
+    const defaultDesig = await prisma.designation.findFirst({ where: { name: 'Employee' } });
+
     const userData = {
       name: 'Tushar',
       email: 'tushar@example.com',
       password: hashedPassword,
-      role: 'Employee' as const,
+      designationId: defaultDesig?.id || undefined,
       employeeId: targetEmployeeId,
       baseSalary: 45000,
       department: 'Engineering',
-      designation: 'Software Developer',
       isActive: true
     };
 

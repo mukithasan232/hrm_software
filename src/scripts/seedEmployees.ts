@@ -45,11 +45,11 @@ interface EmployeeSeed {
   name: string;
   email: string;
   password: string;
-  role: any;
   department: string;
-  designation: string;
+  designationId: string;
   baseSalary: number;
   joiningDate: Date;
+  documents: any;
 }
 
 const buildEmployees = async (): Promise<EmployeeSeed[]> => {
@@ -57,10 +57,22 @@ const buildEmployees = async (): Promise<EmployeeSeed[]> => {
   const employees: EmployeeSeed[] = [];
   let idx = 1;
 
+  // Ensure all designations exist in DB
+  const allDesigNames = ['System Administrator', 'HR Manager', ...managerDesignations, ...executiveDesignations];
+  const desigMap: Record<string, string> = {};
+  
+  for (const name of allDesigNames) {
+    const d = await prisma.designation.upsert({
+      where: { name },
+      update: {},
+      create: { name }
+    });
+    desigMap[name] = d.id;
+  }
+
   const make = (
-    role: string,
     department: string,
-    designation: string,
+    designationName: string,
     salaryMin: number,
     salaryMax: number,
     n: number,
@@ -74,21 +86,21 @@ const buildEmployees = async (): Promise<EmployeeSeed[]> => {
         name,
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@hrm.test`,
         password: hashed,
-        role: role as any,
         department,
-        designation,
+        designationId: desigMap[designationName],
         baseSalary: getRandomSalary(salaryMin, salaryMax),
         joiningDate: new Date(
           Date.now() - Math.random() * 3 * 365 * 24 * 60 * 60 * 1000, // up to 3 yrs ago
         ),
+        documents: {},
       });
     }
   };
 
   // 1 Admin
-  make('Admin', 'HR', 'System Administrator', 120000, 150000, 1);
+  make('Management', 'System Administrator', 120000, 150000, 1);
   // 2 HRs
-  make('HR', 'HR', 'HR Manager', 80000, 100000, 2);
+  make('HR', 'HR Manager', 80000, 100000, 2);
   // 5 Managers (one per designation)
   for (let i = 0; i < 5; i++, idx++) {
     const firstName = firstNames[idx - 1] ?? `Mgr${idx}`;
@@ -99,11 +111,11 @@ const buildEmployees = async (): Promise<EmployeeSeed[]> => {
       name,
       email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@hrm.test`,
       password: hashed,
-      role: 'Manager' as any,
       department: departments[i],
-      designation: managerDesignations[i],
+      designationId: desigMap[managerDesignations[i]],
       baseSalary: getRandomSalary(90000, 120000),
       joiningDate: new Date(Date.now() - Math.random() * 3 * 365 * 24 * 60 * 60 * 1000),
+      documents: {},
     });
   }
   // 22 Executives
@@ -111,16 +123,19 @@ const buildEmployees = async (): Promise<EmployeeSeed[]> => {
     const firstName = firstNames[idx - 1] ?? `Exec${idx}`;
     const lastName = lastNames[idx - 1] ?? 'User';
     const name = `${firstName} ${lastName}`;
+    
+    const randomDesig = getRandomItem(executiveDesignations);
+    
     employees.push({
       employeeId: `EMP${String(idx).padStart(3, '0')}`,
       name,
       email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@hrm.test`,
       password: hashed,
-      role: 'Executive' as any,
       department: getRandomItem(departments),
-      designation: getRandomItem(executiveDesignations),
+      designationId: desigMap[randomDesig],
       baseSalary: getRandomSalary(50000, 80000),
       joiningDate: new Date(Date.now() - Math.random() * 3 * 365 * 24 * 60 * 60 * 1000),
+      documents: {},
     });
   }
 
@@ -136,7 +151,9 @@ const seed = async () => {
     console.log('✅  Connected.\n');
 
     // Wipe existing seed data
-    const deleted = await prisma.user.deleteMany({});
+    const deleted = await prisma.user.deleteMany({
+      where: { employeeId: { not: 'ADM-001' } } // don't delete superadmin
+    });
     console.log(`🗑   Cleared ${deleted.count} existing user(s).\n`);
 
     const employees = await buildEmployees();
@@ -161,4 +178,3 @@ const seed = async () => {
 };
 
 seed();
-

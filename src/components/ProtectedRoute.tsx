@@ -4,24 +4,25 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 
-// Define which roles can access each route prefix
+// Define which designations can access each route prefix
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
-  '/dashboard/payroll':     ['Admin', 'Superadmin', 'HRM Manager'],
-  '/dashboard/employees':   ['Admin', 'Superadmin', 'HRM Manager'],
-  '/dashboard/performance': ['Admin', 'Superadmin', 'HRM Manager', 'Stakeholder', 'Employee'],
-  '/dashboard/leaves':      ['Admin', 'Superadmin', 'HRM Manager', 'Employee'],
-  '/dashboard/attendance':  ['Admin', 'Superadmin', 'HRM Manager', 'Employee'],
-  '/dashboard/profile':     ['Admin', 'Superadmin', 'HRM Manager', 'Stakeholder', 'Employee'],
-  '/dashboard':             ['Admin', 'Superadmin', 'HRM Manager', 'Stakeholder', 'Employee'],
+  '/dashboard/payroll':     ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Engineering Manager', 'Finance Manager', 'Operations Manager', 'Sales Manager', 'Marketing Manager'],
+  '/dashboard/employees':   ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'],
+  '/dashboard/performance': ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Stakeholder', 'Employee'],
+  '/dashboard/leaves':      ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Employee'],
+  '/dashboard/attendance':  ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Employee'],
+  '/dashboard/profile':     ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Stakeholder', 'Employee'],
+  '/dashboard':             ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Stakeholder', 'Employee'],
 };
 
-// Where each role lands after login
-export const ROLE_HOME: Record<string, string> = {
-  Admin:         '/dashboard',
-  Superadmin:    '/dashboard',
-  Stakeholder:   '/dashboard',
-  'HRM Manager': '/dashboard',
-  Employee:      '/dashboard',
+// Where each designation lands after login
+export const DESIGNATION_HOME: Record<string, string> = {
+  Admin:                  '/dashboard',
+  'Super Admin':          '/dashboard',
+  'System Administrator': '/dashboard',
+  Stakeholder:            '/dashboard',
+  'HR Manager':           '/dashboard',
+  Employee:               '/dashboard',
 };
 
 function getSpinner() {
@@ -35,18 +36,18 @@ function getSpinner() {
   );
 }
 
-function getAccessDenied(role: string, path: string) {
+function getAccessDenied(designation: string, path: string) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="text-center space-y-4 max-w-md">
         <div className="text-6xl">🔒</div>
         <h1 className="text-2xl font-bold text-white">Access Denied</h1>
         <p className="text-gray-400">
-          Your role (<span className="text-blue-400 font-semibold">{role}</span>) does not have
+          Your designation (<span className="text-blue-400 font-semibold">{designation}</span>) does not have
           permission to access <span className="text-red-400">{path}</span>.
         </p>
         <a
-          href={ROLE_HOME[role] || '/dashboard'}
+          href={DESIGNATION_HOME[designation] || '/dashboard'}
           className="inline-block mt-4 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-all"
         >
           Go to My Dashboard
@@ -76,13 +77,13 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   if (!isAuthenticated || !user) return null;
 
   // Check route-level permissions
-  const role = user.role;
+  const designation = user.designation || 'Employee';
 
   // If caller passed explicit allowedRoles, use those
   const requiredRoles = allowedRoles ?? getRequiredRoles(pathname);
 
-  if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes(role)) {
-    return getAccessDenied(role, pathname);
+  if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes(designation)) {
+    return getAccessDenied(designation, pathname);
   }
 
   return <>{children}</>;

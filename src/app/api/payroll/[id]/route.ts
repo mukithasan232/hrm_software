@@ -3,5 +3,5 @@ import { updatePayrollStatus } from '@/controllers/payrollController';
 
 export const PATCH = wrapHandler(updatePayrollStatus, {
   protect: true,
-  allowedRoles: ['Admin', 'Superadmin']
+  allowedRoles: ['Admin', 'Super Admin', 'System Administrator']
 });

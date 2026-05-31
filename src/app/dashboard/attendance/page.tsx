@@ -39,7 +39,8 @@ export default function AttendancePage() {
   const fetchEmployees = async () => {
     try {
       const res = await api.get('/users');
-      setEmployees(res.data);
+      const empList = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      setEmployees(empList);
     } catch (error) {
       console.error('Failed to fetch employees');
     }

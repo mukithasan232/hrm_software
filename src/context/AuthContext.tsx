@@ -8,9 +8,8 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: string;
+  designation: string;
   profileImage?: string;
-  designation?: string;
   department?: string;
 }
 

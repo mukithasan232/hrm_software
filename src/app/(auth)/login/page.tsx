@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { ROLE_HOME } from '@/components/ProtectedRoute';
+import { DESIGNATION_HOME } from '@/components/ProtectedRoute';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -67,7 +67,7 @@ export default function LoginPage() {
 
       toast.success(`Welcome back, ${userData.name}!`, { icon: '👋' });
 
-      const destination = ROLE_HOME[userData.role as string] || '/dashboard';
+      const destination = DESIGNATION_HOME[userData.designation as string] || '/dashboard';
       setTimeout(() => router.replace(destination), 600);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Login failed');

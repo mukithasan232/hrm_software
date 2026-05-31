@@ -30,8 +30,12 @@ export async function GET(request: Request) {
 
     // Fetch users and their attendance within range
     const users = await prisma.user.findMany({
-      where: { role: 'Employee', isActive: true },
+      where: { 
+        customDesignation: { name: 'Employee' }, 
+        isActive: true 
+      },
       include: {
+        customDesignation: true,
         attendanceLogs: {
           where: {
             timestamp: {
@@ -166,7 +170,7 @@ export async function GET(request: Request) {
       row.getCell(1).value = index + 1;
       row.getCell(2).value = user.employeeId;
       row.getCell(3).value = user.name;
-      row.getCell(4).value = user.designation || 'Worker';
+      row.getCell(4).value = user.customDesignation?.name || 'Worker';
       
       const basicSalaryRate = user.baseSalary > 0 ? user.baseSalary : 500; // default 500
       row.getCell(5).value = basicSalaryRate;

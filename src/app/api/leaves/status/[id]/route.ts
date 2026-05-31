@@ -3,5 +3,5 @@ import { updateLeaveStatus } from '@/controllers/leaveController';
 
 export const PATCH = wrapHandler(updateLeaveStatus, {
   protect: true,
-  allowedRoles: ['HRM Manager', 'Admin', 'Superadmin']
+  allowedRoles: ['HRM Manager', 'Admin', 'Super Admin', 'System Administrator']
 });

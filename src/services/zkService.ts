@@ -249,13 +249,15 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     const rawUsers = await getDeviceUsersRaw(zk);
     const hashedPassword = await bcrypt.hash('password123', 10);
     const userIdMap = new Map<string, string>(); // maps device employeeId -> User.id (UUID)
+    
+    // Fetch default designations
+    const adminDesig = await prisma.designation.findFirst({ where: { name: 'Admin' } });
+    const empDesig = await prisma.designation.findFirst({ where: { name: 'Employee' } });
 
     for (const u of rawUsers) {
       const employeeId = String(u.user_id ?? u.userId ?? u.uid);
       const name = u.name || `User ${employeeId}`;
       const normalizedEmail = `user${employeeId}@hrm.test`;
-      const finalRole = u.role === 14 ? 'Admin' : 'Employee';
-
       const dbUser = await prisma.user.upsert({
         where: { employeeId },
         update: { name },
@@ -264,7 +266,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
           name,
           email: normalizedEmail,
           password: hashedPassword,
-          role: finalRole as any,
+          designationId: (u.role === 14 ? adminDesig?.id : empDesig?.id) || undefined,
           baseSalary: 0,
           isActive: true
         }
@@ -346,9 +348,9 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
                 name,
                 email: normalizedEmail,
                 password: hashedPassword,
-                role: 'Employee',
                 baseSalary: 0,
-                isActive: true
+                isActive: true,
+                documents: {}
               }
             });
             userIdMap.set(deviceEmpId, dbUser.id);
@@ -430,11 +432,14 @@ export const getDeviceUsers = async (): Promise<any[]> => {
 
     // Upsert into DB
     const hashedPassword = await bcrypt.hash('password123', 10);
+    
+    const adminDesig = await prisma.designation.findFirst({ where: { name: 'Admin' } });
+    const empDesig = await prisma.designation.findFirst({ where: { name: 'Employee' } });
+
     for (const dUser of users) {
       const employeeId = dUser.userId;
       const name = dUser.name || `User ${employeeId}`;
       const normalizedEmail = `user${employeeId}@hrm.test`;
-      const finalRole = dUser.role === 14 ? 'Admin' : 'Employee';
 
       await prisma.user.upsert({
         where: { employeeId },
@@ -444,7 +449,7 @@ export const getDeviceUsers = async (): Promise<any[]> => {
           name,
           email: normalizedEmail,
           password: hashedPassword,
-          role: finalRole as any,
+          designationId: (dUser.role === 14 ? adminDesig?.id : empDesig?.id) || undefined,
           baseSalary: 0,
           isActive: true
         }

@@ -145,12 +145,18 @@ export const getActivePresence = async (req: Request, res: Response) => {
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
     const { page = '1', limit = '50', employeeId, startDate, endDate, range, filter } = req.query;
+    const currentUser = (req as any).user;
     
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const take = parseInt(limit as string);
 
     const where: any = {};
     if (employeeId) where.employeeId = employeeId as string;
+
+    const isAdmin = ['Admin', 'Super Admin', 'System Administrator'].includes(currentUser?.designation);
+    if (!isAdmin) {
+      where.employeeId = currentUser.id;
+    }
 
     const activeRange = (range || filter || 'today').toString().toLowerCase();
 
@@ -228,21 +234,39 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 export const createManualLog = async (req: Request, res: Response) => {
   try {
     const { employeeId, timestamp, punchType } = req.body;
+    const currentUser = (req as any).user;
+    const isAdmin = ['Admin', 'Super Admin', 'System Administrator'].includes(currentUser?.designation);
+    const resolvedEmployeeId = !isAdmin ? currentUser.id : employeeId;
 
-    if (!employeeId || !timestamp || !punchType) {
+    if (!resolvedEmployeeId || !timestamp || !punchType) {
       return res.status(400).json({ message: 'Please provide employeeId, timestamp, and punchType' });
+    }
+
+    if (!['CheckIn', 'CheckOut'].includes(punchType)) {
+      return res.status(400).json({ message: 'Punch type must be CheckIn or CheckOut' });
     }
 
     const log = await prisma.attendanceLog.create({
       data: {
-        employeeId,
+        employeeId: resolvedEmployeeId,
         timestamp: new Date(timestamp),
         punchType,
-        deviceId: 'Manual Entry'
+        deviceId: !isAdmin ? 'Mobile App' : 'Manual Entry'
+      },
+      include: {
+        user: {
+          select: { name: true, employeeId: true, department: true }
+        }
       }
     });
 
-    res.status(201).json({ message: 'Manual entry created', log });
+    res.status(201).json({
+      message: 'Manual entry created',
+      log: {
+        ...log,
+        employeeName: log.user?.name || 'Unknown'
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ message: 'Error creating manual entry', error: error.message });
   }

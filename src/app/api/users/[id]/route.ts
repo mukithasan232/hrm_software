@@ -3,15 +3,15 @@ import { updateEmployee, deleteEmployee, toggleEmployeeStatus } from '@/controll
 
 export const PUT = wrapHandler(updateEmployee, {
   protect: true,
-  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager']
+  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
 });
 
 export const DELETE = wrapHandler(deleteEmployee, {
   protect: true,
-  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager']
+  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
 });
 
 export const PATCH = wrapHandler(toggleEmployeeStatus, {
   protect: true,
-  allowedRoles: ['Admin', 'Superadmin', 'HRM Manager']
+  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
 });

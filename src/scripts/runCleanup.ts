@@ -45,7 +45,7 @@ async function runCleanup() {
     console.log('🔍 Identifying target test employees (EMP*)...');
     const testUsers = await prisma.user.findMany({
       where: {
-        role: { not: 'Admin' },
+        customDesignation: { name: { not: 'Admin' } },
         employeeId: { startsWith: 'EMP' }
       }
     });

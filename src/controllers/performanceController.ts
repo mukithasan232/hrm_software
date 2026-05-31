@@ -60,7 +60,7 @@ export const rateEmployee = async (req: Request, res: Response) => {
       },
       include: {
         employee: {
-          select: { name: true, designation: true }
+          select: { name: true, customDesignation: true }
         }
       }
     });
@@ -85,7 +85,7 @@ export const calculateEOTM = async (req: Request, res: Response) => {
       orderBy: { calculatedOverallScore: 'desc' },
       include: {
         employee: {
-          select: { name: true, designation: true }
+          select: { name: true, customDesignation: true }
         }
       }
     });
@@ -127,7 +127,7 @@ export const getLatestEOTM = async (req: Request, res: Response) => {
       ],
       include: {
         employee: {
-          select: { name: true, designation: true }
+          select: { name: true, customDesignation: true }
         }
       }
     });
@@ -138,7 +138,7 @@ export const getLatestEOTM = async (req: Request, res: Response) => {
 
     res.status(200).json({
       name: eotm.employee.name || 'Unknown',
-      designation: eotm.employee.designation || 'N/A',
+      designation: (eotm.employee as any).customDesignation || 'N/A',
       score: eotm.calculatedOverallScore
     });
   } catch (error: any) {

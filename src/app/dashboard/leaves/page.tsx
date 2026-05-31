@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 
 export default function LeavesPage() {
   const { user } = useAuth();
-  const isManagerOrHR = ['Admin', 'HR', 'Manager'].includes(user?.role || '');
+  const canManage = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(user?.designation || '');
 
   const [leaves, setLeaves] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +74,7 @@ export default function LeavesPage() {
       <div>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Leave Management</h1>
         <p className="text-slate-500 dark:text-gray-400 mt-1">
-          {isManagerOrHR ? 'Review and manage employee leave requests.' : 'Submit a new leave request and view history.'}
+          {canManage ? 'Review and manage employee leave requests.' : 'Submit a new leave request and view history.'}
         </p>
       </div>
  
@@ -142,19 +142,19 @@ export default function LeavesPage() {
           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm dark:shadow-2xl">
             <div className="p-6 border-b border-slate-100 dark:border-white/10">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                {isManagerOrHR ? 'All Leave Requests' : 'My Leave History'}
+                {canManage ? 'All Leave Requests' : 'My Leave History'}
               </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
-                    {isManagerOrHR && <th className="px-6 py-4 font-bold">Employee</th>}
+                    {canManage && <th className="px-6 py-4 font-bold">Employee</th>}
                     <th className="px-6 py-4 font-bold">Type</th>
                     <th className="px-6 py-4 font-bold">Duration</th>
                     <th className="px-6 py-4 font-bold">Doc</th>
                     <th className="px-6 py-4 font-bold">Status</th>
-                    {isManagerOrHR && <th className="px-6 py-4 font-bold text-right">Actions</th>}
+                    {canManage && <th className="px-6 py-4 font-bold text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-sm">
@@ -165,7 +165,7 @@ export default function LeavesPage() {
                   ) : (
                     leaves.map((l) => (
                       <tr key={l.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                        {isManagerOrHR && (
+                        {canManage && (
                           <td className="px-6 py-4 text-slate-900 dark:text-white font-bold">
                             {l.employee?.name} <span className="block text-xs text-slate-500 dark:text-gray-500 font-normal mt-0.5">{l.employee?.employeeId}</span>
                           </td>
@@ -196,7 +196,7 @@ export default function LeavesPage() {
                             {l.status}
                           </span>
                         </td>
-                        {isManagerOrHR && (
+                        {canManage && (
                           <td className="px-6 py-4 text-right">
                             {l.status === 'Pending' ? (
                               <div className="flex items-center justify-end gap-2">

@@ -164,9 +164,9 @@ const connectAndListen = async () => {
                 name,
                 email: normalizedEmail,
                 password: hashedPassword,
-                role: 'Employee',
                 baseSalary: 0,
-                isActive: true
+                isActive: true,
+                documents: {}
               }
             });
           }

@@ -20,17 +20,19 @@ async function seedTestUser() {
     const targetEmployeeId = "5";
     const hashedPassword = await bcrypt.hash('password123', 10);
 
+    const empDesig = await prisma.designation.findFirst({ where: { name: 'Employee' } });
+
     // Prepare User Data
     const userData = {
       name: 'Tushar',
       email: 'tushar@example.com',
       password: hashedPassword,
-      role: 'Employee' as const,
       employeeId: targetEmployeeId,
       baseSalary: 45000,
       department: 'Engineering',
-      designation: 'Software Developer',
-      isActive: true
+      designationId: empDesig?.id,
+      isActive: true,
+      documents: {}
     };
 
     // Upsert: Find by employeeId, update if exists, create if not

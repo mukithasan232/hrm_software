@@ -1,20 +1,26 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Menu, Bell, X, User, Settings, LogOut } from 'lucide-react';
+import { Menu, Bell, Settings, LogOut, Paintbrush } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/services/api';
 import ThemeToggle from '@/components/ThemeToggle';
+import { useBrand } from '@/context/BrandContext';
 
 const BACKEND = 'http://localhost:5001';
 
 export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void }) {
   const { user, logout } = useAuth();
+  const { brand } = useBrand();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const notifRef = useRef<HTMLDivElement>(null);
+  const notifRef   = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  const p = brand.primaryColor;
+  const s = brand.secondaryColor;
+  const gradient = `linear-gradient(135deg, ${p}, ${s})`;
 
   useEffect(() => {
     if (user) {
@@ -25,7 +31,7 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifications(false);
+      if (notifRef.current   && !notifRef.current.contains(e.target as Node))   setShowNotifications(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setShowProfile(false);
     };
     document.addEventListener('mousedown', handler);
@@ -39,11 +45,11 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
     try {
       await api.post('/notifications/read');
       setNotifications(notifications.map(n => ({ ...n, read: true })));
-    } catch (e) {}
+    } catch (_) {}
   };
 
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
-  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const initials  = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
   return (
     <header className="h-16 border-b border-slate-200 dark:border-white/10 bg-white/70 dark:bg-black/30 backdrop-blur-md flex items-center justify-between px-4 md:px-8 z-50 sticky top-0 transition-colors duration-300">
@@ -57,15 +63,17 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
         </button>
         <div>
           <span className="text-slate-800 dark:text-white font-semibold text-sm hidden sm:block">
-            Welcome back, <span className="text-indigo-600 dark:text-blue-400">{user?.name?.split(' ')[0] || 'User'}</span>
+            Welcome back,{' '}
+            <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">
+              {user?.name?.split(' ')[0] || 'User'}
+            </span>
           </span>
-          <span className="text-xs text-slate-500 dark:text-gray-500 hidden sm:block">{user?.role}</span>
+          <span className="text-xs text-slate-500 dark:text-gray-500 hidden sm:block">{user?.designation}</span>
         </div>
       </div>
 
       {/* Right */}
       <div className="flex items-center gap-3">
-        {/* Theme Toggle */}
         <ThemeToggle />
 
         {/* Notification Bell */}
@@ -74,9 +82,13 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
             onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) handleMarkAsRead(); }}
             className="relative p-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-white/10"
           >
-            <Bell className="w-5 h-5" />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+              <span
+                className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full animate-pulse bg-brand-primary"
+              />
             )}
           </button>
 
@@ -84,14 +96,21 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
             <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl dark:shadow-2xl overflow-hidden z-50">
               <div className="p-4 border-b border-slate-100 dark:border-white/10 flex justify-between items-center">
                 <h3 className="font-semibold text-slate-800 dark:text-white text-sm">Notifications</h3>
-                {unreadCount > 0 && <span className="text-xs bg-red-500/20 text-red-500 dark:text-red-400 px-2 py-0.5 rounded-full">{unreadCount} new</span>}
+                {unreadCount > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-brand-primary/20 text-brand-primary">
+                    {unreadCount} new
+                  </span>
+                )}
               </div>
               <div className="max-h-72 overflow-y-auto">
                 {notifications.length === 0 ? (
                   <p className="p-6 text-sm text-slate-400 dark:text-gray-500 text-center">All caught up! 🎉</p>
                 ) : (
                   notifications.map(n => (
-                    <div key={n.id} className={`p-3 border-b border-slate-100 dark:border-white/5 text-xs ${!n.read ? 'bg-indigo-500/5 text-slate-800 dark:text-white font-medium' : 'text-slate-500 dark:text-gray-400'}`}>
+                    <div
+                      key={n.id}
+                      className={`p-3 border-b border-slate-100 dark:border-white/5 text-xs ${!n.read ? 'text-slate-800 dark:text-white font-medium bg-brand-primary/10' : 'text-slate-500 dark:text-gray-400'}`}
+                    >
                       <p>{n.message}</p>
                       <p className="text-slate-400 dark:text-gray-500 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
                     </div>
@@ -106,12 +125,14 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setShowProfile(!showProfile)}
-            className="flex items-center gap-2 p-1 rounded-full hover:ring-2 hover:ring-indigo-500/50 dark:hover:ring-blue-500/50 transition-all"
+            className={`flex items-center gap-2 p-1 rounded-full transition-all ${showProfile ? 'ring-2 ring-brand-primary/60' : ''}`}
           >
             {avatarSrc ? (
               <img src={avatarSrc} alt="avatar" className="h-8 w-8 rounded-full object-cover border-2 border-slate-200 dark:border-white/20" />
             ) : (
-              <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold border-2 border-white/20">
+              <div
+                className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white/20 bg-gradient-to-tr from-brand-primary to-brand-secondary"
+              >
                 {initials}
               </div>
             )}
@@ -119,16 +140,42 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
 
           {showProfile && (
             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl dark:shadow-2xl overflow-hidden z-50">
+              {/* User info header */}
               <div className="p-4 border-b border-slate-100 dark:border-white/10">
                 <p className="text-slate-800 dark:text-white font-medium text-sm">{user?.name}</p>
                 <p className="text-slate-500 dark:text-gray-500 text-xs">{user?.email}</p>
-                <span className="mt-1 inline-block px-2 py-0.5 rounded-full text-xs bg-indigo-500/10 dark:bg-blue-500/20 text-indigo-600 dark:text-blue-400">{user?.role}</span>
+                <span
+                  className="mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-primary/20 text-brand-primary"
+                >
+                  {user?.designation}
+                </span>
               </div>
+
               <div className="p-2">
-                <Link href="/dashboard/profile" onClick={() => setShowProfile(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 text-sm transition-colors">
+                {/* Appearance — Admin/Superadmin only */}
+                {user && ['Admin', 'Super Admin'].includes(user.designation) && (
+                  <Link
+                    href="/dashboard/settings/appearance"
+                    onClick={() => setShowProfile(false)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
+                  >
+                    <Paintbrush className="w-4 h-4 flex-shrink-0" />
+                    <span className="font-medium">Appearance</span>
+                  </Link>
+                )}
+
+                <Link
+                  href="/dashboard/profile"
+                  onClick={() => setShowProfile(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 text-sm transition-colors"
+                >
                   <Settings className="w-4 h-4" /> Profile Settings
                 </Link>
-                <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/5 dark:hover:bg-red-500/10 text-sm transition-colors">
+
+                <button
+                  onClick={logout}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/5 dark:hover:bg-red-500/10 text-sm transition-colors"
+                >
                   <LogOut className="w-4 h-4" /> Sign Out
                 </button>
               </div>

@@ -129,14 +129,14 @@ export const generateMonthlyPayroll = async (req: Request, res: Response) => {
       },
       include: {
         user: {
-          select: { name: true, employeeId: true, department: true, designation: true }
+          select: { name: true, employeeId: true, department: true, customDesignation: true }
         }
       }
     });
 
     res.status(200).json({
       message: `Payroll generated successfully for ${finalPayrolls.length} employees for ${month}/${year}`,
-      data: finalPayrolls
+      data: finalPayrolls.map(p => ({ ...p, user: { ...p.user, designation: (p.user as any)?.customDesignation } }))
     });
   } catch (error: any) {
     console.error('❌ [generateMonthlyPayroll] Error:', error);
@@ -162,7 +162,7 @@ export const getAllPayrolls = async (req: Request, res: Response) => {
       where,
       include: {
         user: {
-          select: { name: true, employeeId: true, department: true, designation: true }
+          select: { name: true, employeeId: true, department: true, customDesignation: true }
         }
       },
       orderBy: [
@@ -171,7 +171,7 @@ export const getAllPayrolls = async (req: Request, res: Response) => {
       ]
     });
 
-    res.status(200).json(payrolls);
+    res.status(200).json(payrolls.map(p => ({ ...p, user: { ...p.user, designation: (p.user as any)?.customDesignation } })));
   } catch (error: any) {
     res.status(500).json({ message: 'Error fetching payrolls', error: error.message });
   }

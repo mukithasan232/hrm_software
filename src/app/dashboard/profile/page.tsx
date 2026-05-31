@@ -4,12 +4,16 @@ import { useAuth } from '@/context/AuthContext';
 import { Camera, Save, Lock, User, Briefcase, Mail, Building } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import { useBrand } from '@/context/BrandContext';
 
 const BACKEND = 'http://localhost:5001';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
+  const { brand } = useBrand();
   const fileRef = useRef<HTMLInputElement>(null);
+
+
 
   const [form, setForm] = useState({ name: '', designation: '', department: '', phone: '' });
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -109,13 +113,13 @@ export default function ProfilePage() {
                   className="h-28 w-28 rounded-full object-cover border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto"
                 />
               ) : (
-                <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto">
-                  {initials}
-                </div>
+                <div className="h-28 w-28 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto bg-gradient-to-tr from-brand-primary to-brand-secondary">
+            {initials}
+          </div>
               )}
               <button
                 onClick={() => fileRef.current?.click()}
-                className="absolute bottom-0 right-0 p-2 bg-blue-600 hover:bg-blue-500 rounded-full border-2 border-white dark:border-slate-900 transition-colors shadow-md"
+                className="absolute bottom-0 right-0 p-2 rounded-full border-2 border-white dark:border-slate-900 transition-colors shadow-md text-white bg-brand-primary"
               >
                 <Camera className="w-4 h-4 text-white" />
               </button>
@@ -130,9 +134,9 @@ export default function ProfilePage() {
 
             <div>
               <p className="text-slate-900 dark:text-white font-bold text-lg">{user?.name}</p>
-              <p className="text-slate-550 dark:text-gray-400 text-sm font-semibold">{(user as any)?.designation || user?.role}</p>
-              <span className="mt-2 inline-block px-3 py-1 rounded-full text-xs bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold">
-                {user?.role}
+              <p className="text-slate-550 dark:text-gray-400 text-sm font-semibold">{user?.designation}</p>
+              <span className="mt-2 inline-block px-3 py-1 rounded-full text-xs font-bold border bg-brand-primary/10 text-brand-primary border-brand-primary/30">
+                {user?.designation}
               </span>
             </div>
 
@@ -207,7 +211,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(37,99,235,0.3)] cursor-pointer"
+                  className="flex items-center gap-2 px-6 py-2.5 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-brand-primary/40 cursor-pointer hover:opacity-90 bg-brand-primary"
                 >
                   <Save className="w-4 h-4" />
                   {saving ? 'Saving...' : 'Save Changes'}
@@ -258,7 +262,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={changingPw}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+                  className="flex items-center gap-2 px-6 py-2.5 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-brand-secondary/40 hover:opacity-90 bg-brand-secondary"
                 >
                   <Lock className="w-4 h-4" />
                   {changingPw ? 'Updating...' : 'Update Password'}
