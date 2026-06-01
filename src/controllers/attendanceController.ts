@@ -283,3 +283,71 @@ export const createManualLog = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error creating manual entry', error: error.message });
   }
 };
+
+// @desc    Webhook for standalone local device push script
+// @route   POST /api/attendance/device-punch
+// @access  Public
+export const deviceWebhookPunch = async (req: Request, res: Response) => {
+  try {
+    const { employeeId, timestamp, punchType, status } = req.body;
+    
+    if (!employeeId || !timestamp) {
+      return res.status(400).json({ message: 'Missing employeeId or timestamp' });
+    }
+
+    const parsedTimestamp = new Date(timestamp);
+    const resolvedPunchType = punchType || status || 'CheckIn';
+
+    // Find the user to ensure foreign key constraint is satisfied
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [{ employeeId: String(employeeId) }, { id: String(employeeId) }]
+      }
+    });
+
+    if (!user) {
+      const name = `User ${employeeId}`;
+      const normalizedEmail = `user${employeeId}-${Date.now()}@hrm.test`;
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      user = await prisma.user.create({
+        data: {
+          employeeId: String(employeeId),
+          name,
+          email: normalizedEmail,
+          password: hashedPassword,
+          baseSalary: 0,
+          isActive: true,
+          documents: {}
+        }
+      });
+    }
+
+    const log = await prisma.attendanceLog.create({
+      data: {
+        employeeId: user.id,
+        timestamp: parsedTimestamp,
+        punchType: resolvedPunchType as any,
+        deviceId: 'Webhook/Local Push'
+      }
+    });
+
+    const logData = {
+      ...log,
+      employeeName: user.name
+    };
+
+    const io = (global as any).io;
+    if (io) {
+      setImmediate(() => {
+        io.emit('new-attendance', logData);
+        io.emit('attendanceUpdate', { checkIn: resolvedPunchType === 'CheckIn' });
+        console.log(`[RealtimeService] 📡 Emitted webhook punch to frontend: ${logData.employeeName} [${resolvedPunchType}]`);
+      });
+    }
+
+    res.status(201).json({ success: true, message: 'Punch recorded via webhook', log: logData });
+  } catch (error: any) {
+    console.error('[Webhook Error]:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to record punch', error: error.message });
+  }
+};

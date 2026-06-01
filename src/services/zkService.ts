@@ -168,13 +168,22 @@ async function connectProperly(zk: any): Promise<void> {
   // Give the socket a moment to breathe
   await new Promise(r => setTimeout(r, 1000));
 
-  await zk.connect();
-  console.log(`[ZKService] 🔌 Connected using ${zk.connectionType.toUpperCase()}`);
+  try {
+    // Implement a strict 5-second race timeout because zkteco-js .connect() sometimes hangs infinitely
+    await Promise.race([
+      zk.connect(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout - device unreachable')), 5000))
+    ]);
+    console.log(`[ZKService] 🔌 Connected using ${zk.connectionType.toUpperCase()}`);
 
-  // Log real-time logs to catch punches as they happen
-  zk.getRealTimeLogs((data: any) => {
-    console.log('[ZKService] 🕒 Real-time Log Received:', data);
-  });
+    // Log real-time logs to catch punches as they happen
+    zk.getRealTimeLogs((data: any) => {
+      console.log('[ZKService] 🕒 Real-time Log Received:', data);
+    });
+  } catch (error: any) {
+    console.error('[ZKTeco Connection Error]:', error.message);
+    throw error;
+  }
 }
 
 // ─── Helper to fetch raw users directly ───────────────────────────────────────

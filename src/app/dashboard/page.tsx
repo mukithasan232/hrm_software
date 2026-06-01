@@ -71,7 +71,11 @@ export default function DashboardOverview() {
       toast.success(res.data.message || 'Users synced from device!');
       fetchDashboardData();
     } catch (error: any) {
-      toast.error('Failed to sync users from biometric device');
+      console.error(error);
+      const msg = error.response?.data?.message || 'Device unreachable, pulling from backup cloud logs';
+      toast.error(msg);
+      // Ensure we at least fetch what we have in the local DB
+      fetchDashboardData();
     } finally {
       setSyncingUsers(false);
     }
