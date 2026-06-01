@@ -134,103 +134,34 @@ jobs:
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
   # ──────────────────────────────────────────────────────────────────────────────
-  # JOB 3 — EXPO EAS OVER-THE-AIR UPDATE (Mobile)
-  # ──────────────────────────────────────────────────────────────────────────────
-  mobile-ota:
-    name: 📱 Mobile OTA Update → Expo EAS
-    runs-on: ubuntu-latest
-    needs: test           # Only push OTA if type-check passes
-    environment: production
-
-    steps:
-      - name: ⬇️ Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      # ── Install Expo CLI + EAS CLI globally ──
-      - name: 📦 Install EAS CLI
-        run: npm install -g eas-cli@latest expo-cli@latest
-
-      # ── Authenticate with Expo using your EXPO_TOKEN ──
-      # Required Secrets:
-      #   EXPO_TOKEN → Generate at https://expo.dev/accounts/[your-account]/settings/access-tokens
-      - name: 🔑 Authenticate with Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: 📥 Install mobile dependencies
-        working-directory: hrm_mobile/hrm-mobile
-        run: npm ci
-
-      # ── Determine OTA branch based on git branch ──
-      # main → production branch | any other → preview branch
-      - name: 🎯 Determine EAS update branch
-        id: eas-branch
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "branch=production" >> $GITHUB_OUTPUT
-            echo "🎯 Target EAS branch: production"
-          else
-            echo "branch=preview" >> $GITHUB_OUTPUT
-            echo "🎯 Target EAS branch: preview"
-          fi
-
-      # ── Push the OTA update ──
-      - name: 📤 Push EAS OTA Update
-        working-directory: hrm_mobile/hrm-mobile
-        run: |
-          eas update \
-            --branch ${{ steps.eas-branch.outputs.branch }} \
-            --message "🤖 Auto-deploy from commit ${{ github.sha }} — ${{ github.event.head_commit.message }}" \
-            --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: 📊 Summary
-        run: |
-          echo "### 📱 Mobile OTA Update Sent!" >> $GITHUB_STEP_SUMMARY
-          echo "- **EAS Branch:** ${{ steps.eas-branch.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Message:** ${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
-
-  # ──────────────────────────────────────────────────────────────────────────────
-  # JOB 4 — NOTIFY (post-deploy summary in Slack/Discord — optional)
+  # JOB 3 — NOTIFY (post-deploy summary)
   # ──────────────────────────────────────────────────────────────────────────────
   notify:
     name: 🔔 Notify Deployment Status
     runs-on: ubuntu-latest
-    needs: [deploy-web, mobile-ota]
+    needs: [deploy-web]
     if: always()    # Run even if previous jobs failed
 
     steps:
       - name: ✅ Success notification
-        if: needs.deploy-web.result == 'success' && needs.mobile-ota.result == 'success'
+        if: needs.deploy-web.result == 'success'
         run: |
-          echo "### 🎉 Full Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎉 Web Deployment Successful!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🌐 Web Deploy (Hostinger) | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📱 Mobile OTA (Expo EAS)  | ✅ Success |" >> $GITHUB_STEP_SUMMARY
           echo "| 🔖 Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| 👤 Triggered by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
 
       - name: ❌ Failure notification
-        if: needs.deploy-web.result == 'failure' || needs.mobile-ota.result == 'failure'
+        if: needs.deploy-web.result == 'failure'
         run: |
-          echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "### ❌ Web Deployment Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🌐 Web Deploy | ${{ needs.deploy-web.result == 'failure' && '❌ Failed' || '✅ OK' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📱 Mobile OTA | ${{ needs.mobile-ota.result == 'failure' && '❌ Failed' || '✅ OK' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌐 Web Deploy | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "👉 Check the logs above for details." >> $GITHUB_STEP_SUMMARY
 
