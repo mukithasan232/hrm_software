@@ -88,6 +88,15 @@ export const loginUser = async (req: Request, res: Response) => {
 
     console.log(`[Auth] 👤 User found: ${user.email} (ID: ${user.id})`);
 
+    // ── TEMPORARY DEBUG — remove after confirming login works on production ──
+    console.log('[Auth] LOGIN_DEBUG:', {
+      inputPassword:  password,
+      databaseHash:   user.password,
+      hashPrefix:     user.password?.substring(0, 20),
+      hashLength:     user.password?.length,
+    });
+    // ────────────────────────────────────────────────────────────────────────
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       console.log(`[Auth] ❌ Password mismatch for: "${email}"`);
