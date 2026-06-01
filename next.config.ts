@@ -22,11 +22,9 @@ const nextConfig = {
     unoptimized: true, // Required for self-hosted / Hostinger (no Vercel image CDN)
   },
 
-  // Bypass TypeScript & ESLint errors during production builds.
+  // Bypass TypeScript errors during production builds.
   // The dedicated "Type Check & Lint" CI job handles this strictly — no need to block the build here.
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // Note: 'eslint' key is removed — Next.js 16 no longer supports it in next.config.ts.
   typescript: {
     ignoreBuildErrors: true,
   },
