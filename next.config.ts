@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   reactStrictMode: true,
 
   // Tell Next.js/Turbopack NOT to bundle these native Node packages —
@@ -31,6 +31,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-};
+} as any;
 
 export default nextConfig;
