@@ -23,7 +23,11 @@ const nextConfig: NextConfig = {
     unoptimized: true, // Required for self-hosted / Hostinger (no Vercel image CDN)
   },
 
-  // Bypass TypeScript errors during production builds to ensure successful deployment on Hostinger
+  // Bypass TypeScript & ESLint errors during production builds.
+  // The dedicated "Type Check & Lint" CI job handles this strictly — no need to block the build here.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

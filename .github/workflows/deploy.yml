@@ -118,7 +118,7 @@ jobs:
 
             # ── 3. Install / update dependencies ──
             echo "📦 Installing dependencies..."
-            pnpm install --frozen-lockfile || npm ci
+            npm ci
 
             # ── 4. Sync DB schema (Prisma) ──
             echo "🗄️  Syncing database schema..."
