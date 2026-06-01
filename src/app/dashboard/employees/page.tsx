@@ -9,15 +9,15 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 
 const DEPARTMENTS = ['Engineering', 'Finance', 'Operations', 'Sales', 'Marketing', 'HR', 'Product', 'Legal'];
-const ROLES = ['Executive', 'Manager', 'HR', 'Admin'];
+const DESIGNATIONS = ['Executive', 'Manager', 'HR', 'Admin'];
 const BACKEND = 'http://localhost:5001';
 
 const EMPTY_FORM = {
   employeeId: '', name: '', email: '', password: 'password123',
-  department: 'Engineering', designationId: '', baseSalary: '',
+  department: 'Engineering', designationId: '', baseSalary: '', employeeType: 'IN_HOUSE'
 };
 
-const ROLE_COLORS: Record<string, string> = {
+const DESIGNATION_COLORS: Record<string, string> = {
   Admin:     'bg-red-500/15 text-red-400 border-red-500/25',
   HR:        'bg-purple-500/15 text-purple-400 border-purple-500/25',
   Manager:   'bg-blue-500/15 text-blue-400 border-blue-500/25',
@@ -31,7 +31,7 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterRole, setFilterRole] = useState('All');
+  const [filterDesignation, setFilterDesignation] = useState('All');
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -60,8 +60,18 @@ export default function EmployeesPage() {
       const n = parseInt(e.employeeId?.replace(/\D/g, '') || '0');
       return n > max ? n : max;
     }, 0);
-    setForm({ ...EMPTY_FORM, employeeId: `EMP${String(maxId + 1).padStart(3, '0')}` });
+    const nextId = maxId < 1000 ? 1001 : maxId + 1;
+    setForm({ ...EMPTY_FORM, employeeId: `EMP-${nextId}` });
     setShowModal(true);
+  };
+
+  const generatePassword = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let newPassword = '';
+    for (let i = 0; i < 12; i++) {
+      newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setForm(prev => ({ ...prev, password: newPassword }));
   };
 
   const openEdit = (emp: any) => {
@@ -73,6 +83,7 @@ export default function EmployeesPage() {
       password: '',
       designationId: emp.designationId || '',
       department: emp.department || 'Engineering',
+      employeeType: emp.employeeType || 'IN_HOUSE',
       baseSalary: emp.baseSalary?.toString() || '',
     });
     setShowModal(true);
@@ -132,8 +143,8 @@ export default function EmployeesPage() {
       e.email?.toLowerCase().includes(search.toLowerCase()) ||
       e.employeeId?.toLowerCase().includes(search.toLowerCase()) ||
       e.department?.toLowerCase().includes(search.toLowerCase());
-    const matchRole = filterRole === 'All' || e.role === filterRole;
-    return matchSearch && matchRole;
+    const matchDesignation = filterDesignation === 'All' || e.designation?.name === filterDesignation || (!e.designation && filterDesignation === 'Staff');
+    return matchSearch && matchDesignation;
   });
 
   const initials = (name: string) => name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
@@ -170,12 +181,12 @@ export default function EmployeesPage() {
         </div>
         <div className="relative">
           <select
-            value={filterRole}
-            onChange={e => setFilterRole(e.target.value)}
+            value={filterDesignation}
+            onChange={e => setFilterDesignation(e.target.value)}
             className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-700 dark:text-white text-sm appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-w-[130px] shadow-sm font-medium"
           >
-            <option value="All" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">All Roles</option>
-            {ROLES.map(r => <option key={r} value={r} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{r}</option>)}
+            <option value="All" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">All Designations</option>
+            {DESIGNATIONS.map(r => <option key={r} value={r} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{r}</option>)}
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-400 pointer-events-none" />
         </div>
@@ -353,13 +364,22 @@ export default function EmployeesPage() {
                 {!editTarget && (
                   <div className="space-y-1 sm:col-span-2">
                     <label className="text-xs text-slate-600 dark:text-gray-400 font-medium">Initial Password</label>
-                    <input
-                      type="text"
-                      value={form.password}
-                      onChange={e => setForm({ ...form, password: e.target.value })}
-                      placeholder="password123"
-                      className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-medium"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={form.password}
+                        onChange={e => setForm({ ...form, password: e.target.value })}
+                        placeholder="password123"
+                        className="flex-1 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={generatePassword}
+                        className="px-4 py-2.5 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 text-blue-700 dark:text-blue-400 text-sm font-semibold rounded-xl transition-all whitespace-nowrap border border-blue-200 dark:border-blue-800/30"
+                      >
+                        Generate
+                      </button>
+                    </div>
                     <p className="text-xs text-slate-500">Employee can change this after first login</p>
                   </div>
                 )}
@@ -385,6 +405,19 @@ export default function EmployeesPage() {
                     className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-medium"
                   >
                     {DEPARTMENTS.map(d => <option key={d} value={d} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{d}</option>)}
+                  </select>
+                </div>
+
+                {/* Employee Type */}
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-600 dark:text-gray-400 font-medium">Employee Type</label>
+                  <select
+                    value={form.employeeType}
+                    onChange={e => setForm({ ...form, employeeType: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-medium"
+                  >
+                    <option value="IN_HOUSE" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">In-house</option>
+                    <option value="REMOTE" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Remote</option>
                   </select>
                 </div>
 

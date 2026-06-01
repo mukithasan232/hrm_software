@@ -82,7 +82,10 @@ export default function TeamUsersPage() {
       if (reset) {
         setUsers(res.data.data);
       } else {
-        setUsers(prev => [...prev, ...res.data.data]);
+        setUsers(prev => {
+          const newUsers = res.data.data.filter((u: any) => !prev.some(p => p.id === u.id));
+          return [...prev, ...newUsers];
+        });
       }
       setNextCursor(res.data.nextCursor);
       setTotalCount(res.data.totalCount);
@@ -213,8 +216,8 @@ export default function TeamUsersPage() {
   const initials = (name: string) =>
     name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
-  // Unique role names for filter — using designations list
-  const allRoleNames = Array.from(new Set([
+  // Unique designation names for filter — using designations list
+  const allDesignationNames = Array.from(new Set([
     ...designations.map(d => d.name)
   ])).sort();
 
@@ -260,7 +263,7 @@ export default function TeamUsersPage() {
             className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-700 dark:text-white text-sm appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 min-w-[140px] shadow-sm font-medium"
           >
             <option value="All" className="bg-white dark:bg-slate-900">All Designations</option>
-            {allRoleNames.map(r => (
+            {allDesignationNames.map(r => (
               <option key={r} value={r} className="bg-white dark:bg-slate-900">{r}</option>
             ))}
           </select>

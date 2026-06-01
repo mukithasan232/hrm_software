@@ -5,10 +5,10 @@ export const OPTIONS = corsPreflight;
 
 export const GET = wrapHandler(getEmployees, {
   protect: true,
-  allowedRoles: ['Admin', 'Super Admin', 'System Administrator'],
+  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator'],
 });
 
 export const POST = wrapHandler(createEmployee, {
   protect: true,
-  allowedRoles: ['Admin', 'Super Admin', 'System Administrator'],
+  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator'],
 });

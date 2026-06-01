@@ -3,5 +3,5 @@ import { generateMonthlyPayroll } from '@/controllers/payrollController';
 
 export const POST = wrapHandler(generateMonthlyPayroll, {
   protect: true,
-  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
+  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
 });

@@ -31,15 +31,15 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
 };
 
 export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const ADMIN_ROLES = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin'];
-  if (req.user && ADMIN_ROLES.includes(req.user.designation)) {
+  const ADMIN_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin'];
+  if (req.user && ADMIN_DESIGNATIONS.includes(req.user.designation)) {
     next();
   } else {
     res.status(403).json({ message: 'Not authorized as an admin' });
   }
 };
 
-export const authorizeRoles = (...roles: string[]) => {
+export const authorizeDesignations = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.designation)) {
       return res.status(403).json({ message: `Designation (${req.user?.designation}) is not allowed to access this resource.` });

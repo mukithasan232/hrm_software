@@ -158,7 +158,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, designationId, department, baseSalary, isActive } = req.body as any;
+    const { name, designationId, department, baseSalary, isActive, employeeType } = req.body as any;
 
     const user = await prisma.user.update({
       where: { id: id as string },
@@ -166,6 +166,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         name,
         designationId: designationId !== undefined ? (designationId || null) : undefined,
         department,
+        employeeType: employeeType || undefined,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,
         isActive
       },
@@ -177,6 +178,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         designationId: true,
         customDesignation: { select: { id: true, name: true } },
         department: true,
+        employeeType: true,
         baseSalary: true,
         isActive: true,
       }
@@ -194,7 +196,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
 export const createEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId, name, email, password, designationId, department, baseSalary, sendEmail } = req.body as any;
+    const { employeeId, name, email, password, designationId, department, baseSalary, sendEmail, employeeType } = req.body as any;
 
     const exists = await prisma.user.findFirst({
       where: {
@@ -218,6 +220,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         password: hashed,
         designationId: designationId || null,
         department,
+        employeeType: employeeType || 'IN_HOUSE',
         baseSalary: Number(baseSalary) || 0,
         joiningDate: new Date(),
       }

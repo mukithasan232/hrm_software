@@ -5,10 +5,10 @@ export const OPTIONS = corsPreflight;
 
 export const PUT = wrapHandler(updateDesignation, {
   protect: true,
-  allowedRoles: ['Admin', 'Super Admin', 'System Administrator'],
+  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator'],
 });
 
 export const DELETE = wrapHandler(deleteDesignation, {
   protect: true,
-  allowedRoles: ['Admin', 'Super Admin', 'System Administrator'],
+  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator'],
 });

@@ -59,10 +59,10 @@ function getAccessDenied(designation: string, path: string) {
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: string[]; // optional page-level override
+  allowedDesignations?: string[]; // optional page-level override
 }
 
-export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, allowedDesignations }: ProtectedRouteProps) {
   const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -79,17 +79,17 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   // Check route-level permissions
   const designation = user.designation || 'Employee';
 
-  // If caller passed explicit allowedRoles, use those
-  const requiredRoles = allowedRoles ?? getRequiredRoles(pathname);
+  // If caller passed explicit allowedDesignations, use those
+  const requiredDesignations = allowedDesignations ?? getRequiredDesignations(pathname);
 
-  if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes(designation)) {
+  if (requiredDesignations && requiredDesignations.length > 0 && !requiredDesignations.includes(designation)) {
     return getAccessDenied(designation, pathname);
   }
 
   return <>{children}</>;
 }
 
-function getRequiredRoles(pathname: string): string[] | null {
+function getRequiredDesignations(pathname: string): string[] | null {
   // Match the most specific prefix first
   const sorted = Object.keys(ROUTE_PERMISSIONS).sort((a, b) => b.length - a.length);
   for (const route of sorted) {

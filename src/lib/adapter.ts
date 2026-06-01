@@ -177,7 +177,7 @@ export function wrapHandler(
   handler: (req: any, res: any) => any,
   options: {
     protect?: boolean;
-    allowedRoles?: string[];
+    allowedDesignations?: string[];
     adminOnly?: boolean;
   } = {}
 ) {
@@ -200,15 +200,15 @@ export function wrapHandler(
           );
         }
 
-        const ADMIN_ROLES = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin'];
-        if (options.adminOnly && !ADMIN_ROLES.includes(mockReq.user.designation)) {
+        const ADMIN_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin'];
+        if (options.adminOnly && !ADMIN_DESIGNATIONS.includes(mockReq.user.designation)) {
           return NextResponse.json(
             { message: 'Not authorized as an admin' },
             { status: 403, headers: getCorsHeaders() }
           );
         }
 
-        if (options.allowedRoles && !options.allowedRoles.includes(mockReq.user.designation)) {
+        if (options.allowedDesignations && !options.allowedDesignations.includes(mockReq.user.designation)) {
           return NextResponse.json(
             { message: `Designation (${mockReq.user.designation}) is not allowed to access this resource.` },
             { status: 403, headers: getCorsHeaders() }

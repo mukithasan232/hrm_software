@@ -3,5 +3,5 @@ import { toggleEmployeeStatus } from '@/controllers/userController';
 
 export const PATCH = wrapHandler(toggleEmployeeStatus, {
   protect: true,
-  allowedRoles: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
+  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager']
 });
