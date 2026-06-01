@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import ExcelJS from 'exceljs';
 
 function getDaysArray(start: Date, end: Date) {
-  const arr = [];
+  const arr: Date[] = [];
   for (let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
     arr.push(new Date(dt));
   }
@@ -219,18 +219,14 @@ export async function GET(request: Request) {
 
       // Let's build cell references for formulas
       const getColLetter = (colNum: number) => worksheet.getColumn(colNum).letter;
-      const startDateLetter = getColLetter(dateStartCol);
-      const endDateLetter = getColLetter(dateEndCol);
       
       const basicRateCol = getColLetter(5);
       const basicWorkHrCol = getColLetter(dateEndCol + 1);
       const extraOtHrCol = getColLetter(dateEndCol + 2);
-      const totalWorkHrCol = getColLetter(dateEndCol + 3);
       const basicSalaryCol = getColLetter(dateEndCol + 4);
       const extraWorkSalCol = getColLetter(dateEndCol + 5);
       const nightAllowCol = getColLetter(dateEndCol + 6);
       const attendBonusCol = getColLetter(dateEndCol + 7);
-      const totalSalaryCol = getColLetter(dateEndCol + 8);
 
       // Formulas / Values
       // Basic Work Hour & Extra OT Hour directly calculated instead of horizontal SUM

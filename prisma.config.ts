@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 // ─── IPv6 localhost fix ────────────────────────────────────────────────────────
 // On Hostinger LiteSpeed (and some Linux VPS), `localhost` resolves to ::1 (IPv6)

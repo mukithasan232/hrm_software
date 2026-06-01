@@ -89,6 +89,7 @@ export default function LoginPage() {
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 shadow-2xl shadow-indigo-500/30">
             {systemLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={systemLogo} alt="Organization logo" className="w-8 h-8 object-contain" />
             ) : (
               <DefaultLogo />

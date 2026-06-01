@@ -1,4 +1,3 @@
-import type { NextConfig } from "next";
 
 const nextConfig = {
   reactStrictMode: true,
@@ -31,6 +30,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any;
 
 export default nextConfig;

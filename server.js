@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 // Build Guard — exit immediately during Next.js static build phase
 if (process.env.NEXT_PHASE === 'phase-production-build' || process.argv.includes('--build')) {
   console.log('🚀 [Build Guard] Next.js build phase detected. Skipping monolithic server execution.');

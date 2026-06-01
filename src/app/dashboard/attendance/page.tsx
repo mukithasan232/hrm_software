@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'lucide-react';
+import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
@@ -29,7 +29,7 @@ export default function AttendancePage() {
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
       setLogs(logsArray);
       setTotalLogs(data?.total ?? logsArray.length);
-    } catch (error) {
+    } catch {
       toast.error('Failed to load attendance logs');
     } finally {
       setLoading(false);
@@ -41,7 +41,7 @@ export default function AttendancePage() {
       const res = await api.get('/users');
       const empList = Array.isArray(res.data) ? res.data : (res.data.data || []);
       setEmployees(empList);
-    } catch (error) {
+    } catch {
       console.error('Failed to fetch employees');
     }
   };
@@ -50,7 +50,7 @@ export default function AttendancePage() {
     try {
       const res = await api.get('/attendance/device-status');
       setDeviceStatus(res.data);
-    } catch (error) {
+    } catch {
       setDeviceStatus({ reachable: false, error: 'Unreachable' });
     }
   };
