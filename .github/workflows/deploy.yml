@@ -24,11 +24,14 @@ jobs:
           
           # টোকেন থেকে হিডেন ক্যারেক্টার ক্লিন করা
           CLEAN_TOKEN=$(echo -n "${COOLIFY_TOKEN}" | tr -d '\n\r')
+          
+          echo "Token length: ${#CLEAN_TOKEN}"
+          echo "Token start: ${CLEAN_TOKEN:0:5}***"
 
           echo "Triggering deployment on Coolify..."
           
           # '-d ""' যোগ করা হয়েছে এবং কানেকশন টাইমআউট (10s) সেট করা হয়েছে
-          RESP=$(curl -v -sS -X POST \
+          RESP=$(curl -v -sS --fail-with-body -X POST \
             -H "Authorization: Bearer ${CLEAN_TOKEN}" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
