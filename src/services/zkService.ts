@@ -19,15 +19,19 @@ const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
 
 export function parseDhakaTimestamp(rawTimestamp: any): Date {
-  // If already a proper Date object from the library, treat its numeric value
-  // as a local Bangladesh time integer and correct it.
   if (rawTimestamp instanceof Date) {
-    // The library may have also misread it as UTC — subtract the offset.
     return new Date(rawTimestamp.getTime() - DHAKA_OFFSET_MS);
   }
-  // For string timestamps like "2025-05-26 14:59:00", new Date() treats them
-  // as UTC. Subtract 6 hours to get the real UTC equivalent.
-  const asUtc = new Date(rawTimestamp);
+  
+  const rawStr = String(rawTimestamp).trim();
+  
+  // ZKTeco string format: "YYYY-MM-DD HH:mm:ss" -> explicitly parse as Dhaka time (+06:00)
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(rawStr)) {
+    return new Date(rawStr.replace(' ', 'T') + '+06:00');
+  }
+  
+  // fallback
+  const asUtc = new Date(rawStr + ' UTC');
   return new Date(asUtc.getTime() - DHAKA_OFFSET_MS);
 }
 
