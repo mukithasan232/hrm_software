@@ -16,6 +16,6 @@ function getFixedUrl(): string {
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: getFixedUrl() || env("DATABASE_URL"),
+    url: getFixedUrl() || process.env.DATABASE_URL || '',
   },
 });
