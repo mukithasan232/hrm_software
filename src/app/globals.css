@@ -28,3 +28,24 @@
   background-image: radial-gradient(ellipse at top, #1b2735 0%, #090a0f 100%);
   color: #f8fafc;
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .print-hide, .sidebar, .navbar {
+    display: none !important;
+  }
+  .print-only-id-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0 !important;
+    page-break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    width: 350px !important;
+  }
+}

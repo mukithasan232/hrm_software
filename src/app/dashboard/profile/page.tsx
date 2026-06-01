@@ -1,10 +1,11 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Camera, Save, Lock, User, Briefcase, Mail, Building } from 'lucide-react';
+import { Camera, Save, Lock, User, Briefcase, Mail, Building, Printer } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useBrand } from '@/context/BrandContext';
+import { QRCodeSVG } from 'qrcode.react';
 
 const BACKEND = 'http://localhost:5001';
 
@@ -96,15 +97,15 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div>
+      <div className="print-hide">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Profile Settings</h1>
         <p className="text-slate-550 dark:text-gray-400 mt-1 text-sm font-medium">Manage your personal information and security settings.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Avatar Card */}
-        <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 text-center space-y-4 shadow-sm dark:shadow-2xl">
+        <div className="lg:col-span-1 space-y-6">
+          <div className="print-hide bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 text-center space-y-4 shadow-sm dark:shadow-2xl">
             <div className="relative inline-block">
               {avatarSrc ? (
                 <img
@@ -157,10 +158,51 @@ export default function ProfilePage() {
               </p>
             )}
           </div>
+
+          {/* Virtual ID Card */}
+          <div className="print-hide bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Virtual ID Card</h2>
+              <button onClick={() => window.print()} className="text-xs px-3 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-lg font-semibold transition-colors flex items-center gap-1.5">
+                <Printer className="w-3.5 h-3.5" /> Print
+              </button>
+            </div>
+            
+            <div className="print-only-id-card relative overflow-hidden rounded-2xl border border-white/20 bg-slate-900 shadow-2xl p-6 text-center text-white isolate">
+              {/* Glassmorphism background effects */}
+              <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-indigo-500/30 blur-2xl -z-10" />
+              <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-purple-500/30 blur-2xl -z-10" />
+              
+              <div className="mb-4 font-black text-lg tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 uppercase">
+                FIXANYPHOTO
+              </div>
+              
+              <div className="mb-4">
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-white/20 mx-auto shadow-lg" />
+                ) : (
+                  <div className="h-24 w-24 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-white/20 shadow-lg mx-auto bg-gradient-to-tr from-indigo-500 to-purple-500">
+                    {initials}
+                  </div>
+                )}
+              </div>
+              
+              <h3 className="font-bold text-xl mb-1">{user?.name}</h3>
+              <p className="text-blue-300 font-semibold text-xs mb-5">{user?.designation || 'Employee'}</p>
+              
+              <div className="bg-white rounded-xl p-2.5 shadow-inner inline-block mb-3">
+                <QRCodeSVG value={(user as any)?.employeeId || 'EMP-UNKNOWN'} size={70} />
+              </div>
+              
+              <div className="text-xs font-mono text-slate-300 tracking-widest bg-black/20 py-1.5 rounded-lg border border-white/10">
+                {(user as any)?.employeeId || '—'}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Edit Forms */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="print-hide lg:col-span-2 space-y-6">
           {/* Personal Info Form */}
           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">

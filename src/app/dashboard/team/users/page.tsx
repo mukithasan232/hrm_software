@@ -294,87 +294,91 @@ export default function TeamUsersPage() {
           </div>
         ) : (
           <>
-            {/* Table headers */}
-            <div className="hidden md:grid md:grid-cols-[2fr_2fr_1.5fr_1fr_1fr_auto] gap-4 px-6 py-3 border-b border-slate-100 dark:border-white/10 text-xs uppercase tracking-wider font-semibold text-slate-400 dark:text-gray-600">
-              <span>Name</span>
-              <span>Email</span>
-              <span>Designation</span>
-              <span>Department</span>
-              <span>Status</span>
-              <span className="text-right w-28">Actions</span>
-            </div>
-
-            <div className="divide-y divide-slate-100 dark:divide-white/5">
-              {users.map(u => (
-                <div
-                  key={u.id}
-                  className="flex flex-col md:grid md:grid-cols-[2fr_2fr_1.5fr_1fr_1fr_auto] gap-2 md:gap-4 items-start md:items-center px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
-                >
-                  {/* Name */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                      {initials(u.name)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-800 dark:text-white text-sm truncate">{u.name}</p>
-                      <p className="text-xs text-slate-400 dark:text-gray-600 font-mono">{u.employeeId}</p>
-                    </div>
-                  </div>
-
-                  {/* Email */}
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                    <span className="text-sm text-slate-500 dark:text-gray-400 truncate">{u.email}</span>
-                  </div>
-
-                  {/* Designation */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/15 text-indigo-500 border border-indigo-500/25">
-                      <Shield className="w-2.5 h-2.5" />
-                      {u.designation?.name || 'Employee'}
-                    </span>
-                  </div>
-
-                  {/* Department */}
-                  <div className="flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                    <span className="text-sm text-slate-500 dark:text-gray-400">{u.department || '—'}</span>
-                  </div>
-
-                  {/* Status */}
-                  <div><StatusBadge isActive={u.isActive} /></div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1.5 justify-end w-28">
-                    <button
-                      onClick={() => openEdit(u)}
-                      className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-lg transition-all"
-                      title="Edit User"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleToggleStatus(u)}
-                      className={`p-1.5 rounded-lg transition-all ${
-                        u.isActive
-                          ? 'text-slate-400 hover:text-amber-500 hover:bg-amber-500/10'
-                          : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10'
-                      }`}
-                      title={u.isActive ? 'Deactivate' : 'Activate'}
-                    >
-                      {u.isActive ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(u)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                      title="Delete User"
-                      disabled={u.id === authUser?.id}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+            <div className="w-full overflow-x-auto pb-4">
+              <div className="min-w-[900px]">
+                {/* Table headers */}
+                <div className="grid grid-cols-[2fr_2.5fr_1.5fr_1.5fr_1fr_auto] gap-4 px-6 py-3 border-b border-slate-100 dark:border-white/10 text-xs uppercase tracking-wider font-semibold text-slate-400 dark:text-gray-600">
+                  <span>Name</span>
+                  <span>Email</span>
+                  <span>Designation</span>
+                  <span>Department</span>
+                  <span>Status</span>
+                  <span className="text-right w-28">Actions</span>
                 </div>
-              ))}
+
+                <div className="divide-y divide-slate-100 dark:divide-white/5">
+                  {users.map(u => (
+                    <div
+                      key={u.id}
+                      className="grid grid-cols-[2fr_2.5fr_1.5fr_1.5fr_1fr_auto] gap-4 items-center px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                    >
+                      {/* Name */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                          {initials(u.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-800 dark:text-white text-sm truncate">{u.name}</p>
+                          <p className="text-xs text-slate-400 dark:text-gray-600 font-mono">{u.employeeId}</p>
+                        </div>
+                      </div>
+
+                      {/* Email */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        <span className="text-sm text-slate-500 dark:text-gray-400 truncate">{u.email}</span>
+                      </div>
+
+                      {/* Designation */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/15 text-indigo-500 border border-indigo-500/25 truncate">
+                          <Shield className="w-2.5 h-2.5 flex-shrink-0" />
+                          <span className="truncate">{u.designation?.name || 'Employee'}</span>
+                        </span>
+                      </div>
+
+                      {/* Department */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        <span className="text-sm text-slate-500 dark:text-gray-400 truncate">{u.department || '—'}</span>
+                      </div>
+
+                      {/* Status */}
+                      <div><StatusBadge isActive={u.isActive} /></div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1.5 justify-end w-28">
+                        <button
+                          onClick={() => openEdit(u)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-lg transition-all"
+                          title="Edit User"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleStatus(u)}
+                          className={`p-1.5 rounded-lg transition-all ${
+                            u.isActive
+                              ? 'text-slate-400 hover:text-amber-500 hover:bg-amber-500/10'
+                              : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10'
+                          }`}
+                          title={u.isActive ? 'Deactivate' : 'Activate'}
+                        >
+                          {u.isActive ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(u)}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                          title="Delete User"
+                          disabled={u.id === authUser?.id}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Infinite Scroll Sentinel */}
