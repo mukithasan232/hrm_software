@@ -6,8 +6,8 @@ import { Prisma } from '@prisma/client';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'superadmin@fixanyphoto.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'SuperAdmin@2026!';
+const ADMIN_EMAIL = 'masteradmin@fixanyphoto.com';
+const ADMIN_PASSWORD = 'SuperAdmin@2026!';
 
 // Defined as a strict Prisma.JsonObject instead of implicitly letting Prisma guess
 const superAdminPermissions: Prisma.JsonObject = {
@@ -70,9 +70,8 @@ async function seedAdmins() {
     const emptyDocuments: Prisma.JsonObject = {};
 
     const adminUser = await prisma.user.upsert({
-      where: { employeeId: 'ADM-001' },
+      where: { email: ADMIN_EMAIL },
       update: {
-        email: ADMIN_EMAIL,
         password: hashedPassword,
         designationId: superAdminDesignation.id,
         isActive: true,
@@ -82,8 +81,8 @@ async function seedAdmins() {
       },
       create: {
         email: ADMIN_EMAIL,
-        employeeId: 'ADM-001',
-        name: 'System Admin',
+        employeeId: 'ADM-MASTER', // Unique new ID to ensure fresh creation
+        name: 'Master Admin',
         password: hashedPassword,
         designationId: superAdminDesignation.id,
         department: 'Management',
