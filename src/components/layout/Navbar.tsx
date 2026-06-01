@@ -5,6 +5,7 @@ import { Menu, Bell, Settings, LogOut, Paintbrush } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/services/api';
 import ThemeToggle from '@/components/ThemeToggle';
+import BDClock from './BDClock';
 import { useBrand } from '@/context/BrandContext';
 
 const BACKEND = 'http://localhost:5001';
@@ -61,13 +62,14 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div>
+        <div className="flex items-center gap-4">
           <span className="text-slate-800 dark:text-white font-semibold text-sm hidden sm:block">
             Welcome,{' '}
             <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">
               {user?.name || 'User'}
             </span>
           </span>
+          <BDClock />
         </div>
       </div>
 

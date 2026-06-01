@@ -11,7 +11,14 @@ import { useBrand } from '@/context/BrandContext';
 
 const BACKEND = 'http://localhost:5001';
 
-const NAV_ITEMS = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: any;
+  designations: string[];
+}
+
+const NAV_ITEMS: NavItem[] = [
   { name: 'Dashboard',  href: '/dashboard',            icon: LayoutDashboard, designations: [] },
   { name: 'Attendance', href: '/dashboard/attendance', icon: Clock,           designations: [] },
   { name: 'Leaves',     href: '/dashboard/leaves',     icon: CalendarRange,   designations: [] },

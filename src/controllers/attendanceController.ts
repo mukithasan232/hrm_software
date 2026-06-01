@@ -260,12 +260,24 @@ export const createManualLog = async (req: Request, res: Response) => {
       }
     });
 
+    const logData = {
+      ...log,
+      employeeName: log.user?.name || 'Unknown'
+    };
+
+    // Broadcast the new manual punch to all connected clients (Dashboard Live Feed)
+    const io = (global as any).io;
+    if (io) {
+      setImmediate(() => {
+        io.emit('new-attendance', logData);
+        io.emit('attendanceUpdate', { checkIn: punchType === 'CheckIn' });
+        console.log(`[RealtimeService] 📡 Emitted manual software punch to frontend: ${logData.employeeName} [${punchType}]`);
+      });
+    }
+
     res.status(201).json({
       message: 'Manual entry created',
-      log: {
-        ...log,
-        employeeName: log.user?.name || 'Unknown'
-      }
+      log: logData
     });
   } catch (error: any) {
     res.status(500).json({ message: 'Error creating manual entry', error: error.message });
