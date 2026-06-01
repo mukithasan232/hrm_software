@@ -19,20 +19,26 @@ const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
 
 export function parseDhakaTimestamp(rawTimestamp: any): Date {
+  let rawTime = String(rawTimestamp).trim();
+  
+  // If zkteco-js returned a Date object, grab its local string format before Node mangles it
   if (rawTimestamp instanceof Date) {
-    return new Date(rawTimestamp.getTime() - DHAKA_OFFSET_MS);
+    const yyyy = rawTimestamp.getFullYear();
+    const MM = String(rawTimestamp.getMonth() + 1).padStart(2, '0');
+    const dd = String(rawTimestamp.getDate()).padStart(2, '0');
+    const hh = String(rawTimestamp.getHours()).padStart(2, '0');
+    const mm = String(rawTimestamp.getMinutes()).padStart(2, '0');
+    const ss = String(rawTimestamp.getSeconds()).padStart(2, '0');
+    rawTime = `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`;
+  }
+
+  // Convert to valid ISO and append offset
+  let isoString = rawTime.includes('T') ? rawTime : rawTime.replace(' ', 'T');
+  if (!isoString.includes('+') && !isoString.includes('Z')) {
+      isoString += '+06:00'; 
   }
   
-  const rawStr = String(rawTimestamp).trim();
-  
-  // ZKTeco string format: "YYYY-MM-DD HH:mm:ss" -> explicitly parse as Dhaka time (+06:00)
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(rawStr)) {
-    return new Date(rawStr.replace(' ', 'T') + '+06:00');
-  }
-  
-  // fallback
-  const asUtc = new Date(rawStr + ' UTC');
-  return new Date(asUtc.getTime() - DHAKA_OFFSET_MS);
+  return new Date(isoString);
 }
 
 // ─── Error Classification ──────────────────────────────────────────────────────
