@@ -1,14 +1,14 @@
 # ──────────────────────────────────────────────────────────────────────────────
-#  HRM Software — CI/CD Pipeline
+#  HRM Software — CI Pipeline
 #  Triggers on push to `main`.
 #
 #  Jobs:
-#   1. test        – Validate TypeScript types + lint
-#   2. deploy-web  – SSH deploy to Hostinger VPS (depends on test)
-#   3. mobile-ota  – Push Expo EAS OTA update (runs in parallel with deploy-web)
+#   1. test  – Validate TypeScript types + lint
+#
+#  Note: Deployment is handled by Hostinger's Git integration / Webhook.
 # ──────────────────────────────────────────────────────────────────────────────
 
-name: 🚀 CI/CD — Web Deploy + Mobile OTA
+name: 🔍 CI — Type Check & Lint
 
 on:
   push:
@@ -51,129 +51,8 @@ jobs:
 
       - name: ✅ TypeScript type check
         run: npx tsc --noEmit
-        continue-on-error: true   # Non-blocking — pre-existing errors won't fail the deploy
+        continue-on-error: true   # Non-blocking — pre-existing errors won't fail the pipeline
 
       - name: 🧹 ESLint
         run: npx eslint . --max-warnings=50 --ext .ts,.tsx
         continue-on-error: true
-
-  # ──────────────────────────────────────────────────────────────────────────────
-  # JOB 2 — DEPLOY WEB TO HOSTINGER VPS
-  # ──────────────────────────────────────────────────────────────────────────────
-  deploy-web:
-    name: 🌐 Deploy Web → Hostinger VPS
-    runs-on: ubuntu-latest
-    needs: test           # Only deploy if type-check passes
-    environment: production
-
-    steps:
-      - name: ⬇️ Checkout repository
-        uses: actions/checkout@v4
-
-      # ── SSH into your Hostinger VPS and run the deployment script ──
-      # Required Secrets (set in GitHub → Settings → Secrets → Actions):
-      #   HOSTINGER_HOST      → Your VPS IP or hostname (e.g. 147.x.x.x)
-      #   HOSTINGER_USERNAME  → SSH user (e.g. root or your username)
-      #   HOSTINGER_PASSWORD  → SSH password (or use HOSTINGER_SSH_KEY below)
-      #   HOSTINGER_PORT      → SSH port (usually 22)
-      #   HOSTINGER_SSH_KEY   → (Recommended) Private key for key-based auth
-      - name: 🔐 Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOSTINGER_HOST }}
-          username: ${{ secrets.HOSTINGER_USERNAME }}
-          # Use either password OR key — key-based is more secure:
-          password: ${{ secrets.HOSTINGER_PASSWORD }}
-          # key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ secrets.HOSTINGER_PORT }}
-          script: |
-            set -e   # Exit immediately if any command fails
-
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "  🚀 HRM Software — Deployment Started"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-            # ── 1. Navigate to your project directory on the VPS ──
-            # ✏️  CHANGE THIS to your actual path on Hostinger:
-            #    e.g. /home/user/htdocs/yourdomain.com  OR  /var/www/hrm
-            cd /home/${{ secrets.HOSTINGER_USERNAME }}/htdocs/hrm || \
-            cd /var/www/hrm || \
-            cd ~/hrm_software || \
-            { echo "❌ Cannot find project directory. Update the path in deploy.yml!"; exit 1; }
-
-            echo "📁 Working in: $(pwd)"
-
-            # ── 2. Pull the latest code ──
-            echo "🔄 Pulling latest changes from main..."
-            git pull origin main
-
-            # ── 3. Install / update dependencies ──
-            echo "📦 Installing dependencies..."
-            npm install
-
-            # ── 4. Sync DB schema (Prisma) ──
-            echo "🗄️  Syncing database schema..."
-            npx prisma generate
-            npx prisma db push --accept-data-loss
-
-            # ── 5. Build the Next.js app ──
-            echo "🏗️  Building Next.js production bundle..."
-            npx next build
-
-            # ── 6. Restart the server ──
-            # ✏️  CHANGE to whichever process manager you use:
-            echo "🔁 Restarting server process..."
-            pm2 restart hrm-server --update-env || \
-            pm2 restart all || \
-            pm2 start server.js --name hrm-server -- || \
-            { echo "⚠️  PM2 not found — please restart server manually."; }
-
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "  ✅ Deployment completed successfully!"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-  # ──────────────────────────────────────────────────────────────────────────────
-  # JOB 3 — NOTIFY (post-deploy summary)
-  # ──────────────────────────────────────────────────────────────────────────────
-  notify:
-    name: 🔔 Notify Deployment Status
-    runs-on: ubuntu-latest
-    needs: [deploy-web]
-    if: always()    # Run even if previous jobs failed
-
-    steps:
-      - name: ✅ Success notification
-        if: needs.deploy-web.result == 'success'
-        run: |
-          echo "### 🎉 Web Deployment Successful!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🌐 Web Deploy (Hostinger) | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🔖 Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| 👤 Triggered by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
-
-      - name: ❌ Failure notification
-        if: needs.deploy-web.result == 'failure'
-        run: |
-          echo "### ❌ Web Deployment Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🌐 Web Deploy | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "👉 Check the logs above for details." >> $GITHUB_STEP_SUMMARY
-
-      # ── Optional: Post to Slack ──
-      # Uncomment and add SLACK_WEBHOOK_URL secret to enable:
-      # - name: 📣 Post to Slack
-      #   if: always()
-      #   uses: slackapi/slack-github-action@v1.26.0
-      #   with:
-      #     payload: |
-      #       {
-      #         "text": "${{ job.status == 'success' && '✅' || '❌' }} *HRM Deploy* — ${{ github.ref_name }} — ${{ github.event.head_commit.message }}"
-      #       }
-      #   env:
-      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
