@@ -63,12 +63,11 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
         </button>
         <div>
           <span className="text-slate-800 dark:text-white font-semibold text-sm hidden sm:block">
-            Welcome back,{' '}
+            Welcome,{' '}
             <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">
-              {user?.name?.split(' ')[0] || 'User'}
+              {user?.name || 'User'}
             </span>
           </span>
-          <span className="text-xs text-slate-500 dark:text-gray-500 hidden sm:block">{user?.designation}</span>
         </div>
       </div>
 

@@ -84,7 +84,7 @@ export default function DashboardOverview() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="py-2">
           <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
-            Welcome, {user?.name?.split(' ')[0] || 'Super Admin'}
+            Welcome, {user?.name || 'Super Admin'}
           </h1>
         </div>
         <button 

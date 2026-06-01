@@ -67,9 +67,8 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               <h2
                 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary"
               >
-                {brand.companyName}
+                {brand.companyName?.replace('Portal', '').trim() || brand.companyName}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-gray-500 mt-0.5 font-medium">Management System</p>
             </div>
           )}
         </div>
@@ -80,22 +79,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         )}
       </div>
 
-      {/* User Info Card */}
-      <div className="px-4 py-3 mx-3 mt-4 rounded-xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center gap-3">
-        {avatarSrc ? (
-          <img src={avatarSrc} alt="avatar" className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-white/20 flex-shrink-0" />
-        ) : (
-          <div
-            className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 bg-gradient-to-tr from-brand-primary to-brand-secondary"
-          >
-            {initials}
-          </div>
-        )}
-        <div className="min-w-0">
-          <p className="text-slate-800 dark:text-white text-sm font-medium truncate">{user?.name}</p>
-          <p className="text-slate-500 dark:text-gray-500 text-xs truncate">{designationName}</p>
-        </div>
-      </div>
+
 
       {/* Nav Items */}
       <nav className="flex-1 px-3 mt-4 space-y-1 overflow-y-auto">
