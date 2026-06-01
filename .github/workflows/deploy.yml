@@ -21,10 +21,13 @@ jobs:
 
           APP_UUID="ft1pc1ordmv3cjlbqt6k79hw"
           COOLIFY_BASE_URL="https://host.fixanyphoto.com"
+          
+          # Sanitize token to strip any hidden newlines/carriage returns that break curl headers
+          CLEAN_TOKEN=$(echo -n "${COOLIFY_TOKEN}" | tr -d '\n\r')
 
           echo "Triggering deployment on Coolify..."
-          RESP=$(curl -sS -X POST \
-            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+          RESP=$(curl -v -X POST \
+            -H "Authorization: Bearer ${CLEAN_TOKEN}" \
             -H "Accept: application/json" \
             "${COOLIFY_BASE_URL}/api/v1/applications/${APP_UUID}/start")
 
