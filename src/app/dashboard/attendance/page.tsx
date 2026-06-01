@@ -4,6 +4,7 @@ import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'l
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import DeviceStatusIndicator from '@/components/DeviceStatusIndicator';
 
 export default function AttendancePage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -201,14 +202,7 @@ export default function AttendancePage() {
           <div className="flex items-center gap-2 mt-1">
             <p className="text-slate-500 dark:text-gray-400 text-sm">{totalLogs} total records.</p>
             <span className="text-slate-300 dark:text-gray-600">•</span>
-            {deviceStatus ? (
-              <span className={`text-xs flex items-center gap-1.5 ${deviceStatus.reachable ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-500'}`}>
-                <div className={`h-1.5 w-1.5 rounded-full ${deviceStatus.reachable ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
-                {deviceStatus.reachable ? 'Device Online' : 'Device Offline'}
-              </span>
-            ) : (
-              <span className="text-xs text-slate-400 dark:text-gray-500 animate-pulse italic">Checking device...</span>
-            )}
+            <DeviceStatusIndicator deviceStatus={deviceStatus} />
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
