@@ -2,13 +2,15 @@ import dotenv from 'dotenv';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'superadmin@fixanyphoto.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'SuperAdmin@2026!';
 
-const superAdminPermissions = {
+// Defined as a strict Prisma.JsonObject instead of implicitly letting Prisma guess
+const superAdminPermissions: Prisma.JsonObject = {
   'employees.view': true,
   'employees.create': true,
   'employees.edit': true,
@@ -47,7 +49,9 @@ async function seedAdmins() {
     // 1. Create the "Super Admin" Designation
     const superAdminDesignation = await prisma.designation.upsert({
       where: { name: 'Super Admin' },
-      update: { permissions: superAdminPermissions },
+      update: {
+        permissions: superAdminPermissions,
+      },
       create: {
         name: 'Super Admin',
         description: 'System Administrator with full access to all modules',
@@ -58,7 +62,12 @@ async function seedAdmins() {
     console.log(`  ✅ [Designation]  Super Admin  (ID: ${superAdminDesignation.id})`);
 
     // 2. Create ONE default user
-    const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 12);
+    // Matching exactly with the register API logic (10 salt rounds instead of 12)
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, salt);
+
+    // Provide a proper JavaScript object for the documents Json field
+    const emptyDocuments: Prisma.JsonObject = {};
 
     const adminUser = await prisma.user.upsert({
       where: { employeeId: 'ADM-001' },
@@ -67,7 +76,9 @@ async function seedAdmins() {
         password: hashedPassword,
         designationId: superAdminDesignation.id,
         isActive: true,
-        documents: {},
+        documents: emptyDocuments,
+        employeeType: 'IN_HOUSE',
+        userType: 'Employee',
       },
       create: {
         email: ADMIN_EMAIL,
@@ -78,7 +89,9 @@ async function seedAdmins() {
         department: 'Management',
         baseSalary: 0,
         isActive: true,
-        documents: {},
+        documents: emptyDocuments,
+        employeeType: 'IN_HOUSE',
+        userType: 'Employee',
       },
     });
 
