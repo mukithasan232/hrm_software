@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Users, CalendarRange, CreditCard, TrendingUp, RefreshCw, Clock } from 'lucide-react';
+import { Users, CalendarRange, RefreshCw, Clock } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
@@ -97,7 +97,7 @@ export default function DashboardOverview() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
             <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Present Now</p>
@@ -128,26 +128,6 @@ export default function DashboardOverview() {
           </div>
           <div className="p-4 bg-purple-500/20 rounded-xl text-purple-500 dark:text-purple-400">
             <CalendarRange className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-green-500/50 dark:hover:border-green-500/50 transition-all shadow-sm dark:shadow-md">
-          <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Payroll Status</p>
-            <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-2">Processed</p>
-          </div>
-          <div className="p-4 bg-green-500/20 rounded-xl text-green-500 dark:text-green-400">
-            <CreditCard className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-orange-500/50 dark:hover:border-orange-500/50 transition-all shadow-sm dark:shadow-md">
-          <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Avg Performance</p>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">92%</p>
-          </div>
-          <div className="p-4 bg-orange-500/20 rounded-xl text-orange-500 dark:text-orange-400">
-            <TrendingUp className="w-6 h-6" />
           </div>
         </div>
       </div>

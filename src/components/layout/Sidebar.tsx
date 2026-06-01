@@ -2,8 +2,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Users, Clock, CreditCard, LayoutDashboard, LogOut, CalendarRange,
-  TrendingUp, X, User, UsersRound, Shield, ChevronDown
+  Users, Clock, LayoutDashboard, LogOut, CalendarRange,
+  X, User, UsersRound, Shield, ChevronDown
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -12,12 +12,10 @@ import { useBrand } from '@/context/BrandContext';
 const BACKEND = 'http://localhost:5001';
 
 const NAV_ITEMS = [
-  { name: 'Dashboard',   href: '/dashboard',             icon: LayoutDashboard, designations: [] },
-  { name: 'Attendance',  href: '/dashboard/attendance',  icon: Clock,           designations: [] },
-  { name: 'Leaves',      href: '/dashboard/leaves',      icon: CalendarRange,   designations: [] },
-  { name: 'Payroll',     href: '/dashboard/payroll',     icon: CreditCard,      designations: ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Finance Manager'] },
-  { name: 'Performance', href: '/dashboard/performance', icon: TrendingUp,      designations: [] },
-  { name: 'My Profile',  href: '/dashboard/profile',     icon: User,            designations: [] },
+  { name: 'Dashboard',  href: '/dashboard',            icon: LayoutDashboard, designations: [] },
+  { name: 'Attendance', href: '/dashboard/attendance', icon: Clock,           designations: [] },
+  { name: 'Leaves',     href: '/dashboard/leaves',     icon: CalendarRange,   designations: [] },
+  { name: 'My Profile', href: '/dashboard/profile',    icon: User,            designations: [] },
 ];
 
 const TEAM_SUB_ITEMS = [

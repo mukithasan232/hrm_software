@@ -11,41 +11,7 @@ import toast from 'react-hot-toast';
 // Swap `systemLogo` at runtime via Admin Settings context to allow custom logo.
 const systemLogo: string | null = null;
 
-function DefaultLogo() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 48 48"
-      fill="none"
-      className="w-7 h-7"
-      aria-label="HRM Portal logo"
-    >
-      <path
-        d="M24 4L42 14V34L24 44L6 34V14L24 4Z"
-        fill="white"
-        fillOpacity="0.18"
-        stroke="white"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M24 12L34 17V26C34 31.5 29.5 36.1 24 38C18.5 36.1 14 31.5 14 26V17L24 12Z"
-        fill="white"
-        opacity="0.92"
-      />
-      <text
-        x="24"
-        y="30"
-        textAnchor="middle"
-        fontSize="11"
-        fontWeight="800"
-        fontFamily="system-ui, sans-serif"
-        fill="#4f46e5"
-      >
-        H
-      </text>
-    </svg>
-  );
-}
+
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LoginPage() {
@@ -85,18 +51,16 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-sm space-y-6">
 
-        {/* ── Logo & Title ─────────────────────────────────────────────── */}
+        {/* Logo area — blank by default; Admin uploads custom logo via Settings */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 shadow-2xl shadow-indigo-500/30">
-            {systemLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
+          {systemLogo && (
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 shadow-2xl shadow-indigo-500/30">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={systemLogo} alt="Organization logo" className="w-8 h-8 object-contain" />
-            ) : (
-              <DefaultLogo />
-            )}
-          </div>
+            </div>
+          )}
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            HRM Portal
+            HRM &amp; Payroll Portal
           </h1>
         </div>
 
