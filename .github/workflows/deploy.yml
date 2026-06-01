@@ -23,7 +23,6 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '9'
 
 # ──────────────────────────────────────────────────────────────────────────────
 # JOB 1 — TYPE CHECK & LINT
@@ -40,20 +39,15 @@ jobs:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v4
 
-      - name: 📦 Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
       - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-          cache-dependency-path: 'hrm_software/pnpm-lock.yaml'
+          cache: 'npm'
+          cache-dependency-path: 'hrm_software /package-lock.json'
 
       - name: 📥 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: 🔬 Generate Prisma Client
         run: npx prisma generate
