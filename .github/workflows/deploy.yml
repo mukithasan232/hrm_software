@@ -9,41 +9,72 @@ jobs:
   deploy:
     name: Deploy to Coolify
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
-      - name: Trigger Coolify Deployment
+      - name: Trigger Coolify deployment
+        id: trigger
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
           set -euo pipefail
 
-          if [ -z "${COOLIFY_TOKEN:-}" ]; then
-            echo "Error: COOLIFY_TOKEN is missing!"
-            exit 1
-          fi
-
           APP_UUID="ft1pc1ordmv3cjlbqt6k79hw"
-          COOLIFY_BASE_URL="https://host.fixanyphoto.com"
-          
-          # টোকেন থেকে হিডেন ক্যারেক্টার ক্লিন করা
-          CLEAN_TOKEN=$(echo -n "${COOLIFY_TOKEN}" | tr -d '\n\r')
-          
-          echo "Token length: ${#CLEAN_TOKEN}"
-          echo "Token start: ${CLEAN_TOKEN:0:5}***"
+          BASE_URL="https://host.fixanyphoto.com"
 
-          echo "Triggering deployment on Coolify..."
-          
-          # '-d ""' যোগ করা হয়েছে এবং কানেকশন টাইমআউট (10s) সেট করা হয়েছে
-          RESP=$(curl -v -sS --fail-with-body -X POST \
-            -H "Authorization: Bearer ${CLEAN_TOKEN}" \
-            -H "Accept: application/json" \
-            -H "Content-Type: application/json" \
-            --max-time 10 \
-            -d "" \
-            "${COOLIFY_BASE_URL}/api/v1/applications/${APP_UUID}/start")
-
-          echo "Coolify response: ${RESP}"
-
-          if ! echo "${RESP}" | grep -q "deployment_uuid"; then
-            echo "Error: deployment trigger failed"
+          if [ -z "${COOLIFY_TOKEN:-}" ]; then
+            echo "Error: COOLIFY_TOKEN is missing"
             exit 1
           fi
+
+          RESP=$(curl -sS -X POST \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            -H "Accept: application/json" \
+            "${BASE_URL}/api/v1/applications/${APP_UUID}/start")
+
+          echo "Trigger response: $RESP"
+
+          DEPLOY_UUID=$(echo "$RESP" | sed -n 's/.*"deployment_uuid":"\([^"]*\)".*/\1/p')
+          if [ -z "${DEPLOY_UUID}" ]; then
+            echo "Error: deployment_uuid not found in API response"
+            exit 1
+          fi
+
+          echo "deployment_uuid=${DEPLOY_UUID}" >> "$GITHUB_OUTPUT"
+
+      - name: Poll deployment status and print error hints
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          DEPLOY_UUID: ${{ steps.trigger.outputs.deployment_uuid }}
+        run: |
+          set -euo pipefail
+
+          BASE_URL="https://host.fixanyphoto.com"
+
+          for i in $(seq 1 120); do
+            RESP=$(curl -sS \
+              -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+              -H "Accept: application/json" \
+              "${BASE_URL}/api/v1/deployments/${DEPLOY_UUID}")
+
+            STATUS=$(echo "$RESP" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')
+            echo "[$i] deployment status: ${STATUS:-unknown}"
+
+            # Print compact failure hints into GitHub logs
+            echo "$RESP" | grep -Eo 'Cannot find module[^"]*|Failed to load config file[^"]*|ERROR:[^"]*|failed to build[^"]*|Process completed with exit code [0-9]+' || true
+
+            if [ "$STATUS" = "finished" ]; then
+              echo "Deployment finished successfully."
+              exit 0
+            fi
+
+            if [ "$STATUS" = "failed" ] || [ "$STATUS" = "canceled" ]; then
+              echo "Deployment failed."
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "Deployment polling timeout."
+          exit 1
