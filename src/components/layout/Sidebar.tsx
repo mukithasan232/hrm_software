@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
-  X, User, UsersRound, Shield, ChevronDown
+  X, User, UsersRound, Shield, ChevronDown, Smartphone
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -183,7 +183,26 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-slate-200 dark:border-white/10">
+      <div className="p-3 border-t border-slate-200 dark:border-white/10 space-y-2">
+        {/* Mobile App Download Card */}
+        <a
+          href="/apps/hrm-mobile.apk"
+          download="hrm-mobile.apk"
+          className="flex items-center gap-3 px-3 py-2.5 w-full text-left bg-gradient-to-tr from-brand-primary/10 to-brand-secondary/10 hover:from-brand-primary/20 hover:to-brand-secondary/20 border border-brand-primary/20 rounded-xl transition-all group"
+        >
+          <div className="p-1.5 bg-brand-primary/20 text-brand-primary rounded-lg group-hover:scale-110 transition-transform">
+            <Smartphone className="h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-brand-primary/80">
+              Download
+            </p>
+            <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
+              Android App
+            </p>
+          </div>
+        </a>
+
         <button
           onClick={logout}
           className="flex items-center gap-3 px-4 py-2.5 w-full text-left text-red-500 hover:bg-red-500/5 dark:hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium"
