@@ -31,9 +31,6 @@ jobs:
   test:
     name: 🔍 Type Check & Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: hrm_software   # adjust if your folder has a trailing space
 
     steps:
       - name: ⬇️ Checkout repository
@@ -151,8 +148,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: 'hrm_mobile/hrm-mobile/package-lock.json'
 
       # ── Install Expo CLI + EAS CLI globally ──
       - name: 📦 Install EAS CLI
