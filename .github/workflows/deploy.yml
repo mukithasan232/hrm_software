@@ -1,87 +1,38 @@
-# ──────────────────────────────────────────────────────────────────────────────
-#  HRM Software — CI Pipeline
-#  Triggers on push to `main`.
-#
-#  Jobs:
-#   1. test  – Validate TypeScript types + lint
-#
-#  Note: Deployment is handled by Hostinger's Git integration / Webhook.
-# ──────────────────────────────────────────────────────────────────────────────
-
-name: 🔍 CI — Type Check & Lint
+name: Deploy HRM to Coolify
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:        # Allow manual trigger from GitHub Actions UI
+    branches: ["main"]
+  workflow_dispatch:
 
-# Cancel any in-flight run for the same branch (prevents queue pile-up)
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  NODE_VERSION: '24'
-
-# ──────────────────────────────────────────────────────────────────────────────
-# JOB 1 — TYPE CHECK & LINT
-# ──────────────────────────────────────────────────────────────────────────────
 jobs:
-  test:
-    name: 🔍 Type Check & Lint
+  deploy:
+    name: Deploy to Coolify
     runs-on: ubuntu-latest
-
     steps:
-      - name: ⬇️ Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: 📥 Install dependencies
-        run: npm install
-
-      - name: 🔬 Generate Prisma Client
-        run: npx prisma generate
-        env:
-          DATABASE_URL: "mysql://ci:ci@127.0.0.1:3306/ci_dummy"
-
-      - name: ✅ TypeScript type check
-        run: npx tsc --noEmit
-        continue-on-error: true   # Non-blocking — pre-existing errors won't fail the pipeline
-
-      - name: 🧹 ESLint
-        run: npx eslint . --max-warnings=50 --ext .ts,.tsx
-        continue-on-error: true
-
-# ──────────────────────────────────────────────────────────────────────────────
-# JOB 2 — DEPLOY LIVE VIA COOLIFY
-# ──────────────────────────────────────────────────────────────────────────────
-# ⚠️ IMPORTANT SETUP INSTRUCTIONS:
-# Go to your GitHub Repository -> Settings -> Secrets and variables -> Actions
-# Click "New repository secret" and add:
-# 1. Name: COOLIFY_TOKEN (Value: Your Coolify API Token)
-# 2. Name: COOLIFY_WEBHOOK_URL (Value: Your Coolify deployment webhook URL)
-  deploy_live:
-    name: 🚀 Deploy to Coolify
-    runs-on: ubuntu-latest
-    needs: test
-    # Ensure this strictly only runs on the main branch
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: 🚀 Trigger Coolify Deployment
-        env:
-          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+      - name: Trigger Coolify Deployment
         run: |
-          if [ -z "$COOLIFY_WEBHOOK_URL" ]; then
-            echo "Error: COOLIFY_WEBHOOK_URL is missing!"
+          set -euo pipefail
+
+          if [ -z "${COOLIFY_TOKEN:-}" ]; then
+            echo "Error: COOLIFY_TOKEN is missing!"
             exit 1
           fi
+
+          APP_UUID="ft1pc1ordmv3cjlbqt6k79hw"
+          COOLIFY_BASE_URL="https://host.fixanyphoto.com"
+
           echo "Triggering deployment on Coolify..."
-          curl -v -X GET "$COOLIFY_WEBHOOK_URL" \
-               -H "Authorization: Bearer $COOLIFY_TOKEN"
+          RESP=$(curl -sS -X POST \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            -H "Accept: application/json" \
+            "${COOLIFY_BASE_URL}/api/v1/applications/${APP_UUID}/start")
+
+          echo "Coolify response: ${RESP}"
+
+          if ! echo "${RESP}" | grep -q "deployment_uuid"; then
+            echo "Error: deployment trigger failed"
+            exit 1
+          fi
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
