@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const ADMIN_EMAIL = 'masteradmin@fixanyphoto.com';
+const ADMIN_EMAIL = 'ultraadmin@fixanyphoto.com';
 const ADMIN_PASSWORD = 'SuperAdmin@2026!';
 
 // Defined as a strict Prisma.JsonObject instead of implicitly letting Prisma guess
@@ -72,25 +72,27 @@ async function seedAdmins() {
     const adminUser = await prisma.user.upsert({
       where: { email: ADMIN_EMAIL },
       update: {
-        password: hashedPassword,
+        // Explicitly overwrite all fields so a corrupted/old hash is always replaced
+        password:      hashedPassword,
         designationId: superAdminDesignation.id,
-        isActive: true,
-        documents: emptyDocuments,
-        employeeType: 'IN_HOUSE',
-        userType: 'Employee',
+        department:    'Management',
+        isActive:      true,
+        documents:     emptyDocuments,
+        employeeType:  'IN_HOUSE',
+        userType:      'Employee',
       },
       create: {
-        email: ADMIN_EMAIL,
-        employeeId: 'ADM-MASTER', // Unique new ID to ensure fresh creation
-        name: 'Master Admin',
-        password: hashedPassword,
+        email:         ADMIN_EMAIL,
+        employeeId:    'ADM-ULTRA', // Fresh ID — avoids any legacy employeeId conflict
+        name:          'Ultra Admin',
+        password:      hashedPassword,
         designationId: superAdminDesignation.id,
-        department: 'Management',
-        baseSalary: 0,
-        isActive: true,
-        documents: emptyDocuments,
-        employeeType: 'IN_HOUSE',
-        userType: 'Employee',
+        department:    'Management',
+        baseSalary:    0,
+        isActive:      true,
+        documents:     emptyDocuments,
+        employeeType:  'IN_HOUSE',
+        userType:      'Employee',
       },
     });
 
