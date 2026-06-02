@@ -41,7 +41,6 @@ function getDhakaLogTimestamp(date = new Date()) {
     
     return `${year}-${month}-${day} ${hour}:${minute}:${second} ${dayPeriod}`;
   } catch (err) {
-    // Fail-safe default string
     return date.toISOString();
   }
 }
@@ -61,10 +60,8 @@ function parseDeviceTime(rawTimestamp) {
     rawTime = `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`;
   }
   
-  // Format MM/DD/YYYY to YYYY-MM-DD if returned differently, replace spaces with T
   let isoString = rawTime.includes('T') ? rawTime : rawTime.replace(' ', 'T');
   
-  // Strip any existing offset
   if (isoString.includes('+')) {
     isoString = isoString.split('+')[0];
   }
@@ -72,9 +69,31 @@ function parseDeviceTime(rawTimestamp) {
     isoString = isoString.slice(0, -1);
   }
   
-  // Force explicit Bangladesh offset (+06:00)
   isoString += '+06:00';
   return new Date(isoString);
+}
+
+// ─── Diagnostic Port Lock & Network Helpers ────────────────────────────────
+/**
+ * Resolves helpful advice for standard connection and port-locking scenarios.
+ */
+function getDiagnosticTip(error) {
+  const code = error.code || '';
+  const msg = error.message || '';
+  
+  let tip = 'Please verify that the ZKTeco device is plugged in, powered up, and connected to the local office network.';
+  
+  if (code === 'EADDRINUSE') {
+    tip = 'The port is currently in use! Check if another ghost sync daemon, PM2 daemon, or ZKTime manager app is hogging port 4370.';
+  } else if (code === 'ECONNREFUSED') {
+    tip = 'Connection refused! The device might be rejecting requests, or another socket client is actively occupying its connection slot.';
+  } else if (code === 'ETIMEDOUT' || msg.includes('timeout') || msg.includes('Timeout')) {
+    tip = 'Connection timed out! Verify network switches, router firewall rules for port 4370, or whether IP 192.168.1.201 is correct.';
+  } else if (code === 'EHOSTUNREACH' || code === 'ENETUNREACH') {
+    tip = 'Network destination is unreachable! Confirm that the node machine has a direct routing gateway to the device IP subnet.';
+  }
+  
+  return tip;
 }
 
 // ─── State Management ─────────────────────────────────────────────────────
@@ -146,7 +165,9 @@ async function syncPunches() {
     
     await Promise.race([
       zkInstance.createSocket().then(() => zkInstance.connect()),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('Connection timeout - device offline or port blocked')), 5000))
+      new Promise((_, rej) => setTimeout(() => {
+        rej(new Error('Connection timeout - device offline or port blocked'));
+      }, 5000))
     ]);
 
     console.log(`[${getDhakaLogTimestamp()}] ✅ Connected to ZKTeco device. Retrieving logs...`);
@@ -209,15 +230,37 @@ async function syncPunches() {
     printDashboard(cycleStatus, totalLogsCount, newPunchesCount, latestTimestampInBatch);
     
   } catch (error) {
-    console.error(`[${getDhakaLogTimestamp()}] ❌ [Sync Error] ${error.message}`);
-    printDashboard(`FAILED (${error.message})`, totalLogsCount, newPunchesCount, latestTimestampInBatch);
+    const errorMsg = error.message || String(error);
+    console.error(`[${getDhakaLogTimestamp()}] ❌ [Sync Error] ${errorMsg}`);
+    
+    // Print custom helpful diagnostic tip
+    const diagTip = getDiagnosticTip(error);
+    console.log(`[${getDhakaLogTimestamp()}] 💡 [Diagnostics] ${diagTip}`);
+    
+    printDashboard(`FAILED (${errorMsg})`, totalLogsCount, newPunchesCount, latestTimestampInBatch);
   } finally {
+    // CRITICAL: Explicitly release sockets and close ZK ports inside finally block
     if (zkInstance) {
       try {
+        console.log(`[${getDhakaLogTimestamp()}] 🔌 [Socket Cleanup] Terminating socket connection...`);
         await zkInstance.disconnect();
-        console.log(`[${getDhakaLogTimestamp()}] 🔌 [Socket] Connection to ZKTeco closed cleanly.`);
+      } catch (_) {}
+      
+      // Forceful internal socket teardown to release locked local/remote ports
+      try {
+        const internalSocket = zkInstance.socket;
+        if (internalSocket) {
+          if (typeof internalSocket.destroy === 'function') {
+            internalSocket.destroy();
+            console.log(`[${getDhakaLogTimestamp()}] 🔌 [Socket Cleanup] Forcefully destroyed internal socket connection.`);
+          } else if (typeof internalSocket.close === 'function') {
+            internalSocket.close();
+            console.log(`[${getDhakaLogTimestamp()}] 🔌 [Socket Cleanup] Forcefully closed internal UDP socket connection.`);
+          }
+        }
       } catch (_) {}
     }
+    console.log(`[${getDhakaLogTimestamp()}] 🔌 [Socket Cleanup] Teardown complete. Port is freed for next cycle.`);
   }
 }
 
