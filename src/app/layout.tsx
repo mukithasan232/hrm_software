@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
@@ -19,17 +20,24 @@ export default function RootLayout({
       <body className="antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AuthProvider>
-            {children}
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                style: {
-                  background: '#1e293b',
-                  color: '#fff',
-                  border: '1px solid #334155',
-                },
-              }} 
-            />
+            <LanguageProvider>
+              {children}
+              <Toaster 
+                position="top-right"
+                containerStyle={{
+                  top: 80,
+                  right: 16,
+                  zIndex: 99999,
+                }}
+                toastOptions={{
+                  style: {
+                    background: '#1e293b',
+                    color: '#fff',
+                    border: '1px solid #334155',
+                  },
+                }} 
+              />
+            </LanguageProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

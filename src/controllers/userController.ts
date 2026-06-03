@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express-serve-static-core';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
-import { sendWelcomeEmail } from '../utils/mailer';
+import { sendWelcomeEmail } from '../services/emailService';
 
 export const getEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -79,6 +79,11 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         isActive: true,
         joiningDate: true,
         profileImage: true,
+        phone: true,
+        facebook: true,
+        linkedin: true,
+        github: true,
+        twitter: true,
       }
     });
     if (!user) {
@@ -94,13 +99,20 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const { name, department, phone } = req.body as any;
+    const { name, department, phone, facebook, linkedin, github, twitter } = req.body as any;
+
+    // Helper: trim & store empty string as null so DB stays clean
+    const sanitizeUrl = (val: string | undefined) =>
+      val !== undefined ? (val.trim() || null) : undefined;
 
     const data: any = {};
-    if (name) data.name = name;
+    if (name)       data.name       = name;
     if (department) data.department = department;
-    // Note: Phone is not in the Prisma schema yet, I'll ignore it or update schema later if needed.
-    // Based on User.ts, phone wasn't there either, only in the controller's body destructuring.
+    if (phone !== undefined)    data.phone    = phone?.trim() || null;
+    if (facebook !== undefined) data.facebook = sanitizeUrl(facebook);
+    if (linkedin !== undefined) data.linkedin = sanitizeUrl(linkedin);
+    if (github   !== undefined) data.github   = sanitizeUrl(github);
+    if (twitter  !== undefined) data.twitter  = sanitizeUrl(twitter);
 
     if ((req as any).file) {
       data.profileImage = `/uploads/avatars/${(req as any).file.filename}`;
@@ -116,6 +128,11 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
         department: true,
         customDesignation: { select: { id: true, name: true } },
         profileImage: true,
+        phone: true,
+        facebook: true,
+        linkedin: true,
+        github: true,
+        twitter: true,
       }
     });
     res.status(200).json({ message: 'Profile updated successfully', user: { ...user, designation: (user as any).customDesignation } });
@@ -223,14 +240,35 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         employeeType: employeeType || 'IN_HOUSE',
         baseSalary: Number(baseSalary) || 0,
         joiningDate: new Date(),
-      }
+      },
+      include: { customDesignation: true }
     });
 
     if (sendEmail) {
-      await sendWelcomeEmail(email, name, plainPassword);
+      await sendWelcomeEmail(email, name, plainPassword, user.customDesignation?.name || 'Employee');
     }
 
-    const { password: _, ...userWithoutPassword } = user;
+    // Notify Admins
+    const hrAndManagers = await prisma.user.findMany({
+      where: {
+        customDesignation: { name: { in: ['Admin', 'Super Admin', 'System Administrator', 'HR'] } }
+      }
+    });
+
+    const notifications = hrAndManagers.map((u: any) => ({
+      userId: u.id,
+      titleEn: 'New Employee Onboarded',
+      titleBn: 'নতুন কর্মচারী যুক্ত হয়েছে',
+      messageEn: `${name} has been added to the system.`,
+      messageBn: `${name}-কে সিস্টেমে যুক্ত করা হয়েছে।`,
+      type: 'USER_MANAGEMENT'
+    }));
+
+    if (notifications.length > 0) {
+      await prisma.notification.createMany({ data: notifications });
+    }
+
+    const { password: _, customDesignation, ...userWithoutPassword } = user;
     res.status(201).json({
       message: 'Employee created successfully',
       user: userWithoutPassword,

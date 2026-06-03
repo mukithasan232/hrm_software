@@ -103,7 +103,10 @@ export const calculateEOTM = async (req: Request, res: Response) => {
     const safeAllUsers = Array.isArray(allUsers) ? allUsers : [];
     const notifications = safeAllUsers.map((u: any) => ({
       userId: u.id,
-      message: `🎉 ${winner.employee.name} has been awarded Employee of the Month for ${month}/${year}!`,
+      titleEn: 'Employee of the Month',
+      titleBn: 'মাসের সেরা কর্মী',
+      messageEn: `🎉 ${winner.employee.name} has been awarded Employee of the Month for ${month}/${year}!`,
+      messageBn: `🎉 ${month}/${year} এর জন্য ${winner.employee.name}-কে মাসের সেরা কর্মী ঘোষণা করা হয়েছে!`,
       type: 'Announcement'
     }));
 

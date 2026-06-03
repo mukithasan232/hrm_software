@@ -8,27 +8,22 @@ import {
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBrand } from '@/context/BrandContext';
+import { useTranslation } from '@/context/LanguageContext';
 
 const BACKEND = 'http://localhost:5001';
 
-interface NavItem {
-  name: string;
-  href: string;
-  icon: any;
-  designations: string[];
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { name: 'Dashboard',  href: '/dashboard',            icon: LayoutDashboard, designations: [] },
-  { name: 'Attendance', href: '/dashboard/attendance', icon: Clock,           designations: [] },
-  { name: 'Leaves',     href: '/dashboard/leaves',     icon: CalendarRange,   designations: [] },
-  { name: 'My Profile', href: '/dashboard/profile',    icon: User,            designations: [] },
+// Nav item keys (translated at render time via t())
+const NAV_ITEM_DEFS = [
+  { key: 'dashboard',  href: '/dashboard',            icon: LayoutDashboard, designations: [] as string[] },
+  { key: 'attendance', href: '/dashboard/attendance', icon: Clock,           designations: [] as string[] },
+  { key: 'leaves',     href: '/dashboard/leaves',     icon: CalendarRange,   designations: [] as string[] },
+  { key: 'myProfile',  href: '/dashboard/profile',    icon: User,            designations: [] as string[] },
 ];
 
-const TEAM_SUB_ITEMS = [
-  { name: 'Designations', href: '/dashboard/team/designations', icon: Shield },
-  { name: 'Users',       href: '/dashboard/team/users', icon: UsersRound },
-  { name: 'Employees',   href: '/dashboard/team/employees', icon: Users },
+const TEAM_SUB_DEFS = [
+  { key: 'designations', href: '/dashboard/team/designations', icon: Shield },
+  { key: 'users',        href: '/dashboard/team/users',        icon: UsersRound },
+  { key: 'employees',    href: '/dashboard/team/employees',    icon: Users },
 ];
 
 const TEAM_ALLOWED_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator'];
@@ -42,6 +37,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { brand } = useBrand();
+  const { t } = useTranslation();
 
   // Keep Team section open if we're on a /team/* route
   const isTeamActive = pathname.startsWith('/dashboard/team');
@@ -49,7 +45,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const designationName = typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation;
 
-  const filteredItems = NAV_ITEMS.filter(item =>
+  const filteredItems = NAV_ITEM_DEFS.filter(item =>
     item.designations.length === 0 || item.designations.includes(designationName || '')
   );
 
@@ -95,7 +91,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           const Icon = item.icon;
           return (
             <Link
-              key={item.name}
+              key={item.key}
               href={item.href}
               onClick={onClose}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-sm font-medium group ${
@@ -109,7 +105,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   isActive ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
                 }`}
               />
-              <span>{item.name}</span>
+              <span>{t(item.key as any)}</span>
               {isActive && (
                 <span className="ml-auto h-1.5 w-1.5 rounded-full flex-shrink-0 bg-brand-primary" />
               )}
@@ -122,7 +118,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           <div className="pt-1">
             {/* Separator label */}
             <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-gray-600">
-              Administration
+              {t('administration')}
             </p>
 
             {/* Team accordion trigger */}
@@ -139,7 +135,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
                 }`}
               />
-              <span className="flex-1 text-left">Team</span>
+              <span className="flex-1 text-left">{t('team')}</span>
               <ChevronDown
                 className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''} ${
                   isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500'
@@ -156,12 +152,12 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               }}
             >
               <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-white/10 pl-3">
-                {TEAM_SUB_ITEMS.map(sub => {
+                {TEAM_SUB_DEFS.map(sub => {
                   const isSubActive = pathname === sub.href || pathname.startsWith(sub.href);
                   const SubIcon = sub.icon;
                   return (
                     <Link
-                      key={sub.name}
+                      key={sub.key}
                       href={sub.href}
                       onClick={onClose}
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-sm font-medium group ${
@@ -171,7 +167,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                       }`}
                     >
                       <SubIcon className={`h-3.5 w-3.5 flex-shrink-0 ${isSubActive ? 'text-indigo-500' : ''}`} />
-                      <span>{sub.name}</span>
+                      <span>{t(sub.key as any)}</span>
                       {isSubActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />}
                     </Link>
                   );
@@ -195,10 +191,10 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] uppercase tracking-wider font-bold text-brand-primary/80">
-              Download
+              {t('download')}
             </p>
             <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
-              Android App
+              {t('androidApp')}
             </p>
           </div>
         </a>
@@ -208,7 +204,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           className="flex items-center gap-3 px-4 py-2.5 w-full text-left text-red-500 hover:bg-red-500/5 dark:hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium"
         >
           <LogOut className="h-4 w-4" />
-          <span>Sign Out</span>
+          <span>{t('signOut')}</span>
         </button>
       </div>
     </div>

@@ -267,15 +267,17 @@ export default function DesignationsPage() {
           </div>
         ) : (
           <>
-            {/* Table header */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-6 py-3 border-b border-slate-100 dark:border-white/10 text-xs uppercase tracking-wider font-semibold text-slate-400 dark:text-gray-600">
+            {/* Desktop Table Header */}
+            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-6 py-3 border-b border-slate-100 dark:border-white/10 text-xs uppercase tracking-wider font-semibold text-slate-400 dark:text-gray-600">
               <span>Designation</span>
               <span>Permissions</span>
               <span>Users</span>
               <span>Created</span>
               <span className="w-20 text-right">Actions</span>
             </div>
-            <div className="divide-y divide-slate-100 dark:divide-white/5">
+            
+            {/* Desktop Table Rows */}
+            <div className="hidden md:block divide-y divide-slate-100 dark:divide-white/5">
               {filtered.map(designation => {
                 const permCount = countActivePermissions(designation.permissions || {});
                 return (
@@ -333,6 +335,63 @@ export default function DesignationsPage() {
                 );
               })}
             </div>
+
+            {/* Mobile Responsive Cards */}
+            <div className="block md:hidden divide-y divide-slate-100 dark:divide-white/5">
+              {filtered.map(designation => {
+                const permCount = countActivePermissions(designation.permissions || {});
+                return (
+                  <div key={designation.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                          <Shield className="w-3.5 h-3.5 text-indigo-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-800 dark:text-white text-sm truncate">{designation.name}</p>
+                          {designation.description && (
+                            <p className="text-xs text-slate-450 dark:text-gray-500 truncate">{designation.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => openEdit(designation)}
+                          className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-xl transition-all"
+                          title="Edit Designation"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(designation)}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                          title="Delete Designation"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-white/5 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-400 dark:text-gray-500">Permissions:</span>
+                        <PermPill count={permCount} />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 text-slate-605 dark:text-gray-400 font-medium">
+                          <Users className="w-3.5 h-3.5 text-slate-400 dark:text-gray-650" />
+                          <span>{designation._count?.users ?? 0}</span>
+                        </div>
+                        <span className="text-slate-300 dark:text-gray-700">•</span>
+                        <span className="text-slate-400 dark:text-gray-500">
+                          {new Date(designation.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </>
         )}
       </div>
@@ -344,7 +403,7 @@ export default function DesignationsPage() {
           <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col z-10">
 
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/10 px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
+            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/10 px-4 sm:px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
               <div>
                 <h2 className="text-lg font-bold text-slate-800 dark:text-white">
                   {editTarget ? 'Edit Designation' : 'Create New Designation'}
@@ -360,7 +419,7 @@ export default function DesignationsPage() {
 
             {/* Modal Body — scrollable */}
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+              <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 space-y-4 md:space-y-6">
 
                 {/* Name + Description */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -375,8 +434,8 @@ export default function DesignationsPage() {
                       className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Description</label>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-655 dark:text-gray-400 uppercase tracking-wide">Description</label>
                     <input
                       type="text"
                       value={designationDesc}
@@ -398,9 +457,9 @@ export default function DesignationsPage() {
 
                   <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden">
                     {/* Matrix column headers */}
-                    <div className="bg-slate-50 dark:bg-white/[0.03] grid grid-cols-[140px_1fr] border-b border-slate-200 dark:border-white/10">
+                    <div className="bg-slate-50 dark:bg-white/[0.03] flex flex-col sm:grid sm:grid-cols-[140px_1fr] border-b border-slate-200 dark:border-white/10">
                       <div className="px-4 py-2.5 text-xs font-bold text-slate-500 dark:text-gray-500 uppercase tracking-wider">Module</div>
-                      <div className="px-4 py-2.5 text-xs font-bold text-slate-500 dark:text-gray-500 uppercase tracking-wider">Permissions</div>
+                      <div className="px-4 py-2.5 text-xs font-bold text-slate-500 dark:text-gray-500 uppercase tracking-wider hidden sm:block">Permissions</div>
                     </div>
 
                     {/* Module rows */}
@@ -412,9 +471,9 @@ export default function DesignationsPage() {
 
                         return (
                           <div key={mod.key}>
-                            <div className="grid grid-cols-[140px_1fr] items-center hover:bg-slate-50/50 dark:hover:bg-white/[0.02]">
+                            <div className="flex flex-col sm:grid sm:grid-cols-[140px_1fr] sm:items-center hover:bg-slate-50/50 dark:hover:bg-white/[0.02] border-b border-slate-100 dark:border-white/5 last:border-b-0">
                               {/* Module name + select-all */}
-                              <div className="px-4 py-3 flex items-center gap-2">
+                              <div className="px-4 py-3 flex items-center gap-2 border-b border-slate-100 dark:border-white/5 sm:border-b-0 bg-slate-50/50 dark:bg-white/[0.01] sm:bg-transparent">
                                 <input
                                   type="checkbox"
                                   checked={allOn}
@@ -433,7 +492,7 @@ export default function DesignationsPage() {
                               </div>
 
                               {/* Permission checkboxes */}
-                              <div className="px-4 py-3 flex flex-wrap gap-3">
+                              <div className="px-4 py-3 flex flex-wrap gap-2.5">
                                 {mod.permissions.map(perm => {
                                   const key = `${mod.key}.${perm}`;
                                   const checked = !!permissions[key];
@@ -467,7 +526,7 @@ export default function DesignationsPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-slate-100 dark:border-white/10 flex gap-3 bg-white dark:bg-slate-900 rounded-b-2xl">
+              <div className="px-4 sm:px-6 py-4 border-t border-slate-100 dark:border-white/10 flex gap-3 bg-white dark:bg-slate-900 rounded-b-2xl">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}

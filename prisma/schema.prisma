@@ -55,7 +55,10 @@ model Leave {
 model Notification {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
-  message   String
+  titleEn   String?
+  titleBn   String?
+  messageEn String
+  messageBn String?
   read      Boolean  @default(false)
   type      String
   updatedAt DateTime @updatedAt
@@ -120,6 +123,13 @@ model User {
   documents           Json            @default("{}")
   resetToken          String?
   resetTokenExpiry    DateTime?
+
+  // Contact & Social Media
+  phone               String?
+  facebook            String?
+  linkedin            String?
+  github              String?
+  twitter             String?
 
   attendanceLogs AttendanceLog[] @relation("UserAttendance")
   leaves         Leave[]         @relation("UserLeaves")

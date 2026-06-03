@@ -5,9 +5,11 @@ import { Users, CalendarRange, RefreshCw, Clock } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import { useTranslation } from '@/context/LanguageContext';
 
 export default function DashboardOverview() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [stats, setStats] = useState({ 
     employees: 0, 
     pendingLeaves: 0, 
@@ -97,14 +99,14 @@ export default function DashboardOverview() {
           className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-800 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 disabled:opacity-50 font-medium"
         >
           <RefreshCw className={`w-4 h-4 ${syncingUsers ? 'animate-spin' : ''}`} /> 
-          {syncingUsers ? 'Syncing Users...' : 'Sync Device Users'}
+          {syncingUsers ? t('syncingUsers') : t('syncDeviceUsers')}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Present Now</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{t('presentNow')}</p>
             <div className="flex items-center gap-2 mt-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <p className="text-3xl font-bold text-slate-800 dark:text-white">{loading ? '-' : stats.activeNow}</p>
@@ -117,7 +119,7 @@ export default function DashboardOverview() {
 
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Total Employees</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{t('totalEmployees')}</p>
             <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.employees}</p>
           </div>
           <div className="p-4 bg-blue-500/20 rounded-xl text-blue-500 dark:text-blue-400">
@@ -127,7 +129,7 @@ export default function DashboardOverview() {
 
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-purple-500/50 dark:hover:border-purple-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Pending Leaves</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{t('pendingLeaves')}</p>
             <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.pendingLeaves}</p>
           </div>
           <div className="p-4 bg-purple-500/20 rounded-xl text-purple-500 dark:text-purple-400">
@@ -142,16 +144,16 @@ export default function DashboardOverview() {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Live Activity
+              {t('liveActivity')}
             </h3>
-            <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-500 font-bold px-2 py-1 bg-emerald-500/10 rounded-lg">Real-Time</span>
+            <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-500 font-bold px-2 py-1 bg-emerald-500/10 rounded-lg">{t('realTime')}</span>
           </div>
 
           <div className="space-y-4 flex-1">
             {recentAttendance.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-gray-500 gap-2 opacity-50">
                 <Clock className="w-8 h-8" />
-                <p className="text-sm italic">Waiting for punches...</p>
+                <p className="text-sm italic">{t('waitingForPunches')}</p>
               </div>
             ) : (
               recentAttendance.map((log, i) => (
@@ -178,7 +180,7 @@ export default function DashboardOverview() {
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
                       : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
                   }`}>
-                    {log.punchType === 'CheckIn' ? 'IN' : 'OUT'}
+                    {log.punchType === 'CheckIn' ? t('checkin') : t('checkout')}
                   </div>
                 </div>
               ))

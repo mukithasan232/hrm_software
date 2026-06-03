@@ -343,15 +343,15 @@ export default function AttendancePage() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Manual Attendance</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleManualSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400 mb-2">Select Employee</label>
+            <form onSubmit={handleManualSubmit} className="px-4 sm:px-6 py-4 space-y-4 md:space-y-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">Select Employee</label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500" />
                   <select 
@@ -369,8 +369,8 @@ export default function AttendancePage() {
               </div>
   
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400 mb-2">Punch Type</label>
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">Punch Type</label>
                   <select 
                     className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none font-semibold"
                     value={manualEntry.punchType}
@@ -380,8 +380,8 @@ export default function AttendancePage() {
                     <option value="CheckOut" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Check Out</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400 mb-2">Time</label>
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">Time</label>
                   <input 
                     type="datetime-local" 
                     className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-semibold"

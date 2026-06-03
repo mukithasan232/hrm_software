@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express-serve-static-core';
 import { prisma } from '../lib/prisma';
+import { sendLeaveUpdateEmail } from '../services/emailService';
 
 // 💡 Multer-এর জন্য এক্সপ্রেস Request টাইপকে সম্পূর্ণ টাইপসেফ করা হলো
 interface MulterRequest extends Omit<Request, 'file' | 'files'> {
@@ -51,7 +52,10 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
     const safeHrAndManagers = Array.isArray(hrAndManagers) ? hrAndManagers : [];
     const notifications = safeHrAndManagers.map((u: any) => ({
       userId: u.id,
-      message: `${applyingUser?.name || 'An employee'} applied for ${type} leave.`,
+      titleEn: 'New Leave Request',
+      titleBn: 'নতুন ছুটির আবেদন',
+      messageEn: `${applyingUser?.name || 'An employee'} applied for ${type} leave.`,
+      messageBn: `${applyingUser?.name || 'একজন কর্মচারী'} ${type} ছুটির আবেদন করেছেন।`,
       type: 'LeaveRequest'
     }));
 
@@ -111,13 +115,23 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
 
     if (!leave) return res.status(404).json({ message: 'Leave not found' });
 
+    const statusEn = status;
+    const statusBn = status === 'Approved' ? 'অনুমোদিত' : status === 'Rejected' ? 'প্রত্যাখ্যাত' : 'মুলতুবি';
+
     await prisma.notification.create({
       data: {
         userId: leave.employeeId,
-        message: `Your ${leave.type} leave request has been ${status}.`,
+        titleEn: `Leave Request ${statusEn}`,
+        titleBn: `ছুটির আবেদন ${statusBn}`,
+        messageEn: `Your ${leave.type} leave request has been ${statusEn}.`,
+        messageBn: `আপনার ${leave.type} ছুটির আবেদনটি ${statusBn} হয়েছে।`,
         type: 'LeaveUpdate'
       }
     });
+
+    if (leave.user?.email && leave.user?.name) {
+      await sendLeaveUpdateEmail((leave.user as any).email, leave.user.name, leave.type, statusEn);
+    }
 
     return res.status(200).json({ message: `Leave ${status}`, leave });
   } catch (error: any) {

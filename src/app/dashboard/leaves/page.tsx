@@ -82,12 +82,12 @@ export default function LeavesPage() {
         
         {/* Application Form for Executives/Employees */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl h-fit">
+          <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl px-4 sm:px-6 py-4 shadow-sm dark:shadow-2xl h-fit">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
               <Calendar className="w-5 h-5 text-indigo-650 dark:text-blue-400" /> Apply for Leave
             </h2>
-            <form onSubmit={handleApply} className="space-y-4">
-              <div className="space-y-1">
+            <form onSubmit={handleApply} className="space-y-4 md:space-y-6">
+              <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Leave Type</label>
                 <select 
                   value={type} onChange={(e) => setType(e.target.value)}
@@ -99,20 +99,20 @@ export default function LeavesPage() {
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Start Date</label>
                   <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:[&::-webkit-calendar-picker-indicator]:filter-[invert(1)] font-semibold" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">End Date</label>
                   <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:[&::-webkit-calendar-picker-indicator]:filter-[invert(1)] font-semibold" />
                 </div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Reason</label>
                 <textarea required value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 font-semibold"></textarea>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Document (Optional)</label>
                 <div className="flex items-center gap-2">
                   <label className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-black/20 border border-dashed border-slate-350 dark:border-white/20 hover:border-indigo-500/50 dark:hover:border-blue-500/50 rounded-xl px-4 py-3 text-slate-500 dark:text-gray-400 cursor-pointer transition-all">

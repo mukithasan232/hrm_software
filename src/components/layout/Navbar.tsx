@@ -7,12 +7,15 @@ import api from '@/services/api';
 import ThemeToggle from '@/components/ThemeToggle';
 import BDClock from './BDClock';
 import { useBrand } from '@/context/BrandContext';
+import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
+import { useTranslation } from '@/context/LanguageContext';
 
 const BACKEND = 'http://localhost:5001';
 
 export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void }) {
   const { user, logout } = useAuth();
   const { brand } = useBrand();
+  const { t, language } = useTranslation();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -64,7 +67,7 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
         </button>
         <div className="flex items-center gap-4">
           <span className="text-slate-800 dark:text-white font-semibold text-sm hidden sm:block">
-            Welcome,{' '}
+            {t('welcome')},{' '}
             <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">
               {user?.name || 'User'}
             </span>
@@ -74,7 +77,8 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <LanguageSwitcher />
         <ThemeToggle />
 
         {/* Notification Bell */}
@@ -96,24 +100,37 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl dark:shadow-2xl overflow-hidden z-50">
               <div className="p-4 border-b border-slate-100 dark:border-white/10 flex justify-between items-center">
-                <h3 className="font-semibold text-slate-800 dark:text-white text-sm">Notifications</h3>
+                <h3 className="font-semibold text-slate-800 dark:text-white text-sm">{t('notifications')}</h3>
                 {unreadCount > 0 && (
                   <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-brand-primary/20 text-brand-primary">
-                    {unreadCount} new
+                    {unreadCount} {t('newBadge')}
                   </span>
                 )}
               </div>
               <div className="max-h-72 overflow-y-auto">
                 {notifications.length === 0 ? (
-                  <p className="p-6 text-sm text-slate-400 dark:text-gray-500 text-center">All caught up! 🎉</p>
+                  <p className="p-6 text-sm text-slate-400 dark:text-gray-500 text-center">{t('allCaughtUp')}</p>
                 ) : (
                   notifications.map(n => (
                     <div
                       key={n.id}
-                      className={`p-3 border-b border-slate-100 dark:border-white/5 text-xs ${!n.read ? 'text-slate-800 dark:text-white font-medium bg-brand-primary/10' : 'text-slate-500 dark:text-gray-400'}`}
+                      className={`p-3 border-b border-slate-100 dark:border-white/5 text-xs ${!n.read ? 'text-slate-800 dark:text-white bg-brand-primary/10' : 'text-slate-500 dark:text-gray-400'}`}
                     >
-                      <p>{n.message}</p>
-                      <p className="text-slate-400 dark:text-gray-500 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+                      <p className="font-bold text-[13px] mb-1">
+                        {language === 'bn' ? (n.titleBn || n.titleEn || 'বিজ্ঞপ্তি') : (n.titleEn || n.titleBn || 'Notification')}
+                      </p>
+                      <p className={!n.read ? 'font-medium' : ''}>
+                        {language === 'bn' ? (n.messageBn || n.messageEn || n.message) : (n.messageEn || n.messageBn || n.message)}
+                      </p>
+                      <p className="text-slate-400 dark:text-gray-500 mt-1.5 text-[10px]">
+                        {new Date(n.createdAt).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </p>
                     </div>
                   ))
                 )}
@@ -161,7 +178,7 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
                     className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
                   >
                     <Paintbrush className="w-4 h-4 flex-shrink-0" />
-                    <span className="font-medium">Appearance</span>
+                    <span className="font-medium">{t('appearance')}</span>
                   </Link>
                 )}
 
@@ -170,14 +187,14 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
                   onClick={() => setShowProfile(false)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 text-sm transition-colors"
                 >
-                  <Settings className="w-4 h-4" /> Profile Settings
+                  <Settings className="w-4 h-4" /> {t('profileSettings')}
                 </Link>
 
                 <button
                   onClick={logout}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/5 dark:hover:bg-red-500/10 text-sm transition-colors"
                 >
-                  <LogOut className="w-4 h-4" /> Sign Out
+                  <LogOut className="w-4 h-4" /> {t('signOut')}
                 </button>
               </div>
             </div>
