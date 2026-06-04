@@ -1,36 +1,37 @@
 FROM node:22-alpine AS base
 
-# Install OpenSSL for Prisma
+# Install OpenSSL (required by Prisma) and curl (for healthchecks)
 RUN apk add --no-cache openssl
 
-# Enable pnpm
+# Enable pnpm via corepack
 RUN corepack enable pnpm
 
 WORKDIR /app
 
-# 1. Install ALL dependencies (Don't set NODE_ENV=production yet!)
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm config set ignore-scripts false && pnpm install --frozen-lockfile
+# ── Step 1: Install dependencies ─────────────────────────────────────────────
+# Copy BOTH lockfile and workspace config so pnpm can resolve allowBuilds
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
-# Copy all files
+# ── Step 2: Copy source code ──────────────────────────────────────────────────
 COPY . .
 
 # Make the entrypoint script executable
 RUN chmod +x entrypoint.sh
 
+# ── Step 3: Build ─────────────────────────────────────────────────────────────
+# DATABASE_URL is needed by Prisma generate at build time
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# 2. Build Next.js FIRST (while devDependencies are still available)
-RUN npx prisma generate && npx next build
+# Generate Prisma client and build Next.js
+RUN pnpm exec prisma generate && pnpm exec next build
 
-# 3. NOW set production environment for optimized runtime
+# ── Step 4: Runtime environment ───────────────────────────────────────────────
 ENV NODE_ENV=production
-
-# Expose the correct port
-EXPOSE 3000
 ENV PORT=3000
+EXPOSE 3000
 
-# Use the entrypoint script
+# ── Step 5: Start ─────────────────────────────────────────────────────────────
 ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]

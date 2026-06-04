@@ -83,12 +83,6 @@ jobs:
               exit 0
             fi
 
-            # 3. Check for completion
-            if [ "$STATUS" = "finished" ]; then
-              echo "✅ Deployment finished successfully."
-              exit 0
-            fi
-
             if [ "$STATUS" = "failed" ] || [ "$STATUS" = "canceled" ]; then
               echo "❌ Deployment failed! Printing the full raw server response below so we can find the hidden error:"
               echo "$RESP" | jq .

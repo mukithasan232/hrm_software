@@ -1,21 +1,43 @@
+# Dependencies
 node_modules/
+
+# Environment files
 .env
 .env.local
 .env.*.local
-.DS_Store
-dist/
-build/
+.env*.local
+.env.live
+
+# Next.js
 .next/
 out/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+
+# Build artifacts
+dist/
+build/
+.dist/
+tsconfig.tsbuildinfo
+
+# OS / Editor
+.DS_Store
 .idea/
 .vscode/
 *.swp
 *.swo
+
+# Uploads (managed outside git)
 uploads/
-.vercel
-.env*.local
-tsconfig.tsbuildinfo
-.env.live
+
+# Platform-specific deploy configs (not used in Coolify/Docker build)
+.vercel/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local test/debug scripts (never commit to prod)
+test-*.js
+test-*.ts
+automation-sync.js
