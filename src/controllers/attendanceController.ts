@@ -323,6 +323,15 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Missing employeeId or timestamp' });
     }
 
+    // Verify Secret Token
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+    const secretToken = process.env.API_SECRET_TOKEN || 'my_secret_token_2026';
+    
+    if (authHeader !== `Bearer ${secretToken}`) {
+      console.warn(`[Webhook Error]: Unauthorized access attempt with token: ${authHeader}`);
+      return res.status(401).json({ success: false, message: 'Unauthorized Hacker!' });
+    }
+
     const parsedTimestamp = new Date(timestamp);
     const resolvedPunchType = punchType || status || 'CheckIn';
 
