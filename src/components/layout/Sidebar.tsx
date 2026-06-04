@@ -182,7 +182,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       <div className="p-3 border-t border-slate-200 dark:border-white/10 space-y-2">
         {/* Mobile App Download Card */}
         <a
-          href="/apps/hrm-app.apk"
+          href="https://drive.google.com/file/d/16FpY6WfJG6HB6EPgEU4vdRVqAGx0A02c/view?usp=drive_link"
           download="HRM-App.apk"
           className="flex items-center gap-3 px-3 py-2.5 w-full text-left bg-gradient-to-tr from-brand-primary/10 to-brand-secondary/10 hover:from-brand-primary/20 hover:to-brand-secondary/20 border border-brand-primary/20 rounded-xl transition-all group"
         >

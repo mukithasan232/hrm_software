@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express-serve-static-core';
 import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs } from '../services/zkService';
-import { runWithDeviceLock } from '../services/realtimeService';
+import { runWithDeviceLock, startRealtimeListener } from '../services/realtimeService';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 
@@ -66,19 +66,39 @@ export const getDeviceStatus = async (req: Request, res: Response) => {
 // @access  Admin
 export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
   try {
-    // Guard: prevent cloud‑to‑local direct sync in production
+    // Guard: prevent cloud-to-local direct sync in production
     if (process.env.NODE_ENV === 'production') {
       const ip = process.env.ZK_DEVICE_IP || '';
       const isLocal = ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.');
       if (isLocal) {
-        return res.status(400).json({ message: 'Direct cloud-to-local sync is restricted. Please ensure the Office Sync Daemon is running to push data to the cloud.' });
+        return res.status(400).json({
+          success: false,
+          message: 'Direct cloud-to-local sync is restricted. Please ensure the Office Sync Daemon is running to push data to the cloud.',
+        });
       }
     }
-    // Proceed with normal sync
-    await runWithDeviceLock(() => getDeviceAttendance());
-    res.status(200).json({ success: true, message: "Users and logs synced successfully to MariaDB" });
+
+    // On-demand only — connects, syncs, then disconnects.
+    const result = await runWithDeviceLock(() => getDeviceAttendance());
+
+    // After a successful manual sync, start the realtime listener so live
+    // punches are captured until the next server restart.
+    startRealtimeListener();
+
+    res.status(200).json({
+      success: true,
+      message: `Sync complete. ${result.synced} record(s) synced, ${result.skipped} skipped.`,
+      synced:  result.synced,
+      skipped: result.skipped,
+      total:   result.total,
+    });
   } catch (error: any) {
-    res.status(503).json({ message: 'Failed to sync users (biometric device offline or unreachable)', error: error.message });
+    console.error('[syncDeviceUsersToDB] ❌', error.message);
+    res.status(503).json({
+      success: false,
+      message: 'Biometric device offline or unreachable. Please check the device and try again.',
+      error: error.message,
+    });
   }
 };
 

@@ -107,10 +107,11 @@ bootstrapDatabase()
         // 2. Background cron jobs
         initCronJobs();
 
-        // 3. Realtime biometric device sync (non-blocking)
-        initRealtimeAttendance(io).catch(err => {
-          console.error('[Main] Realtime biometric listener init failed:', err.message);
-        });
+        // 3. Register socket.io with the realtime service.
+        //    ⚠️  This no longer connects to ZKTeco at startup.
+        //    The device connection is established on-demand when an admin
+        //    clicks the Sync button (POST /api/attendance/sync-users).
+        initRealtimeAttendance(io);
       } catch (err) {
         console.error('[Server Startup] Failed to load backend modules:', err);
         // Do NOT exit — let Hostinger keep the process alive for HTTP traffic
