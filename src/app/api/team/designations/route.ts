@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { corsPreflight } from '@/lib/adapter';
 import { wrapHandler } from '@/lib/adapter';
 import { getDesignations, createDesignation } from '@/controllers/designationController';

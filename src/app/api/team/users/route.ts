@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { wrapHandler, corsPreflight } from '@/lib/adapter';
 import { getEmployees, createEmployee } from '@/controllers/userController';
 

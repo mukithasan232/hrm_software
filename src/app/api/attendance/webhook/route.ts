@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 // import { prisma } from '@/lib/prisma'; // আপনার প্রিজমা ক্লায়েন্ট ইমপোর্ট করে নেবেন
 

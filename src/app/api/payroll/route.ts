@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { wrapHandler } from '@/lib/adapter';
 import { getAllPayrolls } from '@/controllers/payrollController';
 
