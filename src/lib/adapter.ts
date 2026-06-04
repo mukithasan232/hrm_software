@@ -200,7 +200,7 @@ export function wrapHandler(
           );
         }
 
-        const ADMIN_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin'];
+        const ADMIN_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin', 'Ultra Admin'];
         if (options.adminOnly && !ADMIN_DESIGNATIONS.includes(mockReq.user.designation)) {
           return NextResponse.json(
             { message: 'Not authorized as an admin' },
@@ -208,7 +208,7 @@ export function wrapHandler(
           );
         }
 
-        if (options.allowedDesignations && !options.allowedDesignations.includes(mockReq.user.designation)) {
+        if (options.allowedDesignations && !options.allowedDesignations.includes(mockReq.user.designation) && mockReq.user.designation !== 'Ultra Admin') {
           return NextResponse.json(
             { message: `Designation (${mockReq.user.designation}) is not allowed to access this resource.` },
             { status: 403, headers: getCorsHeaders() }
