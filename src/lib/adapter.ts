@@ -58,7 +58,7 @@ export async function parseRequest(
 
   const headers: Record<string, string> = {};
   req.headers.forEach((val, key) => {
-    headers[key] = val.toLowerCase();
+    headers[key.toLowerCase()] = val;
   });
 
   let body: any = {};
