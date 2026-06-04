@@ -144,7 +144,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     const formattedRecent = safeLogs.slice(0, 5).map((log: any) => ({
       ...log,
-      employeeName: log.user?.name || `User ${log.employeeId}`
+      employeeName: log.user?.name || 'Unmapped User'
     }));
 
     res.status(200).json({
@@ -197,7 +197,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
     const formattedLogs = logs.map(log => ({
       ...log,
-      employeeName: log.user?.name || `User ${log.employeeId}`,
+      employeeName: log.user?.name || 'Unmapped User',
       employeeRefId: log.user?.employeeId || log.employeeId
     }));
 
