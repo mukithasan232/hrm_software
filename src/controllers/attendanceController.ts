@@ -317,14 +317,8 @@ export const createManualLog = async (req: Request, res: Response) => {
 // @access  Public
 export const deviceWebhookPunch = async (req: Request, res: Response) => {
   try {
-    const { employeeId, timestamp, punchType, status } = req.body;
-    
-    if (!employeeId || !timestamp) {
-      return res.status(400).json({ message: 'Missing employeeId or timestamp' });
-    }
-
     // Verify Secret Token
-    const authHeader = req.headers.authorization || req.headers.Authorization;
+    const authHeader = req.headers.authorization || (req.headers as any).Authorization;
     const secretToken = process.env.API_SECRET_TOKEN || 'my_secret_token_2026';
     
     if (authHeader !== `Bearer ${secretToken}`) {
@@ -332,57 +326,83 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Unauthorized Hacker!' });
     }
 
-    const parsedTimestamp = new Date(timestamp);
-    const resolvedPunchType = punchType || status || 'CheckIn';
+    // Check if the payload is an array of logs (batch processing)
+    const isBatch = Array.isArray(req.body.logs);
+    const logsToProcess = isBatch ? req.body.logs : [req.body];
 
-    // Find the user to ensure foreign key constraint is satisfied
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [{ employeeId: String(employeeId) }, { id: String(employeeId) }]
+    if (!logsToProcess.length) {
+      return res.status(400).json({ message: 'No data provided' });
+    }
+
+    const processedLogs = [];
+    const io = (global as any).io;
+
+    for (const item of logsToProcess) {
+      const { employeeId, timestamp, punchType, status } = item;
+      
+      if (!employeeId || !timestamp) {
+        // Skip invalid entries in batch, or fail if single
+        if (!isBatch) return res.status(400).json({ message: 'Missing employeeId or timestamp' });
+        continue;
       }
-    });
 
-    if (!user) {
-      const name = `User ${employeeId}`;
-      const normalizedEmail = `user${employeeId}-${Date.now()}@hrm.test`;
-      const hashedPassword = await bcrypt.hash('password123', 10);
-      user = await prisma.user.create({
-        data: {
-          employeeId: String(employeeId),
-          name,
-          email: normalizedEmail,
-          password: hashedPassword,
-          baseSalary: 0,
-          isActive: true,
-          documents: {}
+      const parsedTimestamp = new Date(timestamp);
+      const resolvedPunchType = punchType || status || 'CheckIn';
+
+      // Find the user to ensure foreign key constraint is satisfied
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [{ employeeId: String(employeeId) }, { id: String(employeeId) }]
         }
       });
-    }
 
-    const log = await prisma.attendanceLog.create({
-      data: {
-        employeeId: user.id,
-        timestamp: parsedTimestamp,
-        punchType: resolvedPunchType as any,
-        deviceId: 'Webhook/Local Push'
+      if (!user) {
+        const name = `User ${employeeId}`;
+        const normalizedEmail = `user${employeeId}-${Date.now()}@hrm.test`;
+        const hashedPassword = await bcrypt.hash('password123', 10);
+        user = await prisma.user.create({
+          data: {
+            employeeId: String(employeeId),
+            name,
+            email: normalizedEmail,
+            password: hashedPassword,
+            baseSalary: 0,
+            isActive: true,
+            documents: {}
+          }
+        });
       }
-    });
 
-    const logData = {
-      ...log,
-      employeeName: user.name
-    };
-
-    const io = (global as any).io;
-    if (io) {
-      setImmediate(() => {
-        io.emit('new-attendance', logData);
-        io.emit('attendanceUpdate', { checkIn: resolvedPunchType === 'CheckIn' });
-        console.log(`[RealtimeService] 📡 Emitted webhook punch to frontend: ${logData.employeeName} [${resolvedPunchType}]`);
+      const log = await prisma.attendanceLog.create({
+        data: {
+          employeeId: user.id,
+          timestamp: parsedTimestamp,
+          punchType: resolvedPunchType as any,
+          deviceId: 'Webhook/Local Push'
+        }
       });
+
+      const logData = {
+        ...log,
+        employeeName: user.name
+      };
+
+      processedLogs.push(logData);
+
+      if (io) {
+        setImmediate(() => {
+          io.emit('new-attendance', logData);
+          io.emit('attendanceUpdate', { checkIn: resolvedPunchType === 'CheckIn' });
+          console.log(`[RealtimeService] 📡 Emitted webhook punch: ${logData.employeeName} [${resolvedPunchType}]`);
+        });
+      }
     }
 
-    res.status(201).json({ success: true, message: 'Punch recorded via webhook', log: logData });
+    res.status(201).json({ 
+      success: true, 
+      message: isBatch ? `Processed ${processedLogs.length} punches` : 'Punch recorded via webhook', 
+      logs: processedLogs 
+    });
   } catch (error: any) {
     console.error('[Webhook Error]:', error.message);
     res.status(500).json({ success: false, message: 'Failed to record punch', error: error.message });
