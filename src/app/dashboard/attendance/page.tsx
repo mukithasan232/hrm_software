@@ -19,9 +19,9 @@ export default function AttendancePage() {
   });
   const [dateRange, setDateRange] = useState('today');
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (isPolling = false) => {
     try {
-      setLoading(true);
+      if (!isPolling) setLoading(true);
       const res = await api.get(`/attendance/logs?range=${dateRange}`);
       const data = res.data;
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
@@ -53,7 +53,7 @@ export default function AttendancePage() {
 
     // Robust 5-second polling to fetch latest data automatically
     const intervalId = setInterval(() => {
-      fetchLogs();
+      fetchLogs(true);
     }, 5000);
 
     return () => clearInterval(intervalId);
@@ -61,7 +61,7 @@ export default function AttendancePage() {
 
   const handleManualSync = async () => {
     setSyncing(true);
-    await fetchLogs();
+    await fetchLogs(false);
     toast.success('Latest logs loaded from database!');
     setSyncing(false);
   };

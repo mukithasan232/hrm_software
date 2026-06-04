@@ -171,10 +171,13 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const where: any = {};
     if (employeeId) where.employeeId = employeeId as string;
 
+    // TEMPORARY DEMO FIX: Skipping role-based filtering so "Ultra Admin" or anyone can see all data
+    /*
     const isAdmin = ['Admin', 'Super Admin', 'System Administrator'].includes(currentUser?.designation);
     if (!isAdmin) {
       where.employeeId = currentUser.id;
     }
+    */
 
     // TEMPORARY DEMO FIX: Ignoring date filters and fetching the latest logs directly
     const [logs, total] = await Promise.all([
