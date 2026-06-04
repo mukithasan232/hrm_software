@@ -282,9 +282,15 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
 
     // Temporary fix for corrupted MariaDB JSON fields
     if (req.body.command === 'fix_json') {
-      await prisma.$executeRawUnsafe(`UPDATE User SET documents = '{}' WHERE documents IS NULL OR documents = '[object Object]'`);
-      await prisma.$executeRawUnsafe(`UPDATE Designation SET permissions = '{}' WHERE permissions IS NULL OR permissions = '[object Object]'`);
-      return res.status(200).json({ success: true, message: 'Fixed JSON fields' });
+      try {
+        await prisma.$executeRawUnsafe(`UPDATE User SET documents = '{}' WHERE documents = '' OR documents = '[object Object]' OR documents IS NULL`);
+        await prisma.$executeRawUnsafe(`UPDATE Designation SET permissions = '{}' WHERE permissions = '' OR permissions = '[object Object]' OR permissions IS NULL`);
+        // Also force fix all records just in case
+        await prisma.$executeRawUnsafe(`UPDATE User SET documents = '{}'`);
+        return res.status(200).json({ success: true, message: 'Fixed JSON fields aggressively' });
+      } catch (e: any) {
+        return res.status(500).json({ error: e.message });
+      }
     }
 
     for (const item of logsToProcess) {
