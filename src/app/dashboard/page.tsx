@@ -70,6 +70,12 @@ export default function DashboardOverview() {
 
   const handleManualSync = async () => {
     setSyncing(true);
+    try {
+      await api.post('/attendance/sync-users');
+      toast.success('Device sync complete!');
+    } catch (e: any) {
+      console.warn('Device sync skipped/failed:', e.message);
+    }
     await pollLiveActivity();
     toast.success('Latest data loaded from database!');
     setSyncing(false);

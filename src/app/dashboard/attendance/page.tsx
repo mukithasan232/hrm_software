@@ -61,6 +61,12 @@ export default function AttendancePage() {
 
   const handleManualSync = async () => {
     setSyncing(true);
+    try {
+      await api.post('/attendance/sync-users');
+      toast.success('Device sync complete!');
+    } catch (e: any) {
+      console.warn('Device sync skipped/failed:', e.message);
+    }
     await fetchLogs(false);
     toast.success('Latest logs loaded from database!');
     setSyncing(false);

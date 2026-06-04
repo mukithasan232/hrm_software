@@ -342,7 +342,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     console.log(`[ZKService] 📋 ${rawLogs.length} raw record(s) from device.`);
 
     // Sort logs chronologically ascending (earliest to latest) to guarantee correct CheckIn/CheckOut determination
-    const sortedRawLogs = Array.isArray(rawLogs) ? [...rawLogs].sort((a: any, b: any) => new Date(a.record_time).getTime() - new Date(b.record_time).getTime()) : [];
+    const sortedRawLogs = Array.isArray(rawLogs) ? [...rawLogs].sort((a: any, b: any) => new Date(a.recordTime || a.record_time).getTime() - new Date(b.recordTime || b.record_time).getTime()) : [];
 
     let synced = 0;
     let skipped = 0;
@@ -355,10 +355,10 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
       for (const log of chunk) {
         try {
-          const deviceEmpId = String(log.user_id ?? log.userId ?? log.uid);
+          const deviceEmpId = String(log.deviceUserId ?? log.user_id ?? log.userId ?? log.uid);
           // parseDhakaTimestamp converts the device's local UTC+6 time string
           // into a proper UTC Date for storage in the database.
-          const timestamp = parseDhakaTimestamp(log.record_time);
+          const timestamp = parseDhakaTimestamp(log.recordTime || log.record_time);
 
           if (isNaN(timestamp.getTime())) {
             skipped++;
