@@ -9,14 +9,15 @@ import { useTranslation } from '@/context/LanguageContext';
 export default function DashboardOverview() {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [stats, setStats] = useState({ 
-    employees: 0, 
-    pendingLeaves: 0, 
+  const [stats, setStats] = useState({
+    employees: 0,
+    pendingLeaves: 0,
     activeNow: 0,
     totalToday: 0
   });
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
@@ -25,7 +26,7 @@ export default function DashboardOverview() {
         api.get('/leaves/all'),
         api.get('/attendance/active-today')
       ]);
-      
+
       setStats({
         employees: usersRes.data.totalCount || usersRes.data.data?.length || usersRes.data.length || 0,
         pendingLeaves: leavesRes.data.filter((l: any) => l.status === 'Pending').length || 0,
@@ -34,9 +35,23 @@ export default function DashboardOverview() {
       });
       setRecentAttendance(presenceRes.data.recent || []);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to fetch dashboard data:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const pollLiveActivity = async () => {
+    try {
+      const res = await api.get('/attendance/active-today');
+      setStats(prev => ({
+        ...prev,
+        activeNow: res.data.activeNow || 0,
+        totalToday: res.data.totalToday || 0
+      }));
+      setRecentAttendance(res.data.recent || []);
+    } catch (e) {
+      console.error('Live polling failed:', e);
     }
   };
 
@@ -44,16 +59,21 @@ export default function DashboardOverview() {
     if (user) {
       fetchDashboardData();
 
-      // Simple 10-second polling to fetch latest data automatically
+      // Robust 5-second polling to fetch latest active presence strictly from the DB
       const intervalId = setInterval(() => {
-        fetchDashboardData();
-      }, 10000);
+        pollLiveActivity();
+      }, 5000);
 
       return () => clearInterval(intervalId);
     }
   }, [user]);
 
-
+  const handleManualSync = async () => {
+    setSyncing(true);
+    await pollLiveActivity();
+    toast.success('Latest data loaded from database!');
+    setSyncing(false);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -63,6 +83,13 @@ export default function DashboardOverview() {
             Welcome, {user?.name || 'Super Admin'}
           </h1>
         </div>
+        <button 
+          onClick={handleManualSync}
+          disabled={syncing}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10"
+        >
+          <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Sync Data
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -112,7 +139,20 @@ export default function DashboardOverview() {
           </div>
 
           <div className="space-y-4 flex-1">
-            {recentAttendance.length === 0 ? (
+            {loading ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10 animate-pulse">
+                    <div className="flex flex-col gap-2 w-[70%]">
+                      <div className="h-2 w-16 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                      <div className="h-3 w-32 bg-slate-300 dark:bg-slate-600 rounded"></div>
+                      <div className="h-2 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                    </div>
+                    <div className="h-5 w-16 bg-slate-200 dark:bg-slate-700 rounded-md"></div>
+                  </div>
+                ))}
+              </div>
+            ) : recentAttendance.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-gray-500 gap-2 opacity-50">
                 <Clock className="w-8 h-8" />
                 <p className="text-sm italic">{t('waitingForPunches')}</p>
@@ -132,16 +172,15 @@ export default function DashboardOverview() {
                     </span>
                     {/* Check-in Timestamp */}
                     <span className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1">
-                       <Clock className="w-3 h-3" /> {new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Dhaka' }).format(new Date(log.timestamp))}
+                      <Clock className="w-3 h-3" /> {new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Dhaka' }).format(new Date(log.timestamp))}
                     </span>
                   </div>
 
                   {/* Status Badge */}
-                  <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${
-                    log.punchType === 'CheckIn' 
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                  <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${log.punchType === 'CheckIn'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                       : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
-                  }`}>
+                    }`}>
                     {log.punchType === 'CheckIn' ? t('checkin') : t('checkout')}
                   </div>
                 </div>

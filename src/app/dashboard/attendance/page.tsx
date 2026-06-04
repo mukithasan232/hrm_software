@@ -51,13 +51,20 @@ export default function AttendancePage() {
   useEffect(() => {
     fetchEmployees();
 
-    // Simple 10-second polling to fetch latest data automatically
+    // Robust 5-second polling to fetch latest data automatically
     const intervalId = setInterval(() => {
       fetchLogs();
-    }, 10000);
+    }, 5000);
 
     return () => clearInterval(intervalId);
   }, []);
+
+  const handleManualSync = async () => {
+    setSyncing(true);
+    await fetchLogs();
+    toast.success('Latest logs loaded from database!');
+    setSyncing(false);
+  };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +179,14 @@ export default function AttendancePage() {
             <option value="all-time" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">All Time</option>
           </select>
  
+          <button 
+            onClick={handleManualSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Sync Data
+          </button>
+
           <button 
             onClick={handlePremiumExport}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium"
