@@ -24,10 +24,10 @@ require('ts-node').register({
 
 
 
-import { createServer } from 'http';
-import { parse } from 'url';
-import next from 'next';
-import { Server } from 'socket.io';
+const { createServer } = require('http');
+const { parse } = require('url');
+const next = require('next');
+const { Server } = require('socket.io');
 
 const dev  = process.env.NODE_ENV !== 'production';
 const port = process.env.PORT || 3000;

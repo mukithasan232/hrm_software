@@ -3,11 +3,14 @@ FROM node:22-alpine AS base
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
 
+# Enable pnpm
+RUN corepack enable pnpm
+
 WORKDIR /app
 
 # 1. Install ALL dependencies (Don't set NODE_ENV=production yet!)
-COPY package.json package-lock.json* ./
-RUN npm install --no-frozen-lockfile
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 
 # Copy all files
 COPY . .
