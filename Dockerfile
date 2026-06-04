@@ -10,7 +10,7 @@ WORKDIR /app
 
 # 1. Install ALL dependencies (Don't set NODE_ENV=production yet!)
 COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm config set ignore-scripts false && pnpm install --frozen-lockfile
 
 # Copy all files
 COPY . .
