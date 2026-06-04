@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import { sendEmail } from '@/lib/email';
+import { sendWelcomeEmail } from '@/services/emailService';
 import fs from 'fs';
 import path from 'path';
 
@@ -103,29 +103,23 @@ export async function POST(req: Request) {
         employeeType: employeeType || 'IN_HOUSE',
         userType: 'Employee',
         documents: documentPaths,
+      },
+      include: {
+        customDesignation: true,
       }
     });
 
     // Send Welcome Email
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #4F46E5;">Welcome to the Team, ${name}!</h2>
-        <p>Your employee account has been created successfully.</p>
-        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 5px 0;"><strong>Employee ID:</strong> ${newEmployeeId}</p>
-          <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
-          <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
-        </div>
-        <p>Please log in and change your password as soon as possible.</p>
-        <p>Best regards,<br>HR Team</p>
-      </div>
-    `;
-
-    await sendEmail({
-      to: email,
-      subject: 'Welcome to the Team - Your Login Credentials',
-      html: emailHtml
-    });
+    try {
+      await sendWelcomeEmail(
+        email,
+        name,
+        password,
+        newUser.customDesignation?.name || 'Employee'
+      );
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+    }
 
     return NextResponse.json({ message: 'Employee created successfully', user: newUser }, { status: 201 });
 
