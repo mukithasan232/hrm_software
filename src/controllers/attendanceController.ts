@@ -292,11 +292,12 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
       const parsedTimestamp = new Date(timestamp);
       const resolvedPunchType = punchType || status || 'CheckIn';
 
-      // Find the user to ensure foreign key constraint is satisfied
+      // Find the user to ensure foreign key constraint is satisfied, only selecting necessary fields to avoid JSON parse errors
       let user = await prisma.user.findFirst({
         where: {
           OR: [{ employeeId: String(employeeId) }, { id: String(employeeId) }]
-        }
+        },
+        select: { id: true, name: true }
       });
 
       if (!user) {
@@ -312,7 +313,8 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
             baseSalary: 0,
             isActive: true,
             documents: {}
-          }
+          },
+          select: { id: true, name: true }
         });
       }
 
