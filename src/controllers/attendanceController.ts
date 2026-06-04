@@ -280,6 +280,13 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
     const processedLogs: any[] = [];
     const io = (global as any).io;
 
+    // Temporary fix for corrupted MariaDB JSON fields
+    if (req.body.command === 'fix_json') {
+      await prisma.$executeRawUnsafe(`UPDATE User SET documents = '{}' WHERE documents IS NULL OR documents = '[object Object]'`);
+      await prisma.$executeRawUnsafe(`UPDATE Designation SET permissions = '{}' WHERE permissions IS NULL OR permissions = '[object Object]'`);
+      return res.status(200).json({ success: true, message: 'Fixed JSON fields' });
+    }
+
     for (const item of logsToProcess) {
       const { employeeId, timestamp, punchType, status } = item;
       
@@ -311,8 +318,8 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
             email: normalizedEmail,
             password: hashedPassword,
             baseSalary: 0,
-            isActive: true,
-            documents: {}
+            isActive: true
+            // omitted 'documents: {}' to prevent MariaDB JSON parsing error
           },
           select: { id: true, name: true }
         });
