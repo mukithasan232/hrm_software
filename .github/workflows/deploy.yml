@@ -42,7 +42,7 @@ jobs:
 
           echo "deployment_uuid=${DEPLOY_UUID}" >> "$GITHUB_OUTPUT"
 
-      - name: Poll deployment status and print error hints
+      - name: Poll deployment status and fetch Coolify logs
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           DEPLOY_UUID: ${{ steps.trigger.outputs.deployment_uuid }}
@@ -50,8 +50,12 @@ jobs:
           set -euo pipefail
 
           BASE_URL="https://host.fixanyphoto.com"
+          LAST_LOG_LINE=0
+
+          echo "🚀 Waiting for deployment logs from Coolify..."
 
           for i in $(seq 1 120); do
+            # 1. Get Status
             RESP=$(curl -sS \
               -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
               -H "Accept: application/json" \
@@ -60,21 +64,35 @@ jobs:
             STATUS=$(echo "$RESP" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')
             echo "[$i] deployment status: ${STATUS:-unknown}"
 
-            # Print compact failure hints into GitHub logs
-            echo "$RESP" | grep -Eo 'Cannot find module[^"]*|Failed to load config file[^"]*|ERROR:[^"]*|failed to build[^"]*|Process completed with exit code [0-9]+' || true
+            # 2. Fetch and Print Logs (Only new lines)
+            LOGS=$(curl -sS \
+              -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+              -H "Accept: text/plain" \
+              "${BASE_URL}/api/v1/deployments/${DEPLOY_UUID}/logs" || echo "")
 
+            if [ -n "$LOGS" ] && [ "$LOGS" != "null" ]; then
+              TOTAL_LINES=$(echo "$LOGS" | wc -l)
+              if [ "$TOTAL_LINES" -gt "$LAST_LOG_LINE" ]; then
+                echo "--- 🖥️ Coolify Logs Start ---"
+                echo "$LOGS" | tail -n +$((LAST_LOG_LINE + 1))
+                echo "--- 🖥️ Coolify Logs End ---"
+                LAST_LOG_LINE=$TOTAL_LINES
+              fi
+            fi
+
+            # 3. Check for completion
             if [ "$STATUS" = "finished" ]; then
-              echo "Deployment finished successfully."
+              echo "✅ Deployment finished successfully."
               exit 0
             fi
 
             if [ "$STATUS" = "failed" ] || [ "$STATUS" = "canceled" ]; then
-              echo "Deployment failed."
+              echo "❌ Deployment failed! Please check the logs above to find the exact error."
               exit 1
             fi
 
             sleep 10
           done
 
-          echo "Deployment polling timeout."
+          echo "⚠️ Deployment polling timeout."
           exit 1

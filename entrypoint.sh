@@ -10,4 +10,4 @@ npx ts-node --compiler-options '{"module":"CommonJS","moduleResolution":"node"}'
 
 # 3. Start the Server
 echo "🔥 Starting Next.js Monolithic Server..."
-exec node server.js
+exec node server.cjs

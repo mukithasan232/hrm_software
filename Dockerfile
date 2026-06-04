@@ -5,7 +5,7 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Install dependencies
+# 1. Install ALL dependencies (Don't set NODE_ENV=production yet!)
 COPY package.json package-lock.json* ./
 RUN npm install --no-frozen-lockfile
 
@@ -15,19 +15,19 @@ COPY . .
 # Make the entrypoint script executable
 RUN chmod +x entrypoint.sh
 
-# Environment variables
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
-ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Generate Prisma Client and Build Next.js
-# Generate Prisma Client and Build Next.js (Failed loudly if error occurs)
+# 2. Build Next.js FIRST (while devDependencies are still available)
 RUN npx prisma generate && npx next build
+
+# 3. NOW set production environment for optimized runtime
+ENV NODE_ENV=production
 
 # Expose the correct port
 EXPOSE 3000
 ENV PORT=3000
 
-# Use the entrypoint script to automatically run migrations then start the server
+# Use the entrypoint script
 ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
