@@ -4,7 +4,6 @@ import { useAuth } from '@/context/AuthContext';
 import { Users, CalendarRange, RefreshCw, Clock } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { io } from 'socket.io-client';
 import { useTranslation } from '@/context/LanguageContext';
 
 export default function DashboardOverview() {
@@ -18,7 +17,6 @@ export default function DashboardOverview() {
   });
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncingUsers, setSyncingUsers] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
@@ -46,42 +44,14 @@ export default function DashboardOverview() {
     if (user) {
       fetchDashboardData();
 
-      // Real-time listener
-      const socketUrl = process.env.NEXT_PUBLIC_API_URL
-        ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
-        : '';
-      const socket = io(socketUrl);
-      
-      socket.on('new-attendance', (log) => {
-        setStats(prev => ({ ...prev, activeNow: log.punchType === 'CheckIn' ? prev.activeNow + 1 : prev.activeNow }));
-        setRecentAttendance(prev => [log, ...prev].slice(0, 5));
-      });
-
-      socket.on('attendanceUpdate', () => {
-        console.log('🔄 Attendance update received from device socket, refreshing dashboard data...');
+      // Simple 10-second polling to fetch latest data automatically
+      const intervalId = setInterval(() => {
         fetchDashboardData();
-      });
+      }, 10000);
 
-      return () => { socket.disconnect(); };
+      return () => clearInterval(intervalId);
     }
   }, [user]);
-
-  const handleSyncUsers = async () => {
-    try {
-      setSyncingUsers(true);
-      const res = await api.post('/attendance/sync-users');
-      toast.success(res.data.message || 'Users synced from device!');
-      fetchDashboardData();
-    } catch (error: any) {
-      console.error(error);
-      const msg = error.response?.data?.message || 'Device unreachable, pulling from backup cloud logs';
-      toast.error(msg);
-      // Ensure we at least fetch what we have in the local DB
-      fetchDashboardData();
-    } finally {
-      setSyncingUsers(false);
-    }
-  };
 
 
 
@@ -93,14 +63,6 @@ export default function DashboardOverview() {
             Welcome, {user?.name || 'Super Admin'}
           </h1>
         </div>
-        <button 
-          onClick={handleSyncUsers}
-          disabled={syncingUsers}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-800 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 disabled:opacity-50 font-medium"
-        >
-          <RefreshCw className={`w-4 h-4 ${syncingUsers ? 'animate-spin' : ''}`} /> 
-          {syncingUsers ? t('syncingUsers') : t('syncDeviceUsers')}
-        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

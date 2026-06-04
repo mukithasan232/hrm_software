@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { io } from 'socket.io-client';
 
 export default function AttendancePage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,29 +51,12 @@ export default function AttendancePage() {
   useEffect(() => {
     fetchEmployees();
 
-    // Socket.io Real-time connection
-    const socketUrl = process.env.NEXT_PUBLIC_API_URL
-      ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
-      : '';
-    const socket = io(socketUrl);
+    // Simple 10-second polling to fetch latest data automatically
+    const intervalId = setInterval(() => {
+      fetchLogs();
+    }, 10000);
 
-    socket.on('new-attendance', (newLog) => {
-      setLogs((prev) => {
-        // Avoid duplicates if possible
-        const exists = prev.some(l => l.id === newLog.id);
-        if (exists) return prev;
-        return [newLog, ...prev];
-      });
-      setTotalLogs(prev => prev + 1);
-      toast.success(`Live: ${newLog.employeeName} - ${newLog.punchType}`, {
-        icon: '🕒',
-        style: { borderRadius: '10px', background: '#333', color: '#fff' }
-      });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleManualSubmit = async (e: React.FormEvent) => {
