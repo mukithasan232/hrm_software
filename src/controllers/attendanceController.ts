@@ -119,19 +119,9 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
 // @access  Admin/HR
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
-    const tzOffset = 6 * 60 * 60 * 1000;
-    const nowBD = new Date(new Date().getTime() + tzOffset);
-    const year = nowBD.getUTCFullYear();
-    const month = nowBD.getUTCMonth();
-    const date = nowBD.getUTCDate();
-
-    const startOfToday = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
-    const endOfToday = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
-
+    // TEMPORARY DEMO FIX: Fetch the absolute latest 50 logs regardless of date
     const logs = await prisma.attendanceLog.findMany({
-      where: {
-        timestamp: { gte: startOfToday, lte: endOfToday }
-      },
+      take: 50,
       include: {
         user: {
           select: { name: true }
@@ -172,7 +162,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
 // @access  Admin
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
-    const { page = '1', limit = '50', employeeId, startDate, endDate, range, filter } = req.query;
+    const { page = '1', limit = '50', employeeId } = req.query;
     const currentUser = (req as any).user;
     
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -186,48 +176,13 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       where.employeeId = currentUser.id;
     }
 
-    const activeRange = (range || filter || 'today').toString().toLowerCase();
-
-    // Handle Date Filtering
-    if (activeRange === 'all-time') {
-      // Do nothing, fetch everything
-    } else if (startDate || endDate) {
-      where.timestamp = {};
-      if (startDate) where.timestamp.gte = new Date(startDate as string);
-      if (endDate) {
-        const end = new Date(endDate as string);
-        end.setHours(23, 59, 59, 999);
-        where.timestamp.lte = end;
-      }
-    } else {
-      // Range presets (Today, Yesterday, Week, Month) accurately calculated for GMT+6
-      const tzOffset = 6 * 60 * 60 * 1000;
-      const nowBD = new Date(new Date().getTime() + tzOffset);
-      const year = nowBD.getUTCFullYear();
-      const month = nowBD.getUTCMonth();
-      const date = nowBD.getUTCDate();
-
-      let start = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
-      let end = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
-
-      if (activeRange === 'yesterday') {
-        start = new Date(Date.UTC(year, month, date - 2, 18, 0, 0, 0));
-        end = new Date(Date.UTC(year, month, date - 1, 17, 59, 59, 999));
-      } else if (activeRange === 'week') {
-        start = new Date(Date.UTC(year, month, date - 7, 18, 0, 0, 0));
-      } else if (activeRange === 'month') {
-        start = new Date(Date.UTC(year, month - 1, date, 18, 0, 0, 0));
-      }
-
-      where.timestamp = { gte: start, lte: end };
-    }
-
+    // TEMPORARY DEMO FIX: Ignoring date filters and fetching the latest logs directly
     const [logs, total] = await Promise.all([
       prisma.attendanceLog.findMany({
         where,
-        orderBy: { timestamp: 'desc' },
         skip,
         take,
+        orderBy: { timestamp: 'desc' },
         include: {
           user: {
             select: { name: true, employeeId: true, department: true }
@@ -237,19 +192,13 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       prisma.attendanceLog.count({ where })
     ]);
 
-    // Map logs to include employee name from user relation
-    const safeLogsList = Array.isArray(logs) ? [...logs] : [];
-    const formattedLogs = safeLogsList.map((log: any) => ({
+    const formattedLogs = logs.map(log => ({
       ...log,
-      employeeName: log.user?.name || 'Unknown'
+      employeeName: log.user?.name || `User ${log.employeeId}`,
+      employeeRefId: log.user?.employeeId || log.employeeId
     }));
 
-    res.status(200).json({
-      logs: formattedLogs,
-      total,
-      page: parseInt(page as string),
-      pages: Math.ceil(total / take)
-    });
+    res.status(200).json({ logs: formattedLogs, total, page: parseInt(page as string), limit: take });
   } catch (error: any) {
     console.error('❌ [getAttendanceLogs] Error:', error);
     res.status(500).json({ message: 'Error fetching attendance logs', error: error.message });
