@@ -55,20 +55,17 @@ jobs:
           echo "🚀 Waiting for deployment logs from Coolify..."
 
           for i in $(seq 1 120); do
-            # 1. Get Status
+            # 1. Get Status and logs from the same endpoint
             RESP=$(curl -sS \
               -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
               -H "Accept: application/json" \
               "${BASE_URL}/api/v1/deployments/${DEPLOY_UUID}")
 
-            STATUS=$(echo "$RESP" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')
+            STATUS=$(echo "$RESP" | jq -r '.status // empty')
             echo "[$i] deployment status: ${STATUS:-unknown}"
 
-            # 2. Fetch and Print Logs (Only new lines)
-            LOGS=$(curl -sS \
-              -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-              -H "Accept: text/plain" \
-              "${BASE_URL}/api/v1/deployments/${DEPLOY_UUID}/logs" || echo "")
+            # 2. Extract logs directly from the main response
+            LOGS=$(echo "$RESP" | jq -r '.logs // empty')
 
             if [ -n "$LOGS" ] && [ "$LOGS" != "null" ]; then
               TOTAL_LINES=$(echo "$LOGS" | wc -l)
