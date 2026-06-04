@@ -4,7 +4,6 @@ import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'l
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
-import DeviceStatusIndicator from '@/components/DeviceStatusIndicator';
 
 export default function AttendancePage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,7 +19,6 @@ export default function AttendancePage() {
     timestamp: new Date().toISOString().slice(0, 16)
   });
   const [dateRange, setDateRange] = useState('today');
-  const [deviceStatus, setDeviceStatus] = useState<{ reachable: boolean; error?: string } | null>(null);
 
   const fetchLogs = async () => {
     try {
@@ -47,21 +45,11 @@ export default function AttendancePage() {
     }
   };
 
-  const checkDeviceHealth = async () => {
-    try {
-      const res = await api.get('/attendance/device-status');
-      setDeviceStatus(res.data);
-    } catch {
-      setDeviceStatus({ reachable: false, error: 'Unreachable' });
-    }
-  };
-
   useEffect(() => {
     fetchLogs();
   }, [dateRange]);
 
   useEffect(() => {
-    checkDeviceHealth();
     fetchEmployees();
 
     // Socket.io Real-time connection
@@ -88,27 +76,6 @@ export default function AttendancePage() {
       socket.disconnect();
     };
   }, []);
-
-  const handleSync = async () => {
-    try {
-      setSyncing(true);
-      const res = await api.post('/attendance/sync-live');
-      
-      if (res.data.status === 'processing') {
-        toast.success(res.data.message, { duration: 5000 });
-        // Optionally refresh after a delay
-        setTimeout(fetchLogs, 5000);
-      } else {
-        const { stats } = res.data;
-        toast.success(`Synced ${stats?.synced ?? 0} new records`);
-        fetchLogs();
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Device sync failed — check network/device connection');
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,8 +168,6 @@ export default function AttendancePage() {
           </div>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-slate-500 dark:text-gray-400 text-sm">{totalLogs} total records.</p>
-            <span className="text-slate-300 dark:text-gray-600">•</span>
-            <DeviceStatusIndicator deviceStatus={deviceStatus} />
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -225,13 +190,6 @@ export default function AttendancePage() {
             <option value="all-time" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">All Time</option>
           </select>
  
-          <button 
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Sync Device
-          </button>
           <button 
             onClick={handlePremiumExport}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium"
