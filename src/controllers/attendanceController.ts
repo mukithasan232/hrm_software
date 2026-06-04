@@ -317,15 +317,6 @@ export const createManualLog = async (req: Request, res: Response) => {
 // @access  Public
 export const deviceWebhookPunch = async (req: Request, res: Response) => {
   try {
-    // Verify Secret Token
-    const authHeader = req.headers.authorization || (req.headers as any).Authorization;
-    const secretToken = process.env.API_SECRET_TOKEN || 'my_secret_token_2026';
-    
-    if (authHeader !== `Bearer ${secretToken}`) {
-      console.warn(`[Webhook Error]: Unauthorized access attempt with token: ${authHeader}`);
-      return res.status(401).json({ success: false, message: 'Unauthorized Hacker!' });
-    }
-
     // Check if the payload is an array of logs (batch processing)
     const isBatch = Array.isArray(req.body.logs);
     const logsToProcess = isBatch ? req.body.logs : [req.body];
@@ -334,7 +325,7 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No data provided' });
     }
 
-    const processedLogs = [];
+    const processedLogs: any[] = [];
     const io = (global as any).io;
 
     for (const item of logsToProcess) {
