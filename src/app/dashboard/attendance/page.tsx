@@ -271,7 +271,7 @@ export default function AttendancePage() {
                     <td className="px-6 py-4 text-slate-900 dark:text-gray-200">
                       <div className="flex flex-col text-sm">
                         <span className="font-semibold">{new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Dhaka' }).format(new Date(row.timestamp))}</span>
-                        <span className="text-slate-550 dark:text-gray-500 mt-0.5 font-medium">{new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Dhaka' }).format(new Date(row.timestamp))}</span>
+                        <span className="text-slate-550 dark:text-gray-500 mt-0.5 font-medium">{new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Dhaka' }).format(new Date(row.timestamp))}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
