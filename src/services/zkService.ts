@@ -4,19 +4,9 @@ import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 
 // ─── Device Configuration ──────────────────────────────────────────────────────
-// Ensure required environment variables are present at runtime.
-if (!process.env.ZK_DEVICE_IP) {
-  throw new Error('Environment variable ZK_DEVICE_IP is required for ZKTeco integration');
-}
-if (!process.env.ZK_DEVICE_PORT) {
-  throw new Error('Environment variable ZK_DEVICE_PORT is required for ZKTeco integration');
-}
-
-const ZK_IP = process.env.ZK_DEVICE_IP!; // non-null asserted after runtime check
-const ZK_PORT = parseInt(process.env.ZK_DEVICE_PORT!); // non-null asserted after runtime check
+// Configuration values are loaded dynamically in the functions to avoid Next.js build crashes.
 const ZK_TIMEOUT = 40000; // Increased to 40s to prevent TIMEOUT_ON_WRITING_MESSAGE
 const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid conflicts
-const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');
 
 // ─── Timezone Fix ─────────────────────────────────────────────────────────────
 // The ZKTeco device sends timestamps in local Bangladesh time (UTC+6).
@@ -63,6 +53,17 @@ function classifyError(err: any): string {
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
 function createZK(forceTCP = false): InstanceType<typeof ZKLib> {
+  const ZK_IP = process.env.ZK_DEVICE_IP;
+  if (!ZK_IP) {
+    throw new Error('Environment variable ZK_DEVICE_IP is required for ZKTeco integration');
+  }
+  const ZK_PORT_STR = process.env.ZK_DEVICE_PORT;
+  if (!ZK_PORT_STR) {
+    throw new Error('Environment variable ZK_DEVICE_PORT is required for ZKTeco integration');
+  }
+  const ZK_PORT = parseInt(ZK_PORT_STR);
+  const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');
+
   const zk = new ZKLib(ZK_IP, ZK_PORT, ZK_TIMEOUT, ZK_INPORT);
   zk.password = ZK_PASSWORD;
   // UDP is the default for attendance logs (faster); TCP is more reliable for user data
@@ -267,9 +268,10 @@ async function getAttendanceAsync(zk: any): Promise<any[]> {
  */
 export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: number; total: number }> => {
   const zk = createZK();
+  const currentZkIp = process.env.ZK_DEVICE_IP || 'Unknown IP';
   try {
     await connectProperly(zk);
-    console.log(`[ZKService] ✅ Connected to ${ZK_IP}:${ZK_PORT} (${zk.connectionType})`);
+    console.log(`[ZKService] ✅ Connected to ${currentZkIp} (${zk.connectionType})`);
 
     // 1. Fetch Users first and Upsert them into MariaDB
     console.log('[ZKService] 👥 Syncing users from device to database...');
@@ -400,7 +402,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
               employeeId,
               timestamp,
               punchType: punchType as any,
-              deviceId: ZK_IP,
+              deviceId: currentZkIp,
             },
           });
           synced++;
