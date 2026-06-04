@@ -66,5 +66,15 @@
   },
   "prisma": {
     "seed": "npx tsx src/scripts/seedAdmins.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "core-js",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }
