@@ -4,8 +4,16 @@ import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 
 // ─── Device Configuration ──────────────────────────────────────────────────────
-const ZK_IP = process.env.ZK_DEVICE_IP || '192.168.10.185';
-const ZK_PORT = parseInt(process.env.ZK_DEVICE_PORT || '4370');
+// Ensure required environment variables are present at runtime.
+if (!process.env.ZK_DEVICE_IP) {
+  throw new Error('Environment variable ZK_DEVICE_IP is required for ZKTeco integration');
+}
+if (!process.env.ZK_DEVICE_PORT) {
+  throw new Error('Environment variable ZK_DEVICE_PORT is required for ZKTeco integration');
+}
+
+const ZK_IP = process.env.ZK_DEVICE_IP!; // non-null asserted after runtime check
+const ZK_PORT = parseInt(process.env.ZK_DEVICE_PORT!); // non-null asserted after runtime check
 const ZK_TIMEOUT = 40000; // Increased to 40s to prevent TIMEOUT_ON_WRITING_MESSAGE
 const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid conflicts
 const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');

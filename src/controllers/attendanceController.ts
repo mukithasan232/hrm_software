@@ -66,7 +66,15 @@ export const getDeviceStatus = async (req: Request, res: Response) => {
 // @access  Admin
 export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
   try {
-    console.log('[syncDeviceUsersToDB] Starting manual sync of users and logs...');
+    // Guard: prevent cloud‑to‑local direct sync in production
+    if (process.env.NODE_ENV === 'production') {
+      const ip = process.env.ZK_DEVICE_IP || '';
+      const isLocal = ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.');
+      if (isLocal) {
+        return res.status(400).json({ message: 'Direct cloud-to-local sync is restricted. Please ensure the Office Sync Daemon is running to push data to the cloud.' });
+      }
+    }
+    // Proceed with normal sync
     await runWithDeviceLock(() => getDeviceAttendance());
     res.status(200).json({ success: true, message: "Users and logs synced successfully to MariaDB" });
   } catch (error: any) {
