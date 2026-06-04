@@ -10,6 +10,7 @@ require('dotenv').config();
 
 // Programmatically register ts-node so Node can run TypeScript backend files directly
 require('ts-node').register({
+  transpileOnly: true, // Skip type-checking for speed (types are checked in CI)
   compilerOptions: {
     module: 'commonjs',
     target: 'es2020',
@@ -19,7 +20,6 @@ require('ts-node').register({
     skipLibCheck: true,
   },
 });
-
 
 
 
@@ -66,11 +66,13 @@ app.prepare().then(async () => {
         initRealtimeAttendance(io);
       } catch (err) {
         console.error('[Server Startup] Failed to load backend modules:', err);
-        // Do NOT exit — let Hostinger keep the process alive for HTTP traffic
+        // Do NOT exit — let the process stay alive for HTTP traffic
       }
 
       httpServer.listen(port, '0.0.0.0', () => {
         console.log(`🚀 Monolithic Server running on http://0.0.0.0:${port} (Network Enabled)`);
       });
+    }).catch((err) => {
+      console.error('❌ [Fatal] app.prepare() failed. Cannot start server:', err);
+      process.exit(1);
     });
-

@@ -1,12 +1,17 @@
 #!/bin/sh
+set -e
 
-# 1. Database Push (Force Reset to clear corrupted JSON constraints)
+# 1. Database Push
 echo "🚀 Running Prisma DB Push..."
-npx prisma db push --accept-data-loss
+if ! ./node_modules/.bin/prisma db push --accept-data-loss; then
+  echo "⚠️  Prisma db push failed. Continuing anyway..."
+fi
 
-# 2. Seed Admin
+# 2. Seed Admin (non-fatal)
 echo "🌱 Running Seed Admin..."
-npx ts-node --compiler-options '{"module":"CommonJS","moduleResolution":"node"}' src/scripts/seedAdmins.ts
+if ! ./node_modules/.bin/ts-node --compiler-options '{"module":"CommonJS","moduleResolution":"node"}' src/scripts/seedAdmins.ts; then
+  echo "⚠️  Seed failed. Server will still start."
+fi
 
 # 3. Start the Server
 echo "🔥 Starting Next.js Monolithic Server..."

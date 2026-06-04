@@ -87,7 +87,8 @@ async function seedAdmins() {
   } catch (err: any) {
     console.error('\n❌ Seed failed:', err.message);
     console.error(err);
-    process.exit(1);
+    // Don't process.exit(1) — the entrypoint.sh handles failure gracefully
+    throw err;
   } finally {
     await prisma.$disconnect();
   }
