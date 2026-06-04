@@ -43,7 +43,7 @@ export default function DashboardOverview() {
 
   const pollLiveActivity = async () => {
     try {
-      const res = await api.get('/attendance/active-today');
+      const res = await api.get(`/attendance/active-today?_t=${Date.now()}`);
       setStats(prev => ({
         ...prev,
         activeNow: res.data.activeNow || 0,

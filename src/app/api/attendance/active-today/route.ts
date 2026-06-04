@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { wrapHandler } from '@/lib/adapter';
 import { getActivePresence } from '@/controllers/attendanceController';

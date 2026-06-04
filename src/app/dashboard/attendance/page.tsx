@@ -22,7 +22,7 @@ export default function AttendancePage() {
   const fetchLogs = async (isPolling = false) => {
     try {
       if (!isPolling) setLoading(true);
-      const res = await api.get(`/attendance/logs?range=${dateRange}`);
+      const res = await api.get(`/attendance/logs?range=${dateRange}&_t=${Date.now()}`);
       const data = res.data;
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
       setLogs(logsArray);
