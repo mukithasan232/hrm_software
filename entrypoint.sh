@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# 1. Database Push (Migration)
-echo "🚀 Running Prisma DB Push..."
-npx prisma db push --accept-data-loss
+# 1. Database Push (Force Reset to clear corrupted JSON constraints)
+echo "🚀 Running Prisma DB Push (Force Reset)..."
+npx prisma db push --force-reset
 
 # 2. Seed Admin
 echo "🌱 Running Seed Admin..."
