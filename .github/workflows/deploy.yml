@@ -6,10 +6,30 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ── Job 1: Validate the Docker build in CI (with full logs) ─────────────────
+  build-check:
+    name: Validate Docker Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image (dry-run validation)
+        run: |
+          docker build \
+            --build-arg DATABASE_URL="mysql://test:test@localhost:3306/test" \
+            --progress=plain \
+            -t hrm-build-test \
+            .
+
+  # ── Job 2: Deploy to Coolify (only if build succeeded) ───────────────────────
   deploy:
     name: Deploy to Coolify
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: build-check  # only runs if build-check passes
 
     steps:
       - name: Trigger Coolify deployment
@@ -23,7 +43,7 @@ jobs:
           BASE_URL="https://host.fixanyphoto.com"
 
           if [ -z "${COOLIFY_TOKEN:-}" ]; then
-            echo "Error: COOLIFY_TOKEN is missing"
+            echo "Error: COOLIFY_TOKEN secret is missing from GitHub repo settings"
             exit 1
           fi
 
@@ -37,12 +57,14 @@ jobs:
           DEPLOY_UUID=$(echo "$RESP" | sed -n 's/.*"deployment_uuid":"\([^"]*\)".*/\1/p')
           if [ -z "${DEPLOY_UUID}" ]; then
             echo "Error: deployment_uuid not found in API response"
+            echo "This usually means the Coolify API token is invalid or expired."
             exit 1
           fi
 
           echo "deployment_uuid=${DEPLOY_UUID}" >> "$GITHUB_OUTPUT"
+          echo "✅ Deployment triggered. UUID: ${DEPLOY_UUID}"
 
-      - name: Poll deployment status and fetch Coolify logs
+      - name: Poll Coolify deployment status
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           DEPLOY_UUID: ${{ steps.trigger.outputs.deployment_uuid }}
@@ -52,45 +74,50 @@ jobs:
           BASE_URL="https://host.fixanyphoto.com"
           LAST_LOG_LINE=0
 
-          echo "🚀 Waiting for deployment logs from Coolify..."
+          echo "⏳ Waiting for Coolify to finish deploying..."
+          echo "   View live logs at: https://host.fixanyphoto.com/project/e11xdxccflbikipnuqr9mpnw/environment/rhlzqxjym2o0wtq3bs90rib5/application/ft1pc1ordmv3cjlbqt6k79hw/deployment/${DEPLOY_UUID}"
 
           for i in $(seq 1 120); do
-            # 1. Get Status and logs from the same endpoint
             RESP=$(curl -sS \
               -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
               -H "Accept: application/json" \
               "${BASE_URL}/api/v1/deployments/${DEPLOY_UUID}")
 
             STATUS=$(echo "$RESP" | jq -r '.status // empty')
-            echo "[$i] deployment status: ${STATUS:-unknown}"
+            echo "[$i] status: ${STATUS:-unknown}"
 
-            # 2. Extract logs directly from the main response
+            # Print any logs returned
             LOGS=$(echo "$RESP" | jq -r '.logs // empty')
-
             if [ -n "$LOGS" ] && [ "$LOGS" != "null" ]; then
               TOTAL_LINES=$(echo "$LOGS" | wc -l)
               if [ "$TOTAL_LINES" -gt "$LAST_LOG_LINE" ]; then
-                echo "--- 🖥️ Coolify Logs Start ---"
+                echo "--- Coolify Logs ---"
                 echo "$LOGS" | tail -n +$((LAST_LOG_LINE + 1))
-                echo "--- 🖥️ Coolify Logs End ---"
+                echo "--------------------"
                 LAST_LOG_LINE=$TOTAL_LINES
               fi
             fi
 
-            # 3. Check for completion
             if [ "$STATUS" = "finished" ]; then
-              echo "✅ Deployment finished successfully."
+              echo "✅ Deployment finished successfully!"
+              echo "   Live at: https://hrm.fixanyphoto.com"
               exit 0
             fi
 
             if [ "$STATUS" = "failed" ] || [ "$STATUS" = "canceled" ]; then
-              echo "❌ Deployment failed! Printing the full raw server response below so we can find the hidden error:"
-              echo "$RESP" | jq .
+              echo "❌ Coolify deployment failed!"
+              echo ""
+              echo "Since Docker build already passed in CI (job 1), this is likely a"
+              echo "RUNTIME crash. Check the Coolify dashboard for container logs:"
+              echo "  https://host.fixanyphoto.com/project/e11xdxccflbikipnuqr9mpnw/environment/rhlzqxjym2o0wtq3bs90rib5/application/ft1pc1ordmv3cjlbqt6k79hw"
+              echo ""
+              echo "Deployment metadata:"
+              echo "$RESP" | jq '{status, commit, commit_message, finished_at}'
               exit 1
             fi
 
             sleep 10
           done
 
-          echo "⚠️ Deployment polling timeout."
+          echo "⚠️ Deployment polling timed out after 20 minutes."
           exit 1
