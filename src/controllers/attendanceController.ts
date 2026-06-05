@@ -184,7 +184,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
 // @access  Admin
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
-    const { page = '1', limit = '50', employeeId } = req.query;
+    const { page = '1', limit = '50', employeeId, filter } = req.query;
     const currentUser = (req as any).user;
     
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -193,15 +193,29 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const where: any = {};
     if (employeeId) where.employeeId = employeeId as string;
 
-    // TEMPORARY DEMO FIX: Skipping role-based filtering so "Ultra Admin" or anyone can see all data
+    if (filter === 'today') {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      where.timestamp = { gte: startOfToday, lte: endOfToday };
+    } else if (filter === 'yesterday') {
+      const startOfYesterday = new Date();
+      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+      startOfYesterday.setHours(0, 0, 0, 0);
+      const endOfYesterday = new Date();
+      endOfYesterday.setDate(endOfYesterday.getDate() - 1);
+      endOfYesterday.setHours(23, 59, 59, 999);
+      where.timestamp = { gte: startOfYesterday, lte: endOfYesterday };
+    }
+
+    // Skipping role-based filtering so "Ultra Admin" or anyone can see all data
     /*
     const isAdmin = ['Admin', 'Super Admin', 'System Administrator'].includes(currentUser?.designation);
     if (!isAdmin) {
       where.employeeId = currentUser.id;
     }
     */
-
-    // TEMPORARY DEMO FIX: Ignoring date filters and fetching the latest logs directly
     const [logs, total] = await Promise.all([
       prisma.attendanceLog.findMany({
         where,

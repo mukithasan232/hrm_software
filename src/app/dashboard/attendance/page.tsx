@@ -22,7 +22,8 @@ export default function AttendancePage() {
   const fetchLogs = async (isPolling = false) => {
     try {
       if (!isPolling) setLoading(true);
-      const res = await api.get(`/attendance/logs?range=${dateRange}&_t=${Date.now()}`);
+      const filterParam = dateRange === 'all-time' ? 'all' : dateRange;
+      const res = await api.get(`/attendance/logs?filter=${filterParam}&_t=${Date.now()}`);
       const data = res.data;
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
       setLogs(logsArray);
@@ -57,7 +58,7 @@ export default function AttendancePage() {
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [dateRange]);
 
   const handleManualSync = async () => {
     setSyncing(true);
@@ -88,59 +89,45 @@ export default function AttendancePage() {
   };
 
   const handlePremiumExport = async () => {
-    let startDate = new Date();
-    let endDate = new Date();
+    const activeLogs = logs.filter(log => 
+      log.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (log.employeeName && log.employeeName.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
-    switch (dateRange) {
-      case 'today':
-        break;
-      case 'yesterday':
-        startDate.setDate(startDate.getDate() - 1);
-        endDate.setDate(endDate.getDate() - 1);
-        break;
-      case 'week':
-        const day = startDate.getDay();
-        const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
-        startDate.setDate(diff);
-        break;
-      case 'month':
-        startDate.setDate(1);
-        break;
-      case 'all-time':
-        startDate = new Date(2020, 0, 1);
-        break;
-      default:
-        break;
+    if (activeLogs.length === 0) {
+      toast.error("No data to export");
+      return;
     }
 
-    const activeStartDate = startDate.toISOString().split('T')[0];
-    const activeEndDate = endDate.toISOString().split('T')[0];
-
-    const toastId = toast.loading('Generating Wages Sheet...');
-
     try {
-      const queryParams = new URLSearchParams({
-        startDate: activeStartDate,
-        endDate: activeEndDate
-      });
-
-      const response = await fetch(`/api/attendance/export-wages?${queryParams.toString()}`);
+      // Create CSV header
+      const headers = ['Employee Name', 'Employee ID', 'Timestamp', 'Punch Type'];
       
-      if (!response.ok) throw new Error("Failed to fetch formatted sheet");
+      // Map data to rows
+      const rows = activeLogs.map(log => [
+        `"${log.employeeName || 'N/A'}"`,
+        `"${log.employeeId || 'Unknown'}"`,
+        `"${new Date(log.timestamp).toLocaleString('en-GB', { timeZone: 'Asia/Dhaka' })}"`,
+        `"${log.punchType || 'Unknown'}"`
+      ]);
 
-      const blob = await response.blob();
+      // Combine headers and rows
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\\n');
+      
+      // Create Blob and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = `Wages_Sheet_${activeStartDate}_to_${activeEndDate}.xlsx`;
+      link.download = `Attendance_Export_${dateRange}_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(link);
       link.click();
       link.remove();
 
-      toast.success("Export successful!", { id: toastId });
+      toast.success("Export successful!");
     } catch (error) {
       console.error("Export error:", error);
-      toast.error("An error occurred during export.", { id: toastId });
+      toast.error("An error occurred during export.");
     }
   };
 
