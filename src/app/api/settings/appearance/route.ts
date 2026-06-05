@@ -101,14 +101,14 @@ export async function PUT(req: NextRequest) {
         const ext      = path.extname(logoFile.name) || '.png';
         const filename = `logo-${Date.now()}${ext}`;
         fs.writeFileSync(path.join(brandDir, filename), Buffer.from(await logoFile.arrayBuffer()));
-        logoUrl = `/uploads/brand/${filename}`;
+        logoUrl = `/api/uploads/brand/${filename}`;
       }
 
       if (faviconFile && faviconFile.size > 0) {
         const ext      = path.extname(faviconFile.name) || '.ico';
         const filename = `favicon-${Date.now()}${ext}`;
         fs.writeFileSync(path.join(brandDir, filename), Buffer.from(await faviconFile.arrayBuffer()));
-        faviconUrl = `/uploads/brand/${filename}`;
+        faviconUrl = `/api/uploads/brand/${filename}`;
       }
     } else {
       const body     = await req.json();
