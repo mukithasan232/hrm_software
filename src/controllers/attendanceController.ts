@@ -147,8 +147,11 @@ export const getActivePresence = async (req: Request, res: Response) => {
     // An employee is active if they checked in but haven't checked out today
     const activeNow = Array.from(checkedInIds).filter(id => !checkedOutIds.has(id)).length;
 
-    // 2. Fetch the absolute latest 50 logs regardless of date for the UI feed
+    // 2. Fetch the absolute latest 50 logs STRICTLY FOR TODAY for the UI feed
     const logs = await prisma.attendanceLog.findMany({
+      where: {
+        timestamp: { gte: startOfToday, lte: endOfToday }
+      },
       take: 50,
       include: {
         user: {
@@ -160,7 +163,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     const safeLogs = Array.isArray(logs) ? [...logs] : [];
     
-    // Return all 50 logs so the UI populates with these recent historical logs
+    // Return all up to 50 logs for today
     const formattedRecent = safeLogs.slice(0, 50).map((log: any) => ({
       ...log,
       employeeName: log.user?.name || 'Unmapped User'
