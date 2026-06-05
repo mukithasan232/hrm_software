@@ -148,3 +148,14 @@ model TenantSettings {
   secondaryColor String   @default("#06b6d4")
   updatedAt      DateTime @updatedAt
 }
+
+model RawDeviceLog {
+  id           String   @id @default(uuid())
+  deviceUserId String
+  recordTime   DateTime
+  punchType    String?
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@unique([deviceUserId, recordTime])
+}

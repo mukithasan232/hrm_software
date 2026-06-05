@@ -269,11 +269,14 @@ export const createManualLog = async (req: Request, res: Response) => {
 // @access  Public
 export const deviceWebhookPunch = async (req: Request, res: Response) => {
   try {
-    // Check if the payload is an array of logs (batch processing)
+    // 2. RAW DATA INSERTION: Support either { logs: [...] } or an array at the root, or single object
     const isBatch = Array.isArray(req.body.logs);
-    const logsToProcess = isBatch ? req.body.logs : [req.body];
+    let logsToProcess = isBatch ? req.body.logs : req.body;
+    if (!Array.isArray(logsToProcess)) {
+      logsToProcess = [logsToProcess];
+    }
 
-    if (!logsToProcess.length) {
+    if (!logsToProcess.length || !logsToProcess[0]) {
       return res.status(400).json({ message: 'No data provided' });
     }
 
@@ -285,7 +288,6 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
       try {
         await prisma.$executeRawUnsafe(`UPDATE User SET documents = '{}' WHERE documents = '' OR documents = '[object Object]' OR documents IS NULL`);
         await prisma.$executeRawUnsafe(`UPDATE Designation SET permissions = '{}' WHERE permissions = '' OR permissions = '[object Object]' OR permissions IS NULL`);
-        // Also force fix all records just in case
         await prisma.$executeRawUnsafe(`UPDATE User SET documents = '{}'`);
         return res.status(200).json({ success: true, message: 'Fixed JSON fields aggressively' });
       } catch (e: any) {
@@ -294,75 +296,101 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
     }
 
     for (const item of logsToProcess) {
-      const { employeeId, timestamp, punchType, status } = item;
-      
-      if (!employeeId || !timestamp) {
-        // Skip invalid entries in batch, or fail if single
-        if (!isBatch) return res.status(400).json({ message: 'Missing employeeId or timestamp' });
-        continue;
-      }
+      try {
+        // Map incoming ZKTeco fields correctly
+        const deviceUserId = item.deviceUserId || item.userSn || item.employeeId;
+        const recordTime = item.recordTime || item.timestamp;
+        const punchType = item.punchType || item.status || 'CheckIn';
+        const ip = item.ip || 'Webhook/Local Push';
+        
+        if (!deviceUserId || !recordTime) {
+          console.warn('[Webhook] Missing deviceUserId or recordTime in log:', item);
+          continue; // Skip invalid entries
+        }
 
-      const parsedTimestamp = new Date(timestamp);
-      const resolvedPunchType = punchType || status || 'CheckIn';
+        const parsedTimestamp = new Date(recordTime);
 
-      // Find the user to ensure foreign key constraint is satisfied, only selecting necessary fields to avoid JSON parse errors
-      let user = await prisma.user.findFirst({
-        where: {
-          OR: [{ employeeId: String(employeeId) }, { id: String(employeeId) }]
-        },
-        select: { id: true, name: true }
-      });
-
-      if (!user) {
-        const name = `User ${employeeId}`;
-        const normalizedEmail = `user${employeeId}-${Date.now()}@hrm.test`;
-        const hashedPassword = await bcrypt.hash('password123', 10);
-        user = await prisma.user.create({
-          data: {
-            employeeId: String(employeeId),
-            name,
-            email: normalizedEmail,
-            password: hashedPassword,
-            baseSalary: 0,
-            isActive: true
-            // omitted 'documents: {}' to prevent MariaDB JSON parsing error
+        // Find the user to ensure foreign key constraint is satisfied
+        let user = await prisma.user.findFirst({
+          where: {
+            OR: [{ employeeId: String(deviceUserId) }, { id: String(deviceUserId) }]
           },
           select: { id: true, name: true }
         });
-      }
 
-      const log = await prisma.attendanceLog.create({
-        data: {
-          employeeId: user.id,
-          timestamp: parsedTimestamp,
-          punchType: resolvedPunchType as any,
-          deviceId: 'Webhook/Local Push'
+        // 3. HANDLE MISSING RELATIONS: Save as raw data instead of polluting Users table
+        if (!user) {
+          await prisma.rawDeviceLog.upsert({
+            where: {
+              deviceUserId_recordTime: {
+                deviceUserId: String(deviceUserId),
+                recordTime: parsedTimestamp
+              }
+            },
+            update: {
+              punchType: String(punchType),
+              ip: String(ip)
+            },
+            create: {
+              deviceUserId: String(deviceUserId),
+              recordTime: parsedTimestamp,
+              punchType: String(punchType),
+              ip: String(ip)
+            }
+          });
+          console.log(`[Webhook] Saved raw punch for unknown deviceUserId: ${deviceUserId}`);
+          continue; // Move to the next log
         }
-      });
 
-      const logData = {
-        ...log,
-        employeeName: user.name
-      };
-
-      processedLogs.push(logData);
-
-      if (io) {
-        setImmediate(() => {
-          io.emit('new-attendance', logData);
-          io.emit('attendanceUpdate', { checkIn: resolvedPunchType === 'CheckIn' });
-          console.log(`[RealtimeService] 📡 Emitted webhook punch: ${logData.employeeName} [${resolvedPunchType}]`);
+        // 4. UPSERT / INSERT IGNORE for valid users based on unique combination of employeeId and timestamp
+        const log = await prisma.attendanceLog.upsert({
+          where: {
+            employeeId_timestamp: {
+              employeeId: user.id,
+              timestamp: parsedTimestamp
+            }
+          },
+          update: {
+            punchType: String(punchType),
+            deviceId: String(ip)
+          },
+          create: {
+            employeeId: user.id,
+            timestamp: parsedTimestamp,
+            punchType: String(punchType),
+            deviceId: String(ip)
+          }
         });
+
+        const logData = {
+          ...log,
+          employeeName: user.name
+        };
+
+        processedLogs.push(logData);
+
+        if (io) {
+          setImmediate(() => {
+            io.emit('new-attendance', logData);
+            io.emit('attendanceUpdate', { checkIn: String(punchType) === 'CheckIn' });
+            console.log(`[RealtimeService] 📡 Emitted webhook punch: ${logData.employeeName} [${punchType}]`);
+          });
+        }
+      } catch (insertError: any) {
+        // 1. REMOVE SILENT FAILURES: Strict try/catch and log exact error
+        console.error('❌ [Webhook] EXACT DB INSERT ERROR for log:', item, 'Error:', insertError);
+        throw insertError; // Throw to be caught by outer block
       }
     }
 
-    res.status(201).json({ 
+    res.status(200).json({ 
       success: true, 
-      message: isBatch ? `Processed ${processedLogs.length} punches` : 'Punch recorded via webhook', 
+      message: `Processed ${processedLogs.length} valid punches successfully`, 
       logs: processedLogs 
     });
   } catch (error: any) {
-    console.error('[Webhook Error]:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to record punch', error: error.message });
+    // Return 500 Internal Server Error
+    console.error('❌ [Webhook Error - 500]:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error during database insertion', error: error.message || error });
   }
 };
