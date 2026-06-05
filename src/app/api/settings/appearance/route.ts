@@ -78,7 +78,6 @@ export async function PUT(req: NextRequest) {
 
   try {
     const contentType = req.headers.get('content-type') || '';
-    const origin = req.nextUrl.origin;
     
     let companyName: string | undefined;
     let primaryColor: string | undefined;
@@ -102,14 +101,14 @@ export async function PUT(req: NextRequest) {
         const ext      = path.extname(logoFile.name) || '.png';
         const filename = `logo-${Date.now()}${ext}`;
         fs.writeFileSync(path.join(brandDir, filename), Buffer.from(await logoFile.arrayBuffer()));
-        logoUrl = `${origin}/uploads/brand/${filename}`;
+        logoUrl = `/uploads/brand/${filename}`;
       }
 
       if (faviconFile && faviconFile.size > 0) {
         const ext      = path.extname(faviconFile.name) || '.ico';
         const filename = `favicon-${Date.now()}${ext}`;
         fs.writeFileSync(path.join(brandDir, filename), Buffer.from(await faviconFile.arrayBuffer()));
-        faviconUrl = `${origin}/uploads/brand/${filename}`;
+        faviconUrl = `/uploads/brand/${filename}`;
       }
     } else {
       const body     = await req.json();
