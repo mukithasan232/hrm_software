@@ -3,25 +3,24 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useBrand } from '@/context/BrandContext';
 import { DESIGNATION_HOME } from '@/components/ProtectedRoute';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-
-// ─── Dynamic logo ─────────────────────────────────────────────────────────────
-// Swap `systemLogo` at runtime via Admin Settings context to allow custom logo.
-const systemLogo: string | null = null;
-
-
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
+  const { brand } = useBrand();
 
   const [email, setEmail]     = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+
+  const logoUrl = brand?.logoUrl;
 
   const handleLogin = async (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -51,17 +50,25 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-sm space-y-6">
 
-        {/* Logo area — blank by default; Admin uploads custom logo via Settings */}
+        {/* Logo area */}
         <div className="text-center space-y-3">
-          {systemLogo && (
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 shadow-2xl shadow-indigo-500/30">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={systemLogo} alt="Organization logo" className="w-8 h-8 object-contain" />
+          {(!logoUrl || logoError) ? (
+            <div className="flex flex-col items-center justify-center gap-3 mb-6">
+              <div className="h-12 w-12 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl shadow-md">
+                {brand?.companyName ? brand.companyName.charAt(0).toUpperCase() : 'H'}
+              </div>
+              <span className="text-2xl font-bold text-gray-800 tracking-wide dark:text-white">
+                {brand?.companyName || 'HRM Portal'}
+              </span>
             </div>
+          ) : (
+            <img 
+              src={logoUrl} 
+              alt="Logo" 
+              className="h-12 w-auto object-contain mx-auto mb-6"
+              onError={() => setLogoError(true)} 
+            />
           )}
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            HRM &amp; Payroll Portal
-          </h1>
         </div>
 
         {/* ── Login Form ───────────────────────────────────────────────── */}
