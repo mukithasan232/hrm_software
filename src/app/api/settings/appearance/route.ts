@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
+import { revalidatePath } from 'next/cache';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,8 @@ export async function PUT(req: NextRequest) {
 
   try {
     const contentType = req.headers.get('content-type') || '';
+    const origin = req.nextUrl.origin;
+    
     let companyName: string | undefined;
     let primaryColor: string | undefined;
     let secondaryColor: string | undefined;
@@ -99,14 +102,14 @@ export async function PUT(req: NextRequest) {
         const ext      = path.extname(logoFile.name) || '.png';
         const filename = `logo-${Date.now()}${ext}`;
         fs.writeFileSync(path.join(brandDir, filename), Buffer.from(await logoFile.arrayBuffer()));
-        logoUrl = `/uploads/brand/${filename}`;
+        logoUrl = `${origin}/uploads/brand/${filename}`;
       }
 
       if (faviconFile && faviconFile.size > 0) {
         const ext      = path.extname(faviconFile.name) || '.ico';
         const filename = `favicon-${Date.now()}${ext}`;
         fs.writeFileSync(path.join(brandDir, filename), Buffer.from(await faviconFile.arrayBuffer()));
-        faviconUrl = `/uploads/brand/${filename}`;
+        faviconUrl = `${origin}/uploads/brand/${filename}`;
       }
     } else {
       const body     = await req.json();
@@ -138,6 +141,9 @@ export async function PUT(req: NextRequest) {
           },
         });
 
+    // CACHE BUSTING: force Next.js to drop all server-rendered cache so the layout instantly picks up the new brand
+    revalidatePath('/', 'layout');
+    
     return NextResponse.json({ message: 'Appearance settings saved', settings: result });
   } catch (error: any) {
     console.error('[AppearancePUT]', error);

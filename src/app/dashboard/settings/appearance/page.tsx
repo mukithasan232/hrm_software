@@ -8,6 +8,8 @@ import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useBrand } from '@/context/BrandContext';
 
+import { useRouter } from 'next/navigation';
+
 // ── types ─────────────────────────────────────────────────────────────────────
 
 interface AppearanceSettings {
@@ -231,6 +233,7 @@ function ColorPickerPanel({
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function AppearancePage() {
+  const router = useRouter();
   const [settings, setSettings] = useState<AppearanceSettings>({
     companyName: 'HRM Portal',
     logoUrl: null,
@@ -286,6 +289,7 @@ export default function AppearancePage() {
       setFaviconFile(null);
       toast.success('Brand settings saved!');
       refreshBrand(); // propagate new colors to all dashboard components instantly
+      router.refresh(); // bust Next.js cache and refresh layout
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save settings');
     } finally {
