@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function resolveToken(req: NextRequest): { id: string; role: string } | null {
+function resolveToken(req: NextRequest): { id: string; designation: string } | null {
   const auth = req.headers.get('authorization');
   if (!auth?.startsWith('Bearer ')) return null;
   try {
@@ -68,10 +68,10 @@ export async function PUT(req: NextRequest) {
   const user = resolveToken(req);
   if (!user) return NextResponse.json({ message: 'Not authorized' }, { status: 401 });
   const ADMIN_ROLES = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-  const userRole = (user.role || '').toLowerCase().trim();
+  const userRole = (user.designation || '').toLowerCase().trim();
 
   if (!ADMIN_ROLES.includes(userRole)) {
-    console.error(`[AppearancePUT] Admin access denied. Received role: "${user.role}"`);
+    console.error(`[AppearancePUT] Admin access denied. Received designation: "${user.designation}"`);
     return NextResponse.json({ message: 'Admin access required' }, { status: 403 });
   }
 

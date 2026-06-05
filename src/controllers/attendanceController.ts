@@ -119,7 +119,35 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
 // @access  Admin/HR
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
-    // TEMPORARY DEMO FIX: Fetch the absolute latest 50 logs regardless of date
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    // 1. STRICT TODAY FILTER & UNIQUE EMPLOYEES
+    const uniqueCheckInsToday = await prisma.attendanceLog.findMany({
+      where: {
+        timestamp: { gte: startOfToday, lte: endOfToday },
+        punchType: 'CheckIn'
+      },
+      distinct: ['employeeId']
+    });
+
+    const uniqueCheckOutsToday = await prisma.attendanceLog.findMany({
+      where: {
+        timestamp: { gte: startOfToday, lte: endOfToday },
+        punchType: 'CheckOut'
+      },
+      distinct: ['employeeId']
+    });
+
+    const checkedInIds = new Set(uniqueCheckInsToday.map((log: any) => log.employeeId));
+    const checkedOutIds = new Set(uniqueCheckOutsToday.map((log: any) => log.employeeId));
+    
+    // An employee is active if they checked in but haven't checked out today
+    const activeNow = Array.from(checkedInIds).filter(id => !checkedOutIds.has(id)).length;
+
+    // 2. Fetch the absolute latest 50 logs regardless of date for the UI feed
     const logs = await prisma.attendanceLog.findMany({
       take: 50,
       include: {
@@ -130,18 +158,8 @@ export const getActivePresence = async (req: Request, res: Response) => {
       orderBy: { timestamp: 'desc' }
     });
 
-    const checkedIn = new Set();
-    const checkedOut = new Set();
-
     const safeLogs = Array.isArray(logs) ? [...logs] : [];
     
-    safeLogs.forEach((log: any) => {
-      if (log.punchType === 'CheckIn') checkedIn.add(log.employeeId);
-      if (log.punchType === 'CheckOut') checkedOut.add(log.employeeId);
-    });
-
-    const activeNow = Array.from(checkedIn).filter(id => !checkedOut.has(id)).length;
-
     // Return all 50 logs so the UI populates with these recent historical logs
     const formattedRecent = safeLogs.slice(0, 50).map((log: any) => ({
       ...log,
@@ -149,7 +167,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
     }));
 
     res.status(200).json({
-      totalToday: checkedIn.size,
+      totalToday: checkedInIds.size,
       activeNow,
       recent: formattedRecent
     });
@@ -337,6 +355,54 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
           select: { id: true, name: true }
         });
 
+        // ----------------------------------------------------
+        // SMART CHECKIN / CHECKOUT DETECTION
+        // ----------------------------------------------------
+        const startOfDay = new Date(parsedTimestamp);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(parsedTimestamp);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        let finalPunchType = 'CheckIn';
+        const rawState = String(item.punchType || item.status || item.state).toLowerCase();
+        
+        // 1. If device sends explicit reliable CheckOut signals
+        if (['1', '5', 'checkout', 'out'].includes(rawState)) {
+          finalPunchType = 'CheckOut';
+        } 
+        // 2. If device sends explicit reliable CheckIn signals
+        else if (['0', '4', 'checkin', 'in'].includes(rawState)) {
+          finalPunchType = 'CheckIn';
+        } 
+        // 3. Fallback strictly to time-based logic by querying DB
+        else {
+          if (user) {
+            const firstPunchToday = await prisma.attendanceLog.findFirst({
+              where: {
+                employeeId: user.id,
+                timestamp: { gte: startOfDay, lte: endOfDay }
+              },
+              orderBy: { timestamp: 'asc' }
+            });
+            // If they already punched today, and it's NOT the exact same log being resynced
+            if (firstPunchToday && firstPunchToday.timestamp.getTime() !== parsedTimestamp.getTime()) {
+              finalPunchType = 'CheckOut';
+            }
+          } else {
+            const firstRawPunch = await (prisma as any).rawDeviceLog.findFirst({
+              where: {
+                deviceUserId: String(deviceUserId),
+                recordTime: { gte: startOfDay, lte: endOfDay }
+              },
+              orderBy: { recordTime: 'asc' }
+            });
+            // If raw punch already exists today, and it's NOT the exact same log being resynced
+            if (firstRawPunch && new Date(firstRawPunch.recordTime).getTime() !== parsedTimestamp.getTime()) {
+              finalPunchType = 'CheckOut';
+            }
+          }
+        }
+
         // 3. HANDLE MISSING RELATIONS: Save as raw data instead of polluting Users table
         if (!user) {
           await (prisma as any).rawDeviceLog.upsert({
@@ -347,17 +413,17 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
               }
             },
             update: {
-              punchType: String(punchType),
+              punchType: finalPunchType,
               ip: String(ip)
             },
             create: {
               deviceUserId: String(deviceUserId),
               recordTime: parsedTimestamp,
-              punchType: String(punchType),
+              punchType: finalPunchType,
               ip: String(ip)
             }
           });
-          console.log(`[Webhook] Saved raw punch for unknown deviceUserId: ${deviceUserId}`);
+          console.log(`[Webhook] Saved raw punch for unknown deviceUserId: ${deviceUserId} [${finalPunchType}]`);
           continue; // Move to the next log
         }
 
@@ -370,13 +436,13 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
             }
           },
           update: {
-            punchType: String(punchType),
+            punchType: finalPunchType,
             deviceId: String(ip)
           },
           create: {
             employeeId: user.id,
             timestamp: parsedTimestamp,
-            punchType: String(punchType),
+            punchType: finalPunchType,
             deviceId: String(ip)
           }
         });
@@ -391,8 +457,8 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
         if (io) {
           setImmediate(() => {
             io.emit('new-attendance', logData);
-            io.emit('attendanceUpdate', { checkIn: String(punchType) === 'CheckIn' });
-            console.log(`[RealtimeService] 📡 Emitted webhook punch: ${logData.employeeName} [${punchType}]`);
+            io.emit('attendanceUpdate', { checkIn: finalPunchType === 'CheckIn' });
+            console.log(`[RealtimeService] 📡 Emitted webhook punch: ${logData.employeeName} [${finalPunchType}]`);
           });
         }
       } catch (insertError: any) {
