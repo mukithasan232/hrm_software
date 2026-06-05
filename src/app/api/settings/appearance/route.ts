@@ -67,8 +67,13 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const user = resolveToken(req);
   if (!user) return NextResponse.json({ message: 'Not authorized' }, { status: 401 });
-  if (!['Admin', 'Super Admin', 'System Administrator'].includes(user.role))
+  const ADMIN_ROLES = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
+  const userRole = (user.role || '').toLowerCase().trim();
+
+  if (!ADMIN_ROLES.includes(userRole)) {
+    console.error(`[AppearancePUT] Admin access denied. Received role: "${user.role}"`);
     return NextResponse.json({ message: 'Admin access required' }, { status: 403 });
+  }
 
   try {
     const contentType = req.headers.get('content-type') || '';

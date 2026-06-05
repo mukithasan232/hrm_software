@@ -31,17 +31,25 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
 };
 
 export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const ADMIN_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin'];
-  if (req.user && ADMIN_DESIGNATIONS.includes(req.user.designation)) {
+  const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
+  const userDesig = (req.user?.designation || '').toLowerCase().trim();
+  
+  if (req.user && ADMIN_DESIGNATIONS.includes(userDesig)) {
     next();
   } else {
+    console.error(`[Express Auth] Admin access denied. Received designation: "${req.user?.designation}"`);
     res.status(403).json({ message: 'Not authorized as an admin' });
   }
 };
 
 export const authorizeDesignations = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.designation)) {
+    const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
+    const allowedLower = roles.map(r => r.toLowerCase().trim());
+    const userDesig = (req.user?.designation || '').toLowerCase().trim();
+
+    if (!req.user || (!allowedLower.includes(userDesig) && !ADMIN_DESIGNATIONS.includes(userDesig))) {
+      console.error(`[Express Auth] Access denied. Allowed: ${roles.join(', ')}, got: "${req.user?.designation}"`);
       return res.status(403).json({ message: `Designation (${req.user?.designation}) is not allowed to access this resource.` });
     }
     next();

@@ -200,19 +200,27 @@ export function wrapHandler(
           );
         }
 
-        const ADMIN_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator', 'Superadmin', 'Ultra Admin'];
-        if (options.adminOnly && !ADMIN_DESIGNATIONS.includes(mockReq.user.designation)) {
+        const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
+        const userDesig = (mockReq.user.designation || '').toLowerCase().trim();
+
+        if (options.adminOnly && !ADMIN_DESIGNATIONS.includes(userDesig)) {
+          console.error(`[Auth Adapter] Admin access denied. Required admin, got: "${mockReq.user.designation}"`);
           return NextResponse.json(
             { message: 'Not authorized as an admin' },
             { status: 403, headers: getCorsHeaders() }
           );
         }
 
-        if (options.allowedDesignations && !options.allowedDesignations.includes(mockReq.user.designation) && mockReq.user.designation !== 'Ultra Admin') {
-          return NextResponse.json(
-            { message: `Designation (${mockReq.user.designation}) is not allowed to access this resource.` },
-            { status: 403, headers: getCorsHeaders() }
-          );
+        if (options.allowedDesignations) {
+          const allowedLower = options.allowedDesignations.map((d: string) => d.toLowerCase().trim());
+          // Allow any ultra admin or any admin designation to bypass specific designation restrictions just in case
+          if (!allowedLower.includes(userDesig) && !ADMIN_DESIGNATIONS.includes(userDesig)) {
+            console.error(`[Auth Adapter] Access denied. Allowed: ${allowedLower.join(', ')}, got: "${mockReq.user.designation}"`);
+            return NextResponse.json(
+              { message: `Designation (${mockReq.user.designation}) is not allowed to access this resource.` },
+              { status: 403, headers: getCorsHeaders() }
+            );
+          }
         }
       }
 

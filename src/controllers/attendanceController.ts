@@ -142,7 +142,8 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     const activeNow = Array.from(checkedIn).filter(id => !checkedOut.has(id)).length;
 
-    const formattedRecent = safeLogs.slice(0, 5).map((log: any) => ({
+    // Return all 50 logs so the UI populates with these recent historical logs
+    const formattedRecent = safeLogs.slice(0, 50).map((log: any) => ({
       ...log,
       employeeName: log.user?.name || 'Unmapped User'
     }));
@@ -310,17 +311,35 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
 
         const parsedTimestamp = new Date(recordTime);
 
+        // Normalize deviceUserId variations for robust database matching
+        const strId = String(deviceUserId).trim();
+        const numId = !isNaN(Number(strId)) ? parseInt(strId, 10).toString() : strId;
+        const paddedId2 = numId.padStart(2, '0'); // e.g., '5' -> '05'
+        const paddedId3 = numId.padStart(3, '0'); // e.g., '26' -> '026'
+        const empPrefix1 = `EMP${numId}`;         // 'EMP5'
+        const empPrefix2 = `EMP${paddedId2}`;     // 'EMP05'
+        const empPrefix3 = `EMP${paddedId3}`;     // 'EMP026'
+
         // Find the user to ensure foreign key constraint is satisfied
         let user = await prisma.user.findFirst({
           where: {
-            OR: [{ employeeId: String(deviceUserId) }, { id: String(deviceUserId) }]
+            OR: [
+              { employeeId: strId },
+              { employeeId: numId },
+              { employeeId: paddedId2 },
+              { employeeId: paddedId3 },
+              { employeeId: empPrefix1 },
+              { employeeId: empPrefix2 },
+              { employeeId: empPrefix3 },
+              { id: strId }
+            ]
           },
           select: { id: true, name: true }
         });
 
         // 3. HANDLE MISSING RELATIONS: Save as raw data instead of polluting Users table
         if (!user) {
-          await prisma.rawDeviceLog.upsert({
+          await (prisma as any).rawDeviceLog.upsert({
             where: {
               deviceUserId_recordTime: {
                 deviceUserId: String(deviceUserId),
