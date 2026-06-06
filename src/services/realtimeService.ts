@@ -78,10 +78,8 @@ let deviceMutex = Promise.resolve();
 export const initRealtimeAttendance = (socketIo: Server): void => {
   io = socketIo;
   (global as any).io = socketIo;
-  console.log('[RealtimeService] ✅ Initialized (socket.io ready). ZKTeco connection is deferred until manual sync.)');
-  // ⚠️  NO automatic device connection here.
-  // The previous `initializeWithRetry()` call has been intentionally removed
-  // because it caused startup crashes when the device was unreachable.
+  console.log('[RealtimeService] ✅ Initialized (socket.io ready). Starting ZKTeco realtime listener...');
+  startRealtimeListener();
 };
 
 // ─── PUBLIC: Mutex-wrapped operation runner ──────────────────────────────────

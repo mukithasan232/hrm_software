@@ -54,8 +54,8 @@ app.prepare()
       const { initRealtimeAttendance } = require('./src/services/realtimeService');
 
       await connectDB();
-      // initCronJobs(); // Disabled legacy pull sync (Moved to ADMS Push)
-      // initRealtimeAttendance(io); // Disabled legacy pull listener (Moved to ADMS Push)
+      initCronJobs();
+      initRealtimeAttendance(io);
     } catch (err) {
       console.error('[Server Startup] Failed to load backend modules:', err);
       // Non-fatal: HTTP server still starts and serves the Next.js app
