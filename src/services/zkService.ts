@@ -164,7 +164,12 @@ export async function healTodaysData(): Promise<void> {
 // ─── Connection Helper ─────────────────────────────────────────────────────────────────
 async function connectProperly(zk: any): Promise<void> {
   if (zk.connectionType === 'udp') {
-    await zk.createSocket();
+    // Explicitly bypass zk.createSocket() which hardcodes a TCP attempt first
+    if (zk.zudp && typeof zk.zudp.createSocket === 'function') {
+      await zk.zudp.createSocket();
+    } else {
+      await zk.createSocket();
+    }
   } else {
     // TCP: use the ztcp sub-socket (not zudp)
     if (zk.ztcp?.createSocket) {

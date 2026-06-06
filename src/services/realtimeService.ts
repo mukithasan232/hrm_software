@@ -4,19 +4,61 @@ import ZKLib from 'zkteco-js';
 import { prisma } from '../lib/prisma';
 import { getPunchType, resolvePunchType, parseDhakaTimestamp } from './zkService';
 import bcrypt from 'bcryptjs';
+import dgram from 'dgram';
 
 // ─── Device Configuration (strictly from env — no hardcoded fallbacks) ──────
-const ZK_IP       = process.env.ZK_DEVICE_IP;
-const ZK_PORT     = parseInt(process.env.ZK_DEVICE_PORT || '4370');
-const ZK_TIMEOUT  = 10000; // Reduced to 10s — enough for LAN, fast enough to fail quickly
-const ZK_INPORT   = 0;
+const ZK_IP = process.env.ZK_DEVICE_IP;
+const ZK_PORT = parseInt(process.env.ZK_DEVICE_PORT || '4370');
+const ZK_TIMEOUT = 10000; // Reduced to 10s — enough for LAN, fast enough to fail quickly
+const ZK_INPORT = 0;
 const ZK_PASSWORD = parseInt(process.env.ZK_COMM_KEY || '0');
 
 // ─── Connection Timeout ──────────────────────────────────────────────────────
 // How long a single connect() call is allowed to run before we abort.
 const CONNECT_TIMEOUT_MS = 5000;
 
+// ─── PRIVATE: Pre-flight Network Check ───────────────────────────────────────
+/**
+ * Verifies if the UDP port is reachable before attempting the ZK handshake.
+ */
+const checkUdpPort = async (ip: string, port: number): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const client = dgram.createSocket('udp4');
+    const message = Buffer.from([0x00]); // Dummy byte
+
+    let isResolved = false;
+    const timeout = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        client.close();
+        resolve(false);
+      }
+    }, 2000);
+
+    client.send(message, port, ip, (err) => {
+      if (err) {
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timeout);
+          client.close();
+          resolve(false);
+        }
+      } else {
+        // UDP is connectionless, so "success" here just means the packet was sent.
+        // But if the network is totally unreachable, send() often fails immediately.
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(timeout);
+          client.close();
+          resolve(true);
+        }
+      }
+    });
+  });
+};
+
 // ─── Module-level state ──────────────────────────────────────────────────────
+
 let io: Server;
 let zkInstance: any = null;
 let isConnecting = false;
@@ -67,7 +109,7 @@ export const runWithDeviceLock = async <T>(operation: () => Promise<T>): Promise
       // Disconnect existing realtime socket to free the device port
       if (zkInstance) {
         console.log('[RealtimeService] ⏸️ Pausing realtime listener to free device port...');
-        try { await zkInstance.disconnect(); } catch (_) {}
+        try { await zkInstance.disconnect(); } catch (_) { }
         zkInstance = null;
       }
 
@@ -106,7 +148,7 @@ export const startRealtimeListener = (): void => {
 // ─── PRIVATE: Connect and attach realtime punch listener ─────────────────────
 const connectAndListen = async (): Promise<void> => {
   if (!isListenerActive) return;
-  if (isConnecting)      return;
+  if (isConnecting) return;
 
   // If ZK_IP is not configured, silently skip — no crashes.
   if (!ZK_IP) {
@@ -120,9 +162,16 @@ const connectAndListen = async (): Promise<void> => {
     if (!isListenerActive) { isConnecting = false; return; }
 
     try {
-      // Clean up any stale connection
+      // 1. Pre-flight Check
+      console.log(`[RealtimeService] 🔍 Pre-flight check: Probing ${ZK_IP}:${ZK_PORT} via UDP...`);
+      const isReachable = await checkUdpPort(ZK_IP, ZK_PORT);
+      if (!isReachable) {
+        throw new Error(`Network Unreachable: Cannot send UDP packets to ${ZK_IP}:${ZK_PORT}. Check your network/firewall.`);
+      }
+
+      // 2. Clean up any stale connection
       if (zkInstance) {
-        try { await zkInstance.disconnect(); } catch (_) {}
+        try { await zkInstance.disconnect(); } catch (_) { }
         zkInstance = null;
       }
       if (heartbeatInterval) {
@@ -130,25 +179,37 @@ const connectAndListen = async (): Promise<void> => {
         heartbeatInterval = null;
       }
 
-      console.log(`[RealtimeService] 🔌 Connecting to ${ZK_IP}:${ZK_PORT} for realtime punches...`);
+      console.log(`[RealtimeService] 🔌 Connecting to ${ZK_IP}:${ZK_PORT} (UDP) for realtime punches...`);
       const zk = new ZKLib(ZK_IP, ZK_PORT, ZK_TIMEOUT, ZK_INPORT);
-      zk.password   = ZK_PASSWORD;
+      zk.password = ZK_PASSWORD;
       zk.connectionType = 'udp';
 
-      // Create UDP socket
-      await zk.zudp.createSocket();
+      // Explicitly force UDP socket creation to bypass zkteco-js's hardcoded TCP handshake attempt
+      try {
+        if (zk.zudp && typeof zk.zudp.createSocket === 'function') {
+          await zk.zudp.createSocket();
+        } else {
+          await zk.createSocket();
+        }
+      } catch (socketErr: any) {
+        const msg = socketErr?.message || (typeof socketErr === 'string' ? socketErr : 'Unknown Socket Error');
+        throw new Error(`Socket creation failed: ${msg}`);
+      }
+
       await new Promise(r => setTimeout(r, 500));
 
       // Strict 5-second timeout on connect() — prevents indefinite hang
+      console.log(`[RealtimeService] ⏳ Authenticating with device (CommKey: ${ZK_PASSWORD})...`);
       await Promise.race([
         zk.connect(),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Connection timeout — device unreachable')), CONNECT_TIMEOUT_MS)
+          setTimeout(() => reject(new Error('Authentication Timeout: Device did not respond to handshake. Verify ZK_COMM_KEY and IP.')), CONNECT_TIMEOUT_MS)
         ),
       ]);
 
       zkInstance = zk;
       console.log(`[RealtimeService] ✅ Realtime listener connected to ${ZK_IP}`);
+
 
       // ── Real-time punch handler ──────────────────────────────────────────
       zkInstance.getRealTimeLogs(async (data: any) => {
@@ -159,7 +220,7 @@ const connectAndListen = async (): Promise<void> => {
         console.log(`[RealtimeService] Raw Device Data:`, JSON.stringify(data, null, 2));
         console.log(`======================================================\n`);
         try {
-          const deviceEmpId   = String(data.userId);
+          const deviceEmpId = String(data.userId);
           const parsedTimestamp = parseDhakaTimestamp(data.attTime ?? new Date());
 
           if (isNaN(parsedTimestamp.getTime())) {
@@ -170,9 +231,9 @@ const connectAndListen = async (): Promise<void> => {
           let user = await prisma.user.findUnique({ where: { employeeId: deviceEmpId } });
 
           if (!user) {
-            const name            = `User ${deviceEmpId}`;
+            const name = `User ${deviceEmpId}`;
             const normalizedEmail = `user${deviceEmpId}-${Date.now()}@hrm.test`;
-            const hashedPassword  = await bcrypt.hash('password123', 10);
+            const hashedPassword = await bcrypt.hash('password123', 10);
             user = await prisma.user.create({
               data: {
                 employeeId: deviceEmpId,
@@ -180,15 +241,15 @@ const connectAndListen = async (): Promise<void> => {
                 email: normalizedEmail,
                 password: hashedPassword,
                 baseSalary: 0,
-                isActive:   true,
-                documents:  {},
+                isActive: true,
+                documents: {},
               },
             });
           }
 
-          const employeeId   = user.id;
+          const employeeId = user.id;
           const employeeName = user.name;
-          const punchType    = await resolvePunchType(employeeId, parsedTimestamp, data);
+          const punchType = await resolvePunchType(employeeId, parsedTimestamp, data);
 
           const newLog = await prisma.attendanceLog.upsert({
             where: { employeeId_timestamp: { employeeId, timestamp: parsedTimestamp } },
@@ -218,9 +279,9 @@ const connectAndListen = async (): Promise<void> => {
         } catch {
           console.log('[RealtimeService] 💔 Heartbeat failed — scheduling reconnect in 5s...');
           clearInterval(heartbeatInterval!);
-          heartbeatInterval  = null;
-          zkInstance         = null;
-          isConnecting       = false;
+          heartbeatInterval = null;
+          zkInstance = null;
+          isConnecting = false;
           if (isListenerActive) {
             if (activeReconnectTimeout) clearTimeout(activeReconnectTimeout);
             activeReconnectTimeout = setTimeout(connectAndListen, 5000);
@@ -231,9 +292,15 @@ const connectAndListen = async (): Promise<void> => {
       isConnecting = false;
     } catch (err: any) {
       // ── Graceful failure — log and schedule a delayed retry, never crash ──
-      console.error(`[RealtimeService] ❌ Connection failed: ${err.message}`);
+      const errorMessage = err?.message || (typeof err === 'string' ? err : 'Unknown error');
+      console.error(`[RealtimeService] ❌ Connection failed: ${errorMessage}`);
+
+      if (err?.stack) {
+        console.debug(`[RealtimeService] Debug Stack:`, err.stack);
+      }
+
       isConnecting = false;
-      zkInstance   = null;
+      zkInstance = null;
       if (isListenerActive) {
         if (activeReconnectTimeout) clearTimeout(activeReconnectTimeout);
         // Back off 15 seconds before retrying so we don't spam the device
