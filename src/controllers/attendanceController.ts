@@ -119,10 +119,14 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
 // @access  Admin/HR
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
+    const tzOffset = 6 * 60 * 60 * 1000;
+    const nowBD = new Date(new Date().getTime() + tzOffset);
+    const year = nowBD.getUTCFullYear();
+    const month = nowBD.getUTCMonth();
+    const date = nowBD.getUTCDate();
+
+    const startOfToday = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
+    const endOfToday = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
 
     // 1. STRICT TODAY FILTER & UNIQUE EMPLOYEES
     const uniqueCheckInsToday = await prisma.attendanceLog.findMany({
@@ -194,18 +198,24 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     if (employeeId) where.employeeId = employeeId as string;
 
     if (filter === 'today') {
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
+      const tzOffset = 6 * 60 * 60 * 1000;
+      const nowBD = new Date(new Date().getTime() + tzOffset);
+      const year = nowBD.getUTCFullYear();
+      const month = nowBD.getUTCMonth();
+      const date = nowBD.getUTCDate();
+
+      const startOfToday = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
+      const endOfToday = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
       where.timestamp = { gte: startOfToday, lte: endOfToday };
     } else if (filter === 'yesterday') {
-      const startOfYesterday = new Date();
-      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-      startOfYesterday.setHours(0, 0, 0, 0);
-      const endOfYesterday = new Date();
-      endOfYesterday.setDate(endOfYesterday.getDate() - 1);
-      endOfYesterday.setHours(23, 59, 59, 999);
+      const tzOffset = 6 * 60 * 60 * 1000;
+      const nowBD = new Date(new Date().getTime() + tzOffset);
+      const year = nowBD.getUTCFullYear();
+      const month = nowBD.getUTCMonth();
+      const date = nowBD.getUTCDate();
+
+      const startOfYesterday = new Date(Date.UTC(year, month, date - 2, 18, 0, 0, 0));
+      const endOfYesterday = new Date(Date.UTC(year, month, date - 1, 17, 59, 59, 999));
       where.timestamp = { gte: startOfYesterday, lte: endOfYesterday };
     }
 
@@ -304,6 +314,15 @@ export const createManualLog = async (req: Request, res: Response) => {
 // @route   POST /api/attendance/device-punch
 // @access  Public
 export const deviceWebhookPunch = async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  console.log(`\n======================================================`);
+  console.log(`[Webhook] 📥 RECEIVED INCOMING DEVICE PUNCH PAYLOAD`);
+  console.log(`[Webhook] IP: ${req.ip}`);
+  console.log(`[Webhook] Time: ${new Date().toISOString()}`);
+  console.log(`[Webhook] Payload Size: ${JSON.stringify(req.body).length} bytes`);
+  console.log(`[Webhook] Exact Payload:`, JSON.stringify(req.body, null, 2));
+  console.log(`======================================================\n`);
+
   try {
     // 2. RAW DATA INSERTION: Support either { logs: [...] } or an array at the root, or single object
     const isBatch = Array.isArray(req.body.logs);
@@ -375,10 +394,14 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
         // ----------------------------------------------------
         // SMART CHECKIN / CHECKOUT DETECTION
         // ----------------------------------------------------
-        const startOfDay = new Date(parsedTimestamp);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(parsedTimestamp);
-        endOfDay.setHours(23, 59, 59, 999);
+        const tzOffset = 6 * 60 * 60 * 1000;
+        const tsBD = new Date(parsedTimestamp.getTime() + tzOffset);
+        const y = tsBD.getUTCFullYear();
+        const m = tsBD.getUTCMonth();
+        const d = tsBD.getUTCDate();
+        
+        const startOfDay = new Date(Date.UTC(y, m, d - 1, 18, 0, 0, 0));
+        const endOfDay = new Date(Date.UTC(y, m, d, 17, 59, 59, 999));
 
         let finalPunchType = 'CheckIn';
         const rawState = String(item.punchType || item.status || item.state).toLowerCase();
@@ -485,14 +508,21 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
       }
     }
 
+    const processingTime = Date.now() - startTime;
+    console.log(`[Webhook] ✅ Successfully processed ${processedLogs.length} valid punches in ${processingTime}ms.`);
+
     res.status(200).json({ 
       success: true, 
       message: `Processed ${processedLogs.length} valid punches successfully`, 
       logs: processedLogs 
     });
   } catch (error: any) {
-    // Return 500 Internal Server Error
-    console.error('❌ [Webhook Error - 500]:', error);
+    const processingTime = Date.now() - startTime;
+    console.error(`\n======================================================`);
+    console.error(`[Webhook] 🚨 CRITICAL ERROR: Webhook failed after ${processingTime}ms.`);
+    console.error(`[Webhook] Payload at failure:`, JSON.stringify(req.body));
+    console.error(`[Webhook] Error Details:`, error);
+    console.error(`======================================================\n`);
     res.status(500).json({ success: false, message: 'Internal Server Error during database insertion', error: error.message || error });
   }
 };

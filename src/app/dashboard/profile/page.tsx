@@ -8,7 +8,7 @@ import { useBrand } from '@/context/BrandContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { useTranslation } from '@/context/LanguageContext';
 
-const BACKEND = 'http://localhost:5001';
+const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
 // ─── Country Code List ────────────────────────────────────────────────────────
 const COUNTRY_CODES = [
@@ -250,7 +250,7 @@ export default function ProfilePage() {
               <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-purple-500/30 blur-2xl -z-10" />
               
               <div className="mb-4 font-black text-lg tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 uppercase">
-                FIXANYPHOTO
+                {brand?.companyName?.replace('Portal', '').trim() || 'HRM SYSTEM'}
               </div>
               
               <div className="mb-4">

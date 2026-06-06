@@ -10,9 +10,9 @@ import { useBrand } from '@/context/BrandContext';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 import { useTranslation } from '@/context/LanguageContext';
 
-const BACKEND = 'http://localhost:5001';
+const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
-export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void }) {
+export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggleAction?: () => void }) {
   const { user, logout } = useAuth();
   const { brand } = useBrand();
   const { t, language } = useTranslation();
@@ -60,7 +60,7 @@ export default function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: ()
       {/* Left */}
       <div className="flex items-center gap-4">
         <button
-          onClick={onMobileMenuToggle}
+          onClick={onMobileMenuToggleAction}
           className="md:hidden p-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-white/10"
         >
           <Menu className="w-5 h-5" />

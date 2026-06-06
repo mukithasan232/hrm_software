@@ -152,7 +152,12 @@ const connectAndListen = async (): Promise<void> => {
 
       // ── Real-time punch handler ──────────────────────────────────────────
       zkInstance.getRealTimeLogs(async (data: any) => {
-        console.log('[RealtimeService] 🕒 New Punch Received:', data);
+        const startTime = Date.now();
+        console.log(`\n======================================================`);
+        console.log(`[RealtimeService] 🕒 DIRECT TCP PUNCH RECEIVED`);
+        console.log(`[RealtimeService] Time: ${new Date().toISOString()}`);
+        console.log(`[RealtimeService] Raw Device Data:`, JSON.stringify(data, null, 2));
+        console.log(`======================================================\n`);
         try {
           const deviceEmpId   = String(data.userId);
           const parsedTimestamp = parseDhakaTimestamp(data.attTime ?? new Date());
@@ -195,11 +200,14 @@ const connectAndListen = async (): Promise<void> => {
             setImmediate(() => {
               io.emit('new-attendance', { ...newLog, employeeName });
               io.emit('attendanceUpdate', { checkIn: punchType === 'CheckIn' });
-              console.log(`[RealtimeService] 📡 Emitted: ${employeeName} [${punchType}]`);
+              console.log(`[RealtimeService] 📡 Emitted: ${employeeName} [${punchType}] in ${Date.now() - startTime}ms.`);
             });
           }
         } catch (err: any) {
-          console.error('[RealtimeService] ❌ DB error in realtime handler:', err.message);
+          console.error(`\n======================================================`);
+          console.error(`[RealtimeService] 🚨 CRITICAL ERROR in realtime handler after ${Date.now() - startTime}ms.`);
+          console.error(`[RealtimeService] Error Details:`, err.message);
+          console.error(`======================================================\n`);
         }
       });
 

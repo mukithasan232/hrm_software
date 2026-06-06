@@ -36,6 +36,8 @@ model AttendanceLog {
   updatedAt  DateTime @updatedAt
 
   @@unique([employeeId, timestamp])
+  @@index([timestamp(sort: Desc)])
+  @@index([timestamp, punchType])
 }
 
 model Leave {
@@ -158,4 +160,5 @@ model RawDeviceLog {
   createdAt    DateTime @default(now())
 
   @@unique([deviceUserId, recordTime])
+  @@index([recordTime(sort: Desc)])
 }

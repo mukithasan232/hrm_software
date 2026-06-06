@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useBrand } from '@/context/BrandContext';
 import { useTranslation } from '@/context/LanguageContext';
 
-const BACKEND = 'http://localhost:5001';
+const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
 // Nav item keys (translated at render time via t())
 const NAV_ITEM_DEFS = [

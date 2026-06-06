@@ -25,8 +25,17 @@ export async function GET(request: Request) {
       startDate.setDate(endDate.getDate() - 6);
     }
 
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+    const tzOffset = 6 * 60 * 60 * 1000;
+    
+    // For startDate: calculate BD start of day
+    const sdBD = new Date(startDate.getTime() + tzOffset);
+    const sY = sdBD.getUTCFullYear(), sM = sdBD.getUTCMonth(), sD = sdBD.getUTCDate();
+    startDate.setTime(Date.UTC(sY, sM, sD - 1, 18, 0, 0, 0));
+
+    // For endDate: calculate BD end of day
+    const edBD = new Date(endDate.getTime() + tzOffset);
+    const eY = edBD.getUTCFullYear(), eM = edBD.getUTCMonth(), eD = edBD.getUTCDate();
+    endDate.setTime(Date.UTC(eY, eM, eD, 17, 59, 59, 999));
 
     const days = getDaysArray(startDate, endDate);
 
@@ -50,6 +59,9 @@ export async function GET(request: Request) {
       orderBy: { employeeId: 'asc' },
     });
 
+    const tenant = await prisma.tenantSettings.findFirst();
+    const companyName = tenant?.companyName || 'Company Name';
+
     // Create a new workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'HRM System';
@@ -58,13 +70,13 @@ export async function GET(request: Request) {
     // --- 1. COMPANY HEADER BLOCK ---
     worksheet.mergeCells('A1:P1'); // Assuming ~16 cols base + date cols
     const titleCell = worksheet.getCell('A1');
-    titleCell.value = 'Fix Any Photo';
+    titleCell.value = companyName;
     titleCell.font = { name: 'Arial', size: 16, bold: true };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
     worksheet.mergeCells('A2:P2');
     const addressCell = worksheet.getCell('A2');
-    addressCell.value = 'Mistiripara, Shalbon, Rangpur, Bangladesh';
+    addressCell.value = 'Generated from HRM System';
     addressCell.font = { name: 'Arial', size: 11 };
     addressCell.alignment = { horizontal: 'center', vertical: 'middle' };
 

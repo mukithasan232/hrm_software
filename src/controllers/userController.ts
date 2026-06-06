@@ -66,8 +66,8 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
 export const getProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const user = await prisma.user.findFirst({
+      where: { id: String(userId) },
       select: {
         id: true,
         employeeId: true,

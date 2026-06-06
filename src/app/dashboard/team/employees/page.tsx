@@ -9,7 +9,7 @@ import Link from 'next/link';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
-const BACKEND = 'http://localhost:5001';
+const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
 type EmployeeType = 'REMOTE' | 'IN_HOUSE';
 

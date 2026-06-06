@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 
 const DEPARTMENTS = ['Engineering', 'Finance', 'Operations', 'Sales', 'Marketing', 'HR', 'Product', 'Legal'];
 const DESIGNATIONS = ['Executive', 'Manager', 'HR', 'Admin'];
-const BACKEND = 'http://localhost:5001';
+const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
 const EMPTY_FORM = {
   employeeId: '', name: '', email: '', password: 'password123',
