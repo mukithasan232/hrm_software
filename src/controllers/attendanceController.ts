@@ -168,16 +168,27 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       };
     }
 
-    const [logs, total] = await Promise.all([
+    const [logs, total, checkInCount, checkOutCount, manualCount] = await Promise.all([
       prisma.attendanceLog.findMany({
         where, skip, take,
         orderBy: { timestamp: 'desc' },
         include: { user: { select: { name: true, employeeId: true, department: true } } }
       }),
-      prisma.attendanceLog.count({ where })
+      prisma.attendanceLog.count({ where }),
+      prisma.attendanceLog.count({ where: { ...where, punchType: 'CheckIn' } }),
+      prisma.attendanceLog.count({ where: { ...where, punchType: 'CheckOut' } }),
+      prisma.attendanceLog.count({ where: { ...where, deviceId: 'Manual Entry' } })
     ]);
 
-    res.status(200).json({ logs: logs.map(l => ({ ...l, employeeName: l.user?.name || 'Unmapped' })), total, page: parseInt(page as string), limit: take });
+    res.status(200).json({ 
+      logs: logs.map(l => ({ ...l, employeeName: l.user?.name || 'Unmapped' })), 
+      total, 
+      checkInCount, 
+      checkOutCount, 
+      manualCount, 
+      page: parseInt(page as string), 
+      limit: take 
+    });
   } catch (error: any) {
     res.status(500).json({ message: 'Error', error: error.message });
   }

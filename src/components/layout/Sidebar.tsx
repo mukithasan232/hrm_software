@@ -42,6 +42,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   // Keep Team section open if we're on a /team/* route
   const isTeamActive = pathname.startsWith('/dashboard/team');
   const [teamOpen, setTeamOpen] = useState(isTeamActive);
+  const [logoError, setLogoError] = useState(false);
 
   const designationName = typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation;
 
@@ -59,29 +60,17 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       {/* Header */}
       <div className="p-5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2.5 min-w-0">
-          {brand.logoUrl ? (
-            <>
-              <img
-                src={brand.logoUrl}
-                alt={brand.companyName}
-                className="h-8 max-w-[140px] object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                }}
-              />
-              <div className="hidden">
-                <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">
-                  {brand.companyName?.replace('Portal', '').trim() || brand.companyName}
-                </h2>
-              </div>
-            </>
+          {brand.logoUrl && !logoError ? (
+            <img
+              src={brand.logoUrl}
+              alt={brand.companyName}
+              className="h-8 max-w-[140px] object-contain"
+              onError={() => setLogoError(true)}
+            />
           ) : (
             <div>
-              <h2
-                className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary"
-              >
-                {brand.companyName?.replace('Portal', '').trim() || brand.companyName}
+              <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">
+                {brand.companyName?.replace('Portal', '').trim() || brand.companyName || 'HRM'}
               </h2>
             </div>
           )}

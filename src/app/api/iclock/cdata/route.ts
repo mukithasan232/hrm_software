@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     const lines = rawBody.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     const io = (global as any).io;
-    const processedLogs = [];
+    const processedLogs: any[] = [];
 
     for (const line of lines) {
       // Data format: USER_PIN \t TIMESTAMP \t STATUS \t VERIFY_TYPE \t WORKCODE \t RESERVED

@@ -1,15 +1,20 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useTranslation } from '@/context/LanguageContext';
 import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
 export default function AttendancePage() {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [totalLogs, setTotalLogs] = useState(0);
+  const [checkInCount, setCheckInCount] = useState(0);
+  const [checkOutCount, setCheckOutCount] = useState(0);
+  const [manualCount, setManualCount] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
   const [manualEntry, setManualEntry] = useState({
@@ -28,6 +33,9 @@ export default function AttendancePage() {
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
       setLogs(logsArray);
       setTotalLogs(data?.total ?? logsArray.length);
+      setCheckInCount(data?.checkInCount ?? 0);
+      setCheckOutCount(data?.checkOutCount ?? 0);
+      setManualCount(data?.manualCount ?? 0);
     } catch {
       toast.error('Failed to load attendance logs');
     } finally {
@@ -137,12 +145,23 @@ export default function AttendancePage() {
     (log.employeeName && log.employeeName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const getFilterPrefixKey = () => {
+    switch (dateRange) {
+      case 'today': return 'todays';
+      case 'yesterday': return 'yesterdays';
+      case 'week': return 'this_weeks';
+      case 'month': return 'this_months';
+      case 'all-time': return 'total';
+      default: return 'total';
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Attendance Logs</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">{t('attendanceLogs')}</h1>
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -150,7 +169,7 @@ export default function AttendancePage() {
             <span className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">Live</span>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-slate-500 dark:text-gray-400 text-sm">{totalLogs} total records.</p>
+            <p className="text-slate-500 dark:text-gray-400 text-sm">{totalLogs} {t('total')} {t('attendanceLogs')}.</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -158,7 +177,7 @@ export default function AttendancePage() {
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium"
           >
-            <Plus className="w-4 h-4" /> Manual Entry
+            <Plus className="w-4 h-4" /> {t('manualEntry')}
           </button>
           
           <select 
@@ -166,11 +185,11 @@ export default function AttendancePage() {
             onChange={(e) => setDateRange(e.target.value)}
             className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-sm rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer font-medium"
           >
-            <option value="today" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Today</option>
-            <option value="yesterday" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Yesterday</option>
-            <option value="week" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">This Week</option>
-            <option value="month" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">This Month</option>
-            <option value="all-time" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">All Time</option>
+            <option value="today" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('today')}</option>
+            <option value="yesterday" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('yesterday')}</option>
+            <option value="week" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('this_week')}</option>
+            <option value="month" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('this_month')}</option>
+            <option value="all-time" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('all_time')}</option>
           </select>
  
           <button 
@@ -185,35 +204,35 @@ export default function AttendancePage() {
             onClick={handlePremiumExport}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium"
           >
-            <Download className="w-4 h-4" /> Export
+            <Download className="w-4 h-4" /> {t('export')}
           </button>
         </div>
       </div>
  
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors shadow-sm dark:shadow-md">
-          <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">Today's Check-Ins</p>
+          <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('checkIn')}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            {logs.filter(l => l.punchType === 'CheckIn' && new Date(l.timestamp).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)).length}
+            {checkInCount}
           </p>
         </div>
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-orange-500/30 transition-colors shadow-sm dark:shadow-md">
-          <p className="text-orange-600 dark:text-orange-400 text-xs font-bold uppercase tracking-wider">Today's Check-Outs</p>
+          <p className="text-orange-600 dark:text-orange-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('checkOut')}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            {logs.filter(l => l.punchType === 'CheckOut' && new Date(l.timestamp).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)).length}
+            {checkOutCount}
           </p>
         </div>
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-blue-500/30 transition-colors shadow-sm dark:shadow-md">
-          <p className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">Manual Entries</p>
+          <p className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('manualEntry')}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            {logs.filter(l => l.deviceId === 'Manual Entry').length}
+            {manualCount}
           </p>
         </div>
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-colors shadow-sm dark:shadow-md">
-          <p className="text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">Device Sync</p>
+          <p className="text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">{t('device_sync')}</p>
           <div className="flex items-center gap-2 mt-1">
              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-             <p className="text-xl font-bold text-slate-900 dark:text-white">Active</p>
+             <p className="text-xl font-bold text-slate-900 dark:text-white">{t('active_status')}</p>
           </div>
         </div>
       </div>
@@ -225,7 +244,7 @@ export default function AttendancePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-450 dark:text-gray-500" />
             <input 
               type="text" 
-              placeholder="Search ID or Name..." 
+              placeholder={t('search_id_name')}
               className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -236,17 +255,17 @@ export default function AttendancePage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
-                <th className="px-6 py-4 font-bold">Employee</th>
-                <th className="px-6 py-4 font-bold">Timestamp</th>
-                <th className="px-6 py-4 font-bold">Type</th>
-                <th className="px-6 py-4 font-bold">Device IP</th>
+                <th className="px-6 py-4 font-bold">{t('employee')}</th>
+                <th className="px-6 py-4 font-bold">{t('timestamp')}</th>
+                <th className="px-6 py-4 font-bold">{t('punchType')}</th>
+                <th className="px-6 py-4 font-bold">{t('device_ip_col')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {loading && logs.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">Loading logs...</td></tr>
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('loading_logs')}</td></tr>
               ) : filteredLogs.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">No logs found.</td></tr>
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('noRecords')}</td></tr>
               ) : (
                 filteredLogs.map((row, idx) => (
                   <tr key={row.id || idx} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
