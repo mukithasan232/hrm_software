@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // ─── Configuration ────────────────────────────────────────────────────────
-const DEVICE_IP = process.env.DEVICE_IP || '192.168.1.201';
+const DEVICE_IP = process.env.DEVICE_IP || '192.168.10.185';
 const DEVICE_PORT = parseInt(process.env.DEVICE_PORT || '4370');
 const CLOUD_WEBHOOK_URL = process.env.CLOUD_WEBHOOK_URL || 'https://hrm.fixanyphoto.com/api/attendance/device-punch';
 const STATE_FILE = path.join(__dirname, 'last-sync.json');

@@ -197,26 +197,27 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const where: any = {};
     if (employeeId) where.employeeId = employeeId as string;
 
-    if (filter === 'today') {
-      const tzOffset = 6 * 60 * 60 * 1000;
-      const nowBD = new Date(new Date().getTime() + tzOffset);
-      const year = nowBD.getUTCFullYear();
-      const month = nowBD.getUTCMonth();
-      const date = nowBD.getUTCDate();
+    if (filter === 'today' || filter === 'yesterday') {
+      const tzOffset = 6 * 60 * 60 * 1000; // Dhaka UTC+6
+      const now = new Date();
+      
+      // Shift base time if we need yesterday
+      const targetTime = filter === 'yesterday' 
+        ? new Date(now.getTime() - 24 * 60 * 60 * 1000) 
+        : now;
 
-      const startOfToday = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
-      const endOfToday = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
-      where.timestamp = { gte: startOfToday, lte: endOfToday };
-    } else if (filter === 'yesterday') {
-      const tzOffset = 6 * 60 * 60 * 1000;
-      const nowBD = new Date(new Date().getTime() + tzOffset);
-      const year = nowBD.getUTCFullYear();
-      const month = nowBD.getUTCMonth();
-      const date = nowBD.getUTCDate();
+      // 1. Calculate what time it is in Dhaka right now (or yesterday)
+      const localTime = new Date(targetTime.getTime() + tzOffset);
 
-      const startOfYesterday = new Date(Date.UTC(year, month, date - 2, 18, 0, 0, 0));
-      const endOfYesterday = new Date(Date.UTC(year, month, date - 1, 17, 59, 59, 999));
-      where.timestamp = { gte: startOfYesterday, lte: endOfYesterday };
+      // 2. Snap to 00:00:00 and 23:59:59 using Date.UTC to safely handle month/year wrap-arounds
+      const startOfLocalDay = new Date(Date.UTC(localTime.getUTCFullYear(), localTime.getUTCMonth(), localTime.getUTCDate(), 0, 0, 0, 0));
+      const endOfLocalDay = new Date(Date.UTC(localTime.getUTCFullYear(), localTime.getUTCMonth(), localTime.getUTCDate(), 23, 59, 59, 999));
+
+      // 3. Convert back to strict UTC for Prisma querying by subtracting the offset
+      const startQueryUTC = new Date(startOfLocalDay.getTime() - tzOffset);
+      const endQueryUTC = new Date(endOfLocalDay.getTime() - tzOffset);
+
+      where.timestamp = { gte: startQueryUTC, lte: endQueryUTC };
     }
 
     // Skipping role-based filtering so "Ultra Admin" or anyone can see all data
