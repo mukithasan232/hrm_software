@@ -13,7 +13,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Force-enable scripts so Prisma and other native deps can run their postinstall
-RUN pnpm install --frozen-lockfile --ignore-scripts=false
+RUN pnpm install --no-frozen-lockfile --ignore-scripts=false
 
 # ── Step 2: Copy source and set permissions ───────────────────────────────────
 COPY . .
