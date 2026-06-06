@@ -4,7 +4,7 @@ const nextConfig = {
   // Force all pages/routes to be dynamic — prevents Next.js from trying
   // to statically analyze API routes that import Prisma/DB at build time.
   // Each API route also has `export const dynamic = 'force-dynamic'` for clarity.
-  output: 'standalone',
+  // output: 'standalone', // Removed to fix Coolify 'next start' warning
 
   // Tell Next.js/Turbopack NOT to bundle these native Node packages —
   // they must be required at runtime from node_modules on the server.
