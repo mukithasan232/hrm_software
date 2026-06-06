@@ -3,6 +3,7 @@ import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs } from
 import { runWithDeviceLock, startRealtimeListener } from '../services/realtimeService';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
+import { Parser } from 'json2csv'; // json2csv পার্সার
 
 // @desc    Legacy sync (used by cron job)
 export const syncDeviceLogs = async (req: Request, res: Response) => {
@@ -72,15 +73,48 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
   }
 };
 
+// @desc    Export attendance logs to CSV
+// @route   GET /api/attendance/export
+export const exportAttendanceLogs = async (req: Request, res: Response) => {
+  try {
+    const logs = await prisma.attendanceLog.findMany({
+      orderBy: { timestamp: 'desc' },
+      include: {
+        user: { select: { name: true, employeeId: true } }
+      }
+    });
+
+    const data = logs.map((log: any) => ({
+      EmployeeName: log.user?.name || 'Unmapped User',
+      EmployeeID: log.user?.employeeId || log.employeeId,
+      Timestamp: log.timestamp.toISOString(),
+      PunchType: log.punchType,
+      Device: log.deviceId
+    }));
+
+    const fields = ['EmployeeName', 'EmployeeID', 'Timestamp', 'PunchType', 'Device'];
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(data);
+
+    // BOM ফিক্স যেন এক্সেল সঠিকভাবে কলাম ডিটেক্ট করে
+    const csvWithBOM = '\uFEFF' + csv;
+
+    res.header('Content-Type', 'text/csv; charset=utf-8');
+    res.attachment(`Attendance_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    res.send(csvWithBOM);
+  } catch (error: any) {
+    console.error('❌ [Export] Error:', error);
+    res.status(500).json({ message: 'Export failed', error: error.message });
+  }
+};
+
 // @desc    Get active presence stats for dashboard
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
     const tzOffset = 6 * 60 * 60 * 1000;
     const nowBD = new Date(new Date().getTime() + tzOffset);
-    
-    // Start of Local Day (00:00:00) converted to UTC
+
     const startOfToday = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 0, 0, 0, 0) - tzOffset);
-    // End of Local Day (23:59:59) converted to UTC
     const endOfToday = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 23, 59, 59, 999) - tzOffset);
 
     const [uniqueCheckInsToday, uniqueCheckOutsToday] = await Promise.all([
@@ -122,23 +156,15 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     if (filter === 'today' || filter === 'yesterday') {
       const tzOffset = 6 * 60 * 60 * 1000;
       const now = new Date();
-      
-      // Determine base time
-      const targetTime = filter === 'yesterday' 
-        ? new Date(now.getTime() - 24 * 60 * 60 * 1000) 
-        : now;
-
-      // Convert to Dhaka time to safely determine day boundaries
+      const targetTime = filter === 'yesterday' ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
       const localTime = new Date(targetTime.getTime() + tzOffset);
 
-      // Create UTC start/end points for the whole day in Dhaka time
       const startOfLocalDay = new Date(Date.UTC(localTime.getUTCFullYear(), localTime.getUTCMonth(), localTime.getUTCDate(), 0, 0, 0, 0));
       const endOfLocalDay = new Date(Date.UTC(localTime.getUTCFullYear(), localTime.getUTCMonth(), localTime.getUTCDate(), 23, 59, 59, 999));
 
-      // Subtract the offset to get the exact UTC range for the DB
-      where.timestamp = { 
-        gte: new Date(startOfLocalDay.getTime() - tzOffset), 
-        lte: new Date(endOfLocalDay.getTime() - tzOffset) 
+      where.timestamp = {
+        gte: new Date(startOfLocalDay.getTime() - tzOffset),
+        lte: new Date(endOfLocalDay.getTime() - tzOffset)
       };
     }
 
@@ -180,7 +206,7 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
     for (const item of logsToProcess) {
       const deviceUserId = item.deviceUserId || item.userSn || item.employeeId;
       const parsedTimestamp = new Date(item.recordTime || item.timestamp);
-      
+
       let user = await prisma.user.findFirst({
         where: { OR: [{ employeeId: String(deviceUserId).trim() }, { id: String(deviceUserId).trim() }] },
         select: { id: true, name: true }
@@ -188,9 +214,9 @@ export const deviceWebhookPunch = async (req: Request, res: Response) => {
 
       if (!user) {
         await (prisma as any).rawDeviceLog.upsert({
-            where: { deviceUserId_recordTime: { deviceUserId: String(deviceUserId), recordTime: parsedTimestamp } },
-            update: { punchType: item.status || 'CheckIn' },
-            create: { deviceUserId: String(deviceUserId), recordTime: parsedTimestamp, punchType: item.status || 'CheckIn' }
+          where: { deviceUserId_recordTime: { deviceUserId: String(deviceUserId), recordTime: parsedTimestamp } },
+          update: { punchType: item.status || 'CheckIn' },
+          create: { deviceUserId: String(deviceUserId), recordTime: parsedTimestamp, punchType: item.status || 'CheckIn' }
         });
         continue;
       }
