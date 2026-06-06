@@ -21,6 +21,6 @@ if ! ./node_modules/.bin/ts-node \
   echo "    Admin account may need to be seeded manually if the DB was just created."
 fi
 
-# 3. Start the production server
-echo "🔥 [3/3] Starting Next.js Monolithic Server..."
-exec node server.cjs
+# 3. Start the production server using PM2
+echo "🔥 [3/3] Starting PM2 with Next.js & ZKTeco Worker..."
+exec pm2-runtime ecosystem.config.js

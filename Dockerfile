@@ -28,6 +28,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN ./node_modules/.bin/prisma generate && ./node_modules/.bin/next build
 
 # ── Step 4: Runtime ───────────────────────────────────────────────────────────
+RUN npm install -g pm2
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
