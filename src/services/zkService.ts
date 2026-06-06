@@ -52,7 +52,7 @@ function classifyError(err: any): string {
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
-function createZK(forceTCP = false): InstanceType<typeof ZKLib> {
+function createZK(): InstanceType<typeof ZKLib> {
   const ZK_IP = process.env.ZK_DEVICE_IP;
   if (!ZK_IP) {
     throw new Error('Environment variable ZK_DEVICE_IP is required for ZKTeco integration');
@@ -66,8 +66,7 @@ function createZK(forceTCP = false): InstanceType<typeof ZKLib> {
 
   const zk = new ZKLib(ZK_IP, ZK_PORT, ZK_TIMEOUT, ZK_INPORT);
   zk.password = ZK_PASSWORD;
-  // UDP is the default for attendance logs (faster); TCP is more reliable for user data
-  zk.connectionType = forceTCP ? 'tcp' : 'udp';
+  zk.connectionType = 'udp';
   return zk;
 }
 
@@ -201,7 +200,6 @@ async function connectProperly(zk: any): Promise<void> {
 }
 
 // ─── Helper to fetch raw users directly ───────────────────────────────────────
-// K60 devices often return empty user lists over UDP — retry with TCP if needed.
 async function getDeviceUsersRaw(zk: any): Promise<any[]> {
   try {
     const response = await zk.getUsers();
@@ -210,23 +208,9 @@ async function getDeviceUsersRaw(zk: any): Promise<any[]> {
     const users = Array.isArray(data) ? data : [];
 
     // K60 firmware quirk: UDP sometimes returns empty user list even when users exist.
-    // Fall back to a separate TCP connection to fetch users.
+    // TCP fallback disabled as the device only supports UDP port 4370.
     if (users.length === 0 && zk.connectionType === 'udp') {
-      console.warn('[ZKService] ⚠️ UDP returned 0 users. Retrying with TCP fallback...');
-      const zkTcp = createZK(true); // force TCP
-      try {
-        await connectProperly(zkTcp);
-        const tcpResponse = await zkTcp.getUsers();
-        console.log('[ZKService] 🔍 Raw Users Response (TCP):', JSON.stringify(tcpResponse, null, 2));
-        const tcpData = Array.isArray(tcpResponse?.data) ? tcpResponse.data : [];
-        console.log(`[ZKService] 👥 TCP returned ${tcpData.length} user(s).`);
-        return tcpData;
-      } catch (tcpErr) {
-        console.warn('[ZKService] ⚠️ TCP user fetch also failed:', tcpErr);
-        return [];
-      } finally {
-        try { await zkTcp.disconnect(); } catch (_) {}
-      }
+      console.warn('[ZKService] ⚠️ UDP returned 0 users. TCP fallback disabled due to UDP-only connectivity.');
     }
 
     return users;
@@ -444,11 +428,10 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
 /**
  * Fetch all users stored on the device and sync them to database.
- * Uses TCP directly as it is more reliable for user data on K60 devices.
+ * Forced UDP because the device only supports UDP on port 4370.
  */
 export const getDeviceUsers = async (): Promise<any[]> => {
-  // Try TCP first for user fetching — more reliable on K60 firmware
-  const zk = createZK(true);
+  const zk = createZK();
   try {
     await connectProperly(zk);
     const response = await zk.getUsers();
