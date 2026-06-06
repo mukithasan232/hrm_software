@@ -111,8 +111,9 @@ export default function AttendancePage() {
         `"${log.punchType || 'Unknown'}"`
       ]);
 
-      // Combine headers and rows
-      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\\n');
+      // Combine headers and rows with a true newline character
+      // Prepend the UTF-8 BOM (\uFEFF) to force Excel to recognize the encoding and column delimiters correctly
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
       
       // Create Blob and trigger download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
