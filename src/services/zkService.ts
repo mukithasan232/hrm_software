@@ -73,20 +73,21 @@ function createZK(): InstanceType<typeof ZKLib> {
 // ─── Punch type resolver ───────────────────────────────────────────────────────
 export function getPunchType(log: any): string {
   // Map numeric states to Prisma Enum/Strings based on standard mapping
-  const state = log.state !== undefined ? log.state : (log.punch !== undefined ? log.punch : log.type);
-  const numericState = typeof state === 'number' ? state : parseInt(state, 10);
+  const rawState = log.state !== undefined ? log.state : (log.punch !== undefined ? log.punch : log.type);
+  const strState = String(rawState).trim().toLowerCase();
   
-  if (isNaN(numericState)) return 'CheckIn';
-
-  switch (numericState) {
-    case 0: return 'CheckIn';
-    case 1: return 'CheckOut';
-    case 2: return 'BreakOut';
-    case 3: return 'BreakIn';
-    case 4: return 'OvertimeIn';
-    case 5: return 'OvertimeOut';
-    default: return 'CheckIn';
+  if (strState === '0' || strState === 'checkin' || strState === 'in') {
+    return 'CheckIn';
   }
+  if (strState === '1' || strState === '5' || strState === 'checkout' || strState === 'out') {
+    return 'CheckOut';
+  }
+  if (strState === '2') return 'BreakOut';
+  if (strState === '3') return 'BreakIn';
+  if (strState === '4') return 'OvertimeIn';
+  
+  // Aggressive fallback to CheckIn for missing/unrecognized states. NEVER return UNKNOWN.
+  return 'CheckIn';
 }
 
 /**
@@ -275,6 +276,17 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
   try {
     await connectProperly(zk);
     console.log(`[ZKService] ✅ Connected to ${currentZkIp} (${zk.connectionType})`);
+
+    // One-time cleanup of UNKNOWN states to CheckIn
+    try {
+      await prisma.attendanceLog.updateMany({
+        where: { punchType: { in: ['UNKNOWN', 'Unknown', 'unknown'] } as any },
+        data: { punchType: 'CheckIn' }
+      });
+      console.log('[ZKService] 🧹 Cleaned up any UNKNOWN punch types in the database.');
+    } catch (e) {
+      console.error('[ZKService] Failed to clean DB:', e);
+    }
 
     // 1. Fetch Users first and Upsert them into MariaDB
     console.log('[ZKService] 👥 Syncing users from device to database...');
