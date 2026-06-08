@@ -21,6 +21,15 @@ if ! ./node_modules/.bin/ts-node \
   echo "    Admin account may need to be seeded manually if the DB was just created."
 fi
 
+# 2.5. Sync biometric data on boot
+echo "🔄 [Boot Sync] Syncing Biometric Data..."
+if ! ./node_modules/.bin/ts-node \
+    --transpile-only \
+    --compiler-options '{"module":"CommonJS","moduleResolution":"node","esModuleInterop":true}' \
+    src/scripts/sync-on-boot.ts; then
+  echo "⚠️  Biometric sync failed. This is non-fatal — server will still start."
+fi
+
 # 3. Start the production server using PM2
 echo "🔥 [3/3] Starting PM2 with Next.js & ZKTeco Worker..."
 exec pm2-runtime ecosystem.config.js
