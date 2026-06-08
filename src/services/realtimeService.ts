@@ -240,10 +240,17 @@ const connectAndListen = async (): Promise<void> => {
         console.log(`======================================================\n`);
         try {
           const deviceEmpId = String(data.userId);
-          const parsedTimestamp = parseDhakaTimestamp(data.attTime ?? new Date());
+          const deviceTime = data.attTime || data.recordTime || data.record_time;
+          
+          if (!deviceTime) {
+            console.error('[RealtimeService] ❌ Missing timestamp in device payload, ignoring to prevent duplicates:', data);
+            return;
+          }
+
+          const parsedTimestamp = parseDhakaTimestamp(deviceTime);
 
           if (isNaN(parsedTimestamp.getTime())) {
-            console.error('[RealtimeService] ❌ Invalid timestamp:', data.attTime);
+            console.error('[RealtimeService] ❌ Invalid timestamp:', deviceTime);
             return;
           }
 
