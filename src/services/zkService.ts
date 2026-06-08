@@ -10,33 +10,19 @@ const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid
 
 // ─── Timezone Fix ─────────────────────────────────────────────────────────────
 // The ZKTeco device sends timestamps in local Bangladesh time (UTC+6).
-// JavaScript's `new Date(localTimeString)` incorrectly interprets them as UTC,
-// which would make every punch appear 6 hours later than it actually was.
-// This helper corrects that by subtracting the 6-hour offset so that the
-// resulting Date object represents the true UTC equivalent of the local punch time.
+// JavaScript's `new Date(localTimeString)` treats a bare date string as UTC
+// (or server-local time), which would make every punch appear 6 hours ahead
+// of its true UTC equivalent.
+// To fix: parse the device time as a Date, then subtract 6 hours to get the
+// correct UTC moment before saving to Prisma.
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
 
 export function parseDhakaTimestamp(rawTimestamp: any): Date {
-  let rawTime = String(rawTimestamp).trim();
-  
-  // If zkteco-js returned a Date object, grab its local string format before Node mangles it
-  if (rawTimestamp instanceof Date) {
-    const yyyy = rawTimestamp.getFullYear();
-    const MM = String(rawTimestamp.getMonth() + 1).padStart(2, '0');
-    const dd = String(rawTimestamp.getDate()).padStart(2, '0');
-    const hh = String(rawTimestamp.getHours()).padStart(2, '0');
-    const mm = String(rawTimestamp.getMinutes()).padStart(2, '0');
-    const ss = String(rawTimestamp.getSeconds()).padStart(2, '0');
-    rawTime = `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`;
-  }
-
-  // Convert to valid ISO and append offset
-  let isoString = rawTime.includes('T') ? rawTime : rawTime.replace(' ', 'T');
-  if (!isoString.includes('+') && !isoString.includes('Z')) {
-      isoString += '+06:00'; 
-  }
-  
-  return new Date(isoString);
+  const date = rawTimestamp instanceof Date
+    ? rawTimestamp
+    : new Date(String(rawTimestamp).trim());
+  if (isNaN(date.getTime())) return new Date(NaN);
+  return new Date(date.getTime() - DHAKA_OFFSET_MS);
 }
 
 // ─── Error Classification ──────────────────────────────────────────────────────
@@ -72,21 +58,15 @@ function createZK(): InstanceType<typeof ZKLib> {
 
 // ─── Punch type resolver ───────────────────────────────────────────────────────
 export function getPunchType(log: any): string {
-  // Map numeric states to Prisma Enum/Strings based on standard mapping
   const rawState = log.state !== undefined ? log.state : (log.punch !== undefined ? log.punch : log.type);
   const strState = String(rawState).trim().toLowerCase();
   
-  if (strState === '0' || strState === 'checkin' || strState === 'in') {
-    return 'CheckIn';
-  }
+  // Strict mapping: only 1/'1'/'out'/'checkout' => CheckOut
   if (strState === '1' || strState === '5' || strState === 'checkout' || strState === 'out') {
     return 'CheckOut';
   }
-  if (strState === '2') return 'BreakOut';
-  if (strState === '3') return 'BreakIn';
-  if (strState === '4') return 'OvertimeIn';
   
-  // Aggressive fallback to CheckIn for missing/unrecognized states. NEVER return UNKNOWN.
+  // EVERYTHING else (0, '0', undefined, null, 'in', 'checkin', 2, 3, 4, etc.) => CheckIn
   return 'CheckIn';
 }
 
@@ -112,12 +92,11 @@ export async function healTodaysData(): Promise<void> {
   try {
     const tzOffset = 6 * 60 * 60 * 1000;
     const nowBD = new Date(new Date().getTime() + tzOffset);
-    const year = nowBD.getUTCFullYear();
-    const month = nowBD.getUTCMonth();
-    const date = nowBD.getUTCDate();
+    const startBD = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 0, 0, 0, 0));
+    const endBD = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 23, 59, 59, 999));
 
-    const startOfToday = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
-    const endOfToday = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
+    const startOfToday = new Date(startBD.getTime() - tzOffset);
+    const endOfToday = new Date(endBD.getTime() - tzOffset);
 
     // 1. Fetch all attendance logs for today
     const logs = await prisma.attendanceLog.findMany({
@@ -156,7 +135,7 @@ export async function healTodaysData(): Promise<void> {
       // Subsequent logs of the day become CheckOut (unless they are break or overtime)
       for (let i = 1; i < list.length; i++) {
         const log = list[i];
-        if (['CheckIn', 'CheckOut', 'Unknown'].includes(log.punchType)) {
+        if (['CheckIn', 'CheckOut'].includes(log.punchType)) {
           await prisma.attendanceLog.update({
             where: { id: log.id },
             data: { punchType: 'CheckOut' },

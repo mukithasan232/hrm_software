@@ -283,13 +283,11 @@ export default function AttendancePage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                        row.punchType === 'CheckIn' 
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                        : row.punchType === 'CheckOut'
+                        row.punchType?.toLowerCase() === 'checkout'
                         ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
-                        : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                       }`}>
-                        {row?.punchType || 'Unknown'}
+                        {row.punchType?.toLowerCase() === 'checkout' ? t('checkOut') || 'Check Out' : t('checkIn') || 'Check In'}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-mono text-slate-500 dark:text-gray-500 text-sm">

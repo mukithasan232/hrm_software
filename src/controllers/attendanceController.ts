@@ -3,7 +3,32 @@ import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs } from
 import { runWithDeviceLock, startRealtimeListener } from '../services/realtimeService';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
-import { Parser } from 'json2csv'; // json2csv পার্সার
+import { Parser } from 'json2csv';
+
+const TZ_OFFSET_MS = 6 * 60 * 60 * 1000;
+
+function getTodayBoundaries(): { start: Date; end: Date } {
+  const now = new Date();
+  const nowBD = new Date(now.getTime() + TZ_OFFSET_MS);
+  const startBD = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 0, 0, 0, 0));
+  const endBD = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 23, 59, 59, 999));
+  return {
+    start: new Date(startBD.getTime() - TZ_OFFSET_MS),
+    end: new Date(endBD.getTime() - TZ_OFFSET_MS),
+  };
+}
+
+function getDayBoundaries(filter: 'today' | 'yesterday'): { start: Date; end: Date } {
+  const now = new Date();
+  const target = filter === 'yesterday' ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
+  const local = new Date(target.getTime() + TZ_OFFSET_MS);
+  const startLocal = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 0, 0, 0, 0));
+  const endLocal = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 23, 59, 59, 999));
+  return {
+    start: new Date(startLocal.getTime() - TZ_OFFSET_MS),
+    end: new Date(endLocal.getTime() - TZ_OFFSET_MS),
+  };
+}
 
 // @desc    Legacy sync (used by cron job)
 export const syncDeviceLogs = async (req: Request, res: Response) => {
@@ -111,15 +136,11 @@ export const exportAttendanceLogs = async (req: Request, res: Response) => {
 // @desc    Get active presence stats for dashboard
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
-    const tzOffset = 6 * 60 * 60 * 1000;
-    const nowBD = new Date(new Date().getTime() + tzOffset);
-
-    const startOfToday = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 0, 0, 0, 0) - tzOffset);
-    const endOfToday = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 23, 59, 59, 999) - tzOffset);
+    const { start, end } = getTodayBoundaries();
 
     const [uniqueCheckInsToday, uniqueCheckOutsToday] = await Promise.all([
-      prisma.attendanceLog.findMany({ where: { timestamp: { gte: startOfToday, lte: endOfToday }, punchType: 'CheckIn' }, distinct: ['employeeId'] }),
-      prisma.attendanceLog.findMany({ where: { timestamp: { gte: startOfToday, lte: endOfToday }, punchType: 'CheckOut' }, distinct: ['employeeId'] })
+      prisma.attendanceLog.findMany({ where: { timestamp: { gte: start, lte: end }, punchType: 'CheckIn' }, distinct: ['employeeId'] }),
+      prisma.attendanceLog.findMany({ where: { timestamp: { gte: start, lte: end }, punchType: 'CheckOut' }, distinct: ['employeeId'] })
     ]);
 
     const checkedInIds = new Set(uniqueCheckInsToday.map((l: any) => l.employeeId));
@@ -127,7 +148,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const activeNow = Array.from(checkedInIds).filter(id => !checkedOutIds.has(id)).length;
 
     const logs = await prisma.attendanceLog.findMany({
-      where: { timestamp: { gte: startOfToday, lte: endOfToday } },
+      where: { timestamp: { gte: start, lte: end } },
       take: 15,
       distinct: ['employeeId'],
       include: { user: { select: { name: true } } },
@@ -155,18 +176,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     if (employeeId) where.employeeId = employeeId as string;
 
     if (filter === 'today' || filter === 'yesterday') {
-      const tzOffset = 6 * 60 * 60 * 1000;
-      const now = new Date();
-      const targetTime = filter === 'yesterday' ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
-      const localTime = new Date(targetTime.getTime() + tzOffset);
-
-      const startOfLocalDay = new Date(Date.UTC(localTime.getUTCFullYear(), localTime.getUTCMonth(), localTime.getUTCDate(), 0, 0, 0, 0));
-      const endOfLocalDay = new Date(Date.UTC(localTime.getUTCFullYear(), localTime.getUTCMonth(), localTime.getUTCDate(), 23, 59, 59, 999));
-
-      where.timestamp = {
-        gte: new Date(startOfLocalDay.getTime() - tzOffset),
-        lte: new Date(endOfLocalDay.getTime() - tzOffset)
-      };
+      const { start, end } = getDayBoundaries(filter);
+      where.timestamp = { gte: start, lte: end };
     }
 
     const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualCount] = await Promise.all([
@@ -225,21 +236,25 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const log = await prisma.attendanceLog.create({
-      data: { 
-        employeeId: user.id, 
-        timestamp: parsedDate, 
-        punchType, 
-        deviceId: 'Manual Entry' 
+    const log = await prisma.attendanceLog.upsert({
+      where: {
+        employeeId_timestamp: {
+          employeeId: user.id,
+          timestamp: parsedDate,
+        },
       },
-      include: { user: { select: { name: true } } }
+      update: { punchType },
+      create: {
+        employeeId: user.id,
+        timestamp: parsedDate,
+        punchType,
+        deviceId: 'Manual Entry',
+      },
+      include: { user: { select: { name: true } } },
     });
-    res.status(201).json({ message: 'Manual entry created', log });
+    const created = log.createdAt === log.updatedAt;
+    res.status(created ? 201 : 200).json({ message: created ? 'Manual entry created' : 'Existing entry updated', log });
   } catch (error: any) {
-    if (error.code === 'P2002') {
-      res.status(400).json({ message: "An attendance record already exists for this exact time." });
-      return;
-    }
     if (error.code === 'P2003') {
       res.status(400).json({ message: "Invalid Employee ID provided." });
       return;
@@ -248,38 +263,5 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
   }
 };
 
-// @desc    Webhook for local device push
-export const deviceWebhookPunch = async (req: Request, res: Response) => {
-  try {
-    const isBatch = Array.isArray(req.body.logs);
-    let logsToProcess = isBatch ? req.body.logs : [req.body];
-
-    for (const item of logsToProcess) {
-      const deviceUserId = item.deviceUserId || item.userSn || item.employeeId;
-      const parsedTimestamp = new Date(item.recordTime || item.timestamp);
-
-      let user = await prisma.user.findFirst({
-        where: { OR: [{ employeeId: String(deviceUserId).trim() }, { id: String(deviceUserId).trim() }] },
-        select: { id: true, name: true }
-      });
-
-      if (!user) {
-        await (prisma as any).rawDeviceLog.upsert({
-          where: { deviceUserId_recordTime: { deviceUserId: String(deviceUserId), recordTime: parsedTimestamp } },
-          update: { punchType: item.status || 'CheckIn' },
-          create: { deviceUserId: String(deviceUserId), recordTime: parsedTimestamp, punchType: item.status || 'CheckIn' }
-        });
-        continue;
-      }
-
-      await prisma.attendanceLog.upsert({
-        where: { employeeId_timestamp: { employeeId: user.id, timestamp: parsedTimestamp } },
-        update: { punchType: item.status || 'CheckIn' },
-        create: { employeeId: user.id, timestamp: parsedTimestamp, punchType: item.status || 'CheckIn', deviceId: 'Webhook' }
-      });
-    }
-    res.status(200).json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// @desc    Webhook for local device push — DISABLED (pull-only sync via zkService.ts)
+// export const deviceWebhookPunch = ...;

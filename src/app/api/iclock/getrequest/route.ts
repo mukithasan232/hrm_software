@@ -1,7 +1,9 @@
 export const dynamic = 'force-dynamic';
 
-// ZKTeco devices hit /iclock/getrequest to ask the server if there are any commands pending for the device.
-export async function GET(req: Request) {
-  // Return "OK" to tell the device there are no commands to execute.
+// ─── DISABLED: ADMS Get-Request ───────────────────────────────────────────────
+// The ZKTeco device does NOT support ADMS. This endpoint only returns "OK"
+// to acknowledge any device poll requests. No commands are dispatched.
+
+export async function GET() {
   return new Response("OK", { status: 200, headers: { 'Content-Type': 'text/plain' } });
 }

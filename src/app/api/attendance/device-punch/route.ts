@@ -1,20 +1,13 @@
 export const dynamic = 'force-dynamic';
 
-import { wrapHandler } from '@/lib/adapter';
-import { deviceWebhookPunch } from '@/controllers/attendanceController';
+// ─── DISABLED: Local Device Push Webhook ──────────────────────────────────────
+// The ZKTeco device does NOT support ADMS (push mode). All attendance data is
+// fetched via the "Pull" method in zkService.ts (node-zklib).
+// This endpoint is disabled to enforce pull-only data flow.
 
-export const POST = async (req: Request, ctx: any) => {
-  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
-  const EXPECTED_TOKEN = process.env.API_SECRET_TOKEN || 'my_secret_token_2026';
-  
-  if (authHeader !== `Bearer ${EXPECTED_TOKEN}`) {
-    console.warn(`[Webhook Error]: Unauthorized access attempt with token: ${authHeader}`);
-    return new Response(
-      JSON.stringify({ success: false, message: 'Unauthorized Hacker!' }), 
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  const handler = wrapHandler(deviceWebhookPunch, { protect: false });
-  return handler(req as any, ctx);
-};
+export async function POST() {
+  return new Response(
+    JSON.stringify({ success: false, message: 'Push webhook disabled — use pull sync instead.' }),
+    { status: 410, headers: { 'Content-Type': 'application/json' } }
+  );
+}
