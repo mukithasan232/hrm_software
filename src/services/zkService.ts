@@ -76,11 +76,11 @@ export async function resolvePunchType(
       return 'CheckIn';
     } else {
       const history = punchHistory.get(key)!;
-      const msDiff = timestamp.getTime() - history.lastPunch.getTime();
+      // const msDiff = timestamp.getTime() - history.lastPunch.getTime();
       
-      if (msDiff < 30 * 60 * 1000) {
-        return null; // Ignore punches within 30 mins
-      }
+      // if (msDiff < 30 * 60 * 1000) {
+      //   return null; // Ignore punches within 30 mins
+      // }
       
       history.lastPunch = timestamp;
       return 'CheckOut';
@@ -297,7 +297,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     // Total Cleanse: Strip Database Pollution for 2026-06-09
     try {
       const tzOffset = 6 * 60 * 60 * 1000;
-      const startOfTargetDay = new Date(Date.UTC(2026, 5, 9, 0, 0, 0, 0) - tzOffset);
+      const startOfTargetDay = new Date(Date.UTC(2026, 5, 8, 0, 0, 0, 0) - tzOffset); // June 8th (catches shifted morning data)
       const endOfTargetDay = new Date(Date.UTC(2026, 5, 9, 23, 59, 59, 999) - tzOffset);
 
       await prisma.attendanceLog.deleteMany({
@@ -458,24 +458,44 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
           console.log(`[ZK Sync] Raw Time:`, log.recordTime || log.record_time, '| DB UTC:', uniqueTimestamp.toISOString(), '| DB State:', punchType);
 
-          await prisma.attendanceLog.upsert({
-            where: {
-              employeeId_timestamp: {
+          try {
+            await prisma.attendanceLog.upsert({
+              where: {
+                employeeId_timestamp: {
+                  employeeId,
+                  timestamp: uniqueTimestamp,
+                },
+              },
+              update: { punchType: punchType as any },
+              create: {
                 employeeId,
                 timestamp: uniqueTimestamp,
+                punchType: punchType as any,
+                deviceId: currentZkIp,
               },
-            },
-            update: { punchType: punchType as any },
-            create: {
-              employeeId,
-              timestamp: uniqueTimestamp,
-              punchType: punchType as any,
-              deviceId: currentZkIp,
-            },
-          });
-          synced++;
+            });
+            synced++;
+          } catch (error: any) {
+            console.error(`[Prisma Error] Failed for employee ${employeeId} at timestamp ${uniqueTimestamp}:`, error);
+            // Fallback for P2002 collision: slightly adjust seconds (+1s) and retry once
+            if (error.code === 'P2002') {
+               const fallbackTimestamp = new Date(uniqueTimestamp.getTime() + 1000);
+               await prisma.attendanceLog.create({
+                 data: {
+                   employeeId,
+                   timestamp: fallbackTimestamp,
+                   punchType: punchType as any,
+                   deviceId: currentZkIp,
+                 }
+               });
+               synced++;
+            } else {
+               skipped++;
+            }
+          }
         } catch (err: any) {
-          console.error(`[ZKService] ❌ Failed to save log inside loop:`, err.message);
+          // Catch any other errors in the log processing loop
+          console.error(`[ZKService] ❌ Failed to process log:`, err.message);
           skipped++;
         }
       }
