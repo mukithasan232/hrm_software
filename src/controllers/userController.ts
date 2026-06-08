@@ -99,15 +99,17 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const { name, department, phone, facebook, linkedin, github, twitter } = req.body as any;
+    const { name, department, designation, phone, facebook, linkedin, github, twitter } = req.body as any;
 
     // Helper: trim & store empty string as null so DB stays clean
     const sanitizeUrl = (val: string | undefined) =>
       val !== undefined ? (val.trim() || null) : undefined;
 
     const data: any = {};
-    if (name)       data.name       = name;
-    if (department) data.department = department;
+    if (name?.trim()) data.name = name.trim();
+    if (department !== undefined) data.department = department?.trim() || null;
+    // designation is actually linked to designationId in the DB, but profile update likely doesn't change it, so we don't map it here or we handle it carefully.
+    
     if (phone !== undefined)    data.phone    = phone?.trim() || null;
     if (facebook !== undefined) data.facebook = sanitizeUrl(facebook);
     if (linkedin !== undefined) data.linkedin = sanitizeUrl(linkedin);
@@ -118,26 +120,32 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       data.profileImage = `/uploads/avatars/${(req as any).file.filename}`;
     }
 
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        department: true,
-        customDesignation: { select: { id: true, name: true } },
-        profileImage: true,
-        phone: true,
-        facebook: true,
-        linkedin: true,
-        github: true,
-        twitter: true,
-      }
-    });
-    res.status(200).json({ message: 'Profile updated successfully', user: { ...user, designation: (user as any).customDesignation } });
+    try {
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          department: true,
+          customDesignation: { select: { id: true, name: true } },
+          profileImage: true,
+          phone: true,
+          facebook: true,
+          linkedin: true,
+          github: true,
+          twitter: true,
+        }
+      });
+      res.status(200).json({ message: 'Profile updated successfully', user: { ...user, designation: (user as any).customDesignation } });
+    } catch (dbError: any) {
+      console.error('[Profile Update Error]: ', dbError);
+      res.status(500).json({ error: 'Database update failed', details: dbError.message });
+    }
   } catch (error: any) {
-    res.status(500).json({ message: 'Failed to update profile', error: error.message });
+    console.error('[Profile Update Error]: ', error);
+    res.status(500).json({ error: 'Failed to process request', details: error.message });
   }
 };
 

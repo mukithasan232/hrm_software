@@ -74,17 +74,29 @@ export async function parseRequest(
             const fileEntry = val as unknown as File;
             const uploadSubdir = key === 'avatar' ? 'avatars' : 'leaves';
             const uploadDir = path.join(process.cwd(), 'public', 'uploads', uploadSubdir);
-            if (!fs.existsSync(uploadDir)) {
-              fs.mkdirSync(uploadDir, { recursive: true });
+            try {
+              await fs.promises.mkdir(uploadDir, { recursive: true });
+            } catch (err: any) {
+              if (err.code !== 'EEXIST') {
+                console.error('[Profile Update Error]: Directory creation failed', err);
+                throw err;
+              }
             }
 
-            const ext = path.extname(fileEntry.name);
+            const ext = path.extname(fileEntry.name || '').toLowerCase() || '.png';
             const prefix = key === 'avatar' ? 'avatar' : 'leave';
-            const filename = `${prefix}-${Date.now()}${ext}`;
+            // Sanitize filename to prevent directory traversal
+            const safeName = (fileEntry.name || 'file').replace(/[^a-zA-Z0-9.\-_]/g, '');
+            const filename = `${prefix}-${Date.now()}-${safeName}`;
             const filepath = path.join(uploadDir, filename);
 
-            const bytes = await fileEntry.arrayBuffer();
-            fs.writeFileSync(filepath, Buffer.from(bytes));
+            try {
+              const bytes = await fileEntry.arrayBuffer();
+              await fs.promises.writeFile(filepath, Buffer.from(bytes));
+            } catch (err) {
+              console.error('[Profile Update Error]: File system error', err);
+              throw err;
+            }
 
             fileObj = {
               filename,

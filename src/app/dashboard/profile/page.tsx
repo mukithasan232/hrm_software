@@ -6,6 +6,7 @@ import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useBrand } from '@/context/BrandContext';
 import { QRCodeSVG } from 'qrcode.react';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/context/LanguageContext';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
@@ -52,6 +53,7 @@ export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const { brand } = useBrand();
   const { t } = useTranslation();
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
 
@@ -137,6 +139,7 @@ export default function ProfilePage() {
 
       toast.success(t('saveChanges') + '!');
       setAvatarFile(null);
+      router.refresh();
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to update profile');
     } finally {
