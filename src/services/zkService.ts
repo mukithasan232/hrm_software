@@ -72,12 +72,21 @@ function createZK(): InstanceType<typeof ZKLib> {
 
 // ─── Punch type resolver ───────────────────────────────────────────────────────
 export function getPunchType(log: any): string {
-  // Enforce strict mapping based on device state or punch integer.
-  // The device typically returns 1 for Check-Out.
+  // Map numeric states to Prisma Enum/Strings based on standard mapping
   const state = log.state !== undefined ? log.state : (log.punch !== undefined ? log.punch : log.type);
   const numericState = typeof state === 'number' ? state : parseInt(state, 10);
   
-  return numericState === 1 ? 'CheckOut' : 'CheckIn';
+  if (isNaN(numericState)) return 'CheckIn';
+
+  switch (numericState) {
+    case 0: return 'CheckIn';
+    case 1: return 'CheckOut';
+    case 2: return 'BreakOut';
+    case 3: return 'BreakIn';
+    case 4: return 'OvertimeIn';
+    case 5: return 'OvertimeOut';
+    default: return 'CheckIn';
+  }
 }
 
 /**
