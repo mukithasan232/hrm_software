@@ -5,29 +5,32 @@ import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import { Parser } from 'json2csv';
 
-const TZ_OFFSET_MS = 6 * 60 * 60 * 1000;
+import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
+
+const BD_TZ = 'Asia/Dhaka';
 
 function getTodayBoundaries(): { start: Date; end: Date } {
-  const now = new Date();
-  const nowBD = new Date(now.getTime() + TZ_OFFSET_MS);
-  const startBD = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 0, 0, 0, 0));
-  const endBD = new Date(Date.UTC(nowBD.getUTCFullYear(), nowBD.getUTCMonth(), nowBD.getUTCDate(), 23, 59, 59, 999));
-  return {
-    start: new Date(startBD.getTime() - TZ_OFFSET_MS),
-    end: new Date(endBD.getTime() - TZ_OFFSET_MS),
-  };
+  const todayStr = formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd');
+  const startUTC = fromZonedTime(`${todayStr}T00:00:00`, BD_TZ);
+  const endUTC = fromZonedTime(`${todayStr}T23:59:59.999`, BD_TZ);
+  return { start: startUTC, end: endUTC };
 }
 
-function getDayBoundaries(filter: 'today' | 'yesterday'): { start: Date; end: Date } {
-  const now = new Date();
-  const target = filter === 'yesterday' ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
-  const local = new Date(target.getTime() + TZ_OFFSET_MS);
-  const startLocal = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 0, 0, 0, 0));
-  const endLocal = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 23, 59, 59, 999));
-  return {
-    start: new Date(startLocal.getTime() - TZ_OFFSET_MS),
-    end: new Date(endLocal.getTime() - TZ_OFFSET_MS),
-  };
+function getDayBoundaries(filter: 'today' | 'yesterday' | 'week' | 'month'): { start: Date; end: Date } {
+  const targetDate = new Date();
+  if (filter === 'yesterday') {
+    targetDate.setDate(targetDate.getDate() - 1);
+  } else if (filter === 'week') {
+    targetDate.setDate(targetDate.getDate() - 7);
+  } else if (filter === 'month') {
+    targetDate.setMonth(targetDate.getMonth() - 1);
+  }
+  
+  const dateStr = formatInTimeZone(targetDate, BD_TZ, 'yyyy-MM-dd');
+  const startUTC = fromZonedTime(`${dateStr}T00:00:00`, BD_TZ);
+  const endUTC = fromZonedTime(filter === 'today' || filter === 'yesterday' ? `${dateStr}T23:59:59.999` : `${formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd')}T23:59:59.999`, BD_TZ);
+  
+  return { start: startUTC, end: endUTC };
 }
 
 // @desc    Legacy sync (used by cron job)
@@ -175,8 +178,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const where: any = {};
     if (employeeId) where.employeeId = employeeId as string;
 
-    if (filter === 'today' || filter === 'yesterday') {
-      const { start, end } = getDayBoundaries(filter);
+    if (filter && filter !== 'all') {
+      const { start, end } = getDayBoundaries(filter as any);
       where.timestamp = { gte: start, lte: end };
     }
 
