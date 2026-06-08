@@ -395,6 +395,27 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     let skipped = 0;
     const punchHistory = new Map<string, { firstPunch: Date, lastPunch: Date }>();
 
+    // Prepare Fallback Unmapped User
+    const fallbackUserName = 'Unmapped Device Users';
+    let fallbackUser = await prisma.user.findFirst({ where: { name: fallbackUserName } });
+    if (!fallbackUser) {
+      fallbackUser = await prisma.user.create({
+        data: {
+          employeeId: 'UNMAPPED_FALLBACK',
+          name: fallbackUserName,
+          email: `unmapped-${Date.now()}@hrm.test`,
+          password: hashedPassword,
+          baseSalary: 0,
+          isActive: true
+        }
+      });
+      console.warn(`[ZKService] ⚠️ Created fallback user: ${fallbackUserName}`);
+    }
+    const fallbackUserId = fallbackUser.id;
+
+    // Track timestamps globally to prevent duplicate compound constraints on exact millisecond
+    const usedTimestamps = new Set<string>();
+
     // Process in chunks of 100 for better performance
     const chunkSize = 100;
     for (let i = 0; i < sortedRawLogs.length; i += chunkSize) {
@@ -415,22 +436,8 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
           // Map deviceEmpId (e.g. "5") to the actual DB User's UUID
           let employeeId = userIdMap.get(deviceEmpId);
           if (!employeeId) {
-            // Auto-create user if they are not in the DB to prevent foreign key errors
-            const name = `User ${deviceEmpId}`;
-            const normalizedEmail = `user${deviceEmpId}-${Date.now()}@hrm.test`;
-            const dbUser = await prisma.user.create({
-              data: {
-                employeeId: deviceEmpId,
-                name,
-                email: normalizedEmail,
-                password: hashedPassword,
-                baseSalary: 0,
-                isActive: true,
-                documents: {}
-              }
-            });
-            userIdMap.set(deviceEmpId, dbUser.id);
-            employeeId = dbUser.id;
+            console.warn(`[ZKService] ⚠️ Device punch from unknown PIN ${deviceEmpId}. Mapping to Unmapped Device Users.`);
+            employeeId = fallbackUserId;
           }
 
           const punchType = await resolvePunchType(employeeId, timestamp, log, punchHistory);
@@ -440,21 +447,28 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
             continue; // Ignored due to 30-minute threshold
           }
 
-          console.log(`[ZK Sync] Raw Time:`, log.recordTime || log.record_time, '| Raw State:', log.state || log.type || log.punch || log.punchType, '--> DB UTC:', timestamp.toISOString(), '| DB State:', punchType);
+          // Pad timestamp for unique constraint survival
+          let uniqueTimestamp = new Date(timestamp);
+          let collisionKey = `${employeeId}_${uniqueTimestamp.getTime()}`;
+          while (usedTimestamps.has(collisionKey)) {
+             uniqueTimestamp = new Date(uniqueTimestamp.getTime() + 1); // add 1ms
+             collisionKey = `${employeeId}_${uniqueTimestamp.getTime()}`;
+          }
+          usedTimestamps.add(collisionKey);
+
+          console.log(`[ZK Sync] Raw Time:`, log.recordTime || log.record_time, '| DB UTC:', uniqueTimestamp.toISOString(), '| DB State:', punchType);
 
           await prisma.attendanceLog.upsert({
             where: {
               employeeId_timestamp: {
                 employeeId,
-                timestamp,
+                timestamp: uniqueTimestamp,
               },
             },
-            update: {
-              punchType: punchType as any
-            },
+            update: { punchType: punchType as any },
             create: {
               employeeId,
-              timestamp,
+              timestamp: uniqueTimestamp,
               punchType: punchType as any,
               deviceId: currentZkIp,
             },

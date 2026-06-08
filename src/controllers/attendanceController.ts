@@ -16,20 +16,27 @@ function getTodayBoundaries(): { start: Date; end: Date } {
   return { start: startUTC, end: endUTC };
 }
 
-function getDayBoundaries(filter: 'today' | 'yesterday' | 'week' | 'month'): { start: Date; end: Date } {
-  const targetDate = new Date();
-  if (filter === 'yesterday') {
-    targetDate.setDate(targetDate.getDate() - 1);
-  } else if (filter === 'week') {
-    targetDate.setDate(targetDate.getDate() - 7);
-  } else if (filter === 'month') {
-    targetDate.setMonth(targetDate.getMonth() - 1);
+function getDayBoundaries(filter: string): { start: Date; end: Date } {
+  let dateStr = filter;
+  if (filter === 'today' || filter === 'yesterday' || filter === 'week' || filter === 'month') {
+    const targetDate = new Date();
+    if (filter === 'yesterday') {
+      targetDate.setDate(targetDate.getDate() - 1);
+    } else if (filter === 'week') {
+      targetDate.setDate(targetDate.getDate() - 7);
+    } else if (filter === 'month') {
+      targetDate.setMonth(targetDate.getMonth() - 1);
+    }
+    dateStr = formatInTimeZone(targetDate, BD_TZ, 'yyyy-MM-dd');
+    
+    const startUTC = fromZonedTime(`${dateStr}T00:00:00`, BD_TZ);
+    const endUTC = fromZonedTime(filter === 'today' || filter === 'yesterday' ? `${dateStr}T23:59:59.999` : `${formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd')}T23:59:59.999`, BD_TZ);
+    return { start: startUTC, end: endUTC };
   }
-  
-  const dateStr = formatInTimeZone(targetDate, BD_TZ, 'yyyy-MM-dd');
+
+  // Handle explicit exact dates (yyyy-MM-dd)
   const startUTC = fromZonedTime(`${dateStr}T00:00:00`, BD_TZ);
-  const endUTC = fromZonedTime(filter === 'today' || filter === 'yesterday' ? `${dateStr}T23:59:59.999` : `${formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd')}T23:59:59.999`, BD_TZ);
-  
+  const endUTC = fromZonedTime(`${dateStr}T23:59:59.999`, BD_TZ);
   return { start: startUTC, end: endUTC };
 }
 
@@ -139,7 +146,8 @@ export const exportAttendanceLogs = async (req: Request, res: Response) => {
 // @desc    Get active presence stats for dashboard
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
-    const { start, end } = getTodayBoundaries();
+    const queryDate = req.query.date as string | undefined;
+    const { start, end } = queryDate ? getDayBoundaries(queryDate) : getTodayBoundaries();
 
     const [uniqueCheckInsToday, uniqueCheckOutsToday] = await Promise.all([
       prisma.attendanceLog.findMany({ where: { timestamp: { gte: start, lte: end }, punchType: 'CheckIn' }, distinct: ['employeeId'] }),

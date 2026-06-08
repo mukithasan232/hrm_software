@@ -4,7 +4,7 @@ import { useTranslation } from '@/context/LanguageContext';
 import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import { toUTCFromBD, toBDDisplay, getBDNowLocal } from '@/lib/dateUtils';
+import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateUtils';
 
 export default function AttendancePage() {
   const { t } = useTranslation();
@@ -23,7 +23,7 @@ export default function AttendancePage() {
     punchType: 'CheckIn',
     timestamp: getBDNowLocal()
   });
-  const [dateRange, setDateRange] = useState('today');
+  const [dateRange, setDateRange] = useState(getBDToday());
 
   const fetchLogs = async (isPolling = false) => {
     try {
@@ -150,14 +150,9 @@ export default function AttendancePage() {
   );
 
   const getFilterPrefixKey = () => {
-    switch (dateRange) {
-      case 'today': return 'todays';
-      case 'yesterday': return 'yesterdays';
-      case 'week': return 'this_weeks';
-      case 'month': return 'this_months';
-      case 'all-time': return 'total';
-      default: return 'total';
-    }
+    if (dateRange === getBDToday()) return 'todays';
+    if (dateRange === 'all-time') return 'total';
+    return ''; // specific date prefix isn't standard in translations, keep it generic
   };
 
   return (
@@ -184,17 +179,15 @@ export default function AttendancePage() {
             <Plus className="w-4 h-4" /> {t('manualEntry')}
           </button>
           
-          <select 
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-sm rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer font-medium"
-          >
-            <option value="today" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('today')}</option>
-            <option value="yesterday" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('yesterday')}</option>
-            <option value="week" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('this_week')}</option>
-            <option value="month" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('this_month')}</option>
-            <option value="all-time" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('all_time')}</option>
-          </select>
+          <div className="flex items-center bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 transition-all">
+            <input 
+              type="date"
+              value={dateRange === 'all-time' ? '' : dateRange}
+              onChange={(e) => setDateRange(e.target.value || getBDToday())}
+              className="bg-transparent text-slate-900 dark:text-white text-sm focus:outline-none cursor-pointer font-medium w-[130px] md:w-[140px]"
+              title="Select specific date"
+            />
+          </div>
  
           <button 
             onClick={handleManualSync}

@@ -5,7 +5,7 @@ import { Users, CalendarRange, RefreshCw, Clock } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useTranslation } from '@/context/LanguageContext';
-import { toBDDisplay } from '@/lib/dateUtils';
+import { toBDDisplay, getBDToday } from '@/lib/dateUtils';
 
 export default function DashboardOverview() {
   const { user } = useAuth();
@@ -19,13 +19,14 @@ export default function DashboardOverview() {
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(getBDToday());
 
   const fetchDashboardData = async () => {
     try {
       const [usersRes, leavesRes, presenceRes] = await Promise.all([
         api.get('/users'),
         api.get('/leaves/all'),
-        api.get('/attendance/active-today')
+        api.get(`/attendance/active-today?date=${selectedDate}`)
       ]);
 
       setStats({
@@ -44,7 +45,7 @@ export default function DashboardOverview() {
 
   const pollLiveActivity = async () => {
     try {
-      const res = await api.get(`/attendance/active-today?_t=${Date.now()}`);
+      const res = await api.get(`/attendance/active-today?date=${selectedDate}&_t=${Date.now()}`);
       setStats(prev => ({
         ...prev,
         activeNow: res.data.activeNow || 0,
@@ -67,7 +68,7 @@ export default function DashboardOverview() {
 
       return () => clearInterval(intervalId);
     }
-  }, [user]);
+  }, [user, selectedDate]);
 
   const handleManualSync = async () => {
     setSyncing(true);
@@ -137,12 +138,23 @@ export default function DashboardOverview() {
       {/* Live Activity Feed */}
       <div className="max-w-4xl mx-auto w-full">
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-md dark:shadow-2xl flex flex-col">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
               {t('liveActivity')}
             </h3>
-            <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-500 font-bold px-2 py-1 bg-emerald-500/10 rounded-lg">{t('realTime')}</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 transition-all focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20">
+                <input 
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value || getBDToday())}
+                  className="bg-transparent text-slate-800 dark:text-white text-sm focus:outline-none cursor-pointer font-medium w-32"
+                  title="Select date to view punches"
+                />
+              </div>
+              <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-500 font-bold px-2 py-1.5 bg-emerald-500/10 rounded-lg">{selectedDate === getBDToday() ? t('realTime') : 'Historical'}</span>
+            </div>
           </div>
 
           <div className="space-y-4 flex-1">
