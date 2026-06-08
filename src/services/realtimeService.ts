@@ -277,6 +277,11 @@ const connectAndListen = async (): Promise<void> => {
           const employeeName = user.name;
           const punchType = await resolvePunchType(employeeId, parsedTimestamp, data);
 
+          if (!punchType) {
+            console.log(`[RealtimeService] ⏳ Ignored redundant punch for ${employeeName} due to 30-minute threshold.`);
+            return;
+          }
+
           console.log(`[ZK Sync] Raw Time:`, deviceTime, '| Raw State:', data.state || data.type || data.punch || data.punchType, '--> DB UTC:', parsedTimestamp.toISOString(), '| DB State:', punchType);
 
           const newLog = await prisma.attendanceLog.upsert({

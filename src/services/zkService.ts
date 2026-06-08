@@ -67,19 +67,26 @@ export async function resolvePunchType(
   employeeId: string,
   timestamp: Date,
   log: any,
-  processedEmpDays?: Set<string>
-): Promise<string> {
+  punchHistory?: Map<string, { firstPunch: Date, lastPunch: Date }>
+): Promise<string | null> {
   const tzOffset = 6 * 60 * 60 * 1000;
   const localDate = new Date(timestamp.getTime() + tzOffset);
   const dateStr = `${localDate.getUTCFullYear()}-${localDate.getUTCMonth() + 1}-${localDate.getUTCDate()}`;
   const key = `${employeeId}_${dateStr}`;
 
-  if (processedEmpDays) {
-    // Manual sync (batch mode): use memory set
-    if (!processedEmpDays.has(key)) {
-      processedEmpDays.add(key);
+  if (punchHistory) {
+    if (!punchHistory.has(key)) {
+      punchHistory.set(key, { firstPunch: timestamp, lastPunch: timestamp });
       return 'CheckIn';
     } else {
+      const history = punchHistory.get(key)!;
+      const msDiff = timestamp.getTime() - history.lastPunch.getTime();
+      
+      if (msDiff < 30 * 60 * 1000) {
+        return null; // Ignore punches within 30 mins
+      }
+      
+      history.lastPunch = timestamp;
       return 'CheckOut';
     }
   }
@@ -91,17 +98,29 @@ export async function resolvePunchType(
   const startOfTodayUTC = new Date(startOfDayLocal.getTime() - tzOffset);
   const endOfTodayUTC = new Date(endOfDayLocal.getTime() - tzOffset);
 
-  const count = await prisma.attendanceLog.count({
+  const existingLogs = await prisma.attendanceLog.findMany({
     where: {
       employeeId: employeeId,
       timestamp: {
         gte: startOfTodayUTC,
         lte: endOfTodayUTC
       }
-    }
+    },
+    orderBy: { timestamp: 'asc' }
   });
 
-  return count === 0 ? 'CheckIn' : 'CheckOut';
+  if (existingLogs.length === 0) {
+    return 'CheckIn';
+  }
+
+  const lastLog = existingLogs[existingLogs.length - 1];
+  const msDiff = timestamp.getTime() - lastLog.timestamp.getTime();
+
+  if (msDiff < 30 * 60 * 1000) {
+    return null; // Ignore
+  }
+
+  return 'CheckOut';
 }
 
 /**
@@ -342,7 +361,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     let synced = 0;
     let skipped = 0;
-    const processedEmpDays = new Set<string>();
+    const punchHistory = new Map<string, { firstPunch: Date, lastPunch: Date }>();
 
     // Process in chunks of 100 for better performance
     const chunkSize = 100;
@@ -382,7 +401,12 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
             employeeId = dbUser.id;
           }
 
-          const punchType = await resolvePunchType(employeeId, timestamp, log, processedEmpDays);
+          const punchType = await resolvePunchType(employeeId, timestamp, log, punchHistory);
+
+          if (!punchType) {
+            skipped++;
+            continue; // Ignored due to 30-minute threshold
+          }
 
           console.log(`[ZK Sync] Raw Time:`, log.recordTime || log.record_time, '| Raw State:', log.state || log.type || log.punch || log.punchType, '--> DB UTC:', timestamp.toISOString(), '| DB State:', punchType);
 
