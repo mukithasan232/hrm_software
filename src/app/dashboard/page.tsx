@@ -5,6 +5,7 @@ import { Users, CalendarRange, RefreshCw, Clock } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useTranslation } from '@/context/LanguageContext';
+import { toBDDisplay } from '@/lib/dateUtils';
 
 export default function DashboardOverview() {
   const { user } = useAuth();
@@ -178,7 +179,7 @@ export default function DashboardOverview() {
                     </span>
                     {/* Check-in Timestamp */}
                     <span className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Dhaka' }).format(new Date(log.timestamp))}
+                      <Clock className="w-3 h-3" /> {toBDDisplay(log.timestamp, 'hh:mm a')}
                     </span>
                   </div>
 

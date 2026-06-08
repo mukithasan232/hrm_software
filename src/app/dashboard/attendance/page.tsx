@@ -4,6 +4,7 @@ import { useTranslation } from '@/context/LanguageContext';
 import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import { toUTCFromBD, toBDDisplay, getBDNowLocal } from '@/lib/dateUtils';
 
 export default function AttendancePage() {
   const { t } = useTranslation();
@@ -20,7 +21,7 @@ export default function AttendancePage() {
   const [manualEntry, setManualEntry] = useState({
     employeeId: '',
     punchType: 'CheckIn',
-    timestamp: new Date().toISOString().slice(0, 16)
+    timestamp: getBDNowLocal()
   });
   const [dateRange, setDateRange] = useState('today');
 
@@ -85,7 +86,10 @@ export default function AttendancePage() {
     e.preventDefault();
     try {
       setLoading(true);
-      await api.post('/attendance/manual', manualEntry);
+      const [datePart, timePart] = manualEntry.timestamp.split('T');
+      const utcTimestamp = toUTCFromBD(datePart, timePart);
+      
+      await api.post('/attendance/manual', { ...manualEntry, timestamp: utcTimestamp });
       toast.success(t('manual_entry_success') || 'Manual entry added successfully');
       setIsModalOpen(false);
       fetchLogs();
@@ -115,7 +119,7 @@ export default function AttendancePage() {
       const rows = activeLogs.map(log => [
         `"${log.employeeName || 'N/A'}"`,
         `"${log.employeeId || 'Unknown'}"`,
-        `"${new Date(log.timestamp).toLocaleString('en-GB', { timeZone: 'Asia/Dhaka' })}"`,
+        `"${toBDDisplay(log.timestamp)}"`,
         `"${log.punchType || 'Unknown'}"`
       ]);
 
@@ -277,8 +281,8 @@ export default function AttendancePage() {
                     </td>
                     <td className="px-6 py-4 text-slate-900 dark:text-gray-200">
                       <div className="flex flex-col text-sm">
-                        <span className="font-semibold">{new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Dhaka' }).format(new Date(row.timestamp))}</span>
-                        <span className="text-slate-550 dark:text-gray-500 mt-0.5 font-medium">{new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Dhaka' }).format(new Date(row.timestamp))}</span>
+                        <span className="font-semibold">{toBDDisplay(row.timestamp, 'dd MMM yyyy')}</span>
+                        <span className="text-slate-550 dark:text-gray-500 mt-0.5 font-medium">{toBDDisplay(row.timestamp, 'hh:mm:ss a')}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
