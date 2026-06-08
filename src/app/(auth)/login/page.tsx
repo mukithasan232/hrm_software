@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
-  const { brand } = useBrand();
+  const { brand, isLoading: brandLoading } = useBrand();
 
   const [email, setEmail]     = useState('');
   const [password, setPassword] = useState('');
@@ -52,7 +52,12 @@ export default function LoginPage() {
 
         {/* Logo area */}
         <div className="text-center space-y-3">
-          {(!logoUrl || logoError) ? (
+          {brandLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 mb-6 animate-pulse">
+              <div className="h-12 w-12 bg-slate-200 dark:bg-white/10 rounded-lg"></div>
+              <div className="h-6 w-32 bg-slate-200 dark:bg-white/10 rounded-md"></div>
+            </div>
+          ) : (!logoUrl || logoError) ? (
             <div className="flex flex-col items-center justify-center gap-3 mb-6">
               <div className="h-12 w-12 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl shadow-md">
                 {brand?.companyName ? brand.companyName.charAt(0).toUpperCase() : 'H'}

@@ -4,6 +4,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { BrandProvider } from '@/context/BrandContext';
 
 export const metadata: Metadata = {
   title: 'HRM & Payroll Portal',
@@ -21,9 +22,10 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AuthProvider>
             <LanguageProvider>
-              {children}
-              <Toaster 
-                position="top-right"
+              <BrandProvider>
+                {children}
+                <Toaster 
+                  position="top-right"
                 containerStyle={{
                   top: 80,
                   right: 16,
@@ -37,6 +39,7 @@ export default function RootLayout({
                   },
                 }} 
               />
+              </BrandProvider>
             </LanguageProvider>
           </AuthProvider>
         </ThemeProvider>
