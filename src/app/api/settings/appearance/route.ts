@@ -94,16 +94,25 @@ export async function PUT(req: NextRequest) {
       const logoFile    = formData.get('logo') as File | null;
       const faviconFile = formData.get('favicon') as File | null;
 
+      const storageDir = path.join(process.cwd(), 'public', 'storage', 'logos');
+      if (!fs.existsSync(storageDir)) {
+        fs.mkdirSync(storageDir, { recursive: true });
+      }
+
       if (logoFile && logoFile.size > 0) {
-        const mimeType = logoFile.type || 'image/png';
-        const base64Data = Buffer.from(await logoFile.arrayBuffer()).toString('base64');
-        logoUrl = `data:${mimeType};base64,${base64Data}`;
+        const ext = path.extname(logoFile.name) || '.png';
+        const filename = `logo_${Date.now()}${ext}`;
+        const filePath = path.join(storageDir, filename);
+        fs.writeFileSync(filePath, Buffer.from(await logoFile.arrayBuffer()));
+        logoUrl = `/storage/logos/${filename}`;
       }
 
       if (faviconFile && faviconFile.size > 0) {
-        const mimeType = faviconFile.type || 'image/x-icon';
-        const base64Data = Buffer.from(await faviconFile.arrayBuffer()).toString('base64');
-        faviconUrl = `data:${mimeType};base64,${base64Data}`;
+        const ext = path.extname(faviconFile.name) || '.ico';
+        const filename = `favicon_${Date.now()}${ext}`;
+        const filePath = path.join(storageDir, filename);
+        fs.writeFileSync(filePath, Buffer.from(await faviconFile.arrayBuffer()));
+        faviconUrl = `/storage/logos/${filename}`;
       }
     } else {
       const body     = await req.json();

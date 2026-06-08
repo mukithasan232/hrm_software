@@ -597,3 +597,134 @@ export const fetchDeviceLogs = async (): Promise<number> => {
   const { synced } = await getDeviceAttendance();
   return synced;
 };
+
+// ─── TASK 1: ZKTeco Device Synchronization ─────────────────────────────────────
+
+export class ZKDeviceOfflineError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ZKDeviceOfflineError';
+  }
+}
+
+export interface EmployeePayload {
+  // WHY: The user requested id: number, but Prisma schema defines User.id as String (UUID).
+  id: string;
+  zk_enroll_number: number;
+  name: string;
+  password?: string;
+  role?: 0 | 14;
+}
+
+export interface SyncResult {
+  success: boolean;
+  action: 'created' | 'updated';
+  enrollNumber: number;
+}
+
+/**
+ * Reusable helper to manage ZKTeco connections safely.
+ * @param fn Callback to execute with the connected ZK instance.
+ */
+export async function withZKConnection<T>(fn: (zk: any) => Promise<T>): Promise<T> {
+  const zk = createZK();
+  try {
+    try {
+      await connectProperly(zk);
+    } catch (err: any) {
+      throw new ZKDeviceOfflineError('Failed to connect to ZK device: ' + classifyError(err));
+    }
+
+    return await fn(zk);
+  } finally {
+    try {
+      if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
+        if (typeof zk.disconnect === 'function') {
+          await zk.disconnect();
+        } else if (typeof zk.free === 'function') {
+          await zk.free();
+        }
+      }
+    } catch (err: any) {
+      console.error('[ZKService] ❌ Cleanup failed in withZKConnection:', err.message);
+    }
+  }
+}
+
+/**
+ * Syncs a user to the ZKTeco device, acting as an upsert.
+ * @param employee The employee data to sync.
+ */
+async function syncUserToDevice(employee: EmployeePayload): Promise<SyncResult> {
+  // Validate enrollNumber
+  if (!Number.isInteger(employee.zk_enroll_number) || employee.zk_enroll_number < 1 || employee.zk_enroll_number > 32767) {
+    throw new TypeError(`Invalid zk_enroll_number: ${employee.zk_enroll_number}. Must be an integer between 1 and 32767.`);
+  }
+
+  return await withZKConnection(async (zk) => {
+    // 1. Fetch the user directly from the DB to get the freshest data.
+    // WHY: Avoid stale data from the request payload and ensure the mapping is correct.
+    const dbUser = await prisma.user.findUnique({
+      where: { id: employee.id }
+    });
+
+    if (!dbUser) {
+      throw new Error(`User with ID ${employee.id} not found in DB.`);
+    }
+
+    const enrollNumber = (dbUser as any).zk_enroll_number;
+    if (!enrollNumber || enrollNumber === 0) {
+      throw new Error(`Employee ${employee.id} has no ZKTeco enroll number assigned. Assign one before syncing.`);
+    }
+
+    // 2. Fetch existing users from the device
+    const existingUsers = await getDeviceUsersRaw(zk);
+    const existingEnrollNumbers = existingUsers.map((u: any) => parseInt(u.userId || u.uid || u.user_id, 10));
+
+    // Determine if it's a create or update
+    const action = existingEnrollNumbers.includes(enrollNumber) ? 'updated' : 'created';
+
+    // 3. Prepare data
+    // Truncate name safely to 24 chars
+    const safeName = (employee.name || dbUser.name).substring(0, 24);
+    const password = employee.password || '0';
+    const role = employee.role ?? (dbUser.designationId ? 0 : 0); // Default to user if not specified
+
+    // 4. Set User (Upsert)
+    try {
+      await zk.setUser(enrollNumber, enrollNumber.toString(), safeName, password, role);
+      console.log(`[ZKService] User ${safeName} (Enroll: ${enrollNumber}) ${action} on device.`);
+    } catch (err: any) {
+      console.error(`[ZKService] Failed to set user ${enrollNumber}:`, err);
+      throw new Error(`Failed to set user on device: ${err.message || err.toString()}`);
+    }
+
+    return { success: true, action, enrollNumber };
+  });
+}
+
+/**
+ * Deletes a user from the ZKTeco device by enrollNumber.
+ * @param enrollNumber The ZKTeco enrollNumber to delete.
+ */
+async function deleteUserFromDevice(enrollNumber: number): Promise<void> {
+  if (!Number.isInteger(enrollNumber) || enrollNumber < 1 || enrollNumber > 32767) {
+    throw new TypeError(`Invalid zk_enroll_number: ${enrollNumber}. Must be an integer between 1 and 32767.`);
+  }
+
+  await withZKConnection(async (zk) => {
+    try {
+      // Library method might differ, usually deleteUser takes the ID as string or number
+      await zk.deleteUser(enrollNumber);
+      console.log(`[ZKService] User ${enrollNumber} deleted from device.`);
+    } catch (err: any) {
+      console.error(`[ZKService] Failed to delete user ${enrollNumber}:`, err);
+      throw new Error(`Failed to delete user on device: ${err.message || err.toString()}`);
+    }
+  });
+}
+
+export const zkService = {
+  syncUserToDevice,
+  deleteUserFromDevice
+};

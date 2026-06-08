@@ -8,6 +8,7 @@ import {
 import Link from 'next/link';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import { useDeviceSync } from '@/hooks/useDeviceSync';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -24,6 +25,7 @@ interface Employee {
   department?: string;
   profileImage?: string;
   isActive: boolean;
+  zk_enroll_number?: number | null;
 }
 
 interface Designation {
@@ -97,6 +99,9 @@ export default function EmployeesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // ── Device Sync Hook ───────────────────────────────────────────────────────
+  const { syncToDevice, isSyncing } = useDeviceSync();
+
   // ── Edit Modal ─────────────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
@@ -112,6 +117,7 @@ export default function EmployeesPage() {
   const [formDesignation, setFormDesignation] = useState('');
   const [formType, setFormType] = useState<EmployeeType>('IN_HOUSE');
   const [formDepartment, setFormDepartment] = useState('');
+  const [formZkEnroll, setFormZkEnroll] = useState('');
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [nidFile, setNidFile] = useState<File | null>(null);
   const [certFile, setCertFile] = useState<File | null>(null);
@@ -122,6 +128,7 @@ export default function EmployeesPage() {
   const [editDesignation, setEditDesignation] = useState('');
   const [editType, setEditType] = useState<EmployeeType>('IN_HOUSE');
   const [editDepartment, setEditDepartment] = useState('');
+  const [editZkEnroll, setEditZkEnroll] = useState('');
 
   // ── Data Fetching ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -150,7 +157,7 @@ export default function EmployeesPage() {
 
   const resetAddForm = () => {
     setFormName(''); setFormEmail(''); setFormPassword('');
-    setFormDesignation(''); setFormDepartment('');
+    setFormDesignation(''); setFormDepartment(''); setFormZkEnroll('');
     setFormType('IN_HOUSE'); setCvFile(null); setNidFile(null); setCertFile(null);
   };
 
@@ -160,6 +167,7 @@ export default function EmployeesPage() {
     setEditDesignation(emp.designationId || emp.designation?.id || '');
     setEditType(emp.employeeType);
     setEditDepartment(emp.department || '');
+    setEditZkEnroll(emp.zk_enroll_number ? emp.zk_enroll_number.toString() : '');
     setEditTarget(emp);
   };
 
@@ -179,6 +187,7 @@ export default function EmployeesPage() {
       if (formDesignation) formData.append('designationId', formDesignation);
       formData.append('employeeType', formType);
       if (formDepartment) formData.append('department', formDepartment);
+      if (formZkEnroll) formData.append('zk_enroll_number', formZkEnroll);
       if (cvFile) formData.append('cv', cvFile);
       if (nidFile) formData.append('nid', nidFile);
       if (certFile) formData.append('certificates', certFile);
@@ -188,6 +197,12 @@ export default function EmployeesPage() {
       if (!res.ok) throw new Error(data.message || 'Failed to add employee');
 
       toast.success('Employee added successfully!');
+      
+      // Auto-sync to ZKTeco device
+      if (data.user && data.user.id && formZkEnroll) {
+        await syncToDevice(data.user.id);
+      }
+      
       setShowAddModal(false);
       resetAddForm();
       fetchData();
@@ -209,9 +224,16 @@ export default function EmployeesPage() {
         employeeType: editType,
       };
       if (editDesignation) payload.designationId = editDesignation;
+      if (editZkEnroll) payload.zk_enroll_number = editZkEnroll;
 
       const res = await api.put(`/users/${editTarget.id}`, payload);
       toast.success('Employee updated successfully!');
+      
+      // Auto-sync to ZKTeco device
+      if (editZkEnroll) {
+        await syncToDevice(editTarget.id);
+      }
+      
       setEditTarget(null);
       fetchData();
     } catch (err: any) {
@@ -437,6 +459,12 @@ export default function EmployeesPage() {
                   </select>
                 </div>
 
+                {/* ZKTeco Enroll Number */}
+                <div className="space-y-1.5">
+                  <label className={labelCls}>ZKTeco Enroll Number</label>
+                  <input type="number" min="1" max="32767" value={formZkEnroll} onChange={e => setFormZkEnroll(e.target.value)} className={fieldCls} placeholder="1-32767" />
+                </div>
+
                 {/* Password */}
                 <div className="space-y-1.5">
                   <label className={labelCls}>Initial Password *</label>
@@ -474,9 +502,9 @@ export default function EmployeesPage() {
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-primary hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/30 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
-                  {submitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                  {submitting ? 'Creating...' : 'Save Employee'}
+                <button type="submit" disabled={submitting || isSyncing} className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-primary hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/30 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                  {(submitting || isSyncing) && <RefreshCw className="w-4 h-4 animate-spin" />}
+                  {isSyncing ? 'Syncing...' : submitting ? 'Creating...' : 'Save Employee'}
                 </button>
               </div>
             </form>
@@ -528,6 +556,12 @@ export default function EmployeesPage() {
                     <option value="REMOTE">Remote</option>
                   </select>
                 </div>
+
+                {/* ZKTeco Enroll Number */}
+                <div className="space-y-1.5">
+                  <label className={labelCls}>ZKTeco Enroll Number</label>
+                  <input type="number" min="1" max="32767" value={editZkEnroll} onChange={e => setEditZkEnroll(e.target.value)} className={fieldCls} placeholder="1-32767" />
+                </div>
               </div>
 
               {/* Actions */}
@@ -535,9 +569,9 @@ export default function EmployeesPage() {
                 <button type="button" onClick={() => setEditTarget(null)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
                   Cancel
                 </button>
-                <button type="submit" disabled={editSubmitting} className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/25 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
-                  {editSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                  {editSubmitting ? 'Saving...' : 'Save Changes'}
+                <button type="submit" disabled={editSubmitting || isSyncing} className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/25 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                  {(editSubmitting || isSyncing) && <RefreshCw className="w-4 h-4 animate-spin" />}
+                  {isSyncing ? 'Syncing...' : editSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

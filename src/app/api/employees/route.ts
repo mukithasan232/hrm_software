@@ -42,6 +42,9 @@ export async function POST(req: Request) {
     const password = formData.get('password') as string;
     const designationId = formData.get('designationId') as string;
     const employeeType = formData.get('employeeType') as 'REMOTE' | 'IN_HOUSE';
+    const zk_enroll_number_str = formData.get('zk_enroll_number') as string;
+    const zk_enroll_number = zk_enroll_number_str ? parseInt(zk_enroll_number_str, 10) : null;
+    
     
     // Validate
     if (!name || !email || !password || !designationId) {
@@ -105,6 +108,7 @@ export async function POST(req: Request) {
         employeeType: employeeType || 'IN_HOUSE',
         userType: 'Employee',
         documents: documentPaths,
+        zk_enroll_number: zk_enroll_number,
       },
       include: {
         customDesignation: true,

@@ -175,7 +175,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, designationId, department, baseSalary, isActive, employeeType } = req.body as any;
+    const { name, designationId, department, baseSalary, isActive, employeeType, zk_enroll_number } = req.body as any;
 
     const user = await prisma.user.update({
       where: { id: id as string },
@@ -185,6 +185,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         department,
         employeeType: employeeType || undefined,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,
+        zk_enroll_number: zk_enroll_number ? parseInt(zk_enroll_number, 10) : undefined,
         isActive
       },
       select: {
@@ -198,6 +199,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         employeeType: true,
         baseSalary: true,
         isActive: true,
+        zk_enroll_number: true,
       }
     });
 

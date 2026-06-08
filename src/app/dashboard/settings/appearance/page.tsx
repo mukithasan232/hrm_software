@@ -287,11 +287,15 @@ export default function AppearancePage() {
       setSettings(res.data.settings);
       setLogoFile(null);
       setFaviconFile(null);
-      toast.success('Brand settings saved!');
+      if (logoFile || faviconFile) {
+        toast.success('Logo uploaded successfully');
+      } else {
+        toast.success('Brand settings saved!');
+      }
       refreshBrand(); // propagate new colors to all dashboard components instantly
       router.refresh(); // bust Next.js cache and refresh layout
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to save settings');
+      toast.error(`Upload failed: ${err.response?.data?.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
@@ -361,9 +365,28 @@ export default function AppearancePage() {
                 value={logoFile} onChange={setLogoFile} icon={ImageIcon} accentColor={p}
               />
               {settings.logoUrl && !logoFile && (
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400 px-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  Current: <span className="truncate" style={{ color: p }}>{settings.logoUrl.startsWith('data:') ? 'Base64 Image Active' : settings.logoUrl.split('/').pop()}</span>
+                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-gray-400 px-1 bg-slate-50 dark:bg-white/5 rounded-xl p-3 border border-slate-200 dark:border-white/10">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span className="font-semibold text-slate-700 dark:text-gray-200">Current Logo:</span> 
+                      <span className="truncate max-w-[120px]" style={{ color: p }}>
+                        {settings.logoUrl.startsWith('data:') ? 'Base64 Image Active' : settings.logoUrl.split('/').pop()}
+                      </span>
+                    </div>
+                    {(() => {
+                      const finalLogoSrc = settings.logoUrl.startsWith('data:') ? settings.logoUrl : `${settings.logoUrl}?t=${Date.now()}`;
+                      console.log('Rendering current logo src:', finalLogoSrc);
+                      return (
+                        <img 
+                          src={finalLogoSrc} 
+                          alt="Current Company Logo" 
+                          className="h-12 w-auto object-contain rounded-lg border border-slate-200 dark:border-white/20 bg-white"
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/default-logo-placeholder.png'; }}
+                        />
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
             </div>
@@ -374,9 +397,28 @@ export default function AppearancePage() {
                 value={faviconFile} onChange={setFaviconFile} icon={Globe} accentColor={s}
               />
               {settings.faviconUrl && !faviconFile && (
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400 px-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  Current: <span className="truncate" style={{ color: s }}>{settings.faviconUrl.startsWith('data:') ? 'Base64 Favicon Active' : settings.faviconUrl.split('/').pop()}</span>
+                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-gray-400 px-1 bg-slate-50 dark:bg-white/5 rounded-xl p-3 border border-slate-200 dark:border-white/10">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span className="font-semibold text-slate-700 dark:text-gray-200">Current Favicon:</span> 
+                      <span className="truncate max-w-[120px]" style={{ color: s }}>
+                        {settings.faviconUrl.startsWith('data:') ? 'Base64 Favicon Active' : settings.faviconUrl.split('/').pop()}
+                      </span>
+                    </div>
+                    {(() => {
+                      const finalFavSrc = settings.faviconUrl.startsWith('data:') ? settings.faviconUrl : `${settings.faviconUrl}?t=${Date.now()}`;
+                      console.log('Rendering current favicon src:', finalFavSrc);
+                      return (
+                        <img 
+                          src={finalFavSrc} 
+                          alt="Current Favicon" 
+                          className="h-8 w-8 object-contain rounded-lg border border-slate-200 dark:border-white/20 bg-white"
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/default-logo-placeholder.png'; }}
+                        />
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
             </div>

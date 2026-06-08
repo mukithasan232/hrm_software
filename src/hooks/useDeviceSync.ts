@@ -1,0 +1,1 @@
+// File renamed to .tsx

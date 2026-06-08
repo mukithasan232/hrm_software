@@ -120,6 +120,10 @@ model User {
   designationId       String?
   customDesignation   Designation?    @relation(fields: [designationId], references: [id], onDelete: SetNull)
 
+  // ZKTeco hardware mapping
+  zk_enroll_number    Int?            @unique
+
+
   employeeType        EmployeeType    @default(IN_HOUSE)
   userType            String          @default("Employee")
   documents           Json            @default("{}")
@@ -138,6 +142,8 @@ model User {
   notifications  Notification[]  @relation("UserNotifications")
   payrolls       Payroll[]       @relation("UserPayrolls")
   performances   Performance[]   @relation("UserPerformances")
+  zkSyncLogs     ZkSyncLog[]     @relation("UserZkSyncLogs")
+  zkSyncQueues   ZkSyncQueue[]   @relation("UserZkSyncQueue")
 }
 
 // Single-row tenant branding config (white-label SaaS)
@@ -161,4 +167,28 @@ model RawDeviceLog {
 
   @@unique([deviceUserId, recordTime])
   @@index([recordTime(sort: Desc)])
+}
+
+model ZkSyncQueue {
+  id           String   @id @default(uuid())
+  employeeId   String
+  user         User     @relation("UserZkSyncQueue", fields: [employeeId], references: [id], onDelete: Cascade)
+  status       String   @default("pending") // pending, completed, failed
+  lastError    String?  @db.Text
+  retryCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+}
+
+model ZkSyncLog {
+  id           String   @id @default(uuid())
+  employeeId   String
+  user         User     @relation("UserZkSyncLogs", fields: [employeeId], references: [id], onDelete: Cascade)
+  enrollNumber Int
+  action       String   // created, updated, deleted
+  status       String   // success, failure
+  errorMessage String?  @db.Text
+  syncedAt     DateTime @default(now())
 }
