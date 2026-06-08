@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express-serve-static-core';
-import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs } from '../services/zkService';
+import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs, toUniversalUtc } from '../services/zkService';
 import { runWithDeviceLock, startRealtimeListener } from '../services/realtimeService';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
@@ -216,7 +216,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     
     // Ensure the date string is correctly parsed into a valid ISO-8601 Date object
     const manualTime = new Date(timestamp);
-    const correctedManualTime = new Date(manualTime.getTime() - (6 * 60 * 60 * 1000));
+    const correctedManualTime = toUniversalUtc(manualTime);
     
     if (isNaN(correctedManualTime.getTime())) {
       res.status(400).json({ message: 'Invalid timestamp format.' });
