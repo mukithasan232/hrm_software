@@ -58,7 +58,7 @@ export default function ProfilePage() {
 
   const [form, setForm] = useState({
     name: '', designation: '', department: '', phone: '',
-    facebook: '', linkedin: '', github: '', twitter: '',
+    facebook: '', linkedin: '', github: '',
   });
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [preview, setPreview] = useState<string | null>(null);
@@ -86,7 +86,6 @@ export default function ProfilePage() {
         facebook: (user as any).facebook || '',
         linkedin: (user as any).linkedin || '',
         github:   (user as any).github   || '',
-        twitter:  (user as any).twitter  || '',
       });
     }
   }, [user]);
@@ -460,24 +459,6 @@ export default function ProfilePage() {
                     value={form.github}
                     onChange={e => setForm({ ...form, github: e.target.value })}
                     placeholder="https://github.com/username"
-                    className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none font-medium"
-                  />
-                </div>
-              </div>
-
-              {/* X / Twitter */}
-              <div className="space-y-1">
-                <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-slate-900 dark:text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.629 5.905-5.629zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                  {t('twitterLabel')}
-                </label>
-                <div className="flex items-center rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 focus-within:ring-2 focus-within:ring-blue-500/25 transition-all overflow-hidden">
-                  <span className="px-3 py-2.5 border-r border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 text-xs font-mono select-none whitespace-nowrap">x.com/</span>
-                  <input
-                    type="url"
-                    value={form.twitter}
-                    onChange={e => setForm({ ...form, twitter: e.target.value })}
-                    placeholder="https://x.com/username"
                     className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none font-medium"
                   />
                 </div>
