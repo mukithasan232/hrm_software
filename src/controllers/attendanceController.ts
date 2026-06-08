@@ -215,11 +215,15 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     const { employeeId, timestamp, punchType } = req.body;
     
     // Ensure the date string is correctly parsed into a valid ISO-8601 Date object
-    const parsedDate = new Date(timestamp);
-    if (isNaN(parsedDate.getTime())) {
+    const manualTime = new Date(timestamp);
+    const correctedManualTime = new Date(manualTime.getTime() - (6 * 60 * 60 * 1000));
+    
+    if (isNaN(correctedManualTime.getTime())) {
       res.status(400).json({ message: 'Invalid timestamp format.' });
       return;
     }
+    
+    const parsedDate = correctedManualTime;
 
     // Resolve the actual User UUID from the given employeeId
     const user = await prisma.user.findFirst({
