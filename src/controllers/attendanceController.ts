@@ -206,9 +206,24 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    // Resolve the actual User UUID from the given employeeId
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: String(employeeId) },
+          { employeeId: String(employeeId) }
+        ]
+      }
+    });
+
+    if (!user) {
+      res.status(404).json({ message: "Employee not found in database." });
+      return;
+    }
+
     const log = await prisma.attendanceLog.create({
       data: { 
-        employeeId: String(employeeId), 
+        employeeId: user.id, 
         timestamp: parsedDate, 
         punchType, 
         deviceId: 'Manual Entry' 
@@ -219,6 +234,10 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
   } catch (error: any) {
     if (error.code === 'P2002') {
       res.status(400).json({ message: "An attendance record already exists for this exact time." });
+      return;
+    }
+    if (error.code === 'P2003') {
+      res.status(400).json({ message: "Invalid Employee ID provided." });
       return;
     }
     res.status(500).json({ message: error.message || 'Failed to save entry' });
