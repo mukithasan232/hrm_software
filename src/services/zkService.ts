@@ -61,8 +61,7 @@ export function getPunchType(record: any): string {
 }
 
 /**
- * Resolves the punch type securely directly from the device's log state.
- * Deprecated DB fallback inference logic removed in favor of strict mapping.
+ * Resolves the punch type chronologically, ignoring device state completely.
  */
 export async function resolvePunchType(
   employeeId: string,
@@ -70,7 +69,39 @@ export async function resolvePunchType(
   log: any,
   processedEmpDays?: Set<string>
 ): Promise<string> {
-  return getPunchType(log);
+  const tzOffset = 6 * 60 * 60 * 1000;
+  const localDate = new Date(timestamp.getTime() + tzOffset);
+  const dateStr = `${localDate.getUTCFullYear()}-${localDate.getUTCMonth() + 1}-${localDate.getUTCDate()}`;
+  const key = `${employeeId}_${dateStr}`;
+
+  if (processedEmpDays) {
+    // Manual sync (batch mode): use memory set
+    if (!processedEmpDays.has(key)) {
+      processedEmpDays.add(key);
+      return 'CheckIn';
+    } else {
+      return 'CheckOut';
+    }
+  }
+
+  // Real-time listener: query database for today's existing logs
+  const startOfDayLocal = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0, 0));
+  const endOfDayLocal = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 23, 59, 59, 999));
+  
+  const startOfTodayUTC = new Date(startOfDayLocal.getTime() - tzOffset);
+  const endOfTodayUTC = new Date(endOfDayLocal.getTime() - tzOffset);
+
+  const count = await prisma.attendanceLog.count({
+    where: {
+      employeeId: employeeId,
+      timestamp: {
+        gte: startOfTodayUTC,
+        lte: endOfTodayUTC
+      }
+    }
+  });
+
+  return count === 0 ? 'CheckIn' : 'CheckOut';
 }
 
 /**
