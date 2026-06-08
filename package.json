@@ -59,9 +59,7 @@
     "tailwindcss": "^4.1.8",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "zkteco-js": "^1.7.1"
-  },
-  "devDependencies": {
+    "zkteco-js": "^1.7.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express-serve-static-core": "^5.1.1",
