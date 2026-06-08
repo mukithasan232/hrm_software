@@ -128,7 +128,8 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     const logs = await prisma.attendanceLog.findMany({
       where: { timestamp: { gte: startOfToday, lte: endOfToday } },
-      take: 50,
+      take: 15,
+      distinct: ['employeeId'],
       include: { user: { select: { name: true } } },
       orderBy: { timestamp: 'desc' }
     });

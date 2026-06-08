@@ -59,10 +59,10 @@ export default function DashboardOverview() {
     if (user) {
       fetchDashboardData();
 
-      // Robust 5-second polling to fetch latest active presence strictly from the DB
+      // Robust 3-second polling to fetch latest active presence strictly from the DB
       const intervalId = setInterval(() => {
         pollLiveActivity();
-      }, 5000);
+      }, 3000);
 
       return () => clearInterval(intervalId);
     }
@@ -183,11 +183,12 @@ export default function DashboardOverview() {
                   </div>
 
                   {/* Status Badge */}
-                  <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${log.punchType === 'CheckIn'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                      : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
-                    }`}>
-                    {log.punchType === 'CheckIn' ? t('checkin') : t('checkout')}
+                  <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${
+                    log.punchType?.toLowerCase() === 'checkout'
+                      ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
+                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                  }`}>
+                    {log.punchType?.toLowerCase() === 'checkout' ? t('checkout') : t('checkin')}
                   </div>
                 </div>
               ))

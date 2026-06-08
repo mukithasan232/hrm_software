@@ -60,10 +60,10 @@ export default function AttendancePage() {
   useEffect(() => {
     fetchEmployees();
 
-    // Robust 5-second polling to fetch latest data automatically
+    // Robust 3-second polling to fetch latest data automatically
     const intervalId = setInterval(() => {
       fetchLogs(true);
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(intervalId);
   }, [dateRange]);
@@ -169,7 +169,7 @@ export default function AttendancePage() {
             <span className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">{t('live') || 'Live'}</span>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-slate-500 dark:text-gray-400 text-sm">{totalLogs} {t('total')} {t('attendanceLogs')}.</p>
+            <p className="text-slate-500 dark:text-gray-400 text-sm">{filteredLogs.length} {t('total')} {t('attendanceLogs')}.</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
