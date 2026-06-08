@@ -18,9 +18,9 @@ const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
 
 export function parseDhakaTimestamp(rawTimestamp: any): Date {
-  const rawStr = typeof rawTimestamp === 'string' ? rawTimestamp : new Date(rawTimestamp).toISOString().replace('T', ' ').substring(0, 19);
-  const correctUtcDate = new Date(rawStr + '+06:00');
-  return correctUtcDate;
+  const parsedDeviceTime = new Date(rawTimestamp).getTime();
+  const trueUtcTime = new Date(parsedDeviceTime - (6 * 60 * 60 * 1000));
+  return trueUtcTime;
 }
 
 // ─── Error Classification ──────────────────────────────────────────────────────
@@ -55,9 +55,8 @@ function createZK(): InstanceType<typeof ZKLib> {
 }
 
 // ─── Punch type resolver ───────────────────────────────────────────────────────
-export function getPunchType(log: any): string {
-  const rawState = String(log.state || log.type || log.punchType || log.punch).trim();
-  const punchType = (rawState === '1' || rawState.toLowerCase() === 'checkout' || rawState.toLowerCase() === 'out') ? 'CheckOut' : 'CheckIn';
+export function getPunchType(record: any): string {
+  const punchType = (record.state === 0 || record.type === 0) ? 'CheckIn' : 'CheckOut';
   return punchType;
 }
 
