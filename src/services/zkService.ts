@@ -18,9 +18,9 @@ const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
 
 export function parseDhakaTimestamp(rawTimestamp: any): Date {
-  const parsedDeviceTime = new Date(rawTimestamp).getTime();
-  const trueUtcTime = new Date(parsedDeviceTime - (6 * 60 * 60 * 1000));
-  return trueUtcTime;
+  const rawDate = new Date(rawTimestamp);
+  const localDhakaTime = new Date(rawDate.getTime() - (6 * 60 * 60 * 1000));
+  return localDhakaTime;
 }
 
 // ─── Error Classification ──────────────────────────────────────────────────────
@@ -296,12 +296,22 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     await connectProperly(zk);
     console.log(`[ZKService] ✅ Connected to ${currentZkIp} (${zk.connectionType})`);
 
-    // Nuclear Database Reset (Before Sync)
+    // Total Cleanse: Strip Database Pollution for 2026-06-09
     try {
+      const tzOffset = 6 * 60 * 60 * 1000;
+      const startOfTargetDay = new Date(Date.UTC(2026, 5, 9, 0, 0, 0, 0) - tzOffset);
+      const endOfTargetDay = new Date(Date.UTC(2026, 5, 9, 23, 59, 59, 999) - tzOffset);
+
       await prisma.attendanceLog.deleteMany({
-        where: { deviceId: { not: 'Manual Entry' } }
+        where: { 
+          deviceId: { not: 'Manual Entry' },
+          timestamp: {
+            gte: startOfTargetDay,
+            lte: endOfTargetDay
+          }
+        }
       });
-      console.log('[ZKService] 🧹 Wiped all non-manual attendance logs for a fresh sync.');
+      console.log('[ZKService] 🧹 Wiped corrupted device logs for 2026-06-09.');
     } catch (e) {
       console.error('[ZKService] Failed to wipe DB:', e);
     }
