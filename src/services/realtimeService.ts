@@ -107,7 +107,19 @@ export const runWithDeviceLock = async <T>(operation: () => Promise<T>): Promise
       // Disconnect existing realtime socket to free the device port
       if (zkInstance) {
         console.log('[RealtimeService] ⏸️ Pausing realtime listener to free device port...');
-        try { await zkInstance.disconnect(); } catch (_) { }
+        try {
+          if (zkInstance.socket && typeof zkInstance.socket.removeAllListeners === 'function') {
+            zkInstance.socket.removeAllListeners();
+          }
+          if (zkInstance.socket && typeof zkInstance.socket.removeListener === 'function') {
+            // Some versions or internal calls might expect this
+          }
+          if (typeof zkInstance.disconnect === 'function') {
+            await zkInstance.disconnect();
+          } else if (typeof zkInstance.free === 'function') {
+            await zkInstance.free();
+          }
+        } catch (_) { }
         zkInstance = null;
       }
 
@@ -169,7 +181,16 @@ const connectAndListen = async (): Promise<void> => {
 
       // 2. Clean up any stale connection
       if (zkInstance) {
-        try { await zkInstance.disconnect(); } catch (_) { }
+        try {
+          if (zkInstance.socket && typeof zkInstance.socket.removeAllListeners === 'function') {
+            zkInstance.socket.removeAllListeners();
+          }
+          if (typeof zkInstance.disconnect === 'function') {
+            await zkInstance.disconnect();
+          } else if (typeof zkInstance.free === 'function') {
+            await zkInstance.free();
+          }
+        } catch (_) { }
         zkInstance = null;
       }
       if (heartbeatInterval) {

@@ -195,16 +195,33 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 };
 
 // @desc    Create manual attendance record
-export const createManualLog = async (req: Request, res: Response) => {
+export const createManualLog = async (req: Request, res: Response): Promise<void> => {
   try {
     const { employeeId, timestamp, punchType } = req.body;
+    
+    // Ensure the date string is correctly parsed into a valid ISO-8601 Date object
+    const parsedDate = new Date(timestamp);
+    if (isNaN(parsedDate.getTime())) {
+      res.status(400).json({ message: 'Invalid timestamp format.' });
+      return;
+    }
+
     const log = await prisma.attendanceLog.create({
-      data: { employeeId, timestamp: new Date(timestamp), punchType, deviceId: 'Manual Entry' },
+      data: { 
+        employeeId: String(employeeId), 
+        timestamp: parsedDate, 
+        punchType, 
+        deviceId: 'Manual Entry' 
+      },
       include: { user: { select: { name: true } } }
     });
     res.status(201).json({ message: 'Manual entry created', log });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error', error: error.message });
+    if (error.code === 'P2002') {
+      res.status(400).json({ message: "An attendance record already exists for this exact time." });
+      return;
+    }
+    res.status(500).json({ message: error.message || 'Failed to save entry' });
   }
 };
 
