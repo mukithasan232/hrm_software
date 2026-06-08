@@ -281,9 +281,7 @@ export default function AppearancePage() {
       if (logoFile)    fd.append('logo',    logoFile);
       if (faviconFile) fd.append('favicon', faviconFile);
 
-      const res = await api.put('/settings/appearance', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await api.put('/settings/appearance', fd);
       setSettings(res.data.settings);
       setLogoFile(null);
       setFaviconFile(null);

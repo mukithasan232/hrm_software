@@ -86,7 +86,14 @@ export async function PUT(req: NextRequest) {
     let faviconUrl: string | undefined;
 
     if (contentType.includes('multipart/form-data')) {
-      const formData = await req.formData();
+      let formData: FormData;
+      try {
+        formData = await req.formData();
+      } catch (parseErr: any) {
+        console.error('[AppearancePUT] FormData parsing failed:', parseErr);
+        return NextResponse.json({ message: 'Invalid form data payload. Ensure boundaries are correct.' }, { status: 400 });
+      }
+      
       companyName    = (formData.get('companyName') as string) ?? undefined;
       primaryColor   = (formData.get('primaryColor') as string) ?? undefined;
       secondaryColor = (formData.get('secondaryColor') as string) ?? undefined;
@@ -95,24 +102,37 @@ export async function PUT(req: NextRequest) {
       const faviconFile = formData.get('favicon') as File | null;
 
       const storageDir = path.join(process.cwd(), 'public', 'storage', 'logos');
-      if (!fs.existsSync(storageDir)) {
-        fs.mkdirSync(storageDir, { recursive: true });
+      
+      try {
+        await fs.promises.mkdir(storageDir, { recursive: true });
+      } catch (mkdirErr) {
+        console.error('[Upload Error]: Directory creation failed', mkdirErr);
       }
 
       if (logoFile && logoFile.size > 0) {
-        const ext = path.extname(logoFile.name) || '.png';
-        const filename = `logo_${Date.now()}${ext}`;
-        const filePath = path.join(storageDir, filename);
-        fs.writeFileSync(filePath, Buffer.from(await logoFile.arrayBuffer()));
-        logoUrl = `/storage/logos/${filename}`;
+        try {
+          const originalName = logoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const ext = path.extname(originalName) || '.png';
+          const filename = `logo_${Date.now()}_${originalName}`;
+          const filePath = path.join(storageDir, filename);
+          await fs.promises.writeFile(filePath, Buffer.from(await logoFile.arrayBuffer()));
+          logoUrl = `/storage/logos/${filename}`;
+        } catch (uploadErr) {
+          console.error('[Upload Error]: ', uploadErr);
+        }
       }
 
       if (faviconFile && faviconFile.size > 0) {
-        const ext = path.extname(faviconFile.name) || '.ico';
-        const filename = `favicon_${Date.now()}${ext}`;
-        const filePath = path.join(storageDir, filename);
-        fs.writeFileSync(filePath, Buffer.from(await faviconFile.arrayBuffer()));
-        faviconUrl = `/storage/logos/${filename}`;
+        try {
+          const originalName = faviconFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const ext = path.extname(originalName) || '.ico';
+          const filename = `favicon_${Date.now()}_${originalName}`;
+          const filePath = path.join(storageDir, filename);
+          await fs.promises.writeFile(filePath, Buffer.from(await faviconFile.arrayBuffer()));
+          faviconUrl = `/storage/logos/${filename}`;
+        } catch (uploadErr) {
+          console.error('[Upload Error]: ', uploadErr);
+        }
       }
     } else {
       const body     = await req.json();
@@ -125,11 +145,11 @@ export async function PUT(req: NextRequest) {
 
     // Build partial update (only provided fields)
     const data: Record<string, any> = {};
-    if (companyName    !== undefined) data.companyName    = companyName;
-    if (primaryColor   !== undefined) data.primaryColor   = primaryColor;
-    if (secondaryColor !== undefined) data.secondaryColor = secondaryColor;
-    if (logoUrl        !== undefined) data.logoUrl        = logoUrl;
-    if (faviconUrl     !== undefined) data.faviconUrl     = faviconUrl;
+    if (companyName    !== undefined) data.companyName    = companyName.trim() || 'HRM Portal';
+    if (primaryColor   !== undefined) data.primaryColor   = primaryColor.trim() || '#8b5cf6';
+    if (secondaryColor !== undefined) data.secondaryColor = secondaryColor.trim() || '#06b6d4';
+    if (logoUrl        !== undefined) data.logoUrl        = logoUrl || null;
+    if (faviconUrl     !== undefined) data.faviconUrl     = faviconUrl || null;
 
     const existing = await prisma.tenantSettings.findFirst();
     const result = existing
