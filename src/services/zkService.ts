@@ -18,11 +18,9 @@ const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
 
 export function parseDhakaTimestamp(rawTimestamp: any): Date {
-  const date = rawTimestamp instanceof Date
-    ? rawTimestamp
-    : new Date(String(rawTimestamp).trim());
-  if (isNaN(date.getTime())) return new Date(NaN);
-  return new Date(date.getTime() - DHAKA_OFFSET_MS);
+  const rawStr = typeof rawTimestamp === 'string' ? rawTimestamp : new Date(rawTimestamp).toISOString().replace('T', ' ').substring(0, 19);
+  const correctUtcDate = new Date(rawStr + '+06:00');
+  return correctUtcDate;
 }
 
 // ─── Error Classification ──────────────────────────────────────────────────────
@@ -58,16 +56,9 @@ function createZK(): InstanceType<typeof ZKLib> {
 
 // ─── Punch type resolver ───────────────────────────────────────────────────────
 export function getPunchType(log: any): string {
-  const rawState = log.state !== undefined ? log.state : (log.punch !== undefined ? log.punch : log.type);
-  const strState = String(rawState).trim().toLowerCase();
-  
-  // Strict mapping: only 1/'1'/'out'/'checkout' => CheckOut
-  if (strState === '1' || strState === '5' || strState === 'checkout' || strState === 'out') {
-    return 'CheckOut';
-  }
-  
-  // EVERYTHING else (0, '0', undefined, null, 'in', 'checkin', 2, 3, 4, etc.) => CheckIn
-  return 'CheckIn';
+  const rawState = String(log.state || log.type || log.punchType || log.punch).trim();
+  const punchType = (rawState === '1' || rawState.toLowerCase() === 'checkout' || rawState.toLowerCase() === 'out') ? 'CheckOut' : 'CheckIn';
+  return punchType;
 }
 
 /**
@@ -256,15 +247,14 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     await connectProperly(zk);
     console.log(`[ZKService] ✅ Connected to ${currentZkIp} (${zk.connectionType})`);
 
-    // One-time cleanup of UNKNOWN states to CheckIn
+    // Nuclear Database Reset (Before Sync)
     try {
-      await prisma.attendanceLog.updateMany({
-        where: { punchType: { in: ['UNKNOWN', 'Unknown', 'unknown'] } as any },
-        data: { punchType: 'CheckIn' }
+      await prisma.attendanceLog.deleteMany({
+        where: { deviceId: { not: 'Manual Entry' } }
       });
-      console.log('[ZKService] 🧹 Cleaned up any UNKNOWN punch types in the database.');
+      console.log('[ZKService] 🧹 Wiped all non-manual attendance logs for a fresh sync.');
     } catch (e) {
-      console.error('[ZKService] Failed to clean DB:', e);
+      console.error('[ZKService] Failed to wipe DB:', e);
     }
 
     // 1. Fetch Users first and Upsert them into MariaDB
@@ -363,6 +353,8 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
           }
 
           const punchType = await resolvePunchType(employeeId, timestamp, log, processedEmpDays);
+
+          console.log(`[ZK Sync] Raw Time:`, log.recordTime || log.record_time, '| Raw State:', log.state || log.type || log.punch || log.punchType, '--> DB UTC:', timestamp.toISOString(), '| DB State:', punchType);
 
           await prisma.attendanceLog.upsert({
             where: {
