@@ -144,8 +144,8 @@ model User {
 model TenantSettings {
   id             String   @id @default(uuid())
   companyName    String   @default("HRM Portal")
-  logoUrl        String?
-  faviconUrl     String?
+  logoUrl        String?  @db.LongText
+  faviconUrl     String?  @db.LongText
   primaryColor   String   @default("#8b5cf6")
   secondaryColor String   @default("#06b6d4")
   updatedAt      DateTime @updatedAt

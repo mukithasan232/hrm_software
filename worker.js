@@ -36,12 +36,28 @@ async function syncBiometricData() {
     const zkInstance = new ZKLib(DEVICE_IP, DEVICE_PORT, 10000, 4000);
 
     try {
-        await Promise.race([
-            zkInstance.createSocket().then(() => zkInstance.connect()),
-            new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Connection timeout')), TIMEOUT_MS)
-            )
-        ]);
+        // Attempt TCP first for large payloads
+        try {
+            zkInstance.connectionType = 'tcp';
+            await Promise.race([
+                (zkInstance.ztcp && typeof zkInstance.ztcp.createSocket === 'function' ? zkInstance.ztcp.createSocket() : zkInstance.createSocket()),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('TCP Connection timeout')), TIMEOUT_MS))
+            ]);
+        } catch (tcpErr) {
+            console.warn('[Warn] TCP failed, falling back to UDP...', tcpErr.message);
+            zkInstance.connectionType = 'udp';
+            await Promise.race([
+                (zkInstance.zudp && typeof zkInstance.zudp.createSocket === 'function' ? zkInstance.zudp.createSocket() : zkInstance.createSocket()),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('UDP Connection timeout')), TIMEOUT_MS))
+            ]);
+        }
+
+        if (typeof zkInstance.connect === 'function') {
+            await Promise.race([
+                zkInstance.connect(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Connect method timeout')), 5000))
+            ]);
+        }
         console.log('[Info] Connected to ZKTeco device successfully.');
 
         // BONUS ARCHITECTURAL FIX: Force the hardware clock to sync with the server
@@ -130,8 +146,16 @@ async function syncBiometricData() {
         console.error(`[Error] Sync failed:`, error.message);
     } finally {
         try {
-            await zkInstance.disconnect();
-        } catch (err) {}
+            if (zkInstance && (zkInstance.socket || (zkInstance.zudp && zkInstance.zudp.socket) || (zkInstance.ztcp && zkInstance.ztcp.socket))) {
+                if (typeof zkInstance.disconnect === 'function') {
+                    await zkInstance.disconnect();
+                } else if (typeof zkInstance.free === 'function') {
+                    await zkInstance.free();
+                }
+            }
+        } catch (err) {
+            console.error('[Error] Cleanup failed in finally block:', err.message);
+        }
     }
 }
 

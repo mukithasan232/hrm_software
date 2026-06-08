@@ -363,7 +363,7 @@ export default function AppearancePage() {
               {settings.logoUrl && !logoFile && (
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400 px-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  Current: <a href={settings.logoUrl} target="_blank" rel="noopener noreferrer" className="truncate hover:underline" style={{ color: p }}>{settings.logoUrl.split('/').pop()}</a>
+                  Current: <span className="truncate" style={{ color: p }}>{settings.logoUrl.startsWith('data:') ? 'Base64 Image Active' : settings.logoUrl.split('/').pop()}</span>
                 </div>
               )}
             </div>
@@ -376,7 +376,7 @@ export default function AppearancePage() {
               {settings.faviconUrl && !faviconFile && (
                 <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400 px-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                  Current: <a href={settings.faviconUrl} target="_blank" rel="noopener noreferrer" className="truncate hover:underline" style={{ color: s }}>{settings.faviconUrl.split('/').pop()}</a>
+                  Current: <span className="truncate" style={{ color: s }}>{settings.faviconUrl.startsWith('data:') ? 'Base64 Favicon Active' : settings.faviconUrl.split('/').pop()}</span>
                 </div>
               )}
             </div>

@@ -66,7 +66,7 @@ function createZK(): InstanceType<typeof ZKLib> {
 
   const zk = new ZKLib(ZK_IP, ZK_PORT, ZK_TIMEOUT, ZK_INPORT);
   zk.password = ZK_PASSWORD;
-  zk.connectionType = 'udp';
+  zk.connectionType = 'tcp'; // Prioritize TCP for stable payloads
   return zk;
 }
 
@@ -162,17 +162,19 @@ export async function healTodaysData(): Promise<void> {
 
 // ─── Connection Helper ─────────────────────────────────────────────────────────────────
 async function connectProperly(zk: any): Promise<void> {
-  if (zk.connectionType === 'udp') {
-    // Explicitly bypass zk.createSocket() which hardcodes a TCP attempt first
-    if (zk.zudp && typeof zk.zudp.createSocket === 'function') {
-      await zk.zudp.createSocket();
+  // Try TCP first
+  try {
+    zk.connectionType = 'tcp';
+    if (zk.ztcp && typeof zk.ztcp.createSocket === 'function') {
+      await zk.ztcp.createSocket();
     } else {
       await zk.createSocket();
     }
-  } else {
-    // TCP: use the ztcp sub-socket (not zudp)
-    if (zk.ztcp?.createSocket) {
-      await zk.ztcp.createSocket();
+  } catch (err) {
+    console.warn('[ZKService] TCP connection failed, falling back to UDP...');
+    zk.connectionType = 'udp';
+    if (zk.zudp && typeof zk.zudp.createSocket === 'function') {
+      await zk.zudp.createSocket();
     } else {
       await zk.createSocket();
     }
@@ -182,17 +184,20 @@ async function connectProperly(zk: any): Promise<void> {
   await new Promise(r => setTimeout(r, 1000));
 
   try {
-    // Implement a strict 5-second race timeout because zkteco-js .connect() sometimes hangs infinitely
-    await Promise.race([
-      zk.connect(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout - device unreachable')), 5000))
-    ]);
+    // Only call connect() if it actually exists in the library version
+    if (typeof zk.connect === 'function') {
+      await Promise.race([
+        zk.connect(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout - device unreachable')), 5000))
+      ]);
+    }
     console.log(`[ZKService] 🔌 Connected using ${zk.connectionType.toUpperCase()}`);
 
-    // Log real-time logs to catch punches as they happen
-    zk.getRealTimeLogs((data: any) => {
-      console.log('[ZKService] 🕒 Real-time Log Received:', data);
-    });
+    if (typeof zk.getRealTimeLogs === 'function') {
+      zk.getRealTimeLogs((data: any) => {
+        console.log('[ZKService] 🕒 Real-time Log Received:', data);
+      });
+    }
   } catch (error: any) {
     console.error('[ZKTeco Connection Error]:', error.message);
     throw error;
@@ -300,25 +305,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     const rawLogs = await getAttendanceAsync(zk);
 
-    // Clear today's logs for fresh start before sync
-    const tzOffset = 6 * 60 * 60 * 1000; // GMT+6
-    const nowBD = new Date(new Date().getTime() + tzOffset);
-    const year = nowBD.getUTCFullYear();
-    const month = nowBD.getUTCMonth();
-    const date = nowBD.getUTCDate();
 
-    const startOfToday = new Date(Date.UTC(year, month, date - 1, 18, 0, 0, 0));
-    const endOfToday = new Date(Date.UTC(year, month, date, 17, 59, 59, 999));
-
-    console.log(`[ZKService] 🗑️ Deleting today's logs for clean slate: ${startOfToday.toISOString()} to ${endOfToday.toISOString()}`);
-    await prisma.attendanceLog.deleteMany({
-      where: {
-        timestamp: {
-          gte: startOfToday,
-          lte: endOfToday
-        }
-      }
-    });
 
     if (rawLogs.length === 0) {
       // Emit socket event to frontend via global.io
@@ -422,7 +409,17 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     console.error(`[ZKService] ❌ ${reason}`);
     throw new Error(reason);
   } finally {
-    try { await zk.disconnect(); } catch (_) { }
+    try {
+      if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
+        if (typeof zk.disconnect === 'function') {
+          await zk.disconnect();
+        } else if (typeof zk.free === 'function') {
+          await zk.free();
+        }
+      }
+    } catch (err: any) {
+      console.error('[ZKService] ❌ Cleanup failed:', err.message);
+    }
   }
 };
 
@@ -478,7 +475,17 @@ export const getDeviceUsers = async (): Promise<any[]> => {
   } catch (err: any) {
     throw new Error(classifyError(err));
   } finally {
-    try { await zk.disconnect(); } catch (_) { }
+    try {
+      if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
+        if (typeof zk.disconnect === 'function') {
+          await zk.disconnect();
+        } else if (typeof zk.free === 'function') {
+          await zk.free();
+        }
+      }
+    } catch (err: any) {
+      console.error('[ZKService] ❌ Cleanup failed:', err.message);
+    }
   }
 };
 
@@ -493,7 +500,17 @@ export const pingDevice = async (): Promise<{ reachable: boolean; info?: any; er
   } catch (err: any) {
     return { reachable: false, error: classifyError(err) };
   } finally {
-    try { await zk.disconnect(); } catch (_) { }
+    try {
+      if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
+        if (typeof zk.disconnect === 'function') {
+          await zk.disconnect();
+        } else if (typeof zk.free === 'function') {
+          await zk.free();
+        }
+      }
+    } catch (err: any) {
+      console.error('[ZKService] ❌ Cleanup failed:', err.message);
+    }
   }
 };
 

@@ -91,24 +91,19 @@ export async function PUT(req: NextRequest) {
       primaryColor   = (formData.get('primaryColor') as string) ?? undefined;
       secondaryColor = (formData.get('secondaryColor') as string) ?? undefined;
 
-      const brandDir = path.join(process.cwd(), 'public', 'uploads', 'brand');
-      if (!fs.existsSync(brandDir)) fs.mkdirSync(brandDir, { recursive: true });
-
       const logoFile    = formData.get('logo') as File | null;
       const faviconFile = formData.get('favicon') as File | null;
 
       if (logoFile && logoFile.size > 0) {
-        const ext      = path.extname(logoFile.name) || '.png';
-        const filename = `logo-${Date.now()}${ext}`;
-        fs.writeFileSync(path.join(brandDir, filename), Buffer.from(await logoFile.arrayBuffer()));
-        logoUrl = `/api/uploads/brand/${filename}`;
+        const mimeType = logoFile.type || 'image/png';
+        const base64Data = Buffer.from(await logoFile.arrayBuffer()).toString('base64');
+        logoUrl = `data:${mimeType};base64,${base64Data}`;
       }
 
       if (faviconFile && faviconFile.size > 0) {
-        const ext      = path.extname(faviconFile.name) || '.ico';
-        const filename = `favicon-${Date.now()}${ext}`;
-        fs.writeFileSync(path.join(brandDir, filename), Buffer.from(await faviconFile.arrayBuffer()));
-        faviconUrl = `/api/uploads/brand/${filename}`;
+        const mimeType = faviconFile.type || 'image/x-icon';
+        const base64Data = Buffer.from(await faviconFile.arrayBuffer()).toString('base64');
+        faviconUrl = `data:${mimeType};base64,${base64Data}`;
       }
     } else {
       const body     = await req.json();

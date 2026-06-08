@@ -72,12 +72,12 @@ export default function AttendancePage() {
     setSyncing(true);
     try {
       await api.post('/attendance/sync-users');
-      toast.success('Device sync complete!');
+      toast.success(t('device_sync_complete') || 'Device sync complete!');
     } catch (e: any) {
       console.warn('Device sync skipped/failed:', e.message);
     }
     await fetchLogs(false);
-    toast.success('Latest logs loaded from database!');
+    toast.success(t('logs_loaded_success') || 'Latest logs loaded from database!');
     setSyncing(false);
   };
 
@@ -86,11 +86,11 @@ export default function AttendancePage() {
     try {
       setLoading(true);
       await api.post('/attendance/manual', manualEntry);
-      toast.success('Manual entry added successfully');
+      toast.success(t('manual_entry_success') || 'Manual entry added successfully');
       setIsModalOpen(false);
       fetchLogs();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to add manual entry');
+      toast.error(error.response?.data?.message || t('manual_entry_failed') || 'Failed to add manual entry');
     } finally {
       setLoading(false);
     }
@@ -166,7 +166,7 @@ export default function AttendancePage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">Live</span>
+            <span className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">{t('live') || 'Live'}</span>
           </div>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-slate-500 dark:text-gray-400 text-sm">{totalLogs} {t('total')} {t('attendanceLogs')}.</p>
@@ -197,7 +197,7 @@ export default function AttendancePage() {
             disabled={syncing}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10"
           >
-            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Sync Data
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> {t('sync_data') || 'Sync Data'}
           </button>
 
           <button 
@@ -295,7 +295,7 @@ export default function AttendancePage() {
                     <td className="px-6 py-4 font-mono text-slate-500 dark:text-gray-500 text-sm">
                       {row.deviceId === 'Manual Entry' ? (
                         <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
-                          <Clock className="w-3 h-3" /> Manual
+                          <Clock className="w-3 h-3" /> {t('manual') || 'Manual'}
                         </span>
                       ) : row.deviceId}
                     </td>
@@ -312,14 +312,14 @@ export default function AttendancePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Manual Attendance</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('manual_attendance') || 'Manual Attendance'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
             <form onSubmit={handleManualSubmit} className="px-4 sm:px-6 py-4 space-y-4 md:space-y-6">
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">Select Employee</label>
+                <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('select_employee') || 'Select Employee'}</label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500" />
                   <select 
@@ -328,7 +328,7 @@ export default function AttendancePage() {
                     value={manualEntry.employeeId}
                     onChange={(e) => setManualEntry({...manualEntry, employeeId: e.target.value})}
                   >
-                    <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Select an employee...</option>
+                    <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('select_an_employee') || 'Select an employee...'}</option>
                     {employees.map(emp => (
                       <option key={emp.id} value={emp.employeeId} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{emp.name} (ID: {emp.employeeId})</option>
                     ))}
@@ -338,18 +338,18 @@ export default function AttendancePage() {
   
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">Punch Type</label>
+                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('punchType') || 'Punch Type'}</label>
                   <select 
                     className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none font-semibold"
                     value={manualEntry.punchType}
                     onChange={(e) => setManualEntry({...manualEntry, punchType: e.target.value})}
                   >
-                    <option value="CheckIn" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Check In</option>
-                    <option value="CheckOut" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Check Out</option>
+                    <option value="CheckIn" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('checkIn') || 'Check In'}</option>
+                    <option value="CheckOut" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('checkOut') || 'Check Out'}</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">Time</label>
+                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('time') || 'Time'}</label>
                   <input 
                     type="datetime-local" 
                     className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-semibold"
@@ -365,14 +365,14 @@ export default function AttendancePage() {
                   onClick={() => setIsModalOpen(false)}
                   className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium"
                 >
-                  Cancel
+                  {t('cancel') || 'Cancel'}
                 </button>
                 <button 
                   type="submit"
                   disabled={loading}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : 'Save Entry'}
+                  {loading ? (t('saving') || 'Saving...') : (t('save_entry') || 'Save Entry')}
                 </button>
               </div>
             </form>
