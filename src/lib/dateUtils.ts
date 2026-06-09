@@ -33,8 +33,10 @@ export function toUTCFromBD(
   localTime: string  // "HH:mm" or "HH:mm:ss"
 ): string {
   if (!localDate || !localTime) throw new Error('Date and time are required');
-  const localDateTime = `${localDate}T${localTime}:00`;
-  return fromZonedTime(localDateTime, BD_TZ).toISOString();
+  // Explicitly construct an ISO string with +06:00 to guarantee absolute timezone immunity 
+  // in all browser and Node.js environments.
+  const localDateTimeString = `${localDate}T${localTime}:00+06:00`;
+  return new Date(localDateTimeString).toISOString();
 }
 
 /**

@@ -11,8 +11,8 @@ const BD_TZ = 'Asia/Dhaka';
 
 function getTodayBoundaries(): { start: Date; end: Date } {
   const todayStr = formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd');
-  const startUTC = fromZonedTime(`${todayStr}T00:00:00`, BD_TZ);
-  const endUTC = fromZonedTime(`${todayStr}T23:59:59.999`, BD_TZ);
+  const startUTC = new Date(`${todayStr}T00:00:00+06:00`);
+  const endUTC = new Date(`${todayStr}T23:59:59.999+06:00`);
   return { start: startUTC, end: endUTC };
 }
 
@@ -29,22 +29,24 @@ function getDayBoundaries(filter: string): { start: Date; end: Date } {
     }
     dateStr = formatInTimeZone(targetDate, BD_TZ, 'yyyy-MM-dd');
     
-    const startUTC = fromZonedTime(`${dateStr}T00:00:00`, BD_TZ);
-    const endUTC = fromZonedTime(filter === 'today' || filter === 'yesterday' ? `${dateStr}T23:59:59.999` : `${formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd')}T23:59:59.999`, BD_TZ);
+    const startUTC = new Date(`${dateStr}T00:00:00+06:00`);
+    const targetEndStr = filter === 'today' || filter === 'yesterday' ? dateStr : formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd');
+    const endUTC = new Date(`${targetEndStr}T23:59:59.999+06:00`);
     return { start: startUTC, end: endUTC };
   }
 
   // Handle explicit exact dates (yyyy-MM-dd)
-  const startUTC = fromZonedTime(`${dateStr}T00:00:00`, BD_TZ);
-  const endUTC = fromZonedTime(`${dateStr}T23:59:59.999`, BD_TZ);
+  // Handle explicit exact dates (yyyy-MM-dd)
+  const startUTC = new Date(`${dateStr}T00:00:00+06:00`);
+  const endUTC = new Date(`${dateStr}T23:59:59.999+06:00`);
   return { start: startUTC, end: endUTC };
 }
 
 // @desc    Legacy sync (used by cron job)
 export const syncDeviceLogs = async (req: Request, res: Response) => {
   try {
-    await prisma.attendanceLog.deleteMany({});
-    console.log("🧹 [syncDeviceLogs] Wiped all attendance logs for fresh sync!");
+    await prisma.attendanceLog.deleteMany({ where: { deviceId: { not: 'Manual Entry' } } });
+    console.log("🧹 [syncDeviceLogs] Wiped device attendance logs for fresh sync (Manual Logs preserved)!");
 
     const newRecordsCount = await runWithDeviceLock(() => fetchDeviceLogs());
     res.status(200).json({
@@ -59,8 +61,8 @@ export const syncDeviceLogs = async (req: Request, res: Response) => {
 // @desc    Live sync with full stats
 export const syncLive = async (req: Request, res: Response) => {
   try {
-    await prisma.attendanceLog.deleteMany({});
-    console.log("🧹 [syncLive] Wiped all attendance logs for fresh live sync!");
+    await prisma.attendanceLog.deleteMany({ where: { deviceId: { not: 'Manual Entry' } } });
+    console.log("🧹 [syncLive] Wiped device attendance logs for fresh live sync (Manual Logs preserved)!");
   } catch (err: any) {
     console.error('[SyncLive] Error wiping logs:', err.message);
   }

@@ -2,7 +2,7 @@ import { Server } from 'socket.io';
 // @ts-ignore
 import ZKLib from 'zkteco-js';
 import { prisma } from '../lib/prisma';
-import { getPunchType, resolvePunchType, toUniversalUtc } from './zkService';
+import { getPunchType, resolvePunchType, parseDeviceTime } from './zkService';
 import bcrypt from 'bcryptjs';
 import dgram from 'dgram';
 
@@ -247,7 +247,7 @@ const connectAndListen = async (): Promise<void> => {
             return;
           }
 
-          const parsedTimestamp = toUniversalUtc(new Date(deviceTime));
+          const parsedTimestamp = parseDeviceTime(new Date(deviceTime));
 
           if (isNaN(parsedTimestamp.getTime())) {
             console.error('[RealtimeService] ❌ Invalid timestamp:', deviceTime);

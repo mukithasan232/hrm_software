@@ -16,8 +16,16 @@ const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid
 // To fix: parse the device time as a Date, then subtract 6 hours to get the
 // correct UTC moment before saving to Prisma.
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
-
-export const toUniversalUtc = (date: Date) => new Date(date.getTime() - (6 * 60 * 60 * 1000));
+// Replaces volatile server-timezone-dependent subtraction logic with exact numeric component parsing.
+export const parseDeviceTime = (deviceDate: Date): Date => {
+  const y = deviceDate.getFullYear();
+  const m = String(deviceDate.getMonth() + 1).padStart(2, '0');
+  const d = String(deviceDate.getDate()).padStart(2, '0');
+  const h = String(deviceDate.getHours()).padStart(2, '0');
+  const min = String(deviceDate.getMinutes()).padStart(2, '0');
+  const s = String(deviceDate.getSeconds()).padStart(2, '0');
+  return new Date(`${y}-${m}-${d}T${h}:${min}:${s}+06:00`);
+};
 
 // ─── Error Classification ──────────────────────────────────────────────────────
 function classifyError(err: any): string {
@@ -314,29 +322,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       console.error('[ZKService] Failed to wipe DB:', e);
     }
 
-    // Data Sanitization (One-Time Fix)
-    if (!hasSanitizedManualLogs) {
-      try {
-        const manualLogs = await prisma.attendanceLog.findMany({
-          where: { deviceId: 'Manual Entry' }
-        });
-        
-        // This targets all existing manual entries to strip the 6 hours ahead offset
-        let sanitizedCount = 0;
-        for (const log of manualLogs) {
-          await prisma.attendanceLog.update({
-            where: { id: log.id },
-            data: { timestamp: toUniversalUtc(log.timestamp) }
-          });
-          sanitizedCount++;
-        }
-        
-        hasSanitizedManualLogs = true;
-        console.log(`[ZKService] 🧹 Sanitized ${sanitizedCount} Manual Entry logs (offset -6h).`);
-      } catch (e) {
-        console.error('[ZKService] Failed to sanitize Manual logs:', e);
-      }
-    }
+    // Data sanitization logic has been removed as the root timezone bug is permanently resolved.
 
     // 1. Fetch Users first and Upsert them into MariaDB
     console.log('[ZKService] 👥 Syncing users from device to database...');
@@ -424,9 +410,9 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       for (const log of chunk) {
         try {
           const deviceEmpId = String(log.deviceUserId ?? log.user_id ?? log.userId ?? log.uid);
-          // parseDhakaTimestamp converts the device's local UTC+6 time string
-          // into a proper UTC Date for storage in the database.
-          const timestamp = toUniversalUtc(new Date(log.recordTime || log.record_time));
+          // parseDeviceTime securely converts the device's local Dhaka time
+          // into a proper absolute UTC Date for storage in the database, avoiding server timezone bugs.
+          const timestamp = parseDeviceTime(new Date(log.recordTime || log.record_time));
 
           if (isNaN(timestamp.getTime())) {
             skipped++;
