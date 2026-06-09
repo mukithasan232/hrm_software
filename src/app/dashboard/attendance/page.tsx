@@ -137,14 +137,73 @@ export default function AttendancePage() {
     setIsExporting(true);
     setShowExportMenu(false);
     try {
-      const data = activeLogs.map(log => ({
-        'Employee Name': log.employeeName || 'N/A',
-        'Employee ID': log.employeeId || 'Unknown',
-        'Timestamp': toBDDisplay(log.timestamp, 'dd MMM yyyy, hh:mm:ss a'),
-        'Punch Type': log.punchType === 'CheckOut' ? (t('checkOut') || 'Check Out') : (t('checkIn') || 'Check In'),
-        'Status': log.deviceId === 'Manual Entry' ? 'Manual' : 'Device'
-      }));
-      await exportToExcel(data, `Attendance_Export_${dateRange}_${new Date().toISOString().split('T')[0]}`);
+      // Group logs by Employee and Date
+      const grouped: Record<string, any> = {};
+      activeLogs.forEach(log => {
+        const dateStr = toBDDisplay(log.timestamp, 'yyyy-MM-dd');
+        const key = `${log.employeeId}_${dateStr}`;
+        
+        if (!grouped[key]) {
+          grouped[key] = {
+            employeeId: log.employeeId,
+            employeeName: log.employeeName || 'N/A',
+            date: dateStr,
+            checkIn: null,
+            checkOut: null,
+            checkInRaw: null,
+            checkOutRaw: null,
+          };
+        }
+        
+        const timestampTime = new Date(log.timestamp).getTime();
+        
+        if (log.punchType === 'CheckIn') {
+          if (!grouped[key].checkInRaw || timestampTime < grouped[key].checkInRaw) {
+            grouped[key].checkInRaw = timestampTime;
+            grouped[key].checkIn = toBDDisplay(log.timestamp, 'hh:mm:ss a');
+          }
+        } else if (log.punchType === 'CheckOut' || log.punchType === 'Checkout') {
+          if (!grouped[key].checkOutRaw || timestampTime > grouped[key].checkOutRaw) {
+            grouped[key].checkOutRaw = timestampTime;
+            grouped[key].checkOut = toBDDisplay(log.timestamp, 'hh:mm:ss a');
+          }
+        }
+      });
+
+      const reportData = Object.values(grouped).map(row => {
+        const emp = employees.find(e => e.employeeId === row.employeeId) || {};
+        const basicSalary = emp.baseSalary || 0;
+        const allowances = emp.allowances || 0;
+        
+        let totalHours = 0;
+        let overtimeHours = 0;
+        
+        if (row.checkInRaw && row.checkOutRaw) {
+          const diffMs = row.checkOutRaw - row.checkInRaw;
+          totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
+          if (totalHours > 8) {
+            overtimeHours = totalHours - 8;
+          }
+        }
+
+        const dailyRate = basicSalary / 30;
+        const netPayable = dailyRate + (allowances / 30) + (overtimeHours * (dailyRate / 8) * 1.5);
+
+        return {
+          'Employee Name': row.employeeName,
+          'Employee ID': row.employeeId,
+          'Date': row.date,
+          'Check In': row.checkIn || '-',
+          'Check Out': row.checkOut || '-',
+          'Total Duty Hours': totalHours ? totalHours.toFixed(2) : '0.00',
+          'Overtime Hours': overtimeHours ? overtimeHours.toFixed(2) : '0.00',
+          'Basic Salary': basicSalary,
+          'Other Allowances / Deductions': allowances,
+          'Net Payable': netPayable ? netPayable.toFixed(2) : '0.00'
+        };
+      });
+
+      await exportToExcel(reportData, `Payroll_Report_${dateRange}_${new Date().toISOString().split('T')[0]}`, dateRange === 'all-time' ? 'All Time' : dateRange);
       toast.success("Report downloaded successfully!");
     } catch (error) {
       console.error("Excel Export error:", error);

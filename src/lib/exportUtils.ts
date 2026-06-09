@@ -2,42 +2,79 @@ import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-export const exportToExcel = async (data: any[], filename: string) => {
+export const exportToExcel = async (data: any[], filename: string, reportPeriod: string) => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Export Data');
 
   if (data.length === 0) return;
 
+  // Task 1: Corporate Header Setup
+  // Row 1: Title
+  worksheet.mergeCells('A1:J1');
+  const titleCell = worksheet.getCell('A1');
+  titleCell.value = 'Company Name';
+  titleCell.font = { bold: true, size: 16 };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+  // Row 2: Subtitle
+  worksheet.mergeCells('A2:J2');
+  const subtitleCell = worksheet.getCell('A2');
+  subtitleCell.value = `Attendance & Payroll Report - ${reportPeriod}`;
+  subtitleCell.font = { bold: true, size: 12, italic: true };
+  subtitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+  // Row 3: Empty spacing
+  worksheet.addRow([]);
+
+  // Task 2: Data Headers (Row 4)
   const headers = Object.keys(data[0]);
   worksheet.addRow(headers);
 
-  // Style header
-  const headerRow = worksheet.getRow(1);
+  // Task 4: Professional Styling for Header Row (Row 4)
+  const headerRow = worksheet.getRow(4);
   headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
   headerRow.eachCell((cell) => {
     cell.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF4F46E5' } // Indigo color
+      fgColor: { argb: 'FF4F46E5' } // Indigo/Light Blue
+    };
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
     };
   });
 
   // Add data rows
   data.forEach((item) => {
-    worksheet.addRow(Object.values(item));
+    const row = worksheet.addRow(Object.values(item));
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
   });
 
-  // Auto-size columns
-  worksheet.columns.forEach((column) => {
+  // Task 4: Dynamically adjust column widths
+  worksheet.columns.forEach((column, index) => {
     let maxLength = 0;
-    column.eachCell({ includeEmpty: true }, (cell) => {
-      const columnLength = cell.value ? cell.value.toString().length : 10;
-      if (columnLength > maxLength) {
-        maxLength = columnLength;
+    column.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+      if (rowNumber > 3) { // Only consider header and data rows
+        const columnLength = cell.value ? cell.value.toString().length : 10;
+        if (columnLength > maxLength) {
+          maxLength = columnLength;
+        }
       }
     });
-    column.width = maxLength < 10 ? 10 : maxLength + 2;
+    // Give "Employee Name" extra width naturally
+    column.width = maxLength < 12 ? 12 : maxLength + 2;
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -68,7 +105,6 @@ export const exportToPDF = async (elementId: string, filename: string, title: st
   const pdfWidth = pdf.internal.pageSize.getWidth();
   const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-  // Add Professional Header
   pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
   pdf.text(title, 14, 15);
@@ -77,7 +113,6 @@ export const exportToPDF = async (elementId: string, filename: string, title: st
   pdf.setFont('helvetica', 'normal');
   pdf.text(`Generated Date: ${new Date().toLocaleString()}`, 14, 22);
 
-  // Add Image below header
   pdf.addImage(imgData, 'PNG', 10, 30, pdfWidth - 20, pdfHeight - 20);
 
   pdf.save(`${filename}.pdf`);
