@@ -14,30 +14,30 @@ const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_UR
 // ─── Country Code List ────────────────────────────────────────────────────────
 const COUNTRY_CODES = [
   { flag: '🇧🇩', code: '+880', country: 'Bangladesh' },
-  { flag: '🇺🇸', code: '+1',   country: 'USA / Canada' },
-  { flag: '🇬🇧', code: '+44',  country: 'United Kingdom' },
-  { flag: '🇦🇺', code: '+61',  country: 'Australia' },
-  { flag: '🇮🇳', code: '+91',  country: 'India' },
-  { flag: '🇵🇰', code: '+92',  country: 'Pakistan' },
+  { flag: '🇺🇸', code: '+1', country: 'USA / Canada' },
+  { flag: '🇬🇧', code: '+44', country: 'United Kingdom' },
+  { flag: '🇦🇺', code: '+61', country: 'Australia' },
+  { flag: '🇮🇳', code: '+91', country: 'India' },
+  { flag: '🇵🇰', code: '+92', country: 'Pakistan' },
   { flag: '🇸🇦', code: '+966', country: 'Saudi Arabia' },
   { flag: '🇦🇪', code: '+971', country: 'UAE' },
   { flag: '🇶🇦', code: '+974', country: 'Qatar' },
   { flag: '🇰🇼', code: '+965', country: 'Kuwait' },
-  { flag: '🇸🇬', code: '+65',  country: 'Singapore' },
-  { flag: '🇲🇾', code: '+60',  country: 'Malaysia' },
-  { flag: '🇯🇵', code: '+81',  country: 'Japan' },
-  { flag: '🇰🇷', code: '+82',  country: 'South Korea' },
-  { flag: '🇨🇳', code: '+86',  country: 'China' },
-  { flag: '🇳🇱', code: '+31',  country: 'Netherlands' },
-  { flag: '🇩🇪', code: '+49',  country: 'Germany' },
-  { flag: '🇫🇷', code: '+33',  country: 'France' },
-  { flag: '🇮🇹', code: '+39',  country: 'Italy' },
-  { flag: '🇨🇦', code: '+1',   country: 'Canada' },
-  { flag: '🇧🇷', code: '+55',  country: 'Brazil' },
-  { flag: '🇷🇺', code: '+7',   country: 'Russia' },
-  { flag: '🇿🇦', code: '+27',  country: 'South Africa' },
+  { flag: '🇸🇬', code: '+65', country: 'Singapore' },
+  { flag: '🇲🇾', code: '+60', country: 'Malaysia' },
+  { flag: '🇯🇵', code: '+81', country: 'Japan' },
+  { flag: '🇰🇷', code: '+82', country: 'South Korea' },
+  { flag: '🇨🇳', code: '+86', country: 'China' },
+  { flag: '🇳🇱', code: '+31', country: 'Netherlands' },
+  { flag: '🇩🇪', code: '+49', country: 'Germany' },
+  { flag: '🇫🇷', code: '+33', country: 'France' },
+  { flag: '🇮🇹', code: '+39', country: 'Italy' },
+  { flag: '🇨🇦', code: '+1', country: 'Canada' },
+  { flag: '🇧🇷', code: '+55', country: 'Brazil' },
+  { flag: '🇷🇺', code: '+7', country: 'Russia' },
+  { flag: '🇿🇦', code: '+27', country: 'South Africa' },
   { flag: '🇳🇬', code: '+234', country: 'Nigeria' },
-  { flag: '🇪🇬', code: '+20',  country: 'Egypt' },
+  { flag: '🇪🇬', code: '+20', country: 'Egypt' },
 ] as const;
 
 /** Splits a stored phone string like '+880 1XXXXXXXXX' → { code: '+880', local: '1XXXXXXXXX' } */
@@ -87,7 +87,7 @@ export default function ProfilePage() {
         phone: rawPhone,
         facebook: (user as any).facebook || '',
         linkedin: (user as any).linkedin || '',
-        github:   (user as any).github   || '',
+        github: (user as any).github || '',
       });
     }
   }, [user]);
@@ -193,8 +193,8 @@ export default function ProfilePage() {
                 />
               ) : (
                 <div className="h-28 w-28 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto bg-gradient-to-tr from-brand-primary to-brand-secondary">
-            {initials}
-          </div>
+                  {initials}
+                </div>
               )}
               <button
                 onClick={() => fileRef.current?.click()}
@@ -245,16 +245,16 @@ export default function ProfilePage() {
                 <Printer className="w-3.5 h-3.5" /> Print
               </button>
             </div>
-            
+
             <div className="print-only-id-card relative overflow-hidden rounded-2xl border border-white/20 bg-slate-900 shadow-2xl p-6 text-center text-white isolate">
               {/* Glassmorphism background effects */}
               <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-indigo-500/30 blur-2xl -z-10" />
               <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-purple-500/30 blur-2xl -z-10" />
-              
+
               <div className="mb-4 font-black text-lg tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 uppercase">
                 {brand?.companyName?.replace('Portal', '').trim() || 'HRM SYSTEM'}
               </div>
-              
+
               <div className="mb-4">
                 {avatarSrc ? (
                   <img src={avatarSrc} alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-white/20 mx-auto shadow-lg" />
@@ -264,14 +264,14 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
-              
+
               <h3 className="font-bold text-xl mb-1">{user?.name}</h3>
               <p className="text-blue-300 font-semibold text-xs mb-5">{user?.designation || 'Employee'}</p>
-              
+
               <div className="bg-white rounded-xl p-2.5 shadow-inner inline-block mb-3">
                 <QRCodeSVG value={(user as any)?.employeeId || 'EMP-UNKNOWN'} size={70} />
               </div>
-              
+
               <div className="text-xs font-mono text-slate-300 tracking-widest bg-black/20 py-1.5 rounded-lg border border-white/10">
                 {(user as any)?.employeeId || '—'}
               </div>
@@ -318,9 +318,8 @@ export default function ProfilePage() {
                         </span>
                         <span className="tabular-nums">{countryCode}</span>
                         <ChevronDown
-                          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
-                            phoneDropOpen ? 'rotate-180' : ''
-                          }`}
+                          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${phoneDropOpen ? 'rotate-180' : ''
+                            }`}
                         />
                       </button>
 
@@ -339,11 +338,10 @@ export default function ProfilePage() {
                                 handlePhoneChange(code, localPhone);
                                 setPhoneDropOpen(false);
                               }}
-                              className={`flex items-center gap-2.5 px-3 py-2.5 cursor-pointer text-sm transition-colors ${
-                                countryCode === code
+                              className={`flex items-center gap-2.5 px-3 py-2.5 cursor-pointer text-sm transition-colors ${countryCode === code
                                   ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold'
                                   : 'text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10'
-                              }`}
+                                }`}
                             >
                               <span className="text-base flex-shrink-0">{flag}</span>
                               <span className="flex-1 truncate">{country}</span>
@@ -416,7 +414,7 @@ export default function ProfilePage() {
               {/* Facebook */}
               <div className="space-y-1">
                 <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.428c0-3.007 1.792-4.669 4.532-4.669 1.313 0 2.686.234 2.686.234v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+                  <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.428c0-3.007 1.792-4.669 4.532-4.669 1.313 0 2.686.234 2.686.234v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" /></svg>
                   {t('facebookLabel')}
                 </label>
                 <div className="flex items-center rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 focus-within:ring-2 focus-within:ring-blue-500/25 transition-all overflow-hidden">
@@ -434,7 +432,7 @@ export default function ProfilePage() {
               {/* LinkedIn */}
               <div className="space-y-1">
                 <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-sky-600" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                  <svg className="w-3.5 h-3.5 text-sky-600" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
                   {t('linkedinLabel')}
                 </label>
                 <div className="flex items-center rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 focus-within:ring-2 focus-within:ring-blue-500/25 transition-all overflow-hidden">
@@ -452,7 +450,7 @@ export default function ProfilePage() {
               {/* GitHub */}
               <div className="space-y-1">
                 <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-slate-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                  <svg className="w-3.5 h-3.5 text-slate-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg>
                   {t('githubLabel')}
                 </label>
                 <div className="flex items-center rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 focus-within:ring-2 focus-within:ring-blue-500/25 transition-all overflow-hidden">
