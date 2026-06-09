@@ -91,9 +91,17 @@ export const exportToExcel = async (data: any[], filename: string, reportPeriod:
 
 export const exportToPDF = async (elementId: string, filename: string, title: string) => {
   const element = document.getElementById(elementId);
-  if (!element) throw new Error('Target element not found');
+  if (!element) {
+    console.error("Target PDF element not found in DOM");
+    throw new Error('Target element not found');
+  }
 
-  const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+  const canvas = await html2canvas(element, {
+    scale: 2, // Improves PDF quality
+    useCORS: true, // Allows external images/avatars to render
+    allowTaint: true,
+    logging: true, // Enable temporarily to see what fails in the console
+  });
   const imgData = canvas.toDataURL('image/png');
   
   const pdf = new jsPDF({
