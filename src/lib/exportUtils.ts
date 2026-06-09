@@ -90,17 +90,22 @@ export const exportToExcel = async (data: any[], filename: string, reportPeriod:
 };
 
 export const exportToPDF = async (elementId: string, filename: string, title: string) => {
-  const element = document.getElementById(elementId);
-  if (!element) {
-    console.error("Target PDF element not found in DOM");
-    throw new Error('Target element not found');
-  }
+  const element = document.getElementById('pdf-export-content');
+  if (!element) throw new Error("Target PDF element ID 'pdf-export-content' is missing in JSX.");
 
   const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
-    logging: false,
-    windowWidth: element.scrollWidth,
+    scrollY: -window.scrollY,
+    windowWidth: document.documentElement.offsetWidth,
+    onclone: (clonedDoc) => {
+      // Temporarily remove strict widths and overflow hidden on the clone
+      const target = clonedDoc.getElementById('pdf-export-content');
+      if (target) {
+        target.style.overflow = 'visible';
+        target.style.width = 'max-content';
+      }
+    }
   });
   const imgData = canvas.toDataURL('image/png');
   

@@ -226,11 +226,11 @@ export default function AttendancePage() {
     setShowExportMenu(false);
     try {
       await new Promise(resolve => setTimeout(resolve, 300));
-      await exportToPDF('attendance-table-container', `Attendance_Report_${dateRange}`, 'Company Name - Attendance Report');
+      await exportToPDF('pdf-export-content', `Attendance_Report_${dateRange}`, 'Company Name - Attendance Report');
       toast.success("PDF Downloaded!");
-    } catch (error) {
-      console.error("PDF Export error:", error);
-      toast.error("An error occurred during PDF export.");
+    } catch (error: any) {
+      console.error('[PDF Export Error]:', error);
+      toast.error(`Export Failed: ${error.message || "Unknown error"}`);
     } finally {
       setIsExporting(false);
     }
@@ -399,7 +399,7 @@ export default function AttendancePage() {
             />
           </div>
         </div>
-        <div id="attendance-table-container" className="w-full overflow-x-auto whitespace-nowrap scrollbar-hide bg-white dark:bg-slate-900 rounded-lg">
+        <div id="pdf-export-content" className="w-full overflow-x-auto whitespace-nowrap scrollbar-hide bg-white dark:bg-slate-900 rounded-lg">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
