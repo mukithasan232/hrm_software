@@ -148,7 +148,7 @@ export default function LeavesPage() {
                 {canManage ? 'All Leave Requests' : 'My Leave History'}
               </h2>
             </div>
-            <div className="overflow-x-auto">
+            <div className="w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">

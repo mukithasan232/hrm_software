@@ -423,7 +423,7 @@ export default function EmployeesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="p-6 overflow-y-auto space-y-5">
+            <form onSubmit={handleAddSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Full Name */}
                 <div className="space-y-1.5">
@@ -527,7 +527,7 @@ export default function EmployeesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleEditSubmit} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Name */}
                 <div className="space-y-1.5">
@@ -583,7 +583,7 @@ export default function EmployeesPage() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
-            <div className="p-6 text-center space-y-4">
+            <div className="p-4 sm:p-6 text-center space-y-4">
               <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
                 <Trash2 className="w-7 h-7 text-red-500" />
               </div>
