@@ -57,9 +57,22 @@ export default function AttendancePage() {
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
       setLogs(logsArray);
       setTotalLogs(data?.total ?? logsArray.length);
-      setCheckInCount(data?.checkInCount ?? 0);
-      setCheckOutCount(data?.checkOutCount ?? 0);
-      setManualCount(data?.manualCount ?? 0);
+      // Robust Case-Insensitive Filtering
+      const checkIns = logsArray.filter((log: any) => {
+        const pt = log.punchType?.toLowerCase().replace(/\s+/g, '');
+        return pt === 'checkin';
+      }).length;
+
+      const checkOuts = logsArray.filter((log: any) => {
+        const pt = log.punchType?.toLowerCase().replace(/\s+/g, '');
+        return pt === 'checkout';
+      }).length;
+
+      const manuals = logsArray.filter((log: any) => log.deviceId === 'Manual Entry').length;
+
+      setCheckInCount(checkIns);
+      setCheckOutCount(checkOuts);
+      setManualCount(manuals);
     } catch {
       toast.error('Failed to load attendance logs');
     } finally {
