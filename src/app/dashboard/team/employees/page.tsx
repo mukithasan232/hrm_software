@@ -50,22 +50,6 @@ function DesignationSelect({
   designations: Designation[];
   required?: boolean;
 }) {
-  if (designations.length === 0) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 rounded-xl">
-        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-        <span className="text-xs text-amber-700 dark:text-amber-400 font-semibold">
-          No designations yet —{' '}
-          <Link
-            href="/dashboard/team/designations"
-            className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
-          >
-            create one first
-          </Link>
-        </span>
-      </div>
-    );
-  }
   return (
     <select
       required={required}
@@ -74,11 +58,14 @@ function DesignationSelect({
       className={fieldCls}
     >
       <option value="">— Select Designation —</option>
-      {designations.map(d => (
-        <option key={d.id} value={d.id}>
-          {d.name}
-        </option>
-      ))}
+      {['Owner', 'Manager', 'HR', 'Employee'].map(name => {
+        const desig = designations.find(d => d.name.toLowerCase() === name.toLowerCase());
+        return (
+          <option key={name} value={desig ? desig.id : name}>
+            {name}
+          </option>
+        );
+      })}
     </select>
   );
 }
@@ -298,19 +285,7 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      {/* No designations warning banner */}
-      {!loading && designations.length === 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 rounded-xl text-sm">
-          <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
-          <p className="text-amber-800 dark:text-amber-300 font-medium">
-            No designations exist yet. Please{' '}
-            <Link href="/dashboard/team/designations" className="font-bold underline underline-offset-2">
-              create a designation
-            </Link>{' '}
-            before adding employees.
-          </p>
-        </div>
-      )}
+      {/* No designations warning banner removed because options are now hardcoded */}
 
       {/* Employee Grid */}
       {loading ? (
@@ -446,7 +421,13 @@ export default function EmployeesPage() {
                 {/* Department */}
                 <div className="space-y-1.5">
                   <label className={labelCls}>Department</label>
-                  <input type="text" value={formDepartment} onChange={e => setFormDepartment(e.target.value)} className={fieldCls} placeholder="e.g. Engineering" />
+                  <select value={formDepartment} onChange={e => setFormDepartment(e.target.value)} className={fieldCls}>
+                    <option value="">— Select Department —</option>
+                    <option value="Graphics & Design">Graphics & Design</option>
+                    <option value="Video Production">Video Production</option>
+                    <option value="Software/Web Development">Software/Web Development</option>
+                    <option value="SEO & Marketing">SEO & Marketing</option>
+                  </select>
                 </div>
 
                 {/* Employee Type */}
@@ -538,7 +519,13 @@ export default function EmployeesPage() {
                 {/* Department */}
                 <div className="space-y-1.5">
                   <label className={labelCls}>Department</label>
-                  <input type="text" value={editDepartment} onChange={e => setEditDepartment(e.target.value)} className={fieldCls} placeholder="e.g. Engineering" />
+                  <select value={editDepartment} onChange={e => setEditDepartment(e.target.value)} className={fieldCls}>
+                    <option value="">— Select Department —</option>
+                    <option value="Graphics & Design">Graphics & Design</option>
+                    <option value="Video Production">Video Production</option>
+                    <option value="Software/Web Development">Software/Web Development</option>
+                    <option value="SEO & Marketing">SEO & Marketing</option>
+                  </select>
                 </div>
 
                 {/* Designation */}

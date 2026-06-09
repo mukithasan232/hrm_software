@@ -184,12 +184,22 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
   try {
     const { id } = (req as any).params as { id: string };
     const { name, designationId, department, baseSalary, isActive, employeeType, zk_enroll_number } = req.body as any;
+    let finalDesignationId = designationId !== undefined ? (designationId || null) : undefined;
+    if (finalDesignationId && !finalDesignationId.includes('-')) {
+      let desig = await prisma.designation.findFirst({
+        where: { name: { equals: finalDesignationId } }
+      });
+      if (!desig) {
+        desig = await prisma.designation.create({ data: { name: finalDesignationId } });
+      }
+      finalDesignationId = desig.id;
+    }
 
     const user = await prisma.user.update({
       where: { id: id as string },
       data: {
         name,
-        designationId: designationId !== undefined ? (designationId || null) : undefined,
+        designationId: finalDesignationId,
         department,
         employeeType: employeeType || undefined,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,
@@ -239,13 +249,24 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     const plainPassword = password || 'password123';
     const hashed = await bcrypt.hash(plainPassword, 10);
 
+    let finalDesignationId = designationId || null;
+    if (finalDesignationId && !finalDesignationId.includes('-')) {
+      let desig = await prisma.designation.findFirst({
+        where: { name: { equals: finalDesignationId } }
+      });
+      if (!desig) {
+        desig = await prisma.designation.create({ data: { name: finalDesignationId } });
+      }
+      finalDesignationId = desig.id;
+    }
+
     const user = await prisma.user.create({
       data: {
         employeeId,
         name,
         email,
         password: hashed,
-        designationId: designationId || null,
+        designationId: finalDesignationId,
         department,
         employeeType: employeeType || 'IN_HOUSE',
         baseSalary: Number(baseSalary) || 0,
