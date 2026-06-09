@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Calculator, Calendar as CalendarIcon, FileText, CheckCircle2, Download } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { SalarySlipPDF } from '@/components/SalarySlipPDF';
 

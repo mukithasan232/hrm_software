@@ -39,7 +39,7 @@
     "eslint-config-next": "16.2.6",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
-    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^2.0.4",
     "js-cookie": "^3.0.5",
     "json2csv": "6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.3",

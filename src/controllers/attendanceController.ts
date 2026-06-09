@@ -157,27 +157,33 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const queryDate = req.query.date as string | undefined;
     const { start, end } = queryDate ? getDayBoundaries(queryDate) : getTodayBoundaries();
 
-    const [uniqueCheckInsToday, uniqueCheckOutsToday] = await Promise.all([
-      prisma.attendanceLog.findMany({ where: { timestamp: { gte: start, lte: end }, punchType: 'CheckIn' }, distinct: ['employeeId'] }),
-      prisma.attendanceLog.findMany({ where: { timestamp: { gte: start, lte: end }, punchType: 'CheckOut' }, distinct: ['employeeId'] })
-    ]);
-
-    const checkedInIds = new Set(uniqueCheckInsToday.map((l: any) => l.employeeId));
-    const checkedOutIds = new Set(uniqueCheckOutsToday.map((l: any) => l.employeeId));
-    const activeNow = Array.from(checkedInIds).filter(id => !checkedOutIds.has(id)).length;
-
-    const logs = await prisma.attendanceLog.findMany({
+    // 1. Fetch all attendance logs for the period, ordered by latest first
+    const todaysLogs = await prisma.attendanceLog.findMany({
       where: { timestamp: { gte: start, lte: end } },
-      take: 15,
-      distinct: ['employeeId'],
       include: { user: { select: { name: true } } },
       orderBy: { timestamp: 'desc' }
     });
 
+    // 2. Filter: Find employees whose MOST RECENT punch is a "Check In"
+    const currentlyPresentLogs: any[] = [];
+    const seenEmployees = new Set();
+    let totalUniqueEmployeesToday = 0;
+
+    for (const log of todaysLogs) {
+      if (!seenEmployees.has(log.employeeId)) {
+        seenEmployees.add(log.employeeId);
+        totalUniqueEmployeesToday++;
+        // If the latest log for this employee is a Check-in, they are still in the office
+        if (log.punchType?.toLowerCase().includes('in')) {
+          currentlyPresentLogs.push(log);
+        }
+      }
+    }
+
     res.status(200).json({
-      totalToday: checkedInIds.size,
-      activeNow,
-      recent: logs.map((log: any) => ({ ...log, employeeName: log.user?.name || 'Unmapped' }))
+      totalToday: totalUniqueEmployeesToday,
+      activeNow: currentlyPresentLogs.length,
+      recent: currentlyPresentLogs.map((log: any) => ({ ...log, employeeName: log.user?.name || 'Unmapped' }))
     });
   } catch (error: any) {
     res.status(500).json({ message: 'Error fetching stats', error: error.message });

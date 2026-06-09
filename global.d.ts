@@ -5,4 +5,4 @@ declare module 'canvas-confetti';
 declare module 'node-zklib';
 declare module 'zkteco-js';
 declare module 'canvas';
-declare module 'html2canvas';
+declare module 'html2canvas-pro';

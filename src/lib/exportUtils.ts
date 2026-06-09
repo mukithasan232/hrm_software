@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 
 export const exportToExcel = async (data: any[], filename: string, reportPeriod: string) => {
   const workbook = new ExcelJS.Workbook();
