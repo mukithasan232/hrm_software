@@ -13,6 +13,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Force-enable scripts so Prisma and other native deps can run their postinstall
+# COOLIFY FIX: Force development mode temporarily so devDependencies (TypeScript) install correctly
+ENV NODE_ENV=development
 RUN pnpm install --no-frozen-lockfile --ignore-scripts=false
 
 # ── Step 2: Copy source and set permissions ───────────────────────────────────
