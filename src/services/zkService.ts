@@ -364,7 +364,16 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
 
 
-    if (rawLogs.length === 0) {
+    // TASK 1: Implement In-Memory Date Filtering
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    const recentLogs = rawLogs.filter((log: any) => {
+      const logDate = new Date(log.recordTime || log.record_time);
+      return logDate >= fourteenDaysAgo;
+    });
+
+    if (recentLogs.length === 0) {
       // Emit socket event to frontend via global.io
       const io = (global as any).io;
       if (io) {
@@ -372,12 +381,11 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       }
       return { synced: 0, skipped: 0, total: 0 };
     }
-    console.log(`[ZKService] 📋 ${rawLogs.length} raw record(s) from device.`);
+    console.log(`[ZKService] 📋 ${recentLogs.length} recent record(s) from device after filtering.`);
 
     // Sort logs chronologically ascending (earliest to latest) to guarantee correct CheckIn/CheckOut determination
-    const sortedRawLogs = Array.isArray(rawLogs) ? [...rawLogs].sort((a: any, b: any) => new Date(a.recordTime || a.record_time).getTime() - new Date(b.recordTime || b.record_time).getTime()) : [];
+    const sortedRawLogs = Array.isArray(recentLogs) ? [...recentLogs].sort((a: any, b: any) => new Date(a.recordTime || a.record_time).getTime() - new Date(b.recordTime || b.record_time).getTime()) : [];
 
-    let synced = 0;
     let skipped = 0;
     const punchHistory = new Map<string, { firstPunch: Date, lastPunch: Date }>();
 
@@ -401,95 +409,67 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     // Track timestamps globally to prevent duplicate compound constraints on exact millisecond
     const usedTimestamps = new Set<string>();
+    const formattedLogsArray: any[] = [];
 
-    // Process in chunks of 100 for better performance
-    const chunkSize = 100;
-    for (let i = 0; i < sortedRawLogs.length; i += chunkSize) {
-      const chunk = sortedRawLogs.slice(i, i + chunkSize);
+    for (const log of sortedRawLogs) {
+      try {
+        const deviceEmpId = String(log.deviceUserId ?? log.user_id ?? log.userId ?? log.uid);
+        // parseDeviceTime securely converts the device's local Dhaka time
+        // into a proper absolute UTC Date for storage in the database, avoiding server timezone bugs.
+        const timestamp = parseDeviceTime(new Date(log.recordTime || log.record_time));
 
-      for (const log of chunk) {
-        try {
-          const deviceEmpId = String(log.deviceUserId ?? log.user_id ?? log.userId ?? log.uid);
-          // parseDeviceTime securely converts the device's local Dhaka time
-          // into a proper absolute UTC Date for storage in the database, avoiding server timezone bugs.
-          const timestamp = parseDeviceTime(new Date(log.recordTime || log.record_time));
-
-          if (isNaN(timestamp.getTime())) {
-            skipped++;
-            continue;
-          }
-
-          // Map deviceEmpId (e.g. "5") to the actual DB User's UUID
-          let employeeId = userIdMap.get(deviceEmpId);
-          if (!employeeId) {
-            console.warn(`[ZKService] ⚠️ Device punch from unknown PIN ${deviceEmpId}. Mapping to Unmapped Device Users.`);
-            employeeId = fallbackUserId;
-          }
-
-          const punchType = await resolvePunchType(employeeId, timestamp, log, punchHistory);
-
-          if (!punchType) {
-            skipped++;
-            continue; // Ignored due to 30-minute threshold
-          }
-
-          // Pad timestamp for unique constraint survival
-          let uniqueTimestamp = new Date(timestamp);
-          let collisionKey = `${employeeId}_${uniqueTimestamp.getTime()}`;
-          while (usedTimestamps.has(collisionKey)) {
-             uniqueTimestamp = new Date(uniqueTimestamp.getTime() + 1); // add 1ms
-             collisionKey = `${employeeId}_${uniqueTimestamp.getTime()}`;
-          }
-          usedTimestamps.add(collisionKey);
-
-          console.log(`[ZK Sync] Raw Time:`, log.recordTime || log.record_time, '| DB UTC:', uniqueTimestamp.toISOString(), '| DB State:', punchType);
-
-          try {
-            await prisma.attendanceLog.upsert({
-              where: {
-                employeeId_timestamp: {
-                  employeeId,
-                  timestamp: uniqueTimestamp,
-                },
-              },
-              update: { punchType: punchType as any },
-              create: {
-                employeeId,
-                timestamp: uniqueTimestamp,
-                punchType: punchType as any,
-                deviceId: currentZkIp,
-              },
-            });
-            synced++;
-          } catch (error: any) {
-            console.error(`[Prisma Error] Failed for employee ${employeeId} at timestamp ${uniqueTimestamp}:`, error);
-            // Fallback for P2002 collision: slightly adjust seconds (+1s) and retry once
-            if (error.code === 'P2002') {
-               const fallbackTimestamp = new Date(uniqueTimestamp.getTime() + 1000);
-               await prisma.attendanceLog.create({
-                 data: {
-                   employeeId,
-                   timestamp: fallbackTimestamp,
-                   punchType: punchType as any,
-                   deviceId: currentZkIp,
-                 }
-               });
-               synced++;
-            } else {
-               skipped++;
-            }
-          }
-        } catch (err: any) {
-          // Catch any other errors in the log processing loop
-          console.error(`[ZKService] ❌ Failed to process log:`, err.message);
+        if (isNaN(timestamp.getTime())) {
           skipped++;
+          continue;
         }
-      }
 
-      console.log(`[ZKService] Chunks progress: ${Math.min(i + chunkSize, sortedRawLogs.length)}/${sortedRawLogs.length}`);
+        // Map deviceEmpId (e.g. "5") to the actual DB User's UUID
+        let employeeId = userIdMap.get(deviceEmpId);
+        if (!employeeId) {
+          employeeId = fallbackUserId;
+        }
+
+        const punchType = await resolvePunchType(employeeId, timestamp, log, punchHistory);
+
+        if (!punchType) {
+          skipped++;
+          continue; // Ignored due to 30-minute threshold
+        }
+
+        // Pad timestamp for unique constraint survival
+        let uniqueTimestamp = new Date(timestamp);
+        let collisionKey = `${employeeId}_${uniqueTimestamp.getTime()}`;
+        while (usedTimestamps.has(collisionKey)) {
+           uniqueTimestamp = new Date(uniqueTimestamp.getTime() + 1); // add 1ms
+           collisionKey = `${employeeId}_${uniqueTimestamp.getTime()}`;
+        }
+        usedTimestamps.add(collisionKey);
+
+        formattedLogsArray.push({
+          employeeId,
+          timestamp: uniqueTimestamp,
+          punchType: punchType as any,
+          deviceId: currentZkIp,
+        });
+
+      } catch (err: any) {
+        // Catch any other errors in the log processing loop
+        console.error(`[ZKService] ❌ Failed to format log:`, err.message);
+        skipped++;
+      }
     }
 
-    console.log(`[ZKService] ✔  Synced: ${synced} | Total: ${sortedRawLogs.length}`);
+    // TASK 2: Convert to Bulk Insert (createMany)
+    let synced = 0;
+    if (formattedLogsArray.length > 0) {
+      const result = await prisma.attendanceLog.createMany({
+        data: formattedLogsArray,
+        skipDuplicates: true, // Automatically ignores records that violate the Unique Constraint
+      });
+      synced = result.count;
+    }
+
+    console.log(`[ZKService] ✔  Synced: ${synced} | Total Recent: ${sortedRawLogs.length}`);
 
     // Automatically self-heal today's attendance logs to guarantee earliest = CheckIn, latest = CheckOut
     await healTodaysData();
