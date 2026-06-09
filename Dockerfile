@@ -7,11 +7,14 @@ WORKDIR /app
 
 # ── Step 1: Install dependencies ─────────────────────────────────────────────
 # Copy manifest files first for better layer caching
-COPY package.json ./
+COPY package.json pnpm-lock.yaml ./
+
+# Enable pnpm
+RUN npm install -g pnpm
 
 # COOLIFY FIX: Force development mode temporarily so devDependencies (TypeScript) install correctly
 ENV NODE_ENV=development
-RUN npm install --legacy-peer-deps
+RUN pnpm install --frozen-lockfile
 
 # ── Step 2: Copy source and set permissions ───────────────────────────────────
 COPY . .
@@ -23,7 +26,7 @@ ENV DATABASE_URL=$DATABASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Generate Prisma client, then build Next.js
-RUN ./node_modules/.bin/prisma generate && ./node_modules/.bin/next build
+RUN pnpm dlx prisma generate && pnpm exec next build
 
 # ── Step 4: Runtime ───────────────────────────────────────────────────────────
 RUN npm install -g pm2
