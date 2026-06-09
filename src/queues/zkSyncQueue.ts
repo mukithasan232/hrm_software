@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma';
-import { zkService } from '@/services/zkService';
+import { prisma } from '../lib/prisma';
+import { zkService } from '../services/zkService';
 
 // Exponential backoff logic: 1min, 2min, 4min, 8min, 16min
 const RETRY_DELAYS_MS = [
