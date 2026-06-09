@@ -101,22 +101,11 @@ export async function PUT(req: NextRequest) {
       const logoFile    = formData.get('logo') as File | null;
       const faviconFile = formData.get('favicon') as File | null;
 
-      const storageDir = path.join(process.cwd(), 'public', 'storage', 'logos');
-      
-      try {
-        await fs.promises.mkdir(storageDir, { recursive: true });
-      } catch (mkdirErr) {
-        console.error('[Upload Error]: Directory creation failed', mkdirErr);
-      }
-
       if (logoFile && logoFile.size > 0) {
         try {
-          const originalName = logoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-          const ext = path.extname(originalName) || '.png';
-          const filename = `logo_${Date.now()}_${originalName}`;
-          const filePath = path.join(storageDir, filename);
-          await fs.promises.writeFile(filePath, Buffer.from(await logoFile.arrayBuffer()));
-          logoUrl = `/storage/logos/${filename}`;
+          const buffer = Buffer.from(await logoFile.arrayBuffer());
+          const mimeType = logoFile.type || 'image/png';
+          logoUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }
@@ -124,12 +113,9 @@ export async function PUT(req: NextRequest) {
 
       if (faviconFile && faviconFile.size > 0) {
         try {
-          const originalName = faviconFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-          const ext = path.extname(originalName) || '.ico';
-          const filename = `favicon_${Date.now()}_${originalName}`;
-          const filePath = path.join(storageDir, filename);
-          await fs.promises.writeFile(filePath, Buffer.from(await faviconFile.arrayBuffer()));
-          faviconUrl = `/storage/logos/${filename}`;
+          const buffer = Buffer.from(await faviconFile.arrayBuffer());
+          const mimeType = faviconFile.type || 'image/x-icon';
+          faviconUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }
