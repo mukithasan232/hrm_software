@@ -365,24 +365,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     let skipped = 0;
     const punchHistory = new Map<string, { firstPunch: Date, lastPunch: Date }>();
 
-    // Prepare Fallback Unmapped User
-    const fallbackUserName = 'Unmapped Device Users';
-    let fallbackUser = await prisma.user.findFirst({ where: { name: fallbackUserName } });
-    if (!fallbackUser) {
-        fallbackUser = await prisma.user.create({
-          data: {
-            employeeId: 'UNMAPPED_FALLBACK',
-            name: fallbackUserName,
-            email: `unmapped-fallback@hrm.test`, // Static to avoid constraint failures
-            password: 'fallbackpassword',
-            baseSalary: 0,
-            isActive: true
-          }
-        });
-      console.warn(`[ZKService] ⚠️ Created fallback user: ${fallbackUserName}`);
-    }
-    const fallbackUserId = fallbackUser.id;
-
+    // REMOVED: Auto-Creation of Fallback Unmapped User. Strict Opt-in Architecture.
     // Track timestamps globally to prevent duplicate compound constraints on exact millisecond
     const usedTimestamps = new Set<string>();
     const formattedLogsArray: any[] = [];
@@ -402,7 +385,9 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
         // Map deviceEmpId (e.g. "5") to the actual DB User's UUID
         let employeeId = userIdMap.get(deviceEmpId);
         if (!employeeId) {
-          employeeId = fallbackUserId;
+          // STRICT OPT-IN: Skip unmapped device users entirely
+          skipped++;
+          continue;
         }
 
         const punchType = await resolvePunchType(employeeId, timestamp, log, punchHistory);

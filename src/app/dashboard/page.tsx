@@ -31,9 +31,9 @@ export default function DashboardOverview() {
   const fetchDashboardData = async () => {
     try {
       const [usersRes, leavesRes, presenceRes, announcementsRes, analyticsRes] = await Promise.all([
-        api.get('/users'),
-        api.get('/leaves/all'),
-        api.get(`/attendance/active-today?date=${selectedDate}`),
+        api.get('/users').catch(() => ({ data: [] })),
+        api.get('/leaves/all').catch(() => ({ data: [] })),
+        api.get(`/attendance/active-today?date=${selectedDate}`).catch(() => ({ data: { activeNow: 0, totalToday: 0, recent: [] } })),
         api.get('/announcements').catch(() => ({ data: [] })),
         api.get('/dashboard/analytics').catch(() => ({ data: [] }))
       ]);

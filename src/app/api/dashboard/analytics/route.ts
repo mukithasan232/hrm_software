@@ -12,7 +12,6 @@ const getAnalytics = async () => {
     const totalEmployees = await prisma.user.count({
       where: {
         isActive: true,
-        employeeId: { not: 'UNMAPPED_FALLBACK' },
         userType: 'Employee'
       }
     });
