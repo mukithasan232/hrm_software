@@ -26,6 +26,7 @@ ENV DATABASE_URL=$DATABASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Generate Prisma client, then build Next.js
+ENV NODE_ENV=production
 RUN pnpm exec prisma generate && pnpm exec next build
 
 # ── Step 4: Runtime ───────────────────────────────────────────────────────────
