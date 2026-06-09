@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
-import { Toaster } from 'react-hot-toast';
+import { ToasterProvider } from '@/components/ToasterProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { BrandProvider } from '@/context/BrandContext';
 
@@ -24,21 +24,7 @@ export default function RootLayout({
             <LanguageProvider>
               <BrandProvider>
                 {children}
-                <Toaster 
-                  position="top-right"
-                containerStyle={{
-                  top: 80,
-                  right: 16,
-                  zIndex: 99999,
-                }}
-                toastOptions={{
-                  style: {
-                    background: '#1e293b',
-                    color: '#fff',
-                    border: '1px solid #334155',
-                  },
-                }} 
-              />
+                <ToasterProvider />
               </BrandProvider>
             </LanguageProvider>
           </AuthProvider>
