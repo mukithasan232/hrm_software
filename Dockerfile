@@ -26,7 +26,7 @@ ENV DATABASE_URL=$DATABASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Generate Prisma client, then build Next.js
-RUN pnpm dlx prisma generate && pnpm exec next build
+RUN pnpm exec prisma generate && pnpm exec next build
 
 # ── Step 4: Runtime ───────────────────────────────────────────────────────────
 RUN npm install -g pm2
