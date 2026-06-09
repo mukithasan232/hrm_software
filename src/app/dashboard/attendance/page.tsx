@@ -28,8 +28,28 @@ export default function AttendancePage() {
   const fetchLogs = async (isPolling = false) => {
     try {
       if (!isPolling) setLoading(true);
-      const filterParam = dateRange === 'all-time' ? 'all' : dateRange;
-      const res = await api.get(`/attendance/logs?filter=${filterParam}&_t=${Date.now()}`);
+      
+      let filterParam = 'all';
+      if (dateRange && dateRange !== 'all-time') {
+        try {
+          const parts = dateRange.split('-');
+          if (parts.length === 3) {
+            filterParam = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+          } else {
+            const d = new Date(dateRange);
+            filterParam = isNaN(d.getTime()) ? dateRange : d.toISOString().split('T')[0];
+          }
+        } catch {
+          filterParam = dateRange;
+        }
+      }
+
+      const res = await api.get(`/attendance/logs?filter=${filterParam}&_t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = res.data;
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
       setLogs(logsArray);
@@ -171,20 +191,20 @@ export default function AttendancePage() {
             <p className="text-slate-500 dark:text-gray-400 text-sm">{filteredLogs.length} {t('total')} {t('attendanceLogs')}.</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium"
+            className="flex justify-center items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium w-full md:w-auto"
           >
             <Plus className="w-4 h-4" /> {t('manualEntry')}
           </button>
           
-          <div className="flex items-center bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 transition-all">
+          <div className="flex items-center bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 transition-all w-full md:w-auto">
             <input 
               type="date"
               value={dateRange === 'all-time' ? '' : dateRange}
               onChange={(e) => setDateRange(e.target.value || getBDToday())}
-              className="bg-transparent text-slate-900 dark:text-white text-sm focus:outline-none cursor-pointer font-medium w-[130px] md:w-[140px]"
+              className="bg-transparent text-slate-900 dark:text-white text-sm focus:outline-none cursor-pointer font-medium w-full md:w-[140px]"
               title="Select specific date"
             />
           </div>
@@ -192,21 +212,21 @@ export default function AttendancePage() {
           <button 
             onClick={handleManualSync}
             disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10"
+            className="flex justify-center items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10 w-full md:w-auto"
           >
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> {t('sync_data') || 'Sync Data'}
           </button>
 
           <button 
             onClick={handlePremiumExport}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium"
+            className="flex justify-center items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium w-full md:w-auto"
           >
             <Download className="w-4 h-4" /> {t('export')}
           </button>
         </div>
       </div>
  
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors shadow-sm dark:shadow-md">
           <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('checkIn')}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
@@ -248,7 +268,7 @@ export default function AttendancePage() {
             />
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
