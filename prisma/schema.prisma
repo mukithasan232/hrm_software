@@ -82,6 +82,8 @@ model Payroll {
   totalDays   Int
   updatedAt   DateTime @updatedAt
   year        Int
+
+  @@unique([employeeId, month, year])
 }
 
 model Performance {

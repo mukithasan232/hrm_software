@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const employee = await prisma.user.findUnique({
       where: { id }
@@ -69,7 +69,7 @@ export async function POST(
     
     // Log failure if possible
     try {
-      const { id } = params;
+      const { id } = await params;
       const employee = await prisma.user.findUnique({ where: { id } });
       if (employee && (employee as any).zk_enroll_number) {
         await (prisma as any).zkSyncLog.create({

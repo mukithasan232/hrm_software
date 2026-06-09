@@ -35,11 +35,7 @@ export const sendMail = async ({ to, subject, html }: { to: string; subject: str
 };
 
 const sendEmail = async (to: string, subject: string, html: string) => {
-  try {
-    await sendMail({ to, subject, html });
-  } catch (error) {
-    // legacy silent fail for internal processes
-  }
+  await sendMail({ to, subject, html });
 };
 
 export const sendWelcomeEmail = async (

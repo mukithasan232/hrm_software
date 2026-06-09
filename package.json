@@ -67,12 +67,13 @@
     "typescript": "^5.9.3",
     "zkteco-js": "^1.7.1"
   },
-  "prisma": {
-    "seed": "npx tsx src/scripts/seedAdmins.ts"
-  },
   "pnpm": {},
   "overrides": {
     "react": "19.2.4",
     "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/json2csv": "^5.0.7",
+    "@types/nodemailer": "^8.0.0"
   }
 }

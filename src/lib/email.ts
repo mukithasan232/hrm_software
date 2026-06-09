@@ -32,6 +32,6 @@ export const sendEmail = async ({ to, subject, html }: { to: string; subject: st
     return true;
   } catch (error) {
     console.error('Error sending email:', error);
-    return false;
+    throw error;
   }
 };
