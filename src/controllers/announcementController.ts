@@ -51,16 +51,16 @@ export const createAnnouncement = async (req: Request, res: Response) => {
           subject: `[Company Notice]: ${title}`,
           html: emailHtml
         });
-      } catch (error) {
-        console.error('[SMTP Delivery Failed]:', error);
-        return res.status(200).json({ message: 'Announcement posted successfully, but email delivery encountered an issue.', announcement });
+      } catch (emailError) {
+        console.error('[SMTP Error]:', emailError);
+        // Do NOT throw. Let the API return 200 OK since the DB record was saved.
       }
     }
 
     res.status(200).json({ message: 'Announcement sent successfully', announcement });
   } catch (error: any) {
-    console.error('Create announcement error:', error);
-    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+    console.error('[Announcement API Error]:', error);
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 };
 

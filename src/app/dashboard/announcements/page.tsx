@@ -26,9 +26,6 @@ export default function AnnouncementsPage() {
         const res = await api.get('/users');
         const empList = Array.isArray(res.data) ? res.data : (res.data.data || []);
         setEmployees(empList);
-        
-        const deps = Array.from(new Set(empList.map((e: any) => e.department).filter(Boolean))) as string[];
-        setDepartments(deps);
       } catch (error) {
         console.error('Failed to fetch employees', error);
       }
@@ -64,7 +61,8 @@ export default function AnnouncementsPage() {
       });
       setSearchTerm('');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to send announcement');
+      const errData = error.response?.data;
+      toast.error(errData?.details || errData?.error || errData?.message || 'Failed to send announcement');
     } finally {
       setLoading(false);
     }
@@ -138,9 +136,10 @@ export default function AnnouncementsPage() {
                   className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 >
                   <option value="">Select a department...</option>
-                  {departments.map(dep => (
-                    <option key={dep} value={dep}>{dep}</option>
-                  ))}
+                  <option value="SOFTWARE_AND_WEB_DEV">Software & Web Dev</option>
+                  <option value="SEO_AND_MARKETING">SEO & Marketing</option>
+                  <option value="GRAPHICS_AND_DESIGN">Graphics & Design</option>
+                  <option value="VIDEO_PRODUCTION">Video Production</option>
                 </select>
               </div>
             )}
