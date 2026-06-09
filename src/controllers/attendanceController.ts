@@ -35,8 +35,14 @@ function getDayBoundaries(filter: string): { start: Date; end: Date } {
     return { start: startUTC, end: endUTC };
   }
 
-  // Handle explicit exact dates (yyyy-MM-dd)
-  // Handle explicit exact dates (yyyy-MM-dd)
+  // Handle explicit exact dates (yyyy-MM-dd) or custom ranges (yyyy-MM-dd_yyyy-MM-dd)
+  if (dateStr.includes('_')) {
+    const [startStr, endStr] = dateStr.split('_');
+    const startUTC = new Date(`${startStr}T00:00:00+06:00`);
+    const endUTC = new Date(`${endStr}T23:59:59.999+06:00`);
+    return { start: startUTC, end: endUTC };
+  }
+
   const startUTC = new Date(`${dateStr}T00:00:00+06:00`);
   const endUTC = new Date(`${dateStr}T23:59:59.999+06:00`);
   return { start: startUTC, end: endUTC };
@@ -181,12 +187,13 @@ export const getActivePresence = async (req: Request, res: Response) => {
 // @desc    Get all stored attendance logs
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
-    const { page = '1', limit = '50', employeeId, filter } = req.query;
+    const { page = '1', limit = '50', employeeId, filter, department } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const take = parseInt(limit as string);
 
     const where: any = {};
     if (employeeId) where.employeeId = employeeId as string;
+    if (department && department !== 'all') where.user = { department: department as string };
 
     if (filter && filter !== 'all') {
       const { start, end } = getDayBoundaries(filter as any);

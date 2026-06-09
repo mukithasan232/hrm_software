@@ -26,28 +26,23 @@ export default function AttendancePage() {
     punchType: 'CheckIn',
     timestamp: getBDNowLocal()
   });
-  const [dateRange, setDateRange] = useState(getBDToday());
+  const [dateRange, setDateRange] = useState('today');
+  const [customStartDate, setCustomStartDate] = useState(getBDToday());
+  const [customEndDate, setCustomEndDate] = useState(getBDToday());
+  const [departmentFilter, setDepartmentFilter] = useState('all');
 
   const fetchLogs = async (isPolling = false) => {
     try {
       if (!isPolling) setLoading(true);
       
       let filterParam = 'all';
-      if (dateRange && dateRange !== 'all-time') {
-        try {
-          const parts = dateRange.split('-');
-          if (parts.length === 3) {
-            filterParam = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-          } else {
-            const d = new Date(dateRange);
-            filterParam = isNaN(d.getTime()) ? dateRange : d.toISOString().split('T')[0];
-          }
-        } catch {
-          filterParam = dateRange;
-        }
+      if (dateRange === 'custom') {
+        filterParam = `${customStartDate}_${customEndDate}`;
+      } else if (dateRange && dateRange !== 'all-time') {
+        filterParam = dateRange;
       }
 
-      const res = await api.get(`/attendance/logs?filter=${filterParam}&_t=${Date.now()}`, {
+      const res = await api.get(`/attendance/logs?filter=${filterParam}&department=${departmentFilter}&_t=${Date.now()}`, {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
           'Pragma': 'no-cache'
@@ -92,7 +87,7 @@ export default function AttendancePage() {
 
   useEffect(() => {
     fetchLogs();
-  }, [dateRange]);
+  }, [dateRange, customStartDate, customEndDate, departmentFilter]);
 
   useEffect(() => {
     fetchEmployees();
@@ -103,7 +98,7 @@ export default function AttendancePage() {
     }, 3000);
 
     return () => clearInterval(intervalId);
-  }, [dateRange]);
+  }, [dateRange, customStartDate, customEndDate, departmentFilter]);
 
   const handleManualSync = async () => {
     setSyncing(true);
@@ -230,8 +225,9 @@ export default function AttendancePage() {
     setIsExporting(true);
     setShowExportMenu(false);
     try {
+      await new Promise(resolve => setTimeout(resolve, 300));
       await exportToPDF('attendance-table-container', `Attendance_Report_${dateRange}`, 'Company Name - Attendance Report');
-      toast.success("Report downloaded successfully!");
+      toast.success("PDF Downloaded!");
     } catch (error) {
       console.error("PDF Export error:", error);
       toast.error("An error occurred during PDF export.");
@@ -239,6 +235,12 @@ export default function AttendancePage() {
       setIsExporting(false);
     }
   };
+
+  const departments = Array.from(new Set(employees.map(e => e.department).filter(Boolean)));
+  const totalEmployeesInDep = departmentFilter === 'all' 
+    ? employees.length 
+    : employees.filter(e => e.department === departmentFilter).length;
+  const absentCount = Math.max(0, totalEmployeesInDep - checkInCount);
 
   const filteredLogs = logs.filter(log => 
     log.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -275,16 +277,43 @@ export default function AttendancePage() {
             <Plus className="w-4 h-4" /> {t('manualEntry')}
           </button>
           
-          <div className="flex items-center bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 transition-all w-full md:w-auto">
-            <input 
-              type="date"
-              value={dateRange === 'all-time' ? '' : dateRange}
-              onChange={(e) => setDateRange(e.target.value || getBDToday())}
-              className="bg-transparent text-slate-900 dark:text-white text-sm focus:outline-none cursor-pointer font-medium w-full md:w-[140px]"
-              title="Select specific date"
-            />
+          <select 
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium w-full md:w-auto"
+          >
+            <option value="all">All Departments</option>
+            {departments.map((dep: any) => (
+              <option key={dep} value={dep}>{dep}</option>
+            ))}
+          </select>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+            <div className="flex bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl p-1 w-full md:w-auto">
+              <button onClick={() => setDateRange('today')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'today' ? 'bg-white dark:bg-slate-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900'}`}>Today</button>
+              <button onClick={() => setDateRange('week')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'week' ? 'bg-white dark:bg-slate-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900'}`}>Last 7 Days</button>
+              <button onClick={() => setDateRange('month')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'month' ? 'bg-white dark:bg-slate-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900'}`}>Last 30 Days</button>
+              <button onClick={() => setDateRange('custom')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'custom' ? 'bg-white dark:bg-slate-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900'}`}>Custom</button>
+            </div>
+            
+            {dateRange === 'custom' && (
+              <div className="flex items-center gap-2">
+                <input 
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium w-full md:w-auto"
+                />
+                <span className="text-slate-400">-</span>
+                <input 
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium w-full md:w-auto"
+                />
+              </div>
+            )}
           </div>
- 
           <button 
             onClick={handleManualSync}
             disabled={syncing}
@@ -322,7 +351,7 @@ export default function AttendancePage() {
         </div>
       </div>
  
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors shadow-sm dark:shadow-md">
           <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('checkIn')}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
@@ -339,6 +368,12 @@ export default function AttendancePage() {
           <p className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('manualEntry')}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
             {manualCount}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-red-500/30 transition-colors shadow-sm dark:shadow-md">
+          <p className="text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider">{t('total_absent') || 'Total Absent'}</p>
+          <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
+            {absentCount}
           </p>
         </div>
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-colors shadow-sm dark:shadow-md">

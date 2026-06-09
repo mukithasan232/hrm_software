@@ -97,10 +97,10 @@ export const exportToPDF = async (elementId: string, filename: string, title: st
   }
 
   const canvas = await html2canvas(element, {
-    scale: 2, // Improves PDF quality
-    useCORS: true, // Allows external images/avatars to render
-    allowTaint: true,
-    logging: true, // Enable temporarily to see what fails in the console
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    windowWidth: element.scrollWidth,
   });
   const imgData = canvas.toDataURL('image/png');
   
