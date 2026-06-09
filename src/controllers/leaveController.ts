@@ -21,19 +21,37 @@ interface MulterRequest extends Omit<Request, 'file' | 'files'> {
 export const applyLeave = async (req: MulterRequest, res: Response) => {
   try {
     const { type, startDate, endDate, reason } = req.body;
+    
+    // Securely extract the user ID from the session (JWT token)
     const employeeId = (req as any).user.id;
+    if (!employeeId) {
+      return res.status(401).json({ message: 'Unauthorized: User session missing' });
+    }
+
+    // Validate ENUM-like leaveType to ensure frontend consistency
+    const validLeaveTypes = ['Sick', 'Casual', 'Annual'];
+    if (!validLeaveTypes.includes(type)) {
+      return res.status(400).json({ message: 'Invalid leave type requested' });
+    }
+
+    // Validate Dates
+    const parsedStartDate = new Date(startDate);
+    const parsedEndDate = new Date(endDate);
+    if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid start or end date provided' });
+    }
 
     const attachment = req.file ? `/uploads/leaves/${req.file.filename}` : undefined;
 
     // ০ থেকে দিন সংখ্যা হিসাব কনফ্লিক্ট এড়াতে গ্যারান্টিড ম্যাথ অপারেশন
-    const totalDays = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const totalDays = Math.ceil((parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
     const leave = await (prisma.leave as any).create({
       data: {
-        employeeId,
+        employeeId, // Relational constraint strictly enforced by session ID
         type,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
         reason,
         status: 'Pending',
         totalDays,
@@ -67,7 +85,8 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
 
     return res.status(201).json({ message: 'Leave applied successfully', leave });
   } catch (error: any) {
-    return res.status(500).json({ message: 'Error applying leave', error: error.message });
+    console.error('[Leave Application Error]:', error);
+    return res.status(500).json({ message: 'Error applying leave. Please ensure all details are correct.', error: error.message });
   }
 };
 

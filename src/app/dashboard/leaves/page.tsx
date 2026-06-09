@@ -1,11 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, Calendar, Send, FileText, Paperclip } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
 export default function LeavesPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const canManage = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(user?.designation || '');
 
@@ -51,6 +53,7 @@ export default function LeavesPage() {
       });
       toast.success('Leave applied successfully');
       fetchLeaves();
+      router.refresh();
       setStartDate(''); setEndDate(''); setReason(''); setAttachment(null);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to apply');
