@@ -12,22 +12,33 @@ const getTransporter = () => {
   });
 };
 
-const sendEmail = async (to: string, subject: string, html: string) => {
+export const sendMail = async ({ to, subject, html }: { to: string; subject: string; html: string }) => {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.warn('[EmailService] SMTP credentials not configured. Skipping email to', to);
-    return;
+    throw new Error('SMTP credentials not configured');
   }
   try {
     const transporter = getTransporter();
+    await transporter.verify(); // Check connection
     await transporter.sendMail({
-      from: `"HRM Portal" <${process.env.SMTP_USER}>`,
+      from: process.env.SMTP_FROM_EMAIL || `"HRM Portal" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,
     });
     console.log(`[EmailService] Email sent to ${to}`);
-  } catch (error) {
+    return { success: true };
+  } catch (error: any) {
     console.error('[EmailService] Failed to send email:', error);
+    throw error;
+  }
+};
+
+const sendEmail = async (to: string, subject: string, html: string) => {
+  try {
+    await sendMail({ to, subject, html });
+  } catch (error) {
+    // legacy silent fail for internal processes
   }
 };
 
@@ -102,4 +113,24 @@ export const sendLeaveUpdateEmail = async (
     </div>
   `;
   await sendEmail(toEmail, `Leave Request ${status}`, html);
+};
+
+export const buildHRNotificationTemplate = (title: string, messageBody: string) => {
+  return `
+    <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);">
+      <div style="background: #475569; padding: 40px 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 0.5px;">HRM Portal</h1>
+        <p style="color: #e2e8f0; margin-top: 8px; font-size: 15px;">${title}</p>
+      </div>
+      <div style="padding: 30px; background-color: #f8fafc;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px;">
+          <p style="color: #334155; font-size: 16px; line-height: 1.6; white-space: pre-wrap; margin: 0;">${messageBody}</p>
+        </div>
+      </div>
+      <div style="background: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+        <p style="margin: 0; color: #94a3b8; font-size: 12px;">© ${new Date().getFullYear()} HRM Portal. All rights reserved.</p>
+        <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 12px;">This is an automated HR notification, please do not reply.</p>
+      </div>
+    </div>
+  `;
 };
