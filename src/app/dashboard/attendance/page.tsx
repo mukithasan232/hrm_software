@@ -5,11 +5,14 @@ import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'l
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateUtils';
+import { exportToExcel, exportToPDF } from '@/lib/exportUtils';
 
 export default function AttendancePage() {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [totalLogs, setTotalLogs] = useState(0);
@@ -120,7 +123,7 @@ export default function AttendancePage() {
     }
   };
 
-  const handlePremiumExport = async () => {
+  const handleExportExcel = async () => {
     const activeLogs = logs.filter(log => 
       log.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
       (log.employeeName && log.employeeName.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -131,36 +134,37 @@ export default function AttendancePage() {
       return;
     }
 
+    setIsExporting(true);
+    setShowExportMenu(false);
     try {
-      // Create CSV header
-      const headers = ['Employee Name', 'Employee ID', 'Timestamp', 'Punch Type'];
-      
-      // Map data to rows
-      const rows = activeLogs.map(log => [
-        `"${log.employeeName || 'N/A'}"`,
-        `"${log.employeeId || 'Unknown'}"`,
-        `"${toBDDisplay(log.timestamp)}"`,
-        `"${log.punchType || 'Unknown'}"`
-      ]);
-
-      // Combine headers and rows with a true newline character
-      // Prepend the UTF-8 BOM (\uFEFF) to force Excel to recognize the encoding and column delimiters correctly
-      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-      
-      // Create Blob and trigger download
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `Attendance_Export_${dateRange}_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      toast.success("Export successful!");
+      const data = activeLogs.map(log => ({
+        'Employee Name': log.employeeName || 'N/A',
+        'Employee ID': log.employeeId || 'Unknown',
+        'Timestamp': toBDDisplay(log.timestamp, 'dd MMM yyyy, hh:mm:ss a'),
+        'Punch Type': log.punchType === 'CheckOut' ? (t('checkOut') || 'Check Out') : (t('checkIn') || 'Check In'),
+        'Status': log.deviceId === 'Manual Entry' ? 'Manual' : 'Device'
+      }));
+      await exportToExcel(data, `Attendance_Export_${dateRange}_${new Date().toISOString().split('T')[0]}`);
+      toast.success("Report downloaded successfully!");
     } catch (error) {
-      console.error("Export error:", error);
-      toast.error("An error occurred during export.");
+      console.error("Excel Export error:", error);
+      toast.error("An error occurred during Excel export.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    setShowExportMenu(false);
+    try {
+      await exportToPDF('attendance-table-container', `Attendance_Report_${dateRange}`, 'Company Name - Attendance Report');
+      toast.success("Report downloaded successfully!");
+    } catch (error) {
+      console.error("PDF Export error:", error);
+      toast.error("An error occurred during PDF export.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -217,12 +221,32 @@ export default function AttendancePage() {
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> {t('sync_data') || 'Sync Data'}
           </button>
 
-          <button 
-            onClick={handlePremiumExport}
-            className="flex justify-center items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium w-full md:w-auto"
-          >
-            <Download className="w-4 h-4" /> {t('export')}
-          </button>
+          <div className="relative w-full md:w-auto">
+            <button 
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={isExporting}
+              className="flex justify-center items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium w-full md:w-auto disabled:opacity-50"
+            >
+              {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {isExporting ? 'Exporting...' : t('export')}
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-full md:w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
+                <button 
+                  onClick={handleExportExcel}
+                  className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 text-sm font-medium text-slate-700 dark:text-gray-200 border-b border-slate-100 dark:border-white/5"
+                >
+                  Download Excel
+                </button>
+                <button 
+                  onClick={handleExportPDF}
+                  className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 text-sm font-medium text-slate-700 dark:text-gray-200"
+                >
+                  Download PDF
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
  
@@ -268,7 +292,7 @@ export default function AttendancePage() {
             />
           </div>
         </div>
-        <div className="w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
+        <div id="attendance-table-container" className="w-full overflow-x-auto whitespace-nowrap scrollbar-hide bg-white dark:bg-slate-900 rounded-lg">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
