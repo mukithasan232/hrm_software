@@ -1,7 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Users, CalendarRange, RefreshCw, Clock, Megaphone } from 'lucide-react';
+import { Users, CalendarRange, RefreshCw, Clock, Megaphone, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell
+} from 'recharts';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useTranslation } from '@/context/LanguageContext';
@@ -18,20 +22,33 @@ export default function DashboardOverview() {
   });
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [weeklyAnalytics, setWeeklyAnalytics] = useState<any[]>([]);
+  const [departmentData, setDepartmentData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getBDToday());
 
   const fetchDashboardData = async () => {
     try {
-      const [usersRes, leavesRes, presenceRes, announcementsRes] = await Promise.all([
+      const [usersRes, leavesRes, presenceRes, announcementsRes, analyticsRes] = await Promise.all([
         api.get('/users'),
         api.get('/leaves/all'),
         api.get(`/attendance/active-today?date=${selectedDate}`),
-        api.get('/announcements').catch(() => ({ data: [] }))
+        api.get('/announcements').catch(() => ({ data: [] })),
+        api.get('/dashboard/analytics').catch(() => ({ data: [] }))
       ]);
 
       setAnnouncements(announcementsRes.data || []);
+      setWeeklyAnalytics(analyticsRes.data || []);
+
+      const allUsers = usersRes.data.data || usersRes.data || [];
+      const deptCounts = allUsers.reduce((acc: any, user: any) => {
+        if (!user.isActive || user.employeeId === 'UNMAPPED_FALLBACK') return acc;
+        const dept = user.department || 'Unassigned';
+        acc[dept] = (acc[dept] || 0) + 1;
+        return acc;
+      }, {});
+      setDepartmentData(Object.keys(deptCounts).map(key => ({ name: key, value: deptCounts[key] })));
 
       setStats({
         employees: usersRes.data.totalCount || usersRes.data.data?.length || usersRes.data.length || 0,
@@ -87,8 +104,10 @@ export default function DashboardOverview() {
     setSyncing(false);
   };
 
+  const COLORS = ['#8b5cf6', '#06b6d4', '#f59e0b', '#10b981', '#f43f5e', '#6366f1'];
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="py-2">
           <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
@@ -139,7 +158,10 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* Notice Board */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Notice Board */}
       {announcements.length > 0 && (
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-indigo-200 dark:border-indigo-500/20 rounded-3xl p-6 shadow-md dark:shadow-2xl">
           <div className="flex items-center gap-3 mb-6">
@@ -173,8 +195,8 @@ export default function DashboardOverview() {
       )}
 
       {/* Live Activity Feed */}
-      <div className="max-w-4xl mx-auto w-full">
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-md dark:shadow-2xl flex flex-col">
+      <div className="w-full">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -242,8 +264,92 @@ export default function DashboardOverview() {
                 </div>
               ))
             )}
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Right Column: Analytics */}
+      <div className="lg:col-span-1 space-y-6">
+        {/* Weekly Attendance Chart */}
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-brand-primary/20 rounded-lg text-brand-primary">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Weekly Attendance</h3>
+          </div>
+          <div className="h-64 w-full">
+            {loading ? (
+              <div className="h-full flex items-center justify-center">
+                <RefreshCw className="w-6 h-6 text-brand-primary animate-spin" />
+              </div>
+            ) : weeklyAnalytics.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-slate-400">No data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyAnalytics} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" opacity={0.2} vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" axisLine={false} tickLine={false} />
+                  <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                  <Bar dataKey="present" name="Present" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="absent" name="Absent" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={20} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Department Distribution */}
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500">
+              <PieChartIcon className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Department Overview</h3>
+          </div>
+          <div className="h-64 w-full relative">
+            {loading ? (
+              <div className="h-full flex items-center justify-center">
+                <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
+              </div>
+            ) : departmentData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-slate-400">No data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={departmentData}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {departmentData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
+                  />
+                  <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+            {!loading && departmentData.length > 0 && (
+              <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none pb-4">
+                <span className="text-3xl font-bold text-slate-800 dark:text-white">{stats.employees}</span>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Total</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
       </div>
     </div>
   );

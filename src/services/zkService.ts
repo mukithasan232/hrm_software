@@ -324,35 +324,11 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     // Data sanitization logic has been removed as the root timezone bug is permanently resolved.
 
-    // 1. Fetch Users first and Upsert them into MariaDB
-    console.log('[ZKService] 👥 Syncing users from device to database...');
+    // 1. Fetch Users from device (Mapping Phase)
+    // Removed auto-upsert to enforce strict Hardware-to-Software mapping
+    console.log('[ZKService] 👥 Fetching users from device for mapping...');
     const rawUsers = await getDeviceUsersRaw(zk);
-    const hashedPassword = await bcrypt.hash('password123', 10);
     const userIdMap = new Map<string, string>(); // maps device employeeId -> User.id (UUID)
-    
-    // Fetch default designations
-    const adminDesig = await prisma.designation.findFirst({ where: { name: 'Admin' } });
-    const empDesig = await prisma.designation.findFirst({ where: { name: 'Employee' } });
-
-    for (const u of rawUsers) {
-      const employeeId = String(u.user_id ?? u.userId ?? u.uid);
-      const name = u.name || `User ${employeeId}`;
-      const normalizedEmail = `user${employeeId}@hrm.test`;
-      const dbUser = await prisma.user.upsert({
-        where: { employeeId },
-        update: { name },
-        create: {
-          employeeId,
-          name,
-          email: normalizedEmail,
-          password: hashedPassword,
-          designationId: (u.role === 14 ? adminDesig?.id : empDesig?.id) || undefined,
-          baseSalary: 0,
-          isActive: true
-        }
-      });
-      userIdMap.set(employeeId, dbUser.id);
-    }
 
     // Load any other existing users in database into the userIdMap
     const dbUsers = await prisma.user.findMany({});
@@ -393,16 +369,16 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     const fallbackUserName = 'Unmapped Device Users';
     let fallbackUser = await prisma.user.findFirst({ where: { name: fallbackUserName } });
     if (!fallbackUser) {
-      fallbackUser = await prisma.user.create({
-        data: {
-          employeeId: 'UNMAPPED_FALLBACK',
-          name: fallbackUserName,
-          email: `unmapped-${Date.now()}@hrm.test`,
-          password: hashedPassword,
-          baseSalary: 0,
-          isActive: true
-        }
-      });
+        fallbackUser = await prisma.user.create({
+          data: {
+            employeeId: 'UNMAPPED_FALLBACK',
+            name: fallbackUserName,
+            email: `unmapped-fallback@hrm.test`, // Static to avoid constraint failures
+            password: 'fallbackpassword',
+            baseSalary: 0,
+            isActive: true
+          }
+        });
       console.warn(`[ZKService] ⚠️ Created fallback user: ${fallbackUserName}`);
     }
     const fallbackUserId = fallbackUser.id;
@@ -522,33 +498,8 @@ export const getDeviceUsers = async (): Promise<any[]> => {
       console.warn('[ZKService] ⚠️ Device returned 0 users via TCP. The device user list may be empty or firmware returned no data.');
     }
 
-    // Upsert into DB
-    const hashedPassword = await bcrypt.hash('password123', 10);
-    
-    const adminDesig = await prisma.designation.findFirst({ where: { name: 'Admin' } });
-    const empDesig = await prisma.designation.findFirst({ where: { name: 'Employee' } });
-
-    for (const dUser of users) {
-      const employeeId = dUser.userId;
-      const name = dUser.name || `User ${employeeId}`;
-      const normalizedEmail = `user${employeeId}@hrm.test`;
-
-      await prisma.user.upsert({
-        where: { employeeId },
-        update: { name },
-        create: {
-          employeeId,
-          name,
-          email: normalizedEmail,
-          password: hashedPassword,
-          designationId: (dUser.role === 14 ? adminDesig?.id : empDesig?.id) || undefined,
-          baseSalary: 0,
-          isActive: true
-        }
-      });
-    }
-
-    console.log(`[ZKService] 👥 ${users.length} user(s) synced and saved to MariaDB.`);
+    // Removed auto-upsert to enforce strict Hardware-to-Software mapping
+    console.log(`[ZKService] 👥 ${users.length} raw user(s) fetched from device.`);
     return users;
   } catch (err: any) {
     throw new Error(classifyError(err));
@@ -724,7 +675,30 @@ async function deleteUserFromDevice(enrollNumber: number): Promise<void> {
   });
 }
 
+export const fetchUnregisteredDeviceUsers = async (): Promise<{ deviceUserId: number; name: string }[]> => {
+  return await withZKConnection(async (zk) => {
+    const rawUsers = await getDeviceUsersRaw(zk);
+    
+    // Fetch registered enroll numbers
+    const dbUsers = await prisma.user.findMany({
+      select: { zk_enroll_number: true }
+    });
+    const registeredIds = new Set(dbUsers.map(u => u.zk_enroll_number).filter(Boolean));
+
+    const unregistered = rawUsers.filter((u: any) => {
+      const uid = parseInt(u.userId || u.uid || u.user_id, 10);
+      return !registeredIds.has(uid);
+    });
+
+    return unregistered.map((u: any) => ({
+      deviceUserId: parseInt(u.userId || u.uid || u.user_id, 10),
+      name: u.name || `User ${parseInt(u.userId || u.uid || u.user_id, 10)}`
+    }));
+  });
+};
+
 export const zkService = {
   syncUserToDevice,
-  deleteUserFromDevice
+  deleteUserFromDevice,
+  fetchUnregisteredDeviceUsers
 };

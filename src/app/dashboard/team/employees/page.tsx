@@ -82,6 +82,21 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  const [unregisteredUsers, setUnregisteredUsers] = useState<{deviceUserId: number, name: string}[]>([]);
+  const [loadingUnregistered, setLoadingUnregistered] = useState(false);
+
+  const fetchUnregistered = async () => {
+    setLoadingUnregistered(true);
+    try {
+      const res = await api.get('/zkteco/unregistered-users');
+      setUnregisteredUsers(res.data);
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setLoadingUnregistered(false);
+    }
+  };
+
   // ── Add Modal ──────────────────────────────────────────────────────────────
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -155,6 +170,7 @@ export default function EmployeesPage() {
     setEditType(emp.employeeType);
     setEditDepartment(emp.department || '');
     setEditZkEnroll(emp.zk_enroll_number ? emp.zk_enroll_number.toString() : '');
+    fetchUnregistered();
     setEditTarget(emp);
   };
 
@@ -276,7 +292,7 @@ export default function EmployeesPage() {
           </div>
           {canEdit && (
             <button
-              onClick={() => { resetAddForm(); setShowAddModal(true); }}
+              onClick={() => { resetAddForm(); setShowAddModal(true); fetchUnregistered(); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-brand-primary text-white text-sm font-semibold rounded-xl hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/25 whitespace-nowrap"
             >
               <Plus className="w-4 h-4" /> Add Employee
@@ -443,7 +459,16 @@ export default function EmployeesPage() {
                 {/* ZKTeco Enroll Number */}
                 <div className="space-y-1.5">
                   <label className={labelCls}>ZKTeco Enroll Number</label>
-                  <input type="number" min="1" max="32767" value={formZkEnroll} onChange={e => setFormZkEnroll(e.target.value)} className={fieldCls} placeholder="1-32767" />
+                  {loadingUnregistered ? (
+                    <div className={`${fieldCls} flex items-center gap-2 text-slate-500`}><RefreshCw className="w-4 h-4 animate-spin"/> Fetching...</div>
+                  ) : (
+                    <select value={formZkEnroll} onChange={e => setFormZkEnroll(e.target.value)} className={fieldCls}>
+                      <option value="">— Select Unregistered Device User —</option>
+                      {unregisteredUsers.map(u => (
+                        <option key={u.deviceUserId} value={u.deviceUserId}>[Device ID: {u.deviceUserId}] - {u.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* Password */}
@@ -547,7 +572,17 @@ export default function EmployeesPage() {
                 {/* ZKTeco Enroll Number */}
                 <div className="space-y-1.5">
                   <label className={labelCls}>ZKTeco Enroll Number</label>
-                  <input type="number" min="1" max="32767" value={editZkEnroll} onChange={e => setEditZkEnroll(e.target.value)} className={fieldCls} placeholder="1-32767" />
+                  {loadingUnregistered ? (
+                    <div className={`${fieldCls} flex items-center gap-2 text-slate-500`}><RefreshCw className="w-4 h-4 animate-spin"/> Fetching...</div>
+                  ) : (
+                    <select value={editZkEnroll} onChange={e => setEditZkEnroll(e.target.value)} className={fieldCls}>
+                      <option value="">— Select Unregistered Device User —</option>
+                      {editZkEnroll && <option value={editZkEnroll}>[Current ID: {editZkEnroll}] (Keep current)</option>}
+                      {unregisteredUsers.map(u => (
+                        <option key={u.deviceUserId} value={u.deviceUserId}>[Device ID: {u.deviceUserId}] - {u.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 

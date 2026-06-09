@@ -121,6 +121,7 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
 export const exportAttendanceLogs = async (req: Request, res: Response) => {
   try {
     const logs = await prisma.attendanceLog.findMany({
+      where: { user: { employeeId: { not: 'UNMAPPED_FALLBACK' } } },
       orderBy: { timestamp: 'desc' },
       include: {
         user: { select: { name: true, employeeId: true } }
@@ -159,7 +160,10 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     // 1. Fetch all attendance logs for the period, ordered by latest first
     const todaysLogs = await prisma.attendanceLog.findMany({
-      where: { timestamp: { gte: start, lte: end } },
+      where: { 
+        timestamp: { gte: start, lte: end },
+        user: { employeeId: { not: 'UNMAPPED_FALLBACK' } }
+      },
       include: { user: { select: { name: true } } },
       orderBy: { timestamp: 'desc' }
     });
@@ -197,9 +201,11 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const take = parseInt(limit as string);
 
-    const where: any = {};
+    const where: any = {
+      user: { employeeId: { not: 'UNMAPPED_FALLBACK' } }
+    };
     if (employeeId) where.employeeId = employeeId as string;
-    if (department && department !== 'all') where.user = { department: department as string };
+    if (department && department !== 'all') where.user.department = department as string;
 
     if (filter && filter !== 'all') {
       const { start, end } = getDayBoundaries(filter as any);
