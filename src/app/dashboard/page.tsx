@@ -186,22 +186,21 @@ export default function DashboardOverview() {
                       {log.employeeId}
                     </span>
                     {/* Employee Name */}
-                    <span className="font-semibold text-sm text-slate-800 dark:text-white truncate block">
-                      {log.employeeName || "Unknown Employee"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-slate-800 dark:text-white truncate">
+                        {log.employeeName || "Unknown Employee"}
+                      </span>
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0"></span>
+                    </div>
                     {/* Check-in Timestamp */}
-                    <span className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1">
+                    <span className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1 mt-1">
                       <Clock className="w-3 h-3" /> {toBDDisplay(log.timestamp, 'hh:mm a')}
                     </span>
                   </div>
 
                   {/* Status Badge */}
-                  <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${
-                    log.punchType?.toLowerCase() === 'checkout'
-                      ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
-                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                  }`}>
-                    {log.punchType?.toLowerCase() === 'checkout' ? t('checkout') : t('checkin')}
+                  <div className="text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                    Checked In - Pending Check Out
                   </div>
                 </div>
               ))
