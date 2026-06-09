@@ -14,7 +14,7 @@ RUN npm install -g pnpm
 
 # COOLIFY FIX: Force development mode temporarily so devDependencies (TypeScript) install correctly
 ENV NODE_ENV=development
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # ── Step 2: Copy source and set permissions ───────────────────────────────────
 COPY . .
