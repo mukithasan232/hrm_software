@@ -255,27 +255,35 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     });
 
     if (sendEmail) {
-      await sendWelcomeEmail(email, name, plainPassword, user.customDesignation?.name || 'Employee');
+      try {
+        await sendWelcomeEmail(email, name, plainPassword, user.customDesignation?.name || 'Employee');
+      } catch (emailError: any) {
+        console.error('[createEmployee] Failed to send welcome email:', emailError.message);
+      }
     }
 
     // Notify Admins
-    const hrAndManagers = await prisma.user.findMany({
-      where: {
-        customDesignation: { name: { in: ['Admin', 'Super Admin', 'System Administrator', 'HR'] } }
+    try {
+      const hrAndManagers = await prisma.user.findMany({
+        where: {
+          customDesignation: { name: { in: ['Admin', 'Super Admin', 'System Administrator', 'HR'] } }
+        }
+      });
+
+      const notifications = hrAndManagers.map((u: any) => ({
+        userId: u.id,
+        titleEn: 'New Employee Onboarded',
+        titleBn: 'নতুন কর্মচারী যুক্ত হয়েছে',
+        messageEn: `${name} has been added to the system.`,
+        messageBn: `${name}-কে সিস্টেমে যুক্ত করা হয়েছে।`,
+        type: 'USER_MANAGEMENT'
+      }));
+
+      if (notifications.length > 0) {
+        await prisma.notification.createMany({ data: notifications });
       }
-    });
-
-    const notifications = hrAndManagers.map((u: any) => ({
-      userId: u.id,
-      titleEn: 'New Employee Onboarded',
-      titleBn: 'নতুন কর্মচারী যুক্ত হয়েছে',
-      messageEn: `${name} has been added to the system.`,
-      messageBn: `${name}-কে সিস্টেমে যুক্ত করা হয়েছে।`,
-      type: 'USER_MANAGEMENT'
-    }));
-
-    if (notifications.length > 0) {
-      await prisma.notification.createMany({ data: notifications });
+    } catch (notifyError: any) {
+      console.error('[createEmployee] Failed to create notifications:', notifyError.message);
     }
 
     const { password: _, customDesignation, ...userWithoutPassword } = user;
