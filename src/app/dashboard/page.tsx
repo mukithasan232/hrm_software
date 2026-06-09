@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Users, CalendarRange, RefreshCw, Clock } from 'lucide-react';
+import { Users, CalendarRange, RefreshCw, Clock, Megaphone } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useTranslation } from '@/context/LanguageContext';
@@ -17,17 +17,21 @@ export default function DashboardOverview() {
     totalToday: 0
   });
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getBDToday());
 
   const fetchDashboardData = async () => {
     try {
-      const [usersRes, leavesRes, presenceRes] = await Promise.all([
+      const [usersRes, leavesRes, presenceRes, announcementsRes] = await Promise.all([
         api.get('/users'),
         api.get('/leaves/all'),
-        api.get(`/attendance/active-today?date=${selectedDate}`)
+        api.get(`/attendance/active-today?date=${selectedDate}`),
+        api.get('/announcements').catch(() => ({ data: [] }))
       ]);
+
+      setAnnouncements(announcementsRes.data || []);
 
       setStats({
         employees: usersRes.data.totalCount || usersRes.data.data?.length || usersRes.data.length || 0,
@@ -134,6 +138,39 @@ export default function DashboardOverview() {
           </div>
         </div>
       </div>
+
+      {/* Notice Board */}
+      {announcements.length > 0 && (
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-indigo-200 dark:border-indigo-500/20 rounded-3xl p-6 shadow-md dark:shadow-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+              <Megaphone className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Notice Board</h3>
+          </div>
+          
+          <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+            {announcements.map((notice) => {
+              const isNew = (new Date().getTime() - new Date(notice.createdAt).getTime()) < 24 * 60 * 60 * 1000;
+              return (
+                <div key={notice.id} className="p-4 bg-indigo-50/50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 relative">
+                  {isNew && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm animate-pulse">
+                      NEW
+                    </span>
+                  )}
+                  <h4 className="font-bold text-slate-800 dark:text-white text-sm md:text-base">{notice.title}</h4>
+                  <p className="text-slate-600 dark:text-slate-300 text-xs md:text-sm mt-1 whitespace-pre-wrap">{notice.message}</p>
+                  <div className="flex items-center justify-between mt-3 text-[10px] text-slate-500 dark:text-slate-400">
+                    <span>By {notice.author?.name || 'Admin'}</span>
+                    <span>{toBDDisplay(notice.createdAt, 'MMM dd, hh:mm a')}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Live Activity Feed */}
       <div className="max-w-4xl mx-auto w-full">

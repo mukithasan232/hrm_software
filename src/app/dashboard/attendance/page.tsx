@@ -1,14 +1,17 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/context/LanguageContext';
-import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X } from 'lucide-react';
+import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X, Loader2 } from 'lucide-react';
 import api from '@/services/api';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateUtils';
 import { exportToExcel, exportToPDF } from '@/lib/exportUtils';
 
 export default function AttendancePage() {
   const { t } = useTranslation();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -104,13 +107,15 @@ export default function AttendancePage() {
     setSyncing(true);
     try {
       await api.post('/attendance/sync-users');
-      toast.success(t('device_sync_complete') || 'Device sync complete!');
+      await fetchLogs(false);
+      router.refresh();
+      toast.success('Real-time data synced from device!');
     } catch (e: any) {
       console.warn('Device sync skipped/failed:', e.message);
+      toast.error('Failed to sync from device');
+    } finally {
+      setSyncing(false);
     }
-    await fetchLogs(false);
-    toast.success(t('logs_loaded_success') || 'Latest logs loaded from database!');
-    setSyncing(false);
   };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
@@ -280,7 +285,8 @@ export default function AttendancePage() {
           <select 
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium w-full md:w-auto"
+            disabled={syncing}
+            className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium w-full md:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="all">All Departments</option>
             {departments.map((dep: any) => (
@@ -289,37 +295,23 @@ export default function AttendancePage() {
           </select>
 
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-            <div className="flex bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl p-1 w-full md:w-auto">
-              <button onClick={() => setDateRange('today')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'today' ? 'bg-white dark:bg-slate-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900'}`}>Today</button>
-              <button onClick={() => setDateRange('week')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'week' ? 'bg-white dark:bg-slate-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900'}`}>Last 7 Days</button>
-              <button onClick={() => setDateRange('month')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'month' ? 'bg-white dark:bg-slate-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900'}`}>Last 30 Days</button>
-              <button onClick={() => setDateRange('custom')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${dateRange === 'custom' ? 'bg-white dark:bg-slate-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-gray-400 hover:text-slate-900'}`}>Custom</button>
-            </div>
-            
-            {dateRange === 'custom' && (
-              <div className="flex items-center gap-2">
-                <input 
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium w-full md:w-auto"
-                />
-                <span className="text-slate-400">-</span>
-                <input 
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium w-full md:w-auto"
-                />
-              </div>
-            )}
+            <DateRangePicker 
+              value={{ range: dateRange, start: customStartDate, end: customEndDate }}
+              onChange={(val) => {
+                setDateRange(val.range);
+                if (val.start) setCustomStartDate(val.start);
+                if (val.end) setCustomEndDate(val.end);
+              }}
+              disabled={syncing}
+            />
           </div>
           <button 
             onClick={handleManualSync}
             disabled={syncing}
             className="flex justify-center items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10 w-full md:w-auto"
           >
-            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> {t('sync_data') || 'Sync Data'}
+            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} 
+            {syncing ? 'Syncing Live...' : (t('sync_data') || 'Sync Data')}
           </button>
 
           <div className="relative w-full md:w-auto">

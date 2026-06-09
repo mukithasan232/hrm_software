@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
-  X, User, UsersRound, Shield, ChevronDown, Smartphone
+  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -17,6 +17,7 @@ const NAV_ITEM_DEFS = [
   { key: 'dashboard',  href: '/dashboard',            icon: LayoutDashboard, designations: [] as string[] },
   { key: 'attendance', href: '/dashboard/attendance', icon: Clock,           designations: [] as string[] },
   { key: 'leaves',     href: '/dashboard/leaves',     icon: CalendarRange,   designations: [] as string[] },
+  { key: 'announcements', href: '/dashboard/announcements', icon: Megaphone, designations: ['OWNER', 'MANAGER', 'HR', 'Admin', 'Super Admin', 'System Administrator', 'HRM Manager'] },
   { key: 'myProfile',  href: '/dashboard/profile',    icon: User,            designations: [] as string[] },
 ];
 
@@ -45,9 +46,10 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const [logoError, setLogoError] = useState(false);
 
   const designationName = typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation;
+  const designationLower = (designationName || '').toLowerCase();
 
   const filteredItems = NAV_ITEM_DEFS.filter(item =>
-    item.designations.length === 0 || item.designations.includes(designationName || '')
+    item.designations.length === 0 || item.designations.map(d => d.toLowerCase()).includes(designationLower)
   );
 
   const canSeeTeam = TEAM_ALLOWED_DESIGNATIONS.includes(designationName || '');

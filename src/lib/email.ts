@@ -1,8 +1,8 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST, // smtppro.zoho.com
-  port: Number(process.env.SMTP_PORT), // 465
+  host: 'smtp.zoho.com',
+  port: 465,
   secure: true, // MUST be true for port 465 (Zoho SSL requirement)
   auth: {
     user: process.env.SMTP_USER,
@@ -10,21 +10,18 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendEmail = async ({ to, subject, html }: { to: string; subject: string; html: string }) => {
-  // If SMTP variables aren't provided, just log for dev purposes
+export const sendEmail = async ({ to, bcc, subject, html }: { to?: string; bcc?: string | string[]; subject: string; html: string }) => {
+  // If SMTP variables aren't provided, log warning and gracefully bypass
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.log(`\n\n--- 📧 EMAIL MOCK (SMTP variables not set) ---`);
-    console.log(`To: ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Body (HTML):\n${html}`);
-    console.log(`-------------------------------------------\n\n`);
+    console.warn("SMTP credentials missing. Bypassing email broadcast.");
     return true;
   }
 
   try {
     const info = await transporter.sendMail({
-      from: `"HRM System" <${process.env.SMTP_USER}>`,
-      to,
+      from: process.env.SMTP_USER, // EXACTLY matches authenticated user to avoid Zoho rejection
+      to: to || process.env.SMTP_USER, // fallback to sender if only bcc is used
+      bcc,
       subject,
       html,
     });

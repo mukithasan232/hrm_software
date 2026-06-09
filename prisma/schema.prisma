@@ -146,6 +146,7 @@ model User {
   performances   Performance[]   @relation("UserPerformances")
   zkSyncLogs     ZkSyncLog[]     @relation("UserZkSyncLogs")
   zkSyncQueues   ZkSyncQueue[]   @relation("UserZkSyncQueue")
+  announcements  Announcement[]  @relation("AnnouncementAuthor")
 }
 
 // Single-row tenant branding config (white-label SaaS)
@@ -193,4 +194,16 @@ model ZkSyncLog {
   status       String   // success, failure
   errorMessage String?  @db.Text
   syncedAt     DateTime @default(now())
+}
+
+model Announcement {
+  id               String   @id @default(cuid())
+  title            String
+  message          String   @db.Text
+  targetType       String   // "GLOBAL", "DEPARTMENT", "INDIVIDUAL"
+  targetDepartment String?  // e.g., "Software & Web Dev" (if targetType is DEPARTMENT)
+  targetUserId     String?  // (if targetType is INDIVIDUAL)
+  createdAt        DateTime @default(now())
+  authorId         String
+  author           User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
 }
