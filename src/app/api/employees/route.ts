@@ -165,7 +165,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Employee created successfully', user: newUser }, { status: 201 });
 
   } catch (error: any) {
-    console.error('Error creating employee:', error);
-    return NextResponse.json({ message: 'Failed to create employee', error: error.message }, { status: 500 });
+    console.error('Employee Creation Error:', error);
+    return NextResponse.json({ error: error.message || "Failed to create employee" }, { status: 400 });
   }
 }

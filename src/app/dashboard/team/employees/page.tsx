@@ -199,7 +199,7 @@ export default function EmployeesPage() {
 
       const res = await fetch('/api/employees', { method: 'POST', body: formData });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to add employee');
+      if (!res.ok) throw new Error(data.error || data.message || 'Failed to add employee');
 
       toast.success('Employee added successfully!');
       
@@ -471,9 +471,14 @@ export default function EmployeesPage() {
                   ) : (
                     <select value={formZkEnroll} onChange={e => setFormZkEnroll(e.target.value)} className={fieldCls}>
                       <option value="">— Select Device User —</option>
-                      {unregisteredUsers.map(u => (
-                        <option key={u.deviceUserId || (u as any).uid} value={u.deviceUserId || (u as any).uid}>[Device ID: {u.deviceUserId || (u as any).uid}] - {u.name || 'Unknown'}</option>
-                      ))}
+                      {unregisteredUsers.map(u => {
+                        const rawId = (u as any).userId || (u as any).uid || u.deviceUserId;
+                        return (
+                          <option key={rawId} value={rawId ? rawId.toString() : ''}>
+                            [Device ID: {rawId}] - {u.name || 'Unknown'}
+                          </option>
+                        );
+                      })}
                     </select>
                   )}
                 </div>
