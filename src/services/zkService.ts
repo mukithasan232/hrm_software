@@ -20,13 +20,19 @@ const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
 // Milliseconds are explicitly zeroed so that @@unique([employeeId, timestamp]) works correctly:
 // two network packets for the same punch arriving at 10:19:18.123 and 10:19:18.456 both
 // normalize to 10:19:18.000 and are treated as one record by skipDuplicates/upsert.
-export const parseDeviceTime = (deviceDate: Date): Date => {
+export const parseDeviceTime = (deviceDateInput: any): Date => {
+  if (!deviceDateInput) return new Date(NaN);
+  
+  const deviceDate = new Date(deviceDateInput);
+  if (isNaN(deviceDate.getTime())) return new Date(NaN);
+
   const y = deviceDate.getFullYear();
   const m = String(deviceDate.getMonth() + 1).padStart(2, '0');
   const d = String(deviceDate.getDate()).padStart(2, '0');
   const h = String(deviceDate.getHours()).padStart(2, '0');
   const min = String(deviceDate.getMinutes()).padStart(2, '0');
   const s = String(deviceDate.getSeconds()).padStart(2, '0');
+  
   // Build ISO string with +06:00 offset (device sends Dhaka local time)
   // The string intentionally omits milliseconds so the result is always .000
   const normalized = new Date(`${y}-${m}-${d}T${h}:${min}:${s}+06:00`);
@@ -343,7 +349,8 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
     const recentLogs = rawLogs.filter((log: any) => {
-      const logDate = new Date(log.recordTime || log.record_time);
+      const deviceTime = log.timestamp || log.recordTime || log.record_time;
+      const logDate = new Date(deviceTime);
       return logDate >= fourteenDaysAgo;
     });
 
@@ -358,7 +365,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     console.log(`[ZKService] 📋 ${recentLogs.length} recent record(s) from device after filtering.`);
 
     // Sort logs chronologically ascending (earliest to latest) to guarantee correct CheckIn/CheckOut determination
-    const sortedRawLogs = Array.isArray(recentLogs) ? [...recentLogs].sort((a: any, b: any) => new Date(a.recordTime || a.record_time).getTime() - new Date(b.recordTime || b.record_time).getTime()) : [];
+    const sortedRawLogs = Array.isArray(recentLogs) ? [...recentLogs].sort((a: any, b: any) => new Date(a.timestamp || a.recordTime || a.record_time).getTime() - new Date(b.timestamp || b.recordTime || b.record_time).getTime()) : [];
 
     let skipped = 0;
     const punchHistory = new Map<string, { count: number; lastPunch: Date }>();
@@ -372,13 +379,19 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       try {
         const deviceEmpId = String(log.deviceUserId ?? log.user_id ?? log.userId ?? log.uid);
 
+        const deviceTime = log.timestamp || log.recordTime || log.record_time;
+        if (!deviceTime) {
+          skipped++;
+          continue;
+        }
+
         // parseDeviceTime converts device-local Dhaka time → UTC and strips milliseconds.
         // The defensive setMilliseconds(0) below is a belt-and-suspenders guard: if any
         // future code path introduces sub-second jitter, it is zeroed here before the
         // @@unique([employeeId, timestamp]) constraint and createMany deduplicate on it.
-        const rawTimestamp = parseDeviceTime(new Date(log.recordTime || log.record_time));
+        const rawTimestamp = parseDeviceTime(deviceTime);
         if (rawTimestamp.getMilliseconds() !== 0) {
-          console.warn(`[ZKService] ⚠️ Non-zero ms detected (${rawTimestamp.getMilliseconds()}ms) — stripping. Raw: ${log.recordTime || log.record_time}`);
+          console.warn(`[ZKService] ⚠️ Non-zero ms detected (${rawTimestamp.getMilliseconds()}ms) — stripping. Raw: ${deviceTime}`);
         }
         rawTimestamp.setMilliseconds(0);
         const timestamp = rawTimestamp;
