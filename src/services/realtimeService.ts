@@ -2,8 +2,7 @@ import { Server } from 'socket.io';
 // @ts-ignore
 import ZKLib from 'zkteco-js';
 import { prisma } from '../lib/prisma';
-import { getPunchType, resolvePunchType, parseDeviceTime } from './zkService';
-import bcrypt from 'bcryptjs';
+import { resolvePunchType, parseDeviceTime } from './zkService';
 import dgram from 'dgram';
 
 // ─── Device Configuration (strictly from env — no hardcoded fallbacks) ──────
@@ -241,9 +240,9 @@ const connectAndListen = async (): Promise<void> => {
         try {
           const deviceEmpId = String(data.userId);
           const deviceTime = data.attTime || data.recordTime || data.record_time;
-          
+
           if (!deviceTime) {
-            console.error('[RealtimeService] ❌ Missing timestamp in device payload, ignoring to prevent duplicates:', data);
+            console.error('[RealtimeService] ❌ Missing timestamp in device payload, ignoring:', data);
             return;
           }
 
@@ -254,35 +253,33 @@ const connectAndListen = async (): Promise<void> => {
             return;
           }
 
-          let user = await prisma.user.findUnique({ where: { employeeId: deviceEmpId } });
+          // Strict opt-in: only process punches from mapped (known) employees
+          const user = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { employeeId: deviceEmpId },
+                { zk_enroll_number: parseInt(deviceEmpId, 10) || -1 }
+              ]
+            }
+          });
 
           if (!user) {
-            const name = `User ${deviceEmpId}`;
-            const normalizedEmail = `user${deviceEmpId}-${Date.now()}@hrm.test`;
-            const hashedPassword = await bcrypt.hash('password123', 10);
-            user = await prisma.user.create({
-              data: {
-                employeeId: deviceEmpId,
-                name,
-                email: normalizedEmail,
-                password: hashedPassword,
-                baseSalary: 0,
-                isActive: true,
-                documents: {},
-              },
-            });
+            console.warn(`[RealtimeService] ⚠️ Unmapped device user "${deviceEmpId}" — punch ignored. Register this employee in the HRM system first.`);
+            return;
           }
 
           const employeeId = user.id;
           const employeeName = user.name;
+
+          // resolvePunchType now only blocks exact-same-second duplicates (no 30-min guard)
           const punchType = await resolvePunchType(employeeId, parsedTimestamp, data);
 
           if (!punchType) {
-            console.log(`[RealtimeService] ⏳ Ignored redundant punch for ${employeeName} due to 30-minute threshold.`);
+            console.log(`[RealtimeService] ⏭️  Exact-second duplicate punch for ${employeeName} — skipped (DB upsert handles idempotency).`);
             return;
           }
 
-          console.log(`[ZK Sync] Raw Time:`, deviceTime, '| Raw State:', data.state || data.type || data.punch || data.punchType, '--> DB UTC:', parsedTimestamp.toISOString(), '| DB State:', punchType);
+          console.log(`[ZK Sync] Raw Time:`, deviceTime, '| DB UTC:', parsedTimestamp.toISOString(), '| PunchType:', punchType);
 
           const newLog = await prisma.attendanceLog.upsert({
             where: { employeeId_timestamp: { employeeId, timestamp: parsedTimestamp } },

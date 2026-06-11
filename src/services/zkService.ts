@@ -66,12 +66,22 @@ export function getPunchType(record: any): string {
 
 /**
  * Resolves the punch type chronologically, ignoring device state completely.
+ *
+ * Rules:
+ *  - BULK SYNC path (punchHistory provided): uses an in-memory per-employee
+ *    punch counter. Odd punch = CheckIn, Even punch = CheckOut.
+ *    No time-gap filtering — every distinct device record is saved.
+ *
+ *  - REAL-TIME path (no punchHistory): queries the DB for today’s existing
+ *    logs. Odd total = next is CheckOut, Even total = next is CheckIn.
+ *    Only exact-same-second duplicates are blocked (handled by DB unique
+ *    constraint + upsert in the caller). No 30-minute guard.
  */
 export async function resolvePunchType(
   employeeId: string,
   timestamp: Date,
   log: any,
-  punchHistory?: Map<string, { firstPunch: Date, lastPunch: Date }>
+  punchHistory?: Map<string, { count: number; lastPunch: Date }>
 ): Promise<string | null> {
   const tzOffset = 6 * 60 * 60 * 1000;
   const localDate = new Date(timestamp.getTime() + tzOffset);
@@ -79,52 +89,54 @@ export async function resolvePunchType(
   const key = `${employeeId}_${dateStr}`;
 
   if (punchHistory) {
+    // ── BULK SYNC PATH ──────────────────────────────────────────────────────
     if (!punchHistory.has(key)) {
-      punchHistory.set(key, { firstPunch: timestamp, lastPunch: timestamp });
+      punchHistory.set(key, { count: 1, lastPunch: timestamp });
       return 'CheckIn';
     } else {
       const history = punchHistory.get(key)!;
-      const msDiff = timestamp.getTime() - history.lastPunch.getTime();
-      
-      if (msDiff < 30 * 60 * 1000) {
-        return null; // Ignore punches within 30 mins
+
+      // Block EXACT same-second duplicates from the device only
+      if (timestamp.getTime() === history.lastPunch.getTime()) {
+        return null; // identical record — skip
       }
-      
+
+      history.count++;
       history.lastPunch = timestamp;
-      return 'CheckOut';
+      // Odd count = CheckIn, Even count = CheckOut
+      return history.count % 2 === 1 ? 'CheckIn' : 'CheckOut';
     }
   }
 
-  // Real-time listener: query database for today's existing logs
+  // ── REAL-TIME PATH ────────────────────────────────────────────────────────
+  // Query DB for today’s existing logs for this employee (device logs only)
   const startOfDayLocal = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0, 0));
   const endOfDayLocal = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 23, 59, 59, 999));
-  
+
   const startOfTodayUTC = new Date(startOfDayLocal.getTime() - tzOffset);
   const endOfTodayUTC = new Date(endOfDayLocal.getTime() - tzOffset);
 
   const existingLogs = await prisma.attendanceLog.findMany({
     where: {
-      employeeId: employeeId,
+      employeeId,
+      deviceId: { not: 'Manual Entry' }, // Never count manual entries in the alternation
       timestamp: {
         gte: startOfTodayUTC,
-        lte: endOfTodayUTC
-      }
+        lte: endOfTodayUTC,
+      },
     },
-    orderBy: { timestamp: 'asc' }
+    orderBy: { timestamp: 'asc' },
   });
 
-  if (existingLogs.length === 0) {
-    return 'CheckIn';
-  }
-
+  // Block exact same-second duplicate from device
   const lastLog = existingLogs[existingLogs.length - 1];
-  const msDiff = timestamp.getTime() - lastLog.timestamp.getTime();
-
-  if (msDiff < 30 * 60 * 1000) {
-    return null; // Ignore
+  if (lastLog && timestamp.getTime() === lastLog.timestamp.getTime()) {
+    return null; // exact duplicate — DB upsert will handle idempotency
   }
 
-  return 'CheckOut';
+  // Odd existing count = next is CheckOut, Even (or zero) = next is CheckIn
+  const nextCount = existingLogs.length + 1;
+  return nextCount % 2 === 1 ? 'CheckIn' : 'CheckOut';
 }
 
 /**
@@ -343,7 +355,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     const sortedRawLogs = Array.isArray(recentLogs) ? [...recentLogs].sort((a: any, b: any) => new Date(a.recordTime || a.record_time).getTime() - new Date(b.recordTime || b.record_time).getTime()) : [];
 
     let skipped = 0;
-    const punchHistory = new Map<string, { firstPunch: Date, lastPunch: Date }>();
+    const punchHistory = new Map<string, { count: number; lastPunch: Date }>();
 
     // REMOVED: Auto-Creation of Fallback Unmapped User. Strict Opt-in Architecture.
     // Track timestamps globally to prevent duplicate compound constraints on exact millisecond
