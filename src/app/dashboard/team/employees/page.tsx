@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
   Plus, Search, Building2, User, Mail, UploadCloud, X,
-  RefreshCw, Key, Pencil, Trash2, AlertTriangle, Link as LinkIcon,
+  RefreshCw, Key, Pencil, Trash2, AlertTriangle, Link as LinkIcon, Loader2
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -125,7 +125,7 @@ export default function EmployeesPage() {
   const [permsTarget, setPermsTarget] = useState<Employee | null>(null);
   const [permsMatrix, setPermsMatrix] = useState<any>({});
   const [permsSubmitting, setPermsSubmitting] = useState(false);
-  const [permsLoading, setPermsLoadingState] = useState(false);
+  const [isPermsLoading, setPermsLoadingState] = useState(false);
 
   const MODULES = ['Emails', 'Users', 'Attendance', 'Teams', 'Leaves', 'Payroll'];
 
@@ -742,7 +742,7 @@ export default function EmployeesPage() {
             </div>
             
             <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-              {permsLoading ? (
+              {isPermsLoading ? (
                 <div className="flex justify-center py-10">
                   <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
                 </div>
@@ -801,7 +801,7 @@ export default function EmployeesPage() {
               </button>
               <button
                 onClick={handlePermsSubmit}
-                disabled={permsSubmitting || permsLoading}
+                disabled={permsSubmitting || isPermsLoading}
                 className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 {permsSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

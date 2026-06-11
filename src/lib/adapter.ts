@@ -267,7 +267,7 @@ export function wrapHandler(
 
           for (const reqPerm of options.requiredPermissions) {
             // First check user custom permissions (override)
-            const customPerm = dbUser.userPermissions?.find(p => p.moduleName === reqPerm.moduleName);
+            const customPerm = dbUser.userPermissions?.find((p: any) => p.moduleName === reqPerm.moduleName);
             
             let hasAccess = false;
             
@@ -275,7 +275,7 @@ export function wrapHandler(
               hasAccess = !!customPerm[reqPerm.action];
             } else {
               // Fallback to role permissions
-              const rolePerm = dbUser.role?.permissions.find(p => p.moduleName === reqPerm.moduleName);
+              const rolePerm = dbUser.role?.permissions.find((p: any) => p.moduleName === reqPerm.moduleName);
               hasAccess = !!(rolePerm && rolePerm[reqPerm.action]);
             }
 

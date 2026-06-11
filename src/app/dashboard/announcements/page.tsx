@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Megaphone, Search, Send, Loader2 } from 'lucide-react';
+import { Megaphone, Search, Send, Loader2, Mailbox, Clock, Building2, User } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -11,6 +11,13 @@ export default function AnnouncementsPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'INBOX' | 'BROADCAST'>('INBOX');
+  const [inboxNotices, setInboxNotices] = useState<any[]>([]);
+  const [loadingInbox, setLoadingInbox] = useState(false);
+
+  const isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(
+    (user as any)?.designation || ''
+  );
 
   const [formData, setFormData] = useState({
     title: '',
@@ -32,6 +39,24 @@ export default function AnnouncementsPage() {
     };
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'INBOX') {
+      fetchInbox();
+    }
+  }, [activeTab]);
+
+  const fetchInbox = async () => {
+    setLoadingInbox(true);
+    try {
+      const res = await api.get('/announcements');
+      setInboxNotices(res.data);
+    } catch (e) {
+      toast.error('Failed to load announcements');
+    } finally {
+      setLoadingInbox(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +110,70 @@ export default function AnnouncementsPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-sm dark:shadow-2xl">
+      {isAdmin && (
+        <div className="flex items-center gap-4 border-b border-slate-200 dark:border-white/10 pb-px mb-6">
+          <button
+            onClick={() => setActiveTab('INBOX')}
+            className={`pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'INBOX' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+          >
+            <Mailbox className="w-4 h-4" /> My Notices
+          </button>
+          <button
+            onClick={() => setActiveTab('BROADCAST')}
+            className={`pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'BROADCAST' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+          >
+            <Send className="w-4 h-4" /> Broadcast
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'INBOX' && (
+        <div className="space-y-4">
+          {loadingInbox ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+          ) : inboxNotices.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl p-12 text-center shadow-sm">
+              <Megaphone className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-slate-700 dark:text-white">No Announcements</h3>
+              <p className="text-slate-500 dark:text-slate-400 mt-1">You're all caught up. There are no notices for you or your department.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {inboxNotices.map((notice: any) => (
+                <div key={notice.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 md:p-6 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        {notice.targetType === 'GLOBAL' && <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 text-[10px] font-bold uppercase tracking-wider">Global</span>}
+                        {notice.targetType === 'DEPARTMENT' && <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><Building2 className="w-3 h-3" /> Dept</span>}
+                        {notice.targetType === 'INDIVIDUAL' && <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><User className="w-3 h-3" /> Direct</span>}
+                        
+                        <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
+                          <Clock className="w-3 h-3" />
+                          {new Date(notice.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">{notice.title}</h3>
+                      <p className="text-slate-600 dark:text-slate-300 text-sm whitespace-pre-wrap">{notice.message}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-white">
+                      {notice.author?.name?.charAt(0) || 'A'}
+                    </div>
+                    Sent by {notice.author?.name || 'System Admin'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'BROADCAST' && isAdmin && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-sm dark:shadow-2xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           
           <div className="space-y-2">
@@ -198,6 +286,7 @@ export default function AnnouncementsPage() {
 
         </form>
       </div>
+      )}
     </div>
   );
 }

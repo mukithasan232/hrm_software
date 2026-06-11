@@ -29,7 +29,7 @@ const getPermissions = async (req: Request) => {
   const mergedMap = new Map();
   
   // Add role permissions first
-  rolePerms.forEach(p => {
+  rolePerms.forEach((p: any) => {
     mergedMap.set(p.moduleName, {
       moduleName: p.moduleName,
       canRead: p.canRead,
@@ -40,7 +40,7 @@ const getPermissions = async (req: Request) => {
   });
 
   // Override with user permissions
-  userPerms.forEach(p => {
+  userPerms.forEach((p: any) => {
     mergedMap.set(p.moduleName, {
       moduleName: p.moduleName,
       canRead: p.canRead,

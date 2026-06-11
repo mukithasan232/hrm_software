@@ -4,13 +4,13 @@ import { wrapHandler, corsPreflight } from '@/lib/adapter';
 
 export const OPTIONS = corsPreflight;
 
-const getEmailSettings = async (req: Request) => {
+const getEmailSettings = async (req: any, res: any) => {
   const settings = await prisma.smtpSettings.findFirst();
   return NextResponse.json(settings || {});
 };
 
-const upsertEmailSettings = async (req: Request) => {
-  const body = await req.json();
+const upsertEmailSettings = async (req: any, res: any) => {
+  const body = req.body;
   const { host, port, security, username, password } = body;
 
   if (!host || !port || !username || !password) {

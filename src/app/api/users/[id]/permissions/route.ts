@@ -4,8 +4,8 @@ import { wrapHandler, corsPreflight } from '@/lib/adapter';
 
 export const OPTIONS = corsPreflight;
 
-const getUserPermissions = async (req: Request, res: any, params: any) => {
-  const { id } = params;
+const getUserPermissions = async (req: any, res: any) => {
+  const { id } = req.params;
   
   const userPerms = await prisma.userPermission.findMany({
     where: { userId: id }
@@ -14,8 +14,8 @@ const getUserPermissions = async (req: Request, res: any, params: any) => {
   return NextResponse.json(userPerms);
 };
 
-const upsertUserPermissions = async (req: Request, res: any, params: any) => {
-  const { id } = params;
+const upsertUserPermissions = async (req: any, res: any) => {
+  const { id } = req.params;
   const body = await req.json();
   const { matrix } = body;
 
@@ -33,7 +33,7 @@ const upsertUserPermissions = async (req: Request, res: any, params: any) => {
     canDelete: perms.canDelete,
   }));
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: any) => {
     // Delete existing custom permissions for this user
     await tx.userPermission.deleteMany({
       where: { userId: id }

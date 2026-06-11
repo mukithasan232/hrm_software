@@ -4,15 +4,15 @@ import { wrapHandler, corsPreflight } from '@/lib/adapter';
 
 export const OPTIONS = corsPreflight;
 
-const getRoles = async (req: Request) => {
+const getRoles = async (req: any, res: any) => {
   const roles = await prisma.role.findMany({
     include: { permissions: true }
   });
   return NextResponse.json(roles);
 };
 
-const upsertRole = async (req: Request) => {
-  const body = await req.json();
+const upsertRole = async (req: any, res: any) => {
+  const body = req.body;
   const { id, name, description, matrix } = body;
 
   if (!name || !matrix) {
@@ -30,7 +30,7 @@ const upsertRole = async (req: Request) => {
 
   if (id) {
     // Update existing role
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.role.update({
         where: { id },
         data: { name, description }
