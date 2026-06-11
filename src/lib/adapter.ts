@@ -21,6 +21,7 @@ export interface MockRequest {
     size: number;
     path: string;
   };
+  isApiSecretBypass?: boolean;
 }
 
 export interface MockResponse {
@@ -122,15 +123,23 @@ export async function parseRequest(
   // Extract authorization token from headers
   let user: any = undefined;
   const authHeader = req.headers.get('authorization');
+  let isApiSecretBypass = false;
+
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    try {
-      const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
-      user = {
-        id: decoded.id,
-        designation: decoded.designation,
-      };
-    } catch (_) {}
+    const token = authHeader.split(' ')[1];
+    
+    // Allow cron/backend jobs to bypass standard JWT using the API_SECRET_TOKEN
+    if (process.env.API_SECRET_TOKEN && token === process.env.API_SECRET_TOKEN) {
+      isApiSecretBypass = true;
+    } else {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
+        user = {
+          id: decoded.id,
+          designation: decoded.designation,
+        };
+      } catch (_) {}
+    }
   }
 
   return {
@@ -141,6 +150,7 @@ export async function parseRequest(
     method: req.method,
     url: req.url,
     user,
+    isApiSecretBypass,
     file: fileObj,
   };
 }
@@ -205,7 +215,7 @@ export function wrapHandler(
 
       // Middleware simulation
       if (options.protect) {
-        if (!mockReq.user) {
+        if (!mockReq.user && !(mockReq as any).isApiSecretBypass) {
           return NextResponse.json(
             { message: 'Not authorized, token failed' },
             { status: 401, headers: getCorsHeaders() }
@@ -213,23 +223,23 @@ export function wrapHandler(
         }
 
         const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-        const userDesig = (mockReq.user.designation || '').toLowerCase().trim();
+        const userDesig = (mockReq.user?.designation || '').toLowerCase().trim();
 
-        if (options.adminOnly && !ADMIN_DESIGNATIONS.includes(userDesig)) {
-          console.error(`[Auth Adapter] Admin access denied. Required admin, got: "${mockReq.user.designation}"`);
+        if (options.adminOnly && !(mockReq as any).isApiSecretBypass && !ADMIN_DESIGNATIONS.includes(userDesig)) {
+          console.error(`[Auth Adapter] Admin access denied. Required admin, got: "${mockReq.user?.designation}"`);
           return NextResponse.json(
             { message: 'Not authorized as an admin' },
             { status: 403, headers: getCorsHeaders() }
           );
         }
 
-        if (options.allowedDesignations) {
+        if (options.allowedDesignations && !(mockReq as any).isApiSecretBypass) {
           const allowedLower = options.allowedDesignations.map((d: string) => d.toLowerCase().trim());
           // Allow any ultra admin or any admin designation to bypass specific designation restrictions just in case
           if (!allowedLower.includes(userDesig) && !ADMIN_DESIGNATIONS.includes(userDesig)) {
-            console.error(`[Auth Adapter] Access denied. Allowed: ${allowedLower.join(', ')}, got: "${mockReq.user.designation}"`);
+            console.error(`[Auth Adapter] Access denied. Allowed: ${allowedLower.join(', ')}, got: "${mockReq.user?.designation}"`);
             return NextResponse.json(
-              { message: `Designation (${mockReq.user.designation}) is not allowed to access this resource.` },
+              { message: `Designation (${mockReq.user?.designation}) is not allowed to access this resource.` },
               { status: 403, headers: getCorsHeaders() }
             );
           }

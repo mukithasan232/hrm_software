@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
-  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone
+  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -25,6 +25,7 @@ const TEAM_SUB_DEFS = [
   { key: 'designations', href: '/dashboard/team/designations', icon: Shield },
   { key: 'users',        href: '/dashboard/team/users',        icon: UsersRound },
   { key: 'employees',    href: '/dashboard/team/employees',    icon: Users },
+  { key: 'deviceConfig', href: '/dashboard/settings/device',   icon: HardDrive, label: 'Device Config' },
 ];
 
 const TEAM_ALLOWED_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator'];
@@ -44,6 +45,9 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const isTeamActive = pathname.startsWith('/dashboard/team');
   const [teamOpen, setTeamOpen] = useState(isTeamActive);
   const [logoError, setLogoError] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const collapsed = !mobileOpen && isCollapsed;
 
   const designationName = typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation;
   const designationLower = (designationName || '').toLowerCase();
@@ -60,24 +64,33 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className={`p-5 border-b border-slate-200 dark:border-white/10 flex items-center ${collapsed ? 'justify-center' : 'justify-between'} transition-all`}>
+        <div className={`flex items-center gap-2.5 min-w-0 ${collapsed ? 'hidden' : ''}`}>
           {brand.logoUrl && !logoError ? (
             <img
-              src={brand.logoUrl}
-              alt={brand.companyName}
+              src={brand.logoUrl.startsWith('http') ? brand.logoUrl : `${BACKEND}${brand.logoUrl}`}
+              alt={brand.companyName || 'Logo'}
               className="h-8 max-w-[140px] object-contain"
               onError={() => setLogoError(true)}
             />
           ) : (
-            <div>
-              <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">
-                {brand.companyName?.replace('Portal', '').trim() || brand.companyName || 'HRM'}
-              </h2>
-            </div>
+            <span className="text-white font-extrabold text-2xl tracking-widest block py-2">HRM</span>
           )}
         </div>
-        {onClose && (
+
+        {/* Toggle Button for Desktop */}
+        {!mobileOpen && (
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)} 
+            className={`p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors ${collapsed ? 'mx-auto' : ''}`}
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          </button>
+        )}
+
+        {/* Mobile Close Button */}
+        {mobileOpen && onClose && (
           <button onClick={onClose} className="md:hidden p-1 text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white flex-shrink-0">
             <X className="w-5 h-5" />
           </button>
@@ -96,53 +109,102 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               key={item.key}
               href={item.href}
               onClick={onClose}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-sm font-medium group ${
+              className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
                 isActive
                   ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
                   : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-              }`}
+              } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
             >
               <Icon
-                className={`h-4 w-4 flex-shrink-0 transition-colors ${
+                className={`h-5 w-5 flex-shrink-0 transition-colors ${
                   isActive ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
                 }`}
               />
-              <span>{t(item.key as any)}</span>
-              {isActive && (
+              {!collapsed && <span>{t(item.key as any)}</span>}
+              {!collapsed && isActive && (
                 <span className="ml-auto h-1.5 w-1.5 rounded-full flex-shrink-0 bg-brand-primary" />
+              )}
+              
+              {/* Tooltip */}
+              {collapsed && (
+                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
+                  {t(item.key as any)}
+                </span>
               )}
             </Link>
           );
         })}
 
+        {/* ── Unconditional Administration Links ── */}
+        <div className="pt-1">
+          {!collapsed && (
+            <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-gray-600">
+              {t('administration')}
+            </p>
+          )}
+          {collapsed && (
+            <div className="w-full h-px bg-slate-200 dark:bg-white/10 my-3" />
+          )}
+
+          <Link
+            href="/dashboard/settings/device"
+            onClick={onClose}
+            className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
+              pathname.startsWith('/dashboard/settings/device')
+                ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
+                : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+            } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
+          >
+            <HardDrive className="h-5 w-5 flex-shrink-0" />
+            {!collapsed && <span>Device Config</span>}
+            {collapsed && (
+              <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
+                Device Config
+              </span>
+            )}
+          </Link>
+        </div>
+
         {/* ── Team Section (Admin / Superadmin only) ── */}
         {canSeeTeam && (
           <div className="pt-1">
             {/* Separator label */}
-            <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-gray-600">
-              {t('administration')}
-            </p>
+            {!collapsed && (
+              <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-gray-600">
+                {t('administration')}
+              </p>
+            )}
+            {collapsed && (
+              <div className="w-full h-px bg-slate-200 dark:bg-white/10 my-3" />
+            )}
 
             {/* Team accordion trigger */}
             <button
               onClick={() => setTeamOpen(prev => !prev)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-sm font-medium group ${
+              className={`w-full flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
                 isTeamActive
                   ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20'
                   : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-              }`}
+              } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
             >
               <UsersRound
-                className={`h-4 w-4 flex-shrink-0 transition-colors ${
+                className={`h-5 w-5 flex-shrink-0 transition-colors ${
                   isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
                 }`}
               />
-              <span className="flex-1 text-left">{t('team')}</span>
-              <ChevronDown
-                className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''} ${
-                  isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500'
-                }`}
-              />
+              {!collapsed && <span className="flex-1 text-left">{t('team')}</span>}
+              {!collapsed && (
+                <ChevronDown
+                  className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''} ${
+                    isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500'
+                  }`}
+                />
+              )}
+              {collapsed && (
+                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
+                  {t('team')}
+                </span>
+              )}
             </button>
 
             {/* Sub-items with animated height */}
@@ -153,7 +215,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 transition: 'max-height 0.25s ease',
               }}
             >
-              <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-white/10 pl-3">
+              <div className={`${collapsed ? 'mt-1 space-y-1 mx-2' : 'ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-white/10 pl-3'}`}>
                 {TEAM_SUB_DEFS.map(sub => {
                   const isSubActive = pathname === sub.href || pathname.startsWith(sub.href);
                   const SubIcon = sub.icon;
@@ -162,15 +224,21 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                       key={sub.key}
                       href={sub.href}
                       onClick={onClose}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-sm font-medium group ${
+                      className={`flex items-center gap-2.5 py-2 rounded-lg transition-all text-sm font-medium group relative ${
                         isSubActive
                           ? 'bg-indigo-500/10 text-indigo-500'
                           : 'text-slate-500 dark:text-gray-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
-                      }`}
+                      } ${collapsed ? 'justify-center px-0' : 'px-3'}`}
                     >
-                      <SubIcon className={`h-3.5 w-3.5 flex-shrink-0 ${isSubActive ? 'text-indigo-500' : ''}`} />
-                      <span>{t(sub.key as any)}</span>
-                      {isSubActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />}
+                      <SubIcon className={`h-4 w-4 flex-shrink-0 ${isSubActive ? 'text-indigo-500' : ''}`} />
+                      {!collapsed && <span>{(sub as any).label || t(sub.key as any)}</span>}
+                      {!collapsed && isSubActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />}
+                      
+                      {collapsed && (
+                        <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
+                          {(sub as any).label || t(sub.key as any)}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -181,32 +249,50 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-slate-200 dark:border-white/10 space-y-2">
+      <div className={`p-3 border-t border-slate-200 dark:border-white/10 space-y-2 ${collapsed ? 'flex flex-col items-center' : ''}`}>
         {/* Mobile App Download Card */}
         <a
           href="https://drive.google.com/file/d/16FpY6WfJG6HB6EPgEU4vdRVqAGx0A02c/view?usp=drive_link"
           download="HRM-App.apk"
-          className="flex items-center gap-3 px-3 py-2.5 w-full text-left bg-gradient-to-tr from-brand-primary/10 to-brand-secondary/10 hover:from-brand-primary/20 hover:to-brand-secondary/20 border border-brand-primary/20 rounded-xl transition-all group"
+          className={`flex items-center gap-3 py-2.5 border border-brand-primary/20 rounded-xl transition-all group relative ${
+            collapsed 
+              ? 'justify-center w-10 h-10 px-0 bg-brand-primary/10 hover:bg-brand-primary/20' 
+              : 'px-3 w-full text-left bg-gradient-to-tr from-brand-primary/10 to-brand-secondary/10 hover:from-brand-primary/20 hover:to-brand-secondary/20'
+          }`}
         >
-          <div className="p-1.5 bg-brand-primary/20 text-brand-primary rounded-lg group-hover:scale-110 transition-transform">
-            <Smartphone className="h-4 w-4" />
+          <div className={`${collapsed ? '' : 'p-1.5 bg-brand-primary/20'} text-brand-primary rounded-lg group-hover:scale-110 transition-transform`}>
+            <Smartphone className="h-5 w-5" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-brand-primary/80">
-              {t('download')}
-            </p>
-            <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] uppercase tracking-wider font-bold text-brand-primary/80">
+                {t('download')}
+              </p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
+                {t('androidApp')}
+              </p>
+            </div>
+          )}
+          {collapsed && (
+            <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
               {t('androidApp')}
-            </p>
-          </div>
+            </span>
+          )}
         </a>
 
         <button
           onClick={logout}
-          className="flex items-center gap-3 px-4 py-2.5 w-full text-left text-red-500 hover:bg-red-500/5 dark:hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium"
+          className={`flex items-center gap-3 py-2.5 text-red-500 hover:bg-red-500/5 dark:hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium group relative ${
+            collapsed ? 'justify-center w-10 h-10 px-0' : 'px-4 w-full text-left'
+          }`}
         >
-          <LogOut className="h-4 w-4" />
-          <span>{t('signOut')}</span>
+          <LogOut className="h-5 w-5" />
+          {!collapsed && <span>{t('signOut')}</span>}
+          {collapsed && (
+            <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
+              {t('signOut')}
+            </span>
+          )}
         </button>
       </div>
     </div>
@@ -215,7 +301,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 border-r border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-black/40 backdrop-blur-lg flex-col h-screen flex-shrink-0 transition-colors duration-300">
+      <aside className={`hidden md:flex ${isCollapsed ? 'w-20' : 'w-64'} border-r border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-black/40 backdrop-blur-lg flex-col h-screen flex-shrink-0 transition-all duration-300 ease-in-out z-40`}>
         <SidebarContent />
       </aside>
 

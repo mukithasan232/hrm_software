@@ -8,6 +8,8 @@ import { DESIGNATION_HOME } from '@/components/ProtectedRoute';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
+const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LoginPage() {
   const router = useRouter();
@@ -59,16 +61,11 @@ export default function LoginPage() {
             </div>
           ) : (!logoUrl || logoError) ? (
             <div className="flex flex-col items-center justify-center gap-3 mb-6">
-              <div className="h-12 w-12 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl shadow-md">
-                {brand?.companyName ? brand.companyName.charAt(0).toUpperCase() : 'H'}
-              </div>
-              <span className="text-2xl font-bold text-gray-800 tracking-wide dark:text-white">
-                {brand?.companyName || 'HRM Portal'}
-              </span>
+              <span className="text-white font-extrabold text-2xl tracking-widest block py-2">HRM</span>
             </div>
           ) : (
             <img 
-              src={logoUrl} 
+              src={logoUrl.startsWith('http') ? logoUrl : `${BACKEND}${logoUrl}`} 
               alt="Logo" 
               className="h-12 w-auto object-contain mx-auto mb-6"
               onError={() => setLogoError(true)} 

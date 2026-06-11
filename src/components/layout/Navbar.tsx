@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Menu, Bell, Settings, LogOut, Paintbrush } from 'lucide-react';
+import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/services/api';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -165,13 +165,13 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                 <span
                   className="mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-primary/20 text-brand-primary"
                 >
-                  {user?.designation}
+                  {typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation}
                 </span>
               </div>
 
               <div className="p-2">
                 {/* Appearance — Admin/Superadmin only */}
-                {user && ['Admin', 'Super Admin'].includes(user.designation) && (
+                {user && ['Admin', 'Super Admin', 'System Administrator'].includes(typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation) && (
                   <Link
                     href="/dashboard/settings/appearance"
                     onClick={() => setShowProfile(false)}
@@ -181,6 +181,16 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                     <span className="font-medium">{t('appearance')}</span>
                   </Link>
                 )}
+
+                {/* Device Settings — UNCONDITIONAL */}
+                <Link
+                  href="/dashboard/settings/device"
+                  onClick={() => setShowProfile(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
+                >
+                  <HardDrive className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-medium">Device Settings</span>
+                </Link>
 
                 <Link
                   href="/dashboard/profile"

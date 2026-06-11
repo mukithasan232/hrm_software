@@ -160,6 +160,16 @@ model TenantSettings {
   updatedAt      DateTime @updatedAt
 }
 
+model Device {
+  id        String   @id @default(cuid())
+  name      String   // e.g., "Main Gate"
+  ipAddress String
+  port      Int      @default(4370)
+  commKey   Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
 model RawDeviceLog {
   id           String   @id @default(uuid())
   deviceUserId String

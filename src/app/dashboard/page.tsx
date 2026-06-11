@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Users, CalendarRange, RefreshCw, Clock, Megaphone, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { Users, CalendarRange, RefreshCw, Clock, Megaphone, BarChart3, PieChart as PieChartIcon, UserMinus } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell
@@ -19,7 +19,8 @@ export default function DashboardOverview() {
     employees: 0,
     pendingLeaves: 0,
     activeNow: 0,
-    totalToday: 0
+    totalToday: 0,
+    totalAbsent: 0
   });
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -51,11 +52,15 @@ export default function DashboardOverview() {
       }, {});
       setDepartmentData(Object.keys(deptCounts).map(key => ({ name: key, value: deptCounts[key] })));
 
+      const employeeCount = usersRes.data.totalCount || usersRes.data.data?.length || usersRes.data.length || 0;
+      const presentCount = presenceRes.data.activeNow || 0;
+
       setStats({
-        employees: usersRes.data.totalCount || usersRes.data.data?.length || usersRes.data.length || 0,
+        employees: employeeCount,
         pendingLeaves: leavesRes.data.filter((l: any) => l.status === 'Pending').length || 0,
-        activeNow: presenceRes.data.activeNow || 0,
-        totalToday: presenceRes.data.totalToday || 0
+        activeNow: presentCount,
+        totalToday: presenceRes.data.totalToday || 0,
+        totalAbsent: Math.max(0, employeeCount - presentCount)
       });
       // Use recentAll so feed always shows activity even when everyone checked out
       setRecentAttendance(presenceRes.data.recentAll || presenceRes.data.recent || []);
@@ -72,7 +77,8 @@ export default function DashboardOverview() {
       setStats(prev => ({
         ...prev,
         activeNow: res.data.activeNow || 0,
-        totalToday: res.data.totalToday || 0
+        totalToday: res.data.totalToday || 0,
+        totalAbsent: Math.max(0, prev.employees - (res.data.activeNow || 0))
       }));
       // Use recentAll so the feed shows everyone who punched today,
       // not just employees still present (last punch = CheckIn).
@@ -153,13 +159,13 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all shadow-sm dark:shadow-md">
+        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-orange-500/50 dark:hover:border-orange-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{t('totalEmployees')}</p>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.employees}</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Total Absent</p>
+            <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.totalAbsent}</p>
           </div>
-          <div className="p-4 bg-blue-500/20 rounded-xl text-blue-500 dark:text-blue-400">
-            <Users className="w-6 h-6" />
+          <div className="p-4 bg-orange-500/20 rounded-xl text-orange-500 dark:text-orange-400">
+            <UserMinus className="w-6 h-6" />
           </div>
         </div>
 

@@ -43,7 +43,8 @@ export const sendWelcomeEmail = async (
   name: string,
   password?: string,
   designation?: string,
-  loginUrl?: string
+  loginUrl?: string,
+  deviceId?: number | null
 ) => {
   const url = loginUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5001/login';
   const html = `
@@ -58,7 +59,8 @@ export const sendWelcomeEmail = async (
         
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 25px 0;">
           <p style="margin: 0 0 10px 0; color: #475569; font-size: 14px;"><strong>Email:</strong> <span style="color: #0f172a;">${toEmail}</span></p>
-          <p style="margin: 0; color: #475569; font-size: 14px;"><strong>Password:</strong> <span style="color: #0f172a; font-family: monospace; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${password || '********'}</span></p>
+          <p style="margin: 0 0 10px 0; color: #475569; font-size: 14px;"><strong>Password:</strong> <span style="color: #0f172a; font-family: monospace; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${password || '********'}</span></p>
+          ${deviceId ? `<p style="margin: 0; color: #475569; font-size: 14px;"><strong>Attendance Device ID:</strong> <span style="color: #0f172a; font-weight: bold;">${deviceId}</span></p>` : ''}
         </div>
 
         <div style="text-align: center; margin-top: 30px;">

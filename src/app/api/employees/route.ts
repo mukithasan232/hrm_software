@@ -124,7 +124,9 @@ export async function POST(req: Request) {
         email,
         name,
         password,
-        newUser.customDesignation?.name || 'Employee'
+        newUser.customDesignation?.name || 'Employee',
+        undefined,
+        zk_enroll_number
       );
     } catch (emailError) {
       console.error('Error sending welcome email:', emailError);

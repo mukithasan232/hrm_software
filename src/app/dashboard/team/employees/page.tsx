@@ -88,10 +88,12 @@ export default function EmployeesPage() {
   const fetchUnregistered = async () => {
     setLoadingUnregistered(true);
     try {
-      const res = await api.get('/zkteco/unregistered-users');
-      setUnregisteredUsers(res.data);
+      const res = await api.get('/device/users');
+      setUnregisteredUsers(res.data.users || []);
+      toast.success('Fetched users from device successfully');
     } catch(e) {
       console.error(e);
+      toast.error('Failed to fetch from device');
     } finally {
       setLoadingUnregistered(false);
     }
@@ -170,7 +172,7 @@ export default function EmployeesPage() {
     setEditType(emp.employeeType);
     setEditDepartment(emp.department || '');
     setEditZkEnroll(emp.zk_enroll_number ? emp.zk_enroll_number.toString() : '');
-    fetchUnregistered();
+    setEditZkEnroll(emp.zk_enroll_number ? emp.zk_enroll_number.toString() : '');
     setEditTarget(emp);
   };
 
@@ -292,7 +294,7 @@ export default function EmployeesPage() {
           </div>
           {canEdit && (
             <button
-              onClick={() => { resetAddForm(); setShowAddModal(true); fetchUnregistered(); }}
+              onClick={() => { resetAddForm(); setShowAddModal(true); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-brand-primary text-white text-sm font-semibold rounded-xl hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/25 whitespace-nowrap"
             >
               <Plus className="w-4 h-4" /> Add Employee
@@ -458,14 +460,19 @@ export default function EmployeesPage() {
 
                 {/* ZKTeco Enroll Number */}
                 <div className="space-y-1.5">
-                  <label className={labelCls}>ZKTeco Enroll Number</label>
+                  <div className="flex items-center justify-between">
+                    <label className={labelCls}>ZKTeco Enroll Number</label>
+                    <button type="button" onClick={fetchUnregistered} className="text-xs text-brand-primary font-bold hover:underline flex items-center gap-1">
+                      <RefreshCw className={`w-3 h-3 ${loadingUnregistered ? 'animate-spin' : ''}`} /> Fetch from Device
+                    </button>
+                  </div>
                   {loadingUnregistered ? (
                     <div className={`${fieldCls} flex items-center gap-2 text-slate-500`}><RefreshCw className="w-4 h-4 animate-spin"/> Fetching...</div>
                   ) : (
                     <select value={formZkEnroll} onChange={e => setFormZkEnroll(e.target.value)} className={fieldCls}>
-                      <option value="">— Select Unregistered Device User —</option>
+                      <option value="">— Select Device User —</option>
                       {unregisteredUsers.map(u => (
-                        <option key={u.deviceUserId} value={u.deviceUserId}>[Device ID: {u.deviceUserId}] - {u.name}</option>
+                        <option key={u.deviceUserId || (u as any).uid} value={u.deviceUserId || (u as any).uid}>[Device ID: {u.deviceUserId || (u as any).uid}] - {u.name || 'Unknown'}</option>
                       ))}
                     </select>
                   )}

@@ -6,11 +6,10 @@ import { Prisma } from '@prisma/client';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-// ─── Hardcoded credentials — NOT read from ENV ────────────────────────────────
-// ENV variables on Coolify CANNOT corrupt these values.
-const ADMIN_EMAIL    = 'ultraadmin@fixanyphoto.com';  // hardcoded — do NOT change
-const ADMIN_PASSWORD = 'SuperAdmin@2026!';              // hardcoded — do NOT change
-// ──────────────────────────────────────────────────────────────────────────────
+const ULTRA_EMAIL = process.env.ULTRAADMIN_EMAIL || 'ultraadmin@fixanyphoto.com';
+const ULTRA_PASS  = process.env.ULTRAADMIN_PASSWORD || 'SuperAdmin@2026!';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@fixanyphoto.com';
+const ADMIN_PASS  = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
 
 const superAdminPermissions: Prisma.JsonObject = {
   'employees.view':    true, 'employees.create': true, 'employees.edit': true, 'employees.delete': true,
@@ -22,13 +21,23 @@ const superAdminPermissions: Prisma.JsonObject = {
   'settings.view':     true, 'settings.edit': true,
 };
 
+const adminPermissions: Prisma.JsonObject = {
+  'employees.view':    true, 'employees.create': true, 'employees.edit': true,
+  'attendance.view':   true, 'attendance.create': true, 'attendance.edit': true, 'attendance.export': true,
+  'leaves.view':       true, 'leaves.approve': true, 'leaves.edit': true,
+  'payroll.view':      true, 'payroll.create': true, 'payroll.edit': true, 'payroll.export': true,
+  'performance.view':  true, 'performance.create': true, 'performance.edit': true,
+  'designations.view': true,
+  'settings.view':     true,
+};
+
 async function seedAdmins() {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('  🌱 Bulletproof Seed — Super Admin Account');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   try {
-    // ── Step 1: Upsert the "Super Admin" designation ───────────────────────
+    // ── Step 1: Upsert the Designations ──────────────────────────────────────────
     const superAdminDesignation = await prisma.designation.upsert({
       where:  { name: 'Super Admin' },
       update: { permissions: superAdminPermissions },
@@ -40,30 +49,36 @@ async function seedAdmins() {
     });
     console.log(`  ✅ [Designation]  Super Admin  (ID: ${superAdminDesignation.id})`);
 
-    // ── Step 2: Generate a fresh bcryptjs hash — 10 rounds (matches authController) ──
-    const salt           = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, salt);
+    const adminDesignation = await prisma.designation.upsert({
+      where:  { name: 'Admin' },
+      update: { permissions: adminPermissions },
+      create: {
+        name:        'Admin',
+        description: 'Administrator with access to most modules',
+        permissions: adminPermissions,
+      },
+    });
+    console.log(`  ✅ [Designation]  Admin        (ID: ${adminDesignation.id})`);
 
-    console.log(`  🔐 [Hash]         Generated fresh bcryptjs hash (10 rounds)`);
-    console.log(`  📧 [Email]        ${ADMIN_EMAIL}`);
-    // Log first 20 chars of hash so we can cross-check in Coolify logs
-    console.log(`  🔑 [Hash prefix]  ${hashedPassword.substring(0, 20)}...`);
+    // ── Step 2: Generate fresh bcryptjs hashes ──────────────────────────────────
+    const salt           = await bcrypt.genSalt(10);
+    const ultraHash      = await bcrypt.hash(ULTRA_PASS, salt);
+    const adminHash      = await bcrypt.hash(ADMIN_PASS, salt);
 
     const emptyDocuments: Prisma.JsonObject = {};
 
-    // ── Step 3: DESTRUCTIVE — wipe any existing row, then create fresh ─────
-    // This guarantees NO corrupt/stale hash can survive. No upsert, no merge.
+    // ── Step 3: Delete existing users and create fresh ───────────────────────────
     const deleted = await prisma.user.deleteMany({
-      where: { email: ADMIN_EMAIL },
+      where: { email: { in: [ULTRA_EMAIL, ADMIN_EMAIL] } },
     });
-    console.log(`  🗑️  [Delete]       Removed ${deleted.count} existing record(s) for ${ADMIN_EMAIL}`);
+    console.log(`  🗑️  [Delete]       Removed ${deleted.count} existing records`);
 
-    const adminUser = await prisma.user.create({
+    const ultraUser = await prisma.user.create({
       data: {
-        email:         ADMIN_EMAIL,
+        email:         ULTRA_EMAIL,
         employeeId:    'ADM-ULTRA',
         name:          'Ultra Admin',
-        password:      hashedPassword,      // fresh bcryptjs hash — guaranteed correct
+        password:      ultraHash,
         designationId: superAdminDesignation.id,
         department:    'Management',
         baseSalary:    0,
@@ -73,14 +88,32 @@ async function seedAdmins() {
         userType:      'Employee',
       },
     });
+    console.log(`  ✅ [User]         Created: ${ultraUser.email}  (DB ID: ${ultraUser.id})`);
 
+    const adminUser = await prisma.user.create({
+      data: {
+        email:         ADMIN_EMAIL,
+        employeeId:    'ADM-STD',
+        name:          'Admin User',
+        password:      adminHash,
+        designationId: adminDesignation.id,
+        department:    'Management',
+        baseSalary:    0,
+        isActive:      true,
+        documents:     emptyDocuments,
+        employeeType:  'IN_HOUSE',
+        userType:      'Employee',
+      },
+    });
     console.log(`  ✅ [User]         Created: ${adminUser.email}  (DB ID: ${adminUser.id})`);
 
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('  🎉 Seed complete. Login credentials:');
     console.log('  ┌────────────────────────────────────────────────────┐');
-    console.log(`  │  Email:    ${ADMIN_EMAIL.padEnd(38)} │`);
-    console.log(`  │  Password: ${ADMIN_PASSWORD.padEnd(38)} │`);
+    console.log(`  │  Ultra Email: ${ULTRA_EMAIL.padEnd(36)} │`);
+    console.log(`  │  Ultra Pass:  ${ULTRA_PASS.padEnd(36)} │`);
+    console.log(`  │  Admin Email: ${ADMIN_EMAIL.padEnd(36)} │`);
+    console.log(`  │  Admin Pass:  ${ADMIN_PASS.padEnd(36)} │`);
     console.log('  └────────────────────────────────────────────────────┘');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
