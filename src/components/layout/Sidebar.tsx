@@ -167,15 +167,6 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         {/* ── Team Section (Admin / Superadmin only) ── */}
         {canSeeTeam && (
           <div className="pt-1">
-            {/* Separator label */}
-            {!collapsed && (
-              <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-gray-600">
-                {t('administration')}
-              </p>
-            )}
-            {collapsed && (
-              <div className="w-full h-px bg-slate-200 dark:bg-white/10 my-3" />
-            )}
 
             {/* Team accordion trigger */}
             <button

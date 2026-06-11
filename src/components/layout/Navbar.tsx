@@ -182,16 +182,6 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                   </Link>
                 )}
 
-                {/* Device Settings — UNCONDITIONAL */}
-                <Link
-                  href="/dashboard/settings/device"
-                  onClick={() => setShowProfile(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
-                >
-                  <HardDrive className="w-4 h-4 flex-shrink-0" />
-                  <span className="font-medium">Device Settings</span>
-                </Link>
-
                 <Link
                   href="/dashboard/profile"
                   onClick={() => setShowProfile(false)}
