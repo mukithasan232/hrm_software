@@ -1,27 +1,54 @@
 import nodemailer from 'nodemailer';
+import { prisma } from '@/lib/prisma';
 
-const getTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST, // smtppro.zoho.com
-    port: Number(process.env.SMTP_PORT), // 465
-    secure: true, // MUST be true for port 465 (Zoho SSL requirement)
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+const getTransporter = async () => {
+  try {
+    const dbSettings = await prisma.smtpSettings.findFirst();
+    if (dbSettings && dbSettings.host && dbSettings.username && dbSettings.password) {
+      return {
+        transporter: nodemailer.createTransport({
+          host: dbSettings.host,
+          port: dbSettings.port,
+          secure: dbSettings.security === 'SSL/TLS',
+          auth: {
+            user: dbSettings.username,
+            pass: dbSettings.password,
+          },
+        }),
+        fromUser: dbSettings.username,
+      };
+    }
+  } catch (error) {
+    console.error('[EmailService] Failed to fetch dynamic SMTP settings. Falling back to ENV:', error);
+  }
+
+  // Fallback
+  return {
+    transporter: nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: true,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    }),
+    fromUser: process.env.SMTP_USER,
+  };
 };
 
 export const sendMail = async ({ to, subject, html }: { to: string; subject: string; html: string }) => {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn('[EmailService] SMTP credentials not configured. Skipping email to', to);
-    throw new Error('SMTP credentials not configured');
-  }
   try {
-    const transporter = getTransporter();
+    const { transporter, fromUser } = await getTransporter();
+    
+    if (!fromUser) {
+      console.warn('[EmailService] SMTP credentials not configured (DB or ENV). Skipping email to', to);
+      throw new Error('SMTP credentials not configured');
+    }
+
     await transporter.verify(); // Check connection
     await transporter.sendMail({
-      from: process.env.SMTP_FROM_EMAIL || `"HRM Portal" <${process.env.SMTP_USER}>`,
+      from: process.env.SMTP_FROM_EMAIL || `"HRM Portal" <${fromUser}>`,
       to,
       subject,
       html,

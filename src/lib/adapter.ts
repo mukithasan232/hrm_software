@@ -201,6 +201,7 @@ export function wrapHandler(
     protect?: boolean;
     allowedDesignations?: string[];
     adminOnly?: boolean;
+    requiredPermissions?: { moduleName: string; action: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete' }[];
   } = {}
 ) {
   return async (req: NextRequest, { params }: { params?: any } = {}) => {
@@ -242,6 +243,34 @@ export function wrapHandler(
               { message: `Designation (${mockReq.user?.designation}) is not allowed to access this resource.` },
               { status: 403, headers: getCorsHeaders() }
             );
+          }
+        }
+
+        if (options.requiredPermissions && options.requiredPermissions.length > 0 && !(mockReq as any).isApiSecretBypass) {
+          // Allow admins to bypass if you want, but strictly enforcing granular RBAC here:
+          const { prisma } = await import('@/lib/prisma');
+          const dbUser = await prisma.user.findUnique({
+            where: { id: mockReq.user?.id },
+            include: { role: { include: { permissions: true } } }
+          });
+
+          if (!dbUser || !dbUser.role) {
+            console.error(`[Auth Adapter] Access denied. User lacks a role assignment for granular permissions.`);
+            return NextResponse.json(
+              { message: 'Role not assigned. Granular permission denied.' },
+              { status: 403, headers: getCorsHeaders() }
+            );
+          }
+
+          for (const reqPerm of options.requiredPermissions) {
+            const perm = dbUser.role.permissions.find(p => p.moduleName === reqPerm.moduleName);
+            if (!perm || !perm[reqPerm.action]) {
+              console.error(`[Auth Adapter] Access denied. Role "${dbUser.role.name}" lacks ${reqPerm.action} on ${reqPerm.moduleName}.`);
+              return NextResponse.json(
+                { message: `Permission denied for module: ${reqPerm.moduleName} action: ${reqPerm.action}` },
+                { status: 403, headers: getCorsHeaders() }
+              );
+            }
           }
         }
       }
