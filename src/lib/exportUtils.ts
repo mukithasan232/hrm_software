@@ -64,8 +64,9 @@ export const exportToExcel = async (data: any[], filename: string, reportPeriod:
 
   // Task 4: Dynamically adjust column widths
   worksheet.columns.forEach((column, index) => {
+    if (!column) return;
     let maxLength = 0;
-    column.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+    column.eachCell?.({ includeEmpty: true }, (cell, rowNumber) => {
       if (rowNumber > 3) { // Only consider header and data rows
         const columnLength = cell.value ? cell.value.toString().length : 10;
         if (columnLength > maxLength) {
@@ -98,7 +99,7 @@ export const exportToPDF = async (elementId: string, filename: string, title: st
     useCORS: true,
     scrollY: -window.scrollY,
     windowWidth: document.documentElement.offsetWidth,
-    onclone: (clonedDoc) => {
+    onclone: (clonedDoc: Document) => {
       // Temporarily remove strict widths and overflow hidden on the clone
       const target = clonedDoc.getElementById('pdf-export-content');
       if (target) {

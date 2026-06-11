@@ -115,14 +115,15 @@ export function DateRangePicker({ value, onChange, disabled }: DateRangePickerPr
                 pagedNavigation
                 className="text-slate-900 dark:text-white"
                 classNames={{
-                  day_selected: "bg-indigo-600 text-white hover:bg-indigo-500",
-                  day_today: "font-bold text-indigo-600 dark:text-indigo-400",
+                  selected: "bg-indigo-600 text-white hover:bg-indigo-500",
+                  today: "font-bold text-indigo-600 dark:text-indigo-400",
                   day: "rounded-md hover:bg-slate-100 dark:hover:bg-white/10 p-1 m-1 text-sm transition-all",
-                  caption: "font-bold text-sm mb-2 px-1 flex justify-between items-center",
-                  nav_button: "hover:bg-slate-100 dark:hover:bg-white/10 rounded-md p-1",
+                  month_caption: "font-bold text-sm mb-2 px-1 flex justify-between items-center",
+                  button_previous: "hover:bg-slate-100 dark:hover:bg-white/10 rounded-md p-1",
+                  button_next: "hover:bg-slate-100 dark:hover:bg-white/10 rounded-md p-1",
                   month: "m-2",
                   months: "flex flex-col sm:flex-row gap-4",
-                  table: "w-full border-collapse",
+                  month_grid: "w-full border-collapse",
                 }}
               />
             </div>

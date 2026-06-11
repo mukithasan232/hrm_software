@@ -84,11 +84,11 @@ export async function resolvePunchType(
       return 'CheckIn';
     } else {
       const history = punchHistory.get(key)!;
-      // const msDiff = timestamp.getTime() - history.lastPunch.getTime();
+      const msDiff = timestamp.getTime() - history.lastPunch.getTime();
       
-      // if (msDiff < 30 * 60 * 1000) {
-      //   return null; // Ignore punches within 30 mins
-      // }
+      if (msDiff < 30 * 60 * 1000) {
+        return null; // Ignore punches within 30 mins
+      }
       
       history.lastPunch = timestamp;
       return 'CheckOut';

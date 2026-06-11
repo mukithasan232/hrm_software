@@ -7,7 +7,7 @@ import { wrapHandler } from '@/lib/adapter';
 
 const BD_TZ = 'Asia/Dhaka';
 
-const getAnalytics = async () => {
+const getAnalytics = async (req: any, res: any) => {
   try {
     const totalEmployees = await prisma.user.count({
       where: {
@@ -46,10 +46,10 @@ const getAnalytics = async () => {
       });
     }
 
-    return NextResponse.json(analytics);
+    return res.status(200).json(analytics);
   } catch (error: any) {
     console.error('Analytics API Error:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    return res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 

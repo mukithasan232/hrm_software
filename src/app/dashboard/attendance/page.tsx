@@ -363,7 +363,7 @@ export default function AttendancePage() {
           </p>
         </div>
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-red-500/30 transition-colors shadow-sm dark:shadow-md">
-          <p className="text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider">{t('total_absent') || 'Total Absent'}</p>
+          <p className="text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider">{t('total_absent' as any) || 'Total Absent'}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
             {absentCount}
           </p>
