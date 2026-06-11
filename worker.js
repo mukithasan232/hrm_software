@@ -109,7 +109,18 @@ async function syncBiometricData() {
                 continue;
             }
 
-            const deviceTime = new Date(log.recordTime);
+            if (!log.recordTime && !log.timestamp && !log.record_time) {
+                console.log("[Worker] ⚠️ Skipping empty heartbeat packet...");
+                continue;
+            }
+
+            const punchType = log.state !== undefined ? String(log.state) : 'UNKNOWN';
+            if (punchType === 'UNKNOWN') {
+                console.log("[Worker] ⚠️ Skipping UNKNOWN punch type...");
+                continue;
+            }
+
+            const deviceTime = new Date(log.recordTime || log.timestamp || log.record_time);
             // Override with server time (NOW) to guarantee it hits the dashboard's "Today" query
             const serverTime = new Date(); 
 
@@ -119,7 +130,7 @@ async function syncBiometricData() {
                 employeeId: userUuid,
                 timestamp: serverTime, 
                 deviceId: DEVICE_IP,
-                punchType: log.state !== undefined ? String(log.state) : 'UNKNOWN'
+                punchType
             });
         }
 

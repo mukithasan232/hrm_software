@@ -383,11 +383,13 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       try {
         const deviceEmpId = String(log.deviceUserId ?? log.user_id ?? log.userId ?? log.uid);
 
-        const deviceTime = log.timestamp || log.recordTime || log.record_time;
-        if (!deviceTime) {
+        if (!log.recordTime && !log.timestamp && !log.record_time) {
+          console.log("[ZKService] ⚠️ Skipping empty heartbeat packet...");
           skipped++;
           continue;
         }
+        
+        const deviceTime = log.timestamp || log.recordTime || log.record_time;
 
         // parseDeviceTime converts device-local Dhaka time → UTC and strips milliseconds.
         // The defensive setMilliseconds(0) below is a belt-and-suspenders guard: if any
@@ -418,6 +420,12 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
         if (!punchType) {
           skipped++;
           continue; // Exact-second duplicate — skipped by in-memory Set below
+        }
+
+        if (punchType === 'UNKNOWN') {
+          console.log("[ZKService] ⚠️ Skipping UNKNOWN punch type...");
+          skipped++;
+          continue;
         }
 
         // In-memory dedup: last line of defence before createMany (skipDuplicates:true

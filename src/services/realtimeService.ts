@@ -243,12 +243,12 @@ const connectAndListen = async (): Promise<void> => {
         console.log(`======================================================\n`);
         try {
           const deviceEmpId = String(data.userId);
-          const deviceTime = data.attTime || data.recordTime || data.record_time;
-
-          if (!deviceTime) {
-            console.error('[RealtimeService] ❌ Missing timestamp in device payload, ignoring:', data);
+          if (!data.recordTime && !data.timestamp && !data.record_time && !data.attTime) {
+            console.log("[RealtimeService] ⚠️ Skipping empty heartbeat packet...");
             return;
           }
+          
+          const deviceTime = data.attTime || data.recordTime || data.record_time;
 
           const parsedTimestamp = parseDeviceTime(new Date(deviceTime));
 
@@ -284,9 +284,18 @@ const connectAndListen = async (): Promise<void> => {
           const employeeName = user.name;
 
           // resolvePunchType now only blocks exact-same-second duplicates (no 30-min guard)
-          const punchType = await resolvePunchType(employeeId, parsedTimestamp, data);
+          let punchType = (data.punchType || 'UNKNOWN').toString().toUpperCase();
+          if (['0', 'CHECKIN'].includes(punchType)) punchType = 'CheckIn';
+          else if (['1', 'CHECKOUT'].includes(punchType)) punchType = 'CheckOut';
 
-          if (!punchType) {
+          if (punchType === 'UNKNOWN') {
+            console.log("[RealtimeService] ⚠️ Skipping UNKNOWN punch type...");
+            return;
+          }
+
+          const resolvedPunchType = await resolvePunchType(employeeId, parsedTimestamp, data);
+
+          if (!resolvedPunchType) {
             console.log(`[RealtimeService] ⏭️  Exact-second duplicate punch for ${employeeName} — skipped (DB upsert handles idempotency).`);
             return;
           }

@@ -25,7 +25,6 @@ const TEAM_SUB_DEFS = [
   { key: 'designations', href: '/dashboard/team/designations', icon: Shield },
   { key: 'users',        href: '/dashboard/team/users',        icon: UsersRound },
   { key: 'employees',    href: '/dashboard/team/employees',    icon: Users },
-  { key: 'deviceConfig', href: '/dashboard/settings/device',   icon: HardDrive, label: 'Device Config' },
 ];
 
 const TEAM_ALLOWED_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator'];
