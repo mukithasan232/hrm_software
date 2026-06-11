@@ -78,9 +78,7 @@ export default function EmployeesPage() {
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const uniqueDepartments = Array.from(
-    new Set(employees.map(e => e.department).filter(Boolean))
-  ) as string[];
+  const [departments, setDepartments] = useState<any[]>([]);
   const [search, setSearch] = useState('');
 
   const [unregisteredUsers, setUnregisteredUsers] = useState<{deviceUserId: number, name: string}[]>([]);
@@ -139,12 +137,14 @@ export default function EmployeesPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [empRes, desRes] = await Promise.all([
+      const [empRes, desRes, deptRes] = await Promise.all([
         fetch('/api/employees').then(r => r.json()),
         api.get('/team/designations').then(r => r.data).catch(() => []),
+        api.get('/team/departments').then(r => r.data).catch(() => []),
       ]);
       if (Array.isArray(empRes)) setEmployees(empRes);
       if (Array.isArray(desRes)) setDesignations(desRes);
+      if (Array.isArray(deptRes)) setDepartments(deptRes);
     } catch {
       toast.error('Failed to load employees');
     } finally {
@@ -442,8 +442,8 @@ export default function EmployeesPage() {
                   <label className={labelCls}>Department</label>
                   <select value={formDepartment} onChange={e => setFormDepartment(e.target.value)} className={fieldCls}>
                     <option value="">— Select Department —</option>
-                    {uniqueDepartments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.name}>{dept.name}</option>
                     ))}
                   </select>
                 </div>
@@ -558,8 +558,8 @@ export default function EmployeesPage() {
                   <label className={labelCls}>Department</label>
                   <select value={editDepartment} onChange={e => setEditDepartment(e.target.value)} className={fieldCls}>
                     <option value="">— Select Department —</option>
-                    {uniqueDepartments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.name}>{dept.name}</option>
                     ))}
                   </select>
                 </div>

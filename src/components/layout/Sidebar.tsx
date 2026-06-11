@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
-  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive
+  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -23,6 +23,7 @@ const NAV_ITEM_DEFS = [
 
 const TEAM_SUB_DEFS = [
   { key: 'designations', href: '/dashboard/team/designations', icon: Shield },
+  { key: 'departments',  href: '/dashboard/team/departments',  icon: Building2 },
   { key: 'users',        href: '/dashboard/team/users',        icon: UsersRound },
   { key: 'employees',    href: '/dashboard/team/employees',    icon: Users },
 ];
