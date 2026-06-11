@@ -9,6 +9,7 @@ import Link from 'next/link';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useDeviceSync } from '@/hooks/useDeviceSync';
+import PasswordValidator from '@/components/ui/PasswordValidator';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -484,14 +485,14 @@ export default function EmployeesPage() {
                 </div>
 
                 {/* Password */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 md:col-span-2">
                   <label className={labelCls}>Initial Password *</label>
-                  <div className="flex gap-2">
-                    <input required type="text" value={formPassword} onChange={e => setFormPassword(e.target.value)} className={`${fieldCls} flex-1`} placeholder="Min 6 characters" />
-                    <button type="button" onClick={generatePassword} className="px-3 py-2.5 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white text-xs font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-white/20 transition-colors flex items-center gap-1.5 whitespace-nowrap flex-shrink-0">
-                      <Key className="w-3.5 h-3.5" /> Generate
-                    </button>
-                  </div>
+                  <PasswordValidator
+                    value={formPassword}
+                    onChange={setFormPassword}
+                    onGenerate={generatePassword}
+                    placeholder="Min 6 characters, number, symbol"
+                  />
                 </div>
               </div>
 

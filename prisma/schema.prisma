@@ -31,6 +31,7 @@ model Department {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  users       User[]
 }
 
 model AttendanceLog {
@@ -125,27 +126,34 @@ model User {
   profileImage String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  
+
   // Dynamic RBAC — relational link to a Designation entity
-  designationId       String?
-  customDesignation   Designation?    @relation(fields: [designationId], references: [id], onDelete: SetNull)
+  designationId     String?
+  customDesignation Designation? @relation(fields: [designationId], references: [id], onDelete: SetNull)
+
+  // Granular RBAC Role
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  // Department Relation
+  departmentId     String?
+  customDepartment Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
   // ZKTeco hardware mapping
-  zk_enroll_number    Int?            @unique
+  zk_enroll_number Int? @unique
 
-
-  employeeType        EmployeeType    @default(IN_HOUSE)
-  userType            String          @default("Employee")
-  documents           Json            @default("{}")
-  resetToken          String?
-  resetTokenExpiry    DateTime?
+  employeeType     EmployeeType @default(IN_HOUSE)
+  userType         String       @default("Employee")
+  documents        Json         @default("{}")
+  resetToken       String?
+  resetTokenExpiry DateTime?
 
   // Contact & Social Media
-  phone               String?
-  facebook            String?
-  linkedin            String?
-  github              String?
-  twitter             String?
+  phone    String?
+  facebook String?
+  linkedin String?
+  github   String?
+  twitter  String?
 
   attendanceLogs AttendanceLog[] @relation("UserAttendance")
   leaves         Leave[]         @relation("UserLeaves")
@@ -166,11 +174,13 @@ model TenantSettings {
   primaryColor   String   @default("#8b5cf6")
   secondaryColor String   @default("#06b6d4")
   updatedAt      DateTime @updatedAt
+
+  smtpSettings SmtpSettings?
 }
 
 model Device {
   id        String   @id @default(cuid())
-  name      String   // e.g., "Main Gate"
+  name      String // e.g., "Main Gate"
   ipAddress String
   port      Int      @default(4370)
   commKey   Int      @default(0)
@@ -191,14 +201,14 @@ model RawDeviceLog {
 }
 
 model ZkSyncQueue {
-  id           String   @id @default(uuid())
-  employeeId   String
-  user         User     @relation("UserZkSyncQueue", fields: [employeeId], references: [id], onDelete: Cascade)
-  status       String   @default("pending") // pending, completed, failed
-  lastError    String?  @db.Text
-  retryCount   Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String   @id @default(uuid())
+  employeeId String
+  user       User     @relation("UserZkSyncQueue", fields: [employeeId], references: [id], onDelete: Cascade)
+  status     String   @default("pending") // pending, completed, failed
+  lastError  String?  @db.Text
+  retryCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([status])
 }
@@ -208,8 +218,8 @@ model ZkSyncLog {
   employeeId   String
   user         User     @relation("UserZkSyncLogs", fields: [employeeId], references: [id], onDelete: Cascade)
   enrollNumber Int
-  action       String   // created, updated, deleted
-  status       String   // success, failure
+  action       String // created, updated, deleted
+  status       String // success, failure
   errorMessage String?  @db.Text
   syncedAt     DateTime @default(now())
 }
@@ -218,10 +228,52 @@ model Announcement {
   id               String   @id @default(cuid())
   title            String
   message          String   @db.Text
-  targetType       String   // "GLOBAL", "DEPARTMENT", "INDIVIDUAL"
-  targetDepartment String?  // e.g., "Software & Web Dev" (if targetType is DEPARTMENT)
-  targetUserId     String?  // (if targetType is INDIVIDUAL)
+  targetType       String // "GLOBAL", "DEPARTMENT", "INDIVIDUAL"
+  targetDepartment String? // e.g., "Software & Web Dev" (if targetType is DEPARTMENT)
+  targetUserId     String? // (if targetType is INDIVIDUAL)
   createdAt        DateTime @default(now())
   authorId         String
   author           User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+}
+
+model SmtpSettings {
+  id        String   @id @default(uuid())
+  host      String
+  port      Int
+  security  String // e.g., "SSL/TLS", "STARTTLS", "None"
+  username  String
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantId String?         @unique
+  tenant   TenantSettings? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions Permission[]
+  users       User[]
+}
+
+model Permission {
+  id         String @id @default(uuid())
+  roleId     String
+  role       Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  moduleName String // e.g., "Emails", "Users", "Leaves"
+
+  canCreate Boolean @default(false)
+  canRead   Boolean @default(false)
+  canEdit   Boolean @default(false)
+  canDelete Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roleId, moduleName])
 }
