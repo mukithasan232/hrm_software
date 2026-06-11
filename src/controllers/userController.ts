@@ -227,6 +227,37 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       res.status(404).json({ message: 'Employee not found' });
       return;
     }
+
+    // --- MAGIC BRIDGE: Backfill Attendance Logs from RawDeviceLog ---
+    if (zk_enroll_number !== null && zk_enroll_number !== undefined) {
+      try {
+        const rawLogs = await prisma.rawDeviceLog.findMany({
+          where: { deviceUserId: zk_enroll_number.toString() }
+        });
+
+        if (rawLogs.length > 0) {
+          const attendanceData = rawLogs.map((log: any) => ({
+            employeeId: user.id,
+            timestamp: log.recordTime,
+            punchType: log.punchType || 'CheckIn',
+            deviceId: log.ip || 'ZKTeco Device'
+          }));
+
+          await prisma.attendanceLog.createMany({
+            data: attendanceData,
+            skipDuplicates: true
+          });
+
+          await prisma.rawDeviceLog.deleteMany({
+            where: { deviceUserId: zk_enroll_number.toString() }
+          });
+          console.log(`[Magic Bridge] 🌉 Backfilled ${rawLogs.length} historical punches for ${user.name}`);
+        }
+      } catch (bridgeErr) {
+        console.error('[Magic Bridge] ❌ Failed to backfill logs:', bridgeErr);
+      }
+    }
+
     res.status(200).json({ message: 'Employee updated', user: { ...user, designation: (user as any).customDesignation } });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to update employee', error: error.message });

@@ -118,6 +118,36 @@ export async function POST(req: Request) {
       }
     });
 
+    // --- MAGIC BRIDGE: Backfill Attendance Logs from RawDeviceLog ---
+    if (zk_enroll_number !== null && zk_enroll_number !== undefined) {
+      try {
+        const rawLogs = await prisma.rawDeviceLog.findMany({
+          where: { deviceUserId: zk_enroll_number.toString() }
+        });
+
+        if (rawLogs.length > 0) {
+          const attendanceData = rawLogs.map((log: any) => ({
+            employeeId: newUser.id,
+            timestamp: log.recordTime,
+            punchType: log.punchType || 'CheckIn',
+            deviceId: log.ip || 'ZKTeco Device'
+          }));
+
+          await prisma.attendanceLog.createMany({
+            data: attendanceData,
+            skipDuplicates: true
+          });
+
+          await prisma.rawDeviceLog.deleteMany({
+            where: { deviceUserId: zk_enroll_number.toString() }
+          });
+          console.log(`[Magic Bridge] 🌉 Backfilled ${rawLogs.length} historical punches for ${name}`);
+        }
+      } catch (bridgeErr) {
+        console.error('[Magic Bridge] ❌ Failed to backfill logs:', bridgeErr);
+      }
+    }
+
     // Send Welcome Email
     try {
       await sendWelcomeEmail(

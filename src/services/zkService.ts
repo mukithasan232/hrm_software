@@ -378,6 +378,8 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     // Track timestamps globally to prevent duplicate compound constraints on exact millisecond
     const usedTimestamps = new Set<string>();
     const formattedLogsArray: any[] = [];
+    const unmappedLogsArray: any[] = [];
+    const unmappedUsedTimestamps = new Set<string>();
 
     for (const log of sortedRawLogs) {
       try {
@@ -407,11 +409,19 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
           continue;
         }
 
-        // Map deviceEmpId (e.g. "5") to the actual DB User's UUID
         let employeeId = userIdMap.get(deviceEmpId);
         if (!employeeId) {
-          // STRICT OPT-IN: Skip unmapped device users entirely
-          skipped++;
+          // STRICT OPT-IN: Save unmapped device user punch safely without an employee profile
+          const collisionKey = `${deviceEmpId}_${timestamp.getTime()}`;
+          if (!unmappedUsedTimestamps.has(collisionKey)) {
+             unmappedUsedTimestamps.add(collisionKey);
+             unmappedLogsArray.push({
+               deviceUserId: deviceEmpId,
+               recordTime: timestamp,
+               punchType: log.punchType !== undefined && log.punchType !== null ? String(log.punchType) : null,
+               ip: currentZkIp,
+             });
+          }
           continue;
         }
 
@@ -458,6 +468,16 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
         skipDuplicates: true, // Automatically ignores records that violate the Unique Constraint
       });
       synced = result.count;
+      console.log(`[ZKService] ✅ Synced ${synced} mapped logs.`);
+    }
+
+    if (unmappedLogsArray.length > 0) {
+      const rawResult = await prisma.rawDeviceLog.createMany({
+        data: unmappedLogsArray,
+        skipDuplicates: true,
+      });
+      console.log(`[ZKService] 🛡️ Safely stored ${rawResult.count} unmapped punches in RawDeviceLog.`);
+      skipped += unmappedLogsArray.length; // From Attendance dashboard perspective, they are skipped/invisible
     }
 
     console.log(`[ZKService] ✔  Synced: ${synced} | Skipped: ${skipped} | Total Recent: ${sortedRawLogs.length}`);

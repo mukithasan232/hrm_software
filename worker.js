@@ -98,16 +98,12 @@ async function syncBiometricData() {
         const userMap = new Map(users.map(u => [String(u.employeeId), u.id]));
 
         const mappedLogs = [];
+        const unmappedLogsArray = [];
+        const unmappedUsedKeys = new Set();
         let missingUsersCount = 0;
 
         for (const log of newLogs) {
             const zkTecoUserId = String(log.deviceUserId || log.uid);
-            const userUuid = userMap.get(zkTecoUserId);
-
-            if (!userUuid) {
-                missingUsersCount++;
-                continue;
-            }
 
             if (!log.recordTime && !log.timestamp && !log.record_time) {
                 console.log("[Worker] ⚠️ Skipping empty heartbeat packet...");
@@ -121,6 +117,23 @@ async function syncBiometricData() {
             }
 
             const deviceTime = new Date(log.recordTime || log.timestamp || log.record_time);
+            
+            const userUuid = userMap.get(zkTecoUserId);
+            if (!userUuid) {
+                missingUsersCount++;
+                const collisionKey = `${zkTecoUserId}_${deviceTime.getTime()}`;
+                if (!unmappedUsedKeys.has(collisionKey)) {
+                    unmappedUsedKeys.add(collisionKey);
+                    unmappedLogsArray.push({
+                        deviceUserId: zkTecoUserId,
+                        recordTime: deviceTime,
+                        punchType,
+                        ip: DEVICE_IP
+                    });
+                }
+                continue;
+            }
+
             // Override with server time (NOW) to guarantee it hits the dashboard's "Today" query
             const serverTime = new Date(); 
 
@@ -136,6 +149,14 @@ async function syncBiometricData() {
 
         if (missingUsersCount > 0) {
             console.warn(`[Warn] Skipped ${missingUsersCount} logs due to unrecognized employee IDs.`);
+        }
+
+        if (unmappedLogsArray.length > 0) {
+            const rawResult = await prisma.rawDeviceLog.createMany({
+                data: unmappedLogsArray,
+                skipDuplicates: true
+            });
+            console.log(`[Worker] 🛡️ Safely stored ${rawResult.count} unmapped punches in RawDeviceLog.`);
         }
 
         if (mappedLogs.length > 0) {

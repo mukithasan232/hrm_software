@@ -276,7 +276,16 @@ const connectAndListen = async (): Promise<void> => {
           });
 
           if (!user) {
-            console.warn(`[RealtimeService] ⚠️ Unmapped device user "${deviceEmpId}" — punch ignored. Register this employee in the HRM system first.`);
+            console.warn(`[RealtimeService] ⚠️ Unmapped device user "${deviceEmpId}" — storing safely in RawDeviceLog.`);
+            let punchType = (data.punchType || 'UNKNOWN').toString().toUpperCase();
+            if (['0', 'CHECKIN'].includes(punchType)) punchType = 'CheckIn';
+            else if (['1', 'CHECKOUT'].includes(punchType)) punchType = 'CheckOut';
+            
+            await prisma.rawDeviceLog.upsert({
+              where: { deviceUserId_recordTime: { deviceUserId: deviceEmpId, recordTime: parsedTimestamp } },
+              update: { punchType: punchType === 'UNKNOWN' ? null : punchType },
+              create: { deviceUserId: deviceEmpId, recordTime: parsedTimestamp, punchType: punchType === 'UNKNOWN' ? null : punchType, ip: ZK_IP }
+            });
             return;
           }
 
