@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateUtils';
 import { exportToExcel, exportToPDF } from '@/lib/exportUtils';
+import { io as socketIO } from 'socket.io-client';
 
 export default function AttendancePage() {
   const { t } = useTranslation();
@@ -95,12 +96,24 @@ export default function AttendancePage() {
   useEffect(() => {
     fetchEmployees();
 
-    // Robust 3-second polling to fetch latest data automatically
+    // Polling every 15s as a fallback (Socket.IO is the primary real-time path)
     const intervalId = setInterval(() => {
       fetchLogs(true);
-    }, 3000);
+    }, 15000);
 
-    return () => clearInterval(intervalId);
+    // Socket.IO: instant table refresh when any punch or sync fires
+    const socket = socketIO({ path: '/socket.io', transports: ['websocket', 'polling'] });
+    socket.on('attendanceUpdate', () => {
+      fetchLogs(true);
+    });
+    socket.on('new-attendance', () => {
+      fetchLogs(true);
+    });
+
+    return () => {
+      clearInterval(intervalId);
+      socket.disconnect();
+    };
   }, [dateRange, customStartDate, customEndDate, departmentFilter]);
 
   const handleManualSync = async () => {

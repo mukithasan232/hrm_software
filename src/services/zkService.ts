@@ -302,26 +302,6 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     await connectProperly(zk);
     console.log(`[ZKService] ✅ Connected to ${currentZkIp} (${zk.connectionType})`);
 
-    // Total Cleanse: Strip Database Pollution for 2026-06-09
-    try {
-      const tzOffset = 6 * 60 * 60 * 1000;
-      const startOfTargetDay = new Date(Date.UTC(2026, 5, 8, 0, 0, 0, 0) - tzOffset); // June 8th (catches shifted morning data)
-      const endOfTargetDay = new Date(Date.UTC(2026, 5, 9, 23, 59, 59, 999) - tzOffset);
-
-      await prisma.attendanceLog.deleteMany({
-        where: { 
-          deviceId: { not: 'Manual Entry' },
-          timestamp: {
-            gte: startOfTargetDay,
-            lte: endOfTargetDay
-          }
-        }
-      });
-      console.log('[ZKService] 🧹 Wiped corrupted device logs for 2026-06-09.');
-    } catch (e) {
-      console.error('[ZKService] Failed to wipe DB:', e);
-    }
-
     // Data sanitization logic has been removed as the root timezone bug is permanently resolved.
 
     // 1. Fetch Users from device (Mapping Phase)
@@ -397,18 +377,18 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
           continue; // Ignored due to 30-minute threshold
         }
 
-        // Pad timestamp for unique constraint survival
-        let uniqueTimestamp = new Date(timestamp);
-        let collisionKey = `${employeeId}_${uniqueTimestamp.getTime()}`;
-        while (usedTimestamps.has(collisionKey)) {
-           uniqueTimestamp = new Date(uniqueTimestamp.getTime() + 1); // add 1ms
-           collisionKey = `${employeeId}_${uniqueTimestamp.getTime()}`;
+        // Skip exact duplicate (same employee + same timestamp) — DB unique constraint
+        // is the final safety net via skipDuplicates:true on createMany.
+        const collisionKey = `${employeeId}_${timestamp.getTime()}`;
+        if (usedTimestamps.has(collisionKey)) {
+          skipped++;
+          continue;
         }
         usedTimestamps.add(collisionKey);
 
         formattedLogsArray.push({
           employeeId,
-          timestamp: uniqueTimestamp,
+          timestamp,
           punchType: punchType as any,
           deviceId: currentZkIp,
         });
@@ -430,15 +410,12 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       synced = result.count;
     }
 
-    console.log(`[ZKService] ✔  Synced: ${synced} | Total Recent: ${sortedRawLogs.length}`);
+    console.log(`[ZKService] ✔  Synced: ${synced} | Skipped: ${skipped} | Total Recent: ${sortedRawLogs.length}`);
 
-    // Automatically self-heal today's attendance logs to guarantee earliest = CheckIn, latest = CheckOut
-    await healTodaysData();
-
-    // Emit socket event to frontend via global.io
+    // Emit socket event to frontend via global.io for instant dashboard refresh
     const io = (global as any).io;
     if (io) {
-      io.emit('attendanceUpdate', { checkIn: true });
+      io.emit('attendanceUpdate', { synced, skipped });
       console.log('[ZKService] 📡 Emitted attendanceUpdate to frontend.');
     }
 

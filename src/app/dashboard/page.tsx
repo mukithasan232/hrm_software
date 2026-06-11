@@ -10,6 +10,7 @@ import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useTranslation } from '@/context/LanguageContext';
 import { toBDDisplay, getBDToday } from '@/lib/dateUtils';
+import { io as socketIO } from 'socket.io-client';
 
 export default function DashboardOverview() {
   const { user } = useAuth();
@@ -33,7 +34,7 @@ export default function DashboardOverview() {
       const [usersRes, leavesRes, presenceRes, announcementsRes, analyticsRes] = await Promise.all([
         api.get('/users').catch(() => ({ data: [] })),
         api.get('/leaves/all').catch(() => ({ data: [] })),
-        api.get(`/attendance/active-today?date=${selectedDate}`).catch(() => ({ data: { activeNow: 0, totalToday: 0, recent: [] } })),
+        api.get(`/attendance/active-today?date=${selectedDate}`).catch(() => ({ data: { activeNow: 0, totalToday: 0, recent: [], recentAll: [] } })),
         api.get('/announcements').catch(() => ({ data: [] })),
         api.get('/dashboard/analytics').catch(() => ({ data: [] }))
       ]);
@@ -56,7 +57,8 @@ export default function DashboardOverview() {
         activeNow: presenceRes.data.activeNow || 0,
         totalToday: presenceRes.data.totalToday || 0
       });
-      setRecentAttendance(presenceRes.data.recent || []);
+      // Use recentAll so feed always shows activity even when everyone checked out
+      setRecentAttendance(presenceRes.data.recentAll || presenceRes.data.recent || []);
     } catch (e) {
       console.error('Failed to fetch dashboard data:', e);
     } finally {
@@ -72,7 +74,9 @@ export default function DashboardOverview() {
         activeNow: res.data.activeNow || 0,
         totalToday: res.data.totalToday || 0
       }));
-      setRecentAttendance(res.data.recent || []);
+      // Use recentAll so the feed shows everyone who punched today,
+      // not just employees still present (last punch = CheckIn).
+      setRecentAttendance(res.data.recentAll || res.data.recent || []);
     } catch (e) {
       console.error('Live polling failed:', e);
     }
@@ -82,12 +86,24 @@ export default function DashboardOverview() {
     if (user) {
       fetchDashboardData();
 
-      // Robust 3-second polling to fetch latest active presence strictly from the DB
+      // Polling every 30s as a fallback (Socket.IO is the primary real-time mechanism)
       const intervalId = setInterval(() => {
         pollLiveActivity();
-      }, 3000);
+      }, 30000);
 
-      return () => clearInterval(intervalId);
+      // Socket.IO: instant push when any punch or sync happens
+      const socket = socketIO({ path: '/socket.io', transports: ['websocket', 'polling'] });
+      socket.on('attendanceUpdate', () => {
+        pollLiveActivity();
+      });
+      socket.on('new-attendance', () => {
+        pollLiveActivity();
+      });
+
+      return () => {
+        clearInterval(intervalId);
+        socket.disconnect();
+      };
     }
   }, [user, selectedDate]);
 
@@ -236,33 +252,42 @@ export default function DashboardOverview() {
                 <p className="text-sm italic">{t('waitingForPunches')}</p>
               </div>
             ) : (
-              recentAttendance.map((log, i) => (
-                <div key={log.id || i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10 animate-in slide-in-from-right-4 duration-300">
-                  {/* Text Grouping Container */}
-                  <div className="flex flex-col gap-1 min-w-0 max-w-[75%]">
-                    {/* Muted Small ID */}
-                    <span className="text-[10px] text-slate-400 dark:text-gray-500 font-mono truncate block">
-                      {log.employeeId}
-                    </span>
-                    {/* Employee Name */}
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-800 dark:text-white truncate">
-                        {log.employeeName || "Unknown Employee"}
+              recentAttendance.map((log, i) => {
+                const isCheckIn = log.punchType?.toLowerCase().includes('in');
+                return (
+                  <div key={log.id || i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10 animate-in slide-in-from-right-4 duration-300">
+                    {/* Text Grouping Container */}
+                    <div className="flex flex-col gap-1 min-w-0 max-w-[75%]">
+                      {/* Muted Small ID */}
+                      <span className="text-[10px] text-slate-400 dark:text-gray-500 font-mono truncate block">
+                        {log.employeeId}
                       </span>
-                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0"></span>
+                      {/* Employee Name */}
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-slate-800 dark:text-white truncate">
+                          {log.employeeName || "Unknown Employee"}
+                        </span>
+                        {isCheckIn && (
+                          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0"></span>
+                        )}
+                      </div>
+                      {/* Timestamp */}
+                      <span className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1 mt-1">
+                        <Clock className="w-3 h-3" /> {toBDDisplay(log.timestamp, 'hh:mm a')}
+                      </span>
                     </div>
-                    {/* Check-in Timestamp */}
-                    <span className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-                      <Clock className="w-3 h-3" /> {toBDDisplay(log.timestamp, 'hh:mm a')}
-                    </span>
-                  </div>
 
-                  {/* Status Badge */}
-                  <div className="text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                    Checked In - Pending Check Out
+                    {/* Status Badge */}
+                    <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${
+                      isCheckIn
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                        : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
+                    }`}>
+                      {isCheckIn ? t('checkIn') || 'Check In' : t('checkOut') || 'Check Out'}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
             </div>
           </div>

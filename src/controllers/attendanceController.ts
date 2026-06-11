@@ -51,9 +51,9 @@ function getDayBoundaries(filter: string): { start: Date; end: Date } {
 // @desc    Legacy sync (used by cron job)
 export const syncDeviceLogs = async (req: Request, res: Response) => {
   try {
-    await prisma.attendanceLog.deleteMany({ where: { deviceId: { not: 'Manual Entry' } } });
-    console.log("🧹 [syncDeviceLogs] Wiped device attendance logs for fresh sync (Manual Logs preserved)!");
-
+    // Pure additive sync — no destructive wipe. The DB unique constraint
+    // (@@unique([employeeId, timestamp])) and skipDuplicates:true on createMany
+    // are the sole deduplication mechanism.
     const newRecordsCount = await runWithDeviceLock(() => fetchDeviceLogs());
     res.status(200).json({
       message: 'Sync completed successfully',
@@ -66,13 +66,7 @@ export const syncDeviceLogs = async (req: Request, res: Response) => {
 
 // @desc    Live sync with full stats
 export const syncLive = async (req: Request, res: Response) => {
-  try {
-    await prisma.attendanceLog.deleteMany({ where: { deviceId: { not: 'Manual Entry' } } });
-    console.log("🧹 [syncLive] Wiped device attendance logs for fresh live sync (Manual Logs preserved)!");
-  } catch (err: any) {
-    console.error('[SyncLive] Error wiping logs:', err.message);
-  }
-
+  // Pure additive sync — no destructive wipe. Respond immediately, run in background.
   res.status(200).json({
     message: 'Biometric sync started in the background.',
     status: 'processing'
@@ -170,6 +164,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     // 2. Filter: Find employees whose MOST RECENT punch is a "Check In"
     const currentlyPresentLogs: any[] = [];
+    const allLatestPunchLogs: any[] = []; // every employee who punched today (any type)
     const seenEmployees = new Set();
     let totalUniqueEmployeesToday = 0;
 
@@ -177,6 +172,8 @@ export const getActivePresence = async (req: Request, res: Response) => {
       if (!seenEmployees.has(log.employeeId)) {
         seenEmployees.add(log.employeeId);
         totalUniqueEmployeesToday++;
+        // Always capture their latest punch for the full activity list
+        allLatestPunchLogs.push(log);
         // If the latest log for this employee is a Check-in, they are still in the office
         if (log.punchType?.toLowerCase().includes('in')) {
           currentlyPresentLogs.push(log);
@@ -184,10 +181,15 @@ export const getActivePresence = async (req: Request, res: Response) => {
       }
     }
 
+    const mapLog = (log: any) => ({ ...log, employeeName: log.user?.name || 'Unmapped' });
+
     res.status(200).json({
       totalToday: totalUniqueEmployeesToday,
       activeNow: currentlyPresentLogs.length,
-      recent: currentlyPresentLogs.map((log: any) => ({ ...log, employeeName: log.user?.name || 'Unmapped' }))
+      // Only currently-present (last punch = CheckIn) — used by stat card
+      recent: currentlyPresentLogs.map(mapLog),
+      // All employees who punched today (any type) — used by Live Activity feed
+      recentAll: allLatestPunchLogs.map(mapLog),
     });
   } catch (error: any) {
     res.status(500).json({ message: 'Error fetching stats', error: error.message });
