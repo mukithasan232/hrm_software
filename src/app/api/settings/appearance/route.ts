@@ -2,8 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import fs from 'fs';
-import path from 'path';
+
 import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
 
