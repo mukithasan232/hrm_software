@@ -58,14 +58,11 @@ function DesignationSelect({
       className={fieldCls}
     >
       <option value="">— Select Designation —</option>
-      {['Owner', 'Manager', 'HR', 'Employee'].map(name => {
-        const desig = designations.find(d => d.name.toLowerCase() === name.toLowerCase());
-        return (
-          <option key={name} value={desig ? desig.id : name}>
-            {name}
-          </option>
-        );
-      })}
+      {designations.map(d => (
+        <option key={d.id} value={d.id}>
+          {d.name}
+        </option>
+      ))}
     </select>
   );
 }
@@ -80,6 +77,10 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const uniqueDepartments = Array.from(
+    new Set(employees.map(e => e.department).filter(Boolean))
+  ) as string[];
   const [search, setSearch] = useState('');
 
   const [unregisteredUsers, setUnregisteredUsers] = useState<{deviceUserId: number, name: string}[]>([]);
@@ -441,10 +442,9 @@ export default function EmployeesPage() {
                   <label className={labelCls}>Department</label>
                   <select value={formDepartment} onChange={e => setFormDepartment(e.target.value)} className={fieldCls}>
                     <option value="">— Select Department —</option>
-                    <option value="Graphics & Design">Graphics & Design</option>
-                    <option value="Video Production">Video Production</option>
-                    <option value="Software/Web Development">Software/Web Development</option>
-                    <option value="SEO & Marketing">SEO & Marketing</option>
+                    {uniqueDepartments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -558,10 +558,9 @@ export default function EmployeesPage() {
                   <label className={labelCls}>Department</label>
                   <select value={editDepartment} onChange={e => setEditDepartment(e.target.value)} className={fieldCls}>
                     <option value="">— Select Department —</option>
-                    <option value="Graphics & Design">Graphics & Design</option>
-                    <option value="Video Production">Video Production</option>
-                    <option value="Software/Web Development">Software/Web Development</option>
-                    <option value="SEO & Marketing">SEO & Marketing</option>
+                    {uniqueDepartments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
                   </select>
                 </div>
 

@@ -45,8 +45,11 @@ export async function POST(req: Request) {
     const password = formData.get('password') as string;
     const designationId = formData.get('designationId') as string;
     const employeeType = formData.get('employeeType') as 'REMOTE' | 'IN_HOUSE';
+    const department = formData.get('department') as string;
     const zk_enroll_number_str = formData.get('zk_enroll_number') as string;
-    const zk_enroll_number = zk_enroll_number_str ? parseInt(zk_enroll_number_str, 10) : null;
+    const zk_enroll_number = zk_enroll_number_str && zk_enroll_number_str.trim() !== '' ? parseInt(zk_enroll_number_str, 10) : null;
+    
+    console.log("Incoming IDs:", { designationId, department });
     
     
     // Validate
@@ -108,6 +111,7 @@ export async function POST(req: Request) {
         password: hashedPassword,
         employeeId: newEmployeeId,
         designationId,
+        department: department || null,
         employeeType: employeeType || 'IN_HOUSE',
         userType: 'Employee',
         documents: documentPaths,
