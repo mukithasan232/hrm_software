@@ -163,6 +163,7 @@ model User {
   zkSyncLogs     ZkSyncLog[]     @relation("UserZkSyncLogs")
   zkSyncQueues   ZkSyncQueue[]   @relation("UserZkSyncQueue")
   announcements  Announcement[]  @relation("AnnouncementAuthor")
+  userPermissions UserPermission[] @relation("UserPermissions")
 }
 
 // Single-row tenant branding config (white-label SaaS)
@@ -276,4 +277,19 @@ model Permission {
   updatedAt DateTime @updatedAt
 
   @@unique([roleId, moduleName])
+}
+
+model UserPermission {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  moduleName String   // e.g., 'Emails', 'Users', 'Leaves'
+  canCreate  Boolean  @default(false)
+  canRead    Boolean  @default(false)
+  canEdit    Boolean  @default(false)
+  canDelete  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, moduleName])
 }

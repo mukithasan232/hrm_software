@@ -251,21 +251,36 @@ export function wrapHandler(
           const { prisma } = await import('@/lib/prisma');
           const dbUser = await prisma.user.findUnique({
             where: { id: mockReq.user?.id },
-            include: { role: { include: { permissions: true } } }
+            include: { 
+              role: { include: { permissions: true } },
+              userPermissions: true 
+            }
           });
 
-          if (!dbUser || !dbUser.role) {
-            console.error(`[Auth Adapter] Access denied. User lacks a role assignment for granular permissions.`);
+          if (!dbUser || (!dbUser.role && (!dbUser.userPermissions || dbUser.userPermissions.length === 0))) {
+            console.error(`[Auth Adapter] Access denied. User lacks a role assignment and has no custom permissions.`);
             return NextResponse.json(
-              { message: 'Role not assigned. Granular permission denied.' },
+              { message: 'Role/Permissions not assigned. Granular permission denied.' },
               { status: 403, headers: getCorsHeaders() }
             );
           }
 
           for (const reqPerm of options.requiredPermissions) {
-            const perm = dbUser.role.permissions.find(p => p.moduleName === reqPerm.moduleName);
-            if (!perm || !perm[reqPerm.action]) {
-              console.error(`[Auth Adapter] Access denied. Role "${dbUser.role.name}" lacks ${reqPerm.action} on ${reqPerm.moduleName}.`);
+            // First check user custom permissions (override)
+            const customPerm = dbUser.userPermissions?.find(p => p.moduleName === reqPerm.moduleName);
+            
+            let hasAccess = false;
+            
+            if (customPerm) {
+              hasAccess = !!customPerm[reqPerm.action];
+            } else {
+              // Fallback to role permissions
+              const rolePerm = dbUser.role?.permissions.find(p => p.moduleName === reqPerm.moduleName);
+              hasAccess = !!(rolePerm && rolePerm[reqPerm.action]);
+            }
+
+            if (!hasAccess) {
+              console.error(`[Auth Adapter] Access denied. Lacks ${reqPerm.action} on ${reqPerm.moduleName}.`);
               return NextResponse.json(
                 { message: `Permission denied for module: ${reqPerm.moduleName} action: ${reqPerm.action}` },
                 { status: 403, headers: getCorsHeaders() }

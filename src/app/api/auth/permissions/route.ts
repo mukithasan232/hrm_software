@@ -12,16 +12,49 @@ const getPermissions = async (req: Request) => {
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    include: { role: { include: { permissions: true } } }
+    include: { 
+      role: { include: { permissions: true } },
+      userPermissions: true
+    }
   });
 
-  if (!dbUser || !dbUser.role) {
+  if (!dbUser || (!dbUser.role && (!dbUser.userPermissions || dbUser.userPermissions.length === 0))) {
     return NextResponse.json({ role: null, permissions: [] });
   }
 
+  // Merge logic: user permissions override role permissions
+  const rolePerms = dbUser.role?.permissions || [];
+  const userPerms = dbUser.userPermissions || [];
+
+  const mergedMap = new Map();
+  
+  // Add role permissions first
+  rolePerms.forEach(p => {
+    mergedMap.set(p.moduleName, {
+      moduleName: p.moduleName,
+      canRead: p.canRead,
+      canCreate: p.canCreate,
+      canEdit: p.canEdit,
+      canDelete: p.canDelete,
+    });
+  });
+
+  // Override with user permissions
+  userPerms.forEach(p => {
+    mergedMap.set(p.moduleName, {
+      moduleName: p.moduleName,
+      canRead: p.canRead,
+      canCreate: p.canCreate,
+      canEdit: p.canEdit,
+      canDelete: p.canDelete,
+    });
+  });
+
+  const mergedPermissions = Array.from(mergedMap.values());
+
   return NextResponse.json({
-    role: dbUser.role.name,
-    permissions: dbUser.role.permissions
+    role: dbUser.role?.name || 'Custom',
+    permissions: mergedPermissions
   });
 };
 

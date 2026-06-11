@@ -121,6 +121,59 @@ export default function EmployeesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
+  // ── Permissions Modal ──────────────────────────────────────────────────────
+  const [permsTarget, setPermsTarget] = useState<Employee | null>(null);
+  const [permsMatrix, setPermsMatrix] = useState<any>({});
+  const [permsSubmitting, setPermsSubmitting] = useState(false);
+  const [permsLoading, setPermsLoadingState] = useState(false);
+
+  const MODULES = ['Emails', 'Users', 'Attendance', 'Teams', 'Leaves', 'Payroll'];
+
+  const openPermissions = async (emp: Employee) => {
+    setPermsTarget(emp);
+    setPermsLoadingState(true);
+    // init empty
+    const initMatrix: any = {};
+    MODULES.forEach(mod => {
+      initMatrix[mod] = { canRead: false, canCreate: false, canEdit: false, canDelete: false };
+    });
+    setPermsMatrix(initMatrix);
+
+    try {
+      const res = await api.get(`/users/${emp.id}/permissions`);
+      if (res.data && res.data.length > 0) {
+        const loadedMatrix = { ...initMatrix };
+        res.data.forEach((p: any) => {
+          loadedMatrix[p.moduleName] = {
+            canRead: p.canRead,
+            canCreate: p.canCreate,
+            canEdit: p.canEdit,
+            canDelete: p.canDelete
+          };
+        });
+        setPermsMatrix(loadedMatrix);
+      }
+    } catch (err) {
+      toast.error('Failed to load user permissions');
+    } finally {
+      setPermsLoadingState(false);
+    }
+  };
+
+  const handlePermsSubmit = async () => {
+    if (!permsTarget) return;
+    setPermsSubmitting(true);
+    try {
+      await api.post(`/users/${permsTarget.id}/permissions`, { matrix: permsMatrix });
+      toast.success('Custom permissions saved successfully!');
+      setPermsTarget(null);
+    } catch (err) {
+      toast.error('Failed to save permissions');
+    } finally {
+      setPermsSubmitting(false);
+    }
+  };
+
   // ── Add Form State ─────────────────────────────────────────────────────────
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
@@ -386,13 +439,22 @@ export default function EmployeesPage() {
                     <Mail className="w-3.5 h-3.5" />
                   </a>
                   {canEditUser && (
-                      <button
-                        onClick={() => openEdit(emp)}
-                        title="Edit employee"
-                        className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors border border-slate-100 dark:border-white/5"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => openPermissions(emp)}
+                          title="Custom Permissions"
+                          className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-purple-500 dark:hover:text-purple-400 transition-colors border border-slate-100 dark:border-white/5"
+                        >
+                          <Key className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => openEdit(emp)}
+                          title="Edit employee"
+                          className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors border border-slate-100 dark:border-white/5"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </>
                   )}
                   {canDelete && (
                       <button
@@ -656,6 +718,100 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+
+      {/* ── Permissions Modal ─────────────────────────────────────────────────── */}
+      {permsTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-white/10">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <Key className="w-5 h-5 text-purple-500" />
+                  Custom Permissions for {permsTarget.name}
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
+                  Overrides inherited role permissions for this specific user.
+                </p>
+              </div>
+              <button
+                onClick={() => setPermsTarget(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              {permsLoading ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px] text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
+                        <th className="py-3 px-4 text-xs font-bold text-slate-600 dark:text-gray-400 uppercase tracking-wider">Module</th>
+                        <th className="py-3 px-4 text-xs font-bold text-slate-600 dark:text-gray-400 uppercase tracking-wider text-center">Read Access</th>
+                        <th className="py-3 px-4 text-xs font-bold text-slate-600 dark:text-gray-400 uppercase tracking-wider text-center">Create</th>
+                        <th className="py-3 px-4 text-xs font-bold text-slate-600 dark:text-gray-400 uppercase tracking-wider text-center">Edit</th>
+                        <th className="py-3 px-4 text-xs font-bold text-slate-600 dark:text-gray-400 uppercase tracking-wider text-center">Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {MODULES.map((mod) => (
+                        <tr key={mod} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                          <td className="py-3 px-4 font-semibold text-slate-800 dark:text-white text-sm">{mod}</td>
+                          {['canRead', 'canCreate', 'canEdit', 'canDelete'].map((action) => (
+                            <td key={action} className="py-3 px-4 text-center">
+                              <select
+                                value={permsMatrix[mod]?.[action] ? 'Yes' : 'No'}
+                                onChange={(e) => {
+                                  const val = e.target.value === 'Yes';
+                                  setPermsMatrix((prev: any) => ({
+                                    ...prev,
+                                    [mod]: { ...prev[mod], [action]: val }
+                                  }));
+                                }}
+                                className={`text-xs font-semibold rounded-lg px-3 py-1.5 focus:outline-none transition-colors border ${
+                                  permsMatrix[mod]?.[action]
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                    : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-white/10'
+                                }`}
+                              >
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                              </select>
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-100 dark:border-white/10 flex justify-end gap-3 bg-slate-50 dark:bg-white/[0.02] shrink-0">
+              <button
+                onClick={() => setPermsTarget(null)}
+                className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePermsSubmit}
+                disabled={permsSubmitting || permsLoading}
+                className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {permsSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {permsSubmitting ? 'Saving...' : 'Save Permissions'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
