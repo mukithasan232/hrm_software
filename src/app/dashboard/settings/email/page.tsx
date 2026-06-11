@@ -17,14 +17,49 @@ export default function EmailSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
 
+  const fetchEmailSettings = async () => {
+    try {
+      const res = await fetch('/api/settings/email');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.host) {
+          setHost(data.host);
+          setPort(data.port.toString());
+          setSecurity(data.security);
+          setUsername(data.username);
+          // password isn't always returned for security, or maybe it is in this case.
+          if (data.password) setPassword(data.password);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchEmailSettings();
+  }, []);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    // Stub save logic
-    setTimeout(() => {
-      toast.success('SMTP settings saved successfully!');
+    try {
+      const res = await fetch('/api/settings/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, port, security, username, password }),
+      });
+      if (res.ok) {
+        toast.success('SMTP settings saved successfully!');
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to save SMTP settings.');
+      }
+    } catch (err) {
+      toast.error('An error occurred while saving.');
+    } finally {
       setSaving(false);
-    }, 800);
+    }
   };
 
   const handleTest = async () => {

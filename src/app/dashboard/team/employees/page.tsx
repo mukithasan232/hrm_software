@@ -5,11 +5,11 @@ import {
   Plus, Search, Building2, User, Mail, UploadCloud, X,
   RefreshCw, Key, Pencil, Trash2, AlertTriangle, Link as LinkIcon,
 } from 'lucide-react';
-import Link from 'next/link';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useDeviceSync } from '@/hooks/useDeviceSync';
 import PasswordValidator from '@/components/ui/PasswordValidator';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -71,9 +71,16 @@ function DesignationSelect({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function EmployeesPage() {
   const { user } = useAuth();
-  const canEdit = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(
+  const { can, loading: permsLoading } = usePermissions();
+
+  // Legacy fallback if permissions are not set up yet
+  const legacyAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(
     (user as any)?.designation || ''
   );
+
+  const canCreate = can('Users', 'canCreate') || legacyAdmin;
+  const canEditUser = can('Users', 'canEdit') || legacyAdmin;
+  const canDelete = can('Users', 'canDelete') || legacyAdmin;
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
@@ -294,7 +301,7 @@ export default function EmployeesPage() {
               className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-brand-primary/50 text-slate-800 dark:text-white transition-all font-medium"
             />
           </div>
-          {canEdit && (
+          {canCreate && (
             <button
               onClick={() => { resetAddForm(); setShowAddModal(true); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-brand-primary text-white text-sm font-semibold rounded-xl hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/25 whitespace-nowrap"
@@ -378,8 +385,7 @@ export default function EmployeesPage() {
                   >
                     <Mail className="w-3.5 h-3.5" />
                   </a>
-                  {canEdit && (
-                    <>
+                  {canEditUser && (
                       <button
                         onClick={() => openEdit(emp)}
                         title="Edit employee"
@@ -387,6 +393,8 @@ export default function EmployeesPage() {
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
+                  )}
+                  {canDelete && (
                       <button
                         onClick={() => setDeleteTarget(emp)}
                         title="Delete employee"
@@ -394,7 +402,6 @@ export default function EmployeesPage() {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    </>
                   )}
                 </div>
               </div>

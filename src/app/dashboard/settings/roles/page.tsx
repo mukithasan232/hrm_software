@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Save, Loader2, Users } from 'lucide-react';
+import { Shield, Save, Loader2, Users, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface PermissionMatrix {
@@ -23,15 +23,50 @@ export default function RolesPage() {
   // Matrix State
   const [matrix, setMatrix] = useState<PermissionMatrix>({});
   const [saving, setSaving] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
 
-  // Initialize empty matrix
+  // Fetch Roles
+  const fetchRoles = async () => {
+    try {
+      const res = await fetch('/api/settings/roles');
+      if (res.ok) {
+        const data = await res.json();
+        setRoles(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
+  // Initialize matrix based on selection
   useEffect(() => {
     const initMatrix: PermissionMatrix = {};
     MODULES.forEach(mod => {
       initMatrix[mod] = { canRead: false, canCreate: false, canEdit: false, canDelete: false };
     });
+
+    if (selectedRole) {
+      const roleObj = roles.find(r => r.id === selectedRole);
+      if (roleObj && roleObj.permissions) {
+        roleObj.permissions.forEach((p: any) => {
+          if (initMatrix[p.moduleName]) {
+            initMatrix[p.moduleName] = {
+              canRead: p.canRead,
+              canCreate: p.canCreate,
+              canEdit: p.canEdit,
+              canDelete: p.canDelete,
+            };
+          }
+        });
+      }
+    }
     setMatrix(initMatrix);
-  }, []);
+  }, [selectedRole, roles]);
 
   // Handler for dropdowns
   const handlePermChange = (module: string, action: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete', val: string) => {
@@ -45,12 +80,45 @@ export default function RolesPage() {
   };
 
   const handleSave = async () => {
+    if (isCreatingNew && !newRoleName.trim()) {
+      toast.error('Please enter a name for the new role.');
+      return;
+    }
+    if (!isCreatingNew && !selectedRole) {
+      toast.error('Please select a role or create a new one.');
+      return;
+    }
+
     setSaving(true);
-    // Stub for saving to API
-    setTimeout(() => {
-      toast.success('Permissions matrix saved successfully!');
+    try {
+      const payload = {
+        id: isCreatingNew ? undefined : selectedRole,
+        name: isCreatingNew ? newRoleName : roles.find(r => r.id === selectedRole)?.name,
+        matrix
+      };
+
+      const res = await fetch('/api/settings/roles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        toast.success('Permissions matrix saved successfully!');
+        if (isCreatingNew) {
+          setIsCreatingNew(false);
+          setNewRoleName('');
+        }
+        await fetchRoles(); // refresh list
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to save');
+      }
+    } catch (e) {
+      toast.error('An error occurred');
+    } finally {
       setSaving(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -78,14 +146,52 @@ export default function RolesPage() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm overflow-hidden p-6">
-        <div className="mb-6">
-          <label className="text-sm font-bold text-slate-700 dark:text-white mb-2 block">Select Role to Edit</label>
-          <select className="w-full max-w-sm px-3 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-medium text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all">
-            <option value="">— Select Role —</option>
-            <option value="admin">Administrator</option>
-            <option value="hr">HR Manager</option>
-            <option value="employee">Employee</option>
-          </select>
+        <div className="mb-6 space-y-3">
+          <label className="text-sm font-bold text-slate-700 dark:text-white block">Select Role to Edit</label>
+          <div className="flex gap-3">
+            {!isCreatingNew ? (
+              <>
+                <select
+                  value={selectedRole || ''}
+                  onChange={e => setSelectedRole(e.target.value)}
+                  className="w-full max-w-sm px-3 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-medium text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
+                >
+                  <option value="">— Select Role —</option>
+                  {roles.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreatingNew(true);
+                    setSelectedRole(null);
+                  }}
+                  className="px-4 py-2.5 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white text-sm font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-white/20 transition-colors flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" /> New Role
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  placeholder="Enter new role name..."
+                  value={newRoleName}
+                  onChange={e => setNewRoleName(e.target.value)}
+                  className="w-full max-w-sm px-3 py-2.5 bg-slate-50 dark:bg-black/20 border border-brand-primary/50 dark:border-brand-primary/50 rounded-xl text-sm font-medium text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingNew(false)}
+                  className="px-4 py-2.5 text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white text-sm font-bold transition-colors whitespace-nowrap"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
