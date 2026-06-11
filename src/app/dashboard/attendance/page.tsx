@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/context/LanguageContext';
+import { useBrand } from '@/context/BrandContext';
 import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X, Loader2 } from 'lucide-react';
 import api from '@/services/api';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
@@ -12,6 +13,7 @@ import { io as socketIO } from 'socket.io-client';
 
 export default function AttendancePage() {
   const { t } = useTranslation();
+  const { brand } = useBrand();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
@@ -244,7 +246,12 @@ export default function AttendancePage() {
     setShowExportMenu(false);
     try {
       await new Promise(resolve => setTimeout(resolve, 300));
-      await exportToPDF('pdf-export-content', `Attendance_Report_${dateRange}`, 'Company Name - Attendance Report');
+      await exportToPDF(
+        filteredLogs, 
+        `Attendance_Report_${dateRange}`, 
+        'Daily Attendance Report', 
+        brand
+      );
       toast.success("PDF Downloaded!");
     } catch (error: any) {
       console.error('[PDF Export Error]:', error);

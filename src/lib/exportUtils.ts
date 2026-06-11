@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas-pro';
+import autoTable from 'jspdf-autotable';
+import { toBDDisplay } from './dateUtils';
 
 export const exportToExcel = async (data: any[], filename: string, reportPeriod: string) => {
   const workbook = new ExcelJS.Workbook();
@@ -90,44 +91,99 @@ export const exportToExcel = async (data: any[], filename: string, reportPeriod:
   window.URL.revokeObjectURL(url);
 };
 
-export const exportToPDF = async (elementId: string, filename: string, title: string) => {
-  const element = document.getElementById('pdf-export-content');
-  if (!element) throw new Error("Target PDF element ID 'pdf-export-content' is missing in JSX.");
+export const exportToPDF = async (
+  data: any[],
+  filename: string,
+  title: string,
+  brand?: { companyName: string; logoUrl: string | null }
+) => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'A4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
 
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true,
-    scrollY: -window.scrollY,
-    windowWidth: document.documentElement.offsetWidth,
-    onclone: (clonedDoc: Document) => {
-      // Temporarily remove strict widths and overflow hidden on the clone
-      const target = clonedDoc.getElementById('pdf-export-content');
-      if (target) {
-        target.style.overflow = 'visible';
-        target.style.width = 'max-content';
+  let startY = 40;
+
+  if (brand?.logoUrl) {
+    try {
+      doc.addImage(brand.logoUrl, 'PNG', 40, startY, 40, 40);
+      doc.setFontSize(18);
+      doc.setTextColor(30, 40, 50);
+      doc.setFont('helvetica', 'bold');
+      doc.text(brand.companyName || 'HRM Portal', 90, startY + 25);
+    } catch (e) {
+      doc.setFontSize(18);
+      doc.setTextColor(30, 40, 50);
+      doc.setFont('helvetica', 'bold');
+      doc.text(brand?.companyName || 'HRM Portal', 40, startY + 25);
+    }
+    startY += 60;
+  } else {
+    doc.setFontSize(18);
+    doc.setTextColor(30, 40, 50);
+    doc.setFont('helvetica', 'bold');
+    doc.text(brand?.companyName || 'HRM Portal', 40, startY + 15);
+    startY += 50;
+  }
+
+  doc.setFontSize(14);
+  doc.setTextColor(50, 60, 70);
+  doc.setFont('helvetica', 'bold');
+  doc.text(title, 40, startY);
+  
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Generated Date: ${new Date().toLocaleString()}`, 40, startY + 15);
+
+  startY += 35;
+
+  const tableData = data.map(log => {
+    const empName = log.employeeName || 'Unknown Employee';
+    const timestampStr = log.formattedTimestamp || (log.timestamp ? toBDDisplay(log.timestamp, 'yyyy-MM-dd hh:mm:ss a') : 'N/A');
+    const rawType = (log.punchType || '').toLowerCase();
+    const punchType = rawType === 'checkin' ? 'Check In' : rawType === 'checkout' ? 'Check Out' : log.punchType;
+    
+    return [
+      empName,
+      timestampStr,
+      punchType,
+      log.deviceId || 'Manual/Network'
+    ];
+  });
+
+  autoTable(doc, {
+    startY,
+    head: [['Employee Name', 'Timestamp', 'Punch Type', 'Device / Location']],
+    body: tableData,
+    theme: 'grid',
+    styles: {
+      font: 'helvetica',
+      fontSize: 9,
+      textColor: [50, 50, 50],
+      lineColor: [230, 230, 230],
+      lineWidth: 0.5,
+      cellPadding: 6,
+    },
+    headStyles: {
+      fillColor: [248, 250, 252],
+      textColor: [30, 41, 59],
+      fontStyle: 'bold',
+      halign: 'left',
+    },
+    alternateRowStyles: {
+      fillColor: [253, 253, 253],
+    },
+    didParseCell: function (data) {
+      if (data.section === 'body' && data.column.index === 2) {
+        if (data.cell.raw === 'Check In') {
+          data.cell.styles.textColor = [16, 185, 129];
+          data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.raw === 'Check Out') {
+          data.cell.styles.textColor = [249, 115, 22];
+          data.cell.styles.fontStyle = 'bold';
+        }
       }
     }
   });
-  const imgData = canvas.toDataURL('image/png');
-  
-  const pdf = new jsPDF({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: 'a4'
-  });
 
-  const pdfWidth = pdf.internal.pageSize.getWidth();
-  const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-  pdf.setFontSize(16);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text(title, 14, 15);
-  
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(`Generated Date: ${new Date().toLocaleString()}`, 14, 22);
-
-  pdf.addImage(imgData, 'PNG', 10, 30, pdfWidth - 20, pdfHeight - 20);
-
-  pdf.save(`${filename}.pdf`);
+  doc.save(`${filename}.pdf`);
 };

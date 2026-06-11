@@ -47,6 +47,7 @@
     "json2csv": "6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.16.0",
     "mariadb": "^3.5.2",
     "mysql2": "^3.22.3",
