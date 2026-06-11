@@ -253,6 +253,14 @@ const connectAndListen = async (): Promise<void> => {
             return;
           }
 
+          // Strip milliseconds so the @@unique([employeeId, timestamp]) constraint
+          // matches correctly. A live punch arriving at 10:19:18.432 would otherwise
+          // fail to match an existing row stored as 10:19:18.000, creating a duplicate.
+          if (parsedTimestamp.getMilliseconds() !== 0) {
+            console.warn(`[RealtimeService] ⚠️ Sub-second jitter stripped (${parsedTimestamp.getMilliseconds()}ms). Raw: ${deviceTime}`);
+          }
+          parsedTimestamp.setMilliseconds(0);
+
           // Strict opt-in: only process punches from mapped (known) employees
           const user = await prisma.user.findFirst({
             where: {

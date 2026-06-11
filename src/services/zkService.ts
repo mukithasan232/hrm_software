@@ -17,6 +17,9 @@ const ZK_INPORT = 0; // Set to 0 to allow OS to pick an available port and avoid
 // correct UTC moment before saving to Prisma.
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // UTC+6 in milliseconds
 // Replaces volatile server-timezone-dependent subtraction logic with exact numeric component parsing.
+// Milliseconds are explicitly zeroed so that @@unique([employeeId, timestamp]) works correctly:
+// two network packets for the same punch arriving at 10:19:18.123 and 10:19:18.456 both
+// normalize to 10:19:18.000 and are treated as one record by skipDuplicates/upsert.
 export const parseDeviceTime = (deviceDate: Date): Date => {
   const y = deviceDate.getFullYear();
   const m = String(deviceDate.getMonth() + 1).padStart(2, '0');
@@ -24,7 +27,10 @@ export const parseDeviceTime = (deviceDate: Date): Date => {
   const h = String(deviceDate.getHours()).padStart(2, '0');
   const min = String(deviceDate.getMinutes()).padStart(2, '0');
   const s = String(deviceDate.getSeconds()).padStart(2, '0');
-  return new Date(`${y}-${m}-${d}T${h}:${min}:${s}+06:00`);
+  // Build ISO string with +06:00 offset (device sends Dhaka local time)
+  // The string intentionally omits milliseconds so the result is always .000
+  const normalized = new Date(`${y}-${m}-${d}T${h}:${min}:${s}+06:00`);
+  return normalized; // milliseconds = 0 by construction
 };
 
 // ─── Error Classification ──────────────────────────────────────────────────────
@@ -365,9 +371,17 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     for (const log of sortedRawLogs) {
       try {
         const deviceEmpId = String(log.deviceUserId ?? log.user_id ?? log.userId ?? log.uid);
-        // parseDeviceTime securely converts the device's local Dhaka time
-        // into a proper absolute UTC Date for storage in the database, avoiding server timezone bugs.
-        const timestamp = parseDeviceTime(new Date(log.recordTime || log.record_time));
+
+        // parseDeviceTime converts device-local Dhaka time → UTC and strips milliseconds.
+        // The defensive setMilliseconds(0) below is a belt-and-suspenders guard: if any
+        // future code path introduces sub-second jitter, it is zeroed here before the
+        // @@unique([employeeId, timestamp]) constraint and createMany deduplicate on it.
+        const rawTimestamp = parseDeviceTime(new Date(log.recordTime || log.record_time));
+        if (rawTimestamp.getMilliseconds() !== 0) {
+          console.warn(`[ZKService] ⚠️ Non-zero ms detected (${rawTimestamp.getMilliseconds()}ms) — stripping. Raw: ${log.recordTime || log.record_time}`);
+        }
+        rawTimestamp.setMilliseconds(0);
+        const timestamp = rawTimestamp;
 
         if (isNaN(timestamp.getTime())) {
           skipped++;
@@ -386,11 +400,11 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
         if (!punchType) {
           skipped++;
-          continue; // Ignored due to 30-minute threshold
+          continue; // Exact-second duplicate — skipped by in-memory Set below
         }
 
-        // Skip exact duplicate (same employee + same timestamp) — DB unique constraint
-        // is the final safety net via skipDuplicates:true on createMany.
+        // In-memory dedup: last line of defence before createMany (skipDuplicates:true
+        // in createMany + the DB unique constraint are the authoritative dedup).
         const collisionKey = `${employeeId}_${timestamp.getTime()}`;
         if (usedTimestamps.has(collisionKey)) {
           skipped++;
@@ -406,7 +420,6 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
         });
 
       } catch (err: any) {
-        // Catch any other errors in the log processing loop
         console.error(`[ZKService] ❌ Failed to format log:`, err.message);
         skipped++;
       }
