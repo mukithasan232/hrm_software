@@ -165,24 +165,6 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           </Link>
 
           <Link
-            href="/dashboard/settings/roles"
-            onClick={onClose}
-            className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
-              pathname.startsWith('/dashboard/settings/roles')
-                ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
-                : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-            } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
-          >
-            <Shield className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>Roles & Permissions</span>}
-            {collapsed && (
-              <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
-                Roles & Permissions
-              </span>
-            )}
-          </Link>
-
-          <Link
             href="/dashboard/settings/email"
             onClick={onClose}
             className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
