@@ -24,14 +24,12 @@ const SCOPE_MODULES = [
 type ModuleKey = (typeof SCOPE_MODULES)[number]['key'];
 
 // Columns and their allowed option sets
-const CRUD_COLS   = ['Create', 'Read', 'Edit', 'Delete'] as const;
-const TOGGLE_COLS = ['Access', 'Stream'] as const;
-const ALL_COLS    = ['Access', 'Create', 'Read', 'Edit', 'Delete', 'Stream'] as const;
+const ALL_COLS    = ['Access', 'Create', 'Read', 'Edit', 'Delete'] as const;
 
 type ColKey = (typeof ALL_COLS)[number];
 
-const CRUD_OPTIONS   = ['no', 'own', 'department', 'all'] as const;
-const TOGGLE_OPTIONS = ['not-set', 'enabled'] as const;
+const CRUD_OPTIONS   = ['No', 'Own', 'Department', 'All'] as const;
+const TOGGLE_OPTIONS = ['Not Set', 'Enabled'] as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,7 +39,6 @@ type ModulePerms = {
   Read: string;
   Edit: string;
   Delete: string;
-  Stream: string;
 };
 
 type PermissionsMap = Record<ModuleKey, ModulePerms>;
@@ -50,15 +47,24 @@ function buildEmptyPermissions(): PermissionsMap {
   const map = {} as PermissionsMap;
   for (const mod of SCOPE_MODULES) {
     map[mod.key] = {
-      Access: 'not-set',
-      Create: 'no',
-      Read:   'no',
-      Edit:   'no',
-      Delete: 'no',
-      Stream: 'not-set',
+      Access: 'Not Set',
+      Create: 'No',
+      Read:   'No',
+      Edit:   'No',
+      Delete: 'No',
     };
   }
   return map;
+}
+
+// Normalise legacy lowercase DB values → new capitalised display strings
+const VALUE_UPGRADE: Record<string, string> = {
+  'no': 'No', 'own': 'Own', 'department': 'Department', 'all': 'All',
+  'not-set': 'Not Set', 'enabled': 'Enabled',
+};
+function normaliseVal(v: any): string {
+  if (typeof v !== 'string') return v;
+  return VALUE_UPGRADE[v.toLowerCase()] ?? v;
 }
 
 function mergePermissions(saved: any): PermissionsMap {
@@ -66,7 +72,14 @@ function mergePermissions(saved: any): PermissionsMap {
   if (!saved || typeof saved !== 'object') return base;
   for (const mod of SCOPE_MODULES) {
     if (saved[mod.key] && typeof saved[mod.key] === 'object') {
-      base[mod.key] = { ...base[mod.key], ...saved[mod.key] };
+      const raw = saved[mod.key];
+      base[mod.key] = {
+        Access: normaliseVal(raw.Access) || base[mod.key].Access,
+        Create: normaliseVal(raw.Create) || base[mod.key].Create,
+        Read:   normaliseVal(raw.Read)   || base[mod.key].Read,
+        Edit:   normaliseVal(raw.Edit)   || base[mod.key].Edit,
+        Delete: normaliseVal(raw.Delete) || base[mod.key].Delete,
+      };
     }
   }
   return base;
@@ -77,12 +90,11 @@ function countActivePermissions(perms: PermissionsMap): number {
   for (const mod of SCOPE_MODULES) {
     const m = perms[mod.key];
     if (!m) continue;
-    if (m.Access === 'enabled') count++;
-    if (m.Stream === 'enabled') count++;
-    if (m.Create !== 'no') count++;
-    if (m.Read   !== 'no') count++;
-    if (m.Edit   !== 'no') count++;
-    if (m.Delete !== 'no') count++;
+    if (m.Access === 'Enabled') count++;
+    if (m.Create !== 'No') count++;
+    if (m.Read   !== 'No') count++;
+    if (m.Edit   !== 'No') count++;
+    if (m.Delete !== 'No') count++;
   }
   return count;
 }
@@ -105,11 +117,11 @@ function PermPill({ count }: { count: number }) {
 // ─── Scope-Level value badge colour ──────────────────────────────────────────
 function valueBadgeClass(val: string): string {
   switch (val) {
-    case 'all':        return 'text-emerald-600 dark:text-emerald-400';
-    case 'department': return 'text-blue-600 dark:text-blue-400';
-    case 'own':        return 'text-amber-600 dark:text-amber-400';
-    case 'enabled':    return 'text-emerald-600 dark:text-emerald-400';
-    default:           return 'text-slate-400 dark:text-gray-500';  // no / not-set
+    case 'All':        return 'text-emerald-600 dark:text-emerald-400';
+    case 'Department': return 'text-blue-600 dark:text-blue-400';
+    case 'Own':        return 'text-amber-600 dark:text-amber-400';
+    case 'Enabled':    return 'text-emerald-600 dark:text-emerald-400';
+    default:           return 'text-slate-400 dark:text-gray-500';  // No / Not Set
   }
 }
 
@@ -600,14 +612,6 @@ export default function DesignationsPage() {
                                   />
                                 </td>
 
-                                {/* Stream (toggle) */}
-                                <td className="px-4 py-2.5 text-center">
-                                  <ScopeSelect
-                                    value={rowPerms.Stream}
-                                    options={TOGGLE_OPTIONS}
-                                    onChange={(v) => setCellValue(mod.key, 'Stream', v)}
-                                  />
-                                </td>
                               </tr>
                             );
                           })}
@@ -620,12 +624,12 @@ export default function DesignationsPage() {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 px-1">
                     <span className="text-[11px] text-slate-400 dark:text-gray-600 font-medium">Legend:</span>
                     {[
-                      { val: 'no',         label: 'No access' },
-                      { val: 'own',        label: 'Own records' },
-                      { val: 'department', label: 'Department' },
-                      { val: 'all',        label: 'All records' },
-                      { val: 'enabled',    label: 'Enabled' },
-                      { val: 'not-set',    label: 'Not set' },
+                      { val: 'No',         label: 'No access' },
+                      { val: 'Own',        label: 'Own records' },
+                      { val: 'Department', label: 'Department' },
+                      { val: 'All',        label: 'All records' },
+                      { val: 'Enabled',    label: 'Access enabled' },
+                      { val: 'Not Set',    label: 'Not configured' },
                     ].map(({ val, label }) => (
                       <span key={val} className={`text-[11px] font-semibold ${valueBadgeClass(val)}`}>
                         {val} <span className="font-normal text-slate-400 dark:text-gray-600">= {label}</span>
