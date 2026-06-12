@@ -4,59 +4,75 @@ import { wrapHandler, corsPreflight } from '@/lib/adapter';
 
 export const OPTIONS = corsPreflight;
 
+// ── GET: Fetch current SMTP settings ──────────────────────────────────────────
 const getEmailSettings = async (req: any, res: any) => {
-  const settings = await prisma.smtpSettings.findFirst();
-  return NextResponse.json(settings || {});
+  try {
+    const settings = await prisma.smtpSettings.findFirst();
+    return res.json(settings || {});
+  } catch (error: any) {
+    console.error('SMTP DB Fetch Error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch settings' });
+  }
 };
 
+// ── POST: Upsert SMTP settings ────────────────────────────────────────────────
 const upsertEmailSettings = async (req: any, res: any) => {
-  const body = req.body;
-  const { host, port, security, username, password } = body;
+  try {
+    const body = req.body;
+    const { host, port, security, username, password } = body;
 
-  if (!host || !port || !username || !password) {
-    return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
-  }
+    if (!host || !port || !username || !password) {
+      return res.status(400).json({ error: 'All fields are required (host, port, username, password).' });
+    }
 
-  const existing = await prisma.smtpSettings.findFirst();
+    const portNum = parseInt(String(port), 10);
+    if (isNaN(portNum)) {
+      return res.status(400).json({ error: 'Port must be a valid number.' });
+    }
 
-  let settings;
-  if (existing) {
-    settings = await prisma.smtpSettings.update({
-      where: { id: existing.id },
-      data: {
-        host,
-        port: parseInt(port, 10),
-        security,
-        username,
-        password,
-      }
-    });
-  } else {
-    // If TenantSettings exists, link it, otherwise create standalone (or create TenantSettings if required)
-    // The schema says tenantId is required, so we need a tenant.
-    let tenant = await prisma.tenantSettings.findFirst();
-    if (!tenant) {
-      tenant = await prisma.tenantSettings.create({
+    // Check if a record already exists — if so, update it
+    const existing = await prisma.smtpSettings.findFirst();
+
+    let settings;
+    if (existing) {
+      settings = await prisma.smtpSettings.update({
+        where: { id: existing.id },
         data: {
-          companyName: 'Default Tenant',
-        }
+          host:     host.trim(),
+          port:     portNum,
+          security: security || 'STARTTLS',
+          username: username.trim(),
+          password,
+        },
+      });
+    } else {
+      // SmtpSettings requires a TenantSettings FK (tenantId).
+      // Fetch or auto-create the singleton TenantSettings row.
+      let tenant = await prisma.tenantSettings.findFirst();
+      if (!tenant) {
+        tenant = await prisma.tenantSettings.create({
+          data: { companyName: 'Default Tenant' },
+        });
+      }
+
+      settings = await prisma.smtpSettings.create({
+        data: {
+          host:     host.trim(),
+          port:     portNum,
+          security: security || 'STARTTLS',
+          username: username.trim(),
+          password,
+          tenantId: tenant.id,
+        },
       });
     }
 
-    settings = await prisma.smtpSettings.create({
-      data: {
-        host,
-        port: parseInt(port, 10),
-        security,
-        username,
-        password,
-        tenantId: tenant.id
-      }
-    });
+    return res.json({ success: true, data: settings });
+  } catch (error: any) {
+    console.error('SMTP DB Save Error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to save settings' });
   }
-
-  return NextResponse.json({ success: true, data: settings });
 };
 
-export const GET = wrapHandler(getEmailSettings, { protect: true, adminOnly: true });
+export const GET  = wrapHandler(getEmailSettings,    { protect: true, adminOnly: true });
 export const POST = wrapHandler(upsertEmailSettings, { protect: true, adminOnly: true });
