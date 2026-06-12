@@ -309,12 +309,12 @@ const connectAndListen = async (): Promise<void> => {
             return;
           }
 
-          console.log(`[ZK Sync] Raw Time:`, deviceTime, '| DB UTC:', parsedTimestamp.toISOString(), '| PunchType:', punchType);
+          console.log(`[ZK Sync] Raw Time:`, deviceTime, '| DB UTC:', parsedTimestamp.toISOString(), '| PunchType:', resolvedPunchType);
 
           const newLog = await prisma.attendanceLog.upsert({
             where: { employeeId_timestamp: { employeeId, timestamp: parsedTimestamp } },
-            update: { punchType: punchType as any },
-            create: { employeeId, timestamp: parsedTimestamp, punchType: punchType as any, deviceId: ZK_IP! },
+            update: { punchType: resolvedPunchType as any },
+            create: { employeeId, timestamp: parsedTimestamp, punchType: resolvedPunchType as any, deviceId: ZK_IP! },
           });
 
           if (io) {

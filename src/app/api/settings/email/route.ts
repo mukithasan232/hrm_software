@@ -70,7 +70,7 @@ const upsertEmailSettings = async (req: any, res: any) => {
         });
       }
       settings = await prisma.smtpSettings.create({
-        data: { ...smtpData, tenantId: tenant.id },
+        data: { ...smtpData, tenantId: tenant.id } as any,
       });
     }
 
