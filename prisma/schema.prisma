@@ -238,14 +238,18 @@ model Announcement {
 }
 
 model SmtpSettings {
-  id        String   @id @default(uuid())
-  host      String
-  port      Int
-  security  String // e.g., "SSL/TLS", "STARTTLS", "None"
-  username  String
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  host         String
+  port         Int
+  security     String   // e.g., "SSL/TLS", "STARTTLS", "None"
+  username     String
+  password     String
+  // MAIN tab fields
+  senderName   String?  // e.g., "HRM Portal"
+  senderEmail  String?  // e.g., "no-reply@company.com"
+  emailEnabled Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   tenantId String?         @unique
   tenant   TenantSettings? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
