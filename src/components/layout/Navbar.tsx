@@ -19,7 +19,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const notifRef   = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const p = brand.primaryColor;
@@ -35,7 +35,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (notifRef.current   && !notifRef.current.contains(e.target as Node))   setShowNotifications(false);
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifications(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setShowProfile(false);
     };
     document.addEventListener('mousedown', handler);
@@ -49,11 +49,11 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
     try {
       await api.post('/notifications/read');
       setNotifications(notifications.map(n => ({ ...n, read: true })));
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
-  const initials  = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
   return (
     <header className="h-16 border-b border-slate-200 dark:border-white/10 bg-white/70 dark:bg-black/30 backdrop-blur-md flex items-center justify-between px-4 md:px-8 z-50 sticky top-0 transition-colors duration-300">
