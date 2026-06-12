@@ -341,7 +341,8 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     // Load any other existing users in database into the userIdMap
     const dbUsers = await prisma.user.findMany({});
     for (const user of dbUsers) {
-      userIdMap.set(user.employeeId, user.id);
+      if (user.employeeId) userIdMap.set(user.employeeId, user.id);
+      if (user.zk_enroll_number) userIdMap.set(String(user.zk_enroll_number), user.id);
     }
 
     const rawLogs = await getAttendanceAsync(zk);
