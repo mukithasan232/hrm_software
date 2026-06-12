@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Mail, Save, Loader2, Send, ToggleLeft, ToggleRight,
+  Mail, Save, Loader2, Send,
   Server, User, Lock, Globe, CheckCircle2, AlertCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '@/services/api';
 
 // ─── Shared input / label styles ─────────────────────────────────────────────
 const inputCls =
@@ -80,13 +81,12 @@ export default function EmailSettingsPage() {
   const [hydrating, setHydrating] = useState(true);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  // ── Task 2: Hydrate all fields from the database on mount ──
+  // ── Hydrate all fields from the database on mount ──
   useEffect(() => {
     const fetchEmailSettings = async () => {
       try {
-        const res = await fetch('/api/settings/email');
-        if (!res.ok) return;
-        const data = await res.json();
+        const res = await api.get('/settings/email');
+        const data = res.data;
 
         // SMTP fields
         if (data.host)     setHost(data.host);
@@ -99,8 +99,12 @@ export default function EmailSettingsPage() {
         if (data.senderName  !== undefined) setSenderName(data.senderName  || '');
         if (data.senderEmail !== undefined) setSenderEmail(data.senderEmail || '');
         if (data.emailEnabled !== undefined) setEmailEnabled(Boolean(data.emailEnabled));
-      } catch (err) {
-        console.error('Failed to load email settings:', err);
+      } catch (err: any) {
+        // 401/403 = not logged in or not admin — silently ignore on load
+        const status = err?.response?.status;
+        if (status !== 401 && status !== 403) {
+          console.error('Failed to load email settings:', err);
+        }
       } finally {
         setHydrating(false);
       }
@@ -114,19 +118,11 @@ export default function EmailSettingsPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch('/api/settings/email', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ senderName, senderEmail, emailEnabled }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success('Main email settings saved!');
-      } else {
-        toast.error(data.error || 'Failed to save main settings.');
-      }
-    } catch {
-      toast.error('An unexpected error occurred.');
+      const res = await api.post('/settings/email', { senderName, senderEmail, emailEnabled });
+      toast.success('Main email settings saved!');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to save main settings.';
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -138,19 +134,11 @@ export default function EmailSettingsPage() {
     setSaving(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/settings/email', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ host, port, security, username, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success('SMTP configuration saved successfully!');
-      } else {
-        toast.error(data.error || 'Failed to save SMTP settings.');
-      }
-    } catch {
-      toast.error('An unexpected error occurred while saving.');
+      await api.post('/settings/email', { host, port, security, username, password });
+      toast.success('SMTP configuration saved successfully!');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to save SMTP settings.';
+      toast.error(msg, { duration: 6000 });
     } finally {
       setSaving(false);
     }
@@ -165,27 +153,16 @@ export default function EmailSettingsPage() {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/settings/email/test', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ host, port, security, username, password }),
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        const msg = data.message || 'SMTP connection successful!';
-        setTestResult({ ok: true, msg });
-        toast.success(msg);
-      } else {
-        // Task 3: display the EXACT error returned from Nodemailer
-        const errMsg = data.error || data.raw || 'SMTP connection failed.';
-        setTestResult({ ok: false, msg: errMsg });
-        toast.error(errMsg, { duration: 8000 }); // longer duration for complex error strings
-      }
+      const res = await api.post('/settings/email/test', { host, port, security, username, password });
+      const msg = res.data?.message || 'SMTP connection successful!';
+      setTestResult({ ok: true, msg });
+      toast.success(msg);
     } catch (err: any) {
-      const msg = err?.message || 'Network error while testing SMTP connection.';
-      setTestResult({ ok: false, msg });
-      toast.error(msg);
+      // Axios wraps non-2xx as an error — pull the exact Nodemailer message from response body
+      const data = err?.response?.data;
+      const errMsg = data?.error || data?.raw || err?.message || 'SMTP connection failed.';
+      setTestResult({ ok: false, msg: errMsg });
+      toast.error(errMsg, { duration: 8000 });
     } finally {
       setTesting(false);
     }
