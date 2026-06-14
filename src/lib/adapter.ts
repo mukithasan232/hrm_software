@@ -262,7 +262,10 @@ export function wrapHandler(
       }
 
       // Execute controller handler
-      await handler(mockReq as any, res as any);
+      const result = await handler(mockReq as any, res as any);
+      if (result instanceof Response) {
+        return result;
+      }
       return await responsePromise;
     } catch (error: any) {
       console.error('Error in route handler:', error);

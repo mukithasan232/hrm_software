@@ -42,11 +42,17 @@ export function usePermissions() {
   }, [fetchPermissions]);
 
   const can = useCallback((moduleName: string, action: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete') => {
-    // Optionally: if (role === 'Administrator') return true;
+    const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
+    const userDesig = (user?.designation || '').toLowerCase().trim();
+    
+    if (ADMIN_DESIGNATIONS.includes(userDesig)) {
+      return true;
+    }
+
     const perm = permissions.find(p => p.moduleName === moduleName);
     if (!perm) return false;
     return !!perm[action];
-  }, [permissions]);
+  }, [permissions, user]);
 
   return { permissions, role, loading, can };
 }
