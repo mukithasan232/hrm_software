@@ -5,6 +5,7 @@ import {
   Mail, Building2, CalendarDays, Shield, ChevronDown, UserX, UserCheck, KeyRound, UploadCloud, RefreshCw
 } from 'lucide-react';
 import api from '@/services/api';
+import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidator';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useInView } from 'react-intersection-observer';
@@ -58,6 +59,7 @@ export default function TeamUsersPage() {
   const [editTarget, setEditTarget] = useState<any | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [submitting, setSubmitting] = useState(false);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
@@ -515,22 +517,13 @@ export default function TeamUsersPage() {
                     <div className="space-y-1 sm:col-span-2">
                       <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Initial Password *</label>
                       <div className="relative flex items-center">
-                        <input
-                          type="text"
-                          required
+                        <PasswordInputWithValidator
                           value={form.password}
-                          onChange={e => setForm({ ...form, password: e.target.value })}
+                          onChange={val => setForm({ ...form, password: val })}
+                          onGenerate={generatePassword}
+                          onValidityChange={setIsPasswordValid}
                           placeholder="Type or generate..."
-                          className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl pl-3 pr-28 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium"
                         />
-                        <button
-                          type="button"
-                          onClick={generatePassword}
-                          className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors"
-                        >
-                          <KeyRound className="w-3.5 h-3.5" />
-                          Generate
-                        </button>
                       </div>
                       
                       {/* Email Checkbox */}
@@ -709,7 +702,7 @@ export default function TeamUsersPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || (!editTarget && !isPasswordValid)}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all disabled:opacity-50 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

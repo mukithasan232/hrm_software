@@ -1,9 +1,9 @@
-import { Request, Response } from 'express';
+import { MockRequest, MockResponse } from '@/lib/adapter';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const getDepartments = async (req: Request, res: Response) => {
+export const getDepartments = async (req: MockRequest, res: MockResponse) => {
   try {
     const departments = await prisma.department.findMany({
       orderBy: { createdAt: 'desc' },
@@ -14,7 +14,7 @@ export const getDepartments = async (req: Request, res: Response) => {
   }
 };
 
-export const createDepartment = async (req: Request, res: Response) => {
+export const createDepartment = async (req: MockRequest, res: MockResponse) => {
   try {
     const { name, description } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
@@ -32,7 +32,7 @@ export const createDepartment = async (req: Request, res: Response) => {
   }
 };
 
-export const updateDepartment = async (req: Request, res: Response) => {
+export const updateDepartment = async (req: MockRequest, res: MockResponse) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
@@ -48,7 +48,7 @@ export const updateDepartment = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteDepartment = async (req: Request, res: Response) => {
+export const deleteDepartment = async (req: MockRequest, res: MockResponse) => {
   try {
     const { id } = req.params;
 

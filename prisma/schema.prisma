@@ -255,6 +255,14 @@ model SmtpSettings {
   tenant   TenantSettings? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
+model EmailTemplate {
+  id        String   @id @default(uuid())
+  type      String   @unique // e.g., 'WELCOME_EMAIL', 'LEAVE_UPDATE', 'HR_NOTIFICATION'
+  subject   String
+  body      String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
 model Role {
   id          String   @id @default(uuid())
   name        String   @unique

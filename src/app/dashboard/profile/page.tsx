@@ -8,6 +8,7 @@ import { useBrand } from '@/context/BrandContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/context/LanguageContext';
+import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidator';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -67,6 +68,7 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
+  const [isNewPasswordValid, setIsNewPasswordValid] = useState(false);
 
   // ── Phone country-code state ──
   const [countryCode, setCountryCode] = useState('+880');
@@ -499,12 +501,12 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold">New Password</label>
-                  <input
-                    type="password"
-                    required
+                  <PasswordInputWithValidator
                     value={passwords.newPassword}
-                    onChange={e => setPasswords({ ...passwords, newPassword: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/25 transition-all font-semibold"
+                    onChange={val => setPasswords({ ...passwords, newPassword: val })}
+                    onValidityChange={setIsNewPasswordValid}
+                    placeholder="Enter new password"
+                    className="focus:ring-purple-500/25"
                   />
                 </div>
                 <div className="space-y-1">
@@ -521,7 +523,7 @@ export default function ProfilePage() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={changingPw}
+                  disabled={changingPw || !isNewPasswordValid}
                   className="flex items-center gap-2 px-6 py-2.5 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-brand-secondary/40 hover:opacity-90 bg-brand-secondary"
                 >
                   <Lock className="w-4 h-4" />

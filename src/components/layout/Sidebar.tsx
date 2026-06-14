@@ -120,14 +120,14 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   isActive ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
                 }`}
               />
-              {!collapsed && <span>{t(item.key as any)}</span>}
+              {!collapsed && <span className="capitalize">{t(item.key as any)}</span>}
               {!collapsed && isActive && (
                 <span className="ml-auto h-1.5 w-1.5 rounded-full flex-shrink-0 bg-brand-primary" />
               )}
               
               {/* Tooltip */}
               {collapsed && (
-                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
+                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700 capitalize">
                   {t(item.key as any)}
                 </span>
               )}
@@ -154,7 +154,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
                 }`}
               />
-              {!collapsed && <span className="flex-1 text-left">{t('team')}</span>}
+              {!collapsed && <span className="flex-1 text-left capitalize">{t('team')}</span>}
               {!collapsed && (
                 <ChevronDown
                   className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''} ${
@@ -163,7 +163,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 />
               )}
               {collapsed && (
-                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
+                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700 capitalize">
                   {t('team')}
                 </span>
               )}
@@ -193,11 +193,11 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                       } ${collapsed ? 'justify-center px-0' : 'px-3'}`}
                     >
                       <SubIcon className={`h-4 w-4 flex-shrink-0 ${isSubActive ? 'text-indigo-500' : ''}`} />
-                      {!collapsed && <span>{(sub as any).label || t(sub.key as any)}</span>}
+                      {!collapsed && <span className="capitalize">{(sub as any).label || t(sub.key as any)}</span>}
                       {!collapsed && isSubActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />}
                       
                       {collapsed && (
-                        <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
+                        <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700 capitalize">
                           {(sub as any).label || t(sub.key as any)}
                         </span>
                       )}

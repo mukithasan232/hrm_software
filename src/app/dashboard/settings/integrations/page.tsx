@@ -529,8 +529,149 @@ function EmailTab() {
 
 }
 
+function TemplatesTab() {
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [selectedType, setSelectedType] = useState('WELCOME_EMAIL');
+  
+  const [form, setForm] = useState({
+    subject: '',
+    body: ''
+  });
+
+  const TEMPLATE_TYPES = [
+    { value: 'WELCOME_EMAIL', label: 'Welcome Email', vars: '{{name}}, {{email}}, {{password}}, {{designation}}, {{url}}, {{deviceId}}, {{currentYear}}' },
+    { value: 'LEAVE_UPDATE', label: 'Leave Update Email', vars: '{{name}}, {{leaveType}}, {{status}}, {{url}}, {{color}}, {{currentYear}}' },
+    { value: 'HR_NOTIFICATION', label: 'HR Notification Email', vars: '{{title}}, {{messageBody}}, {{currentYear}}' }
+  ];
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    setLoading(true);
+    // Safety net: force-stop loading after 8 seconds regardless
+    const safetyTimer = setTimeout(() => setLoading(false), 8000);
+    try {
+      const res = await api.get('/settings/email/templates', { timeout: 7000 });
+      const data = Array.isArray(res.data) ? res.data : [];
+      setTemplates(data);
+      const current = data.find((t: any) => t.type === selectedType);
+      if (current) {
+        setForm({ subject: current.subject, body: current.body });
+      } else {
+        setForm({ subject: '', body: '' });
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.message || e.message || 'Failed to fetch templates');
+    } finally {
+      clearTimeout(safetyTimer);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const current = templates.find((t: any) => t.type === selectedType);
+    if (current) {
+      setForm({ subject: current.subject, body: current.body });
+    } else {
+      setForm({ subject: '', body: '' });
+    }
+  }, [selectedType, templates]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.post('/settings/email/templates', {
+        type: selectedType,
+        subject: form.subject,
+        body: form.body
+      });
+      toast.success('Template saved successfully!');
+      fetchTemplates();
+    } catch (e: any) {
+      toast.error('Failed to save template');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center animate-pulse">Loading templates...</div>;
+
+  const currentTypeInfo = TEMPLATE_TYPES.find(t => t.value === selectedType);
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
+        <p className="text-slate-600 dark:text-gray-400 mb-6">
+          Customize automated system emails. If left blank or unsaved, the system will use a default template.
+        </p>
+
+        <form onSubmit={handleSave} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">Select Template Type</label>
+            <select
+              value={selectedType}
+              onChange={e => setSelectedType(e.target.value)}
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500"
+            >
+              {TEMPLATE_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
+            <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium mb-1">Available Variables for this template:</p>
+            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-mono">{currentTypeInfo?.vars}</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">Email Subject</label>
+            <input 
+              type="text" 
+              required 
+              value={form.subject}
+              onChange={e => setForm({...form, subject: e.target.value})}
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500" 
+              placeholder="e.g. Welcome to {{currentYear}}!" 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">Email HTML Body</label>
+            <textarea 
+              required 
+              rows={12}
+              value={form.body}
+              onChange={e => setForm({...form, body: e.target.value})}
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-sm" 
+              placeholder="<div>Hi {{name}}, ...</div>" 
+            />
+          </div>
+
+          <div className="pt-4 border-t border-slate-200 dark:border-white/10">
+            <button 
+              type="submit" 
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-all disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Saving...' : 'Save Template'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function IntegrationsPage() {
-  const [mainTab, setMainTab] = useState<'ZKTECO' | 'EMAIL'>('ZKTECO');
+  const [mainTab, setMainTab] = useState<'ZKTECO' | 'EMAIL' | 'TEMPLATES'>('ZKTECO');
   const { user } = useAuth();
   const router = useRouter();
 
@@ -577,11 +718,20 @@ export default function IntegrationsPage() {
         >
           Email Setup (SMTP)
         </button>
+        <button
+          onClick={() => setMainTab('TEMPLATES')}
+          className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+            mainTab === 'TEMPLATES' ? 'bg-brand-primary text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10'
+          }`}
+        >
+          Email Templates
+        </button>
       </div>
 
       <div className="mt-4">
         {mainTab === 'ZKTECO' && <DeviceTab />}
         {mainTab === 'EMAIL' && <EmailTab />}
+        {mainTab === 'TEMPLATES' && <TemplatesTab />}
       </div>
     </div>
   );

@@ -4,10 +4,11 @@ import path from 'path';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { filename: string[] } }
+  { params }: { params: Promise<{ filename: string[] }> }
 ) {
   try {
-    const filenameParts = params.filename || [];
+    const resolvedParams = await params;
+    const filenameParts = resolvedParams.filename || [];
     const filename = filenameParts.join('/');
 
     // Prevent directory traversal attacks

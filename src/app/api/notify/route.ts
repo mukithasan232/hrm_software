@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const html = buildHRNotificationTemplate(subject, message);
+    const html = await buildHRNotificationTemplate(subject, message);
 
     await sendMail({
       to,
