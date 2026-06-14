@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import {
   Plus, Search, Building2, User, Mail, UploadCloud, X,
   RefreshCw, Key, Pencil, Trash2, AlertTriangle, Link as LinkIcon, Loader2
@@ -8,7 +9,6 @@ import {
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useDeviceSync } from '@/hooks/useDeviceSync';
-import PasswordValidator from '@/components/ui/PasswordValidator';
 import { usePermissions } from '@/hooks/usePermissions';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
@@ -71,6 +71,7 @@ function DesignationSelect({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function EmployeesPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const { can, loading: permsLoading } = usePermissions();
 
   // Legacy fallback if permissions are not set up yet
@@ -106,9 +107,7 @@ export default function EmployeesPage() {
     }
   };
 
-  // ── Add Modal ──────────────────────────────────────────────────────────────
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+
 
   // ── Device Sync Hook ───────────────────────────────────────────────────────
   const { syncToDevice, isSyncing } = useDeviceSync();
@@ -174,17 +173,7 @@ export default function EmployeesPage() {
     }
   };
 
-  // ── Add Form State ─────────────────────────────────────────────────────────
-  const [formName, setFormName] = useState('');
-  const [formEmail, setFormEmail] = useState('');
-  const [formPassword, setFormPassword] = useState('');
-  const [formDesignation, setFormDesignation] = useState('');
-  const [formType, setFormType] = useState<EmployeeType>('IN_HOUSE');
-  const [formDepartment, setFormDepartment] = useState('');
-  const [formZkEnroll, setFormZkEnroll] = useState('');
-  const [cvFile, setCvFile] = useState<File | null>(null);
-  const [nidFile, setNidFile] = useState<File | null>(null);
-  const [certFile, setCertFile] = useState<File | null>(null);
+
 
   // ── Edit Form State (mirrors add) ──────────────────────────────────────────
   const [editName, setEditName] = useState('');
@@ -216,16 +205,9 @@ export default function EmployeesPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  const generatePassword = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-    setFormPassword(Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join(''));
-  };
 
-  const resetAddForm = () => {
-    setFormName(''); setFormEmail(''); setFormPassword('');
-    setFormDesignation(''); setFormDepartment(''); setFormZkEnroll('');
-    setFormType('IN_HOUSE'); setCvFile(null); setNidFile(null); setCertFile(null);
-  };
+
+
 
   const openEdit = (emp: Employee) => {
     setEditName(emp.name);
@@ -239,46 +221,6 @@ export default function EmployeesPage() {
   };
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleAddSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formName || !formEmail || !formPassword) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append('name', formName);
-      formData.append('email', formEmail);
-      formData.append('password', formPassword);
-      if (formDesignation) formData.append('designationId', formDesignation);
-      formData.append('employeeType', formType);
-      if (formDepartment) formData.append('department', formDepartment);
-      if (formZkEnroll) formData.append('zk_enroll_number', formZkEnroll);
-      if (cvFile) formData.append('cv', cvFile);
-      if (nidFile) formData.append('nid', nidFile);
-      if (certFile) formData.append('certificates', certFile);
-
-      const res = await fetch('/api/employees', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.message || 'Failed to add employee');
-
-      toast.success('Employee added successfully!');
-      
-      // Auto-sync to ZKTeco device
-      if (data.user && data.user.id && formZkEnroll) {
-        await syncToDevice(data.user.id);
-      }
-      
-      setShowAddModal(false);
-      resetAddForm();
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Submission failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -356,7 +298,10 @@ export default function EmployeesPage() {
           </div>
           {canCreate && (
             <button
-              onClick={() => { resetAddForm(); setShowAddModal(true); }}
+              onClick={() => {
+                toast.success('Redirecting to Central User Management...');
+                router.push('/dashboard/team/users');
+              }}
               className="flex items-center gap-2 px-4 py-2.5 bg-brand-primary text-white text-sm font-semibold rounded-xl hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/25 whitespace-nowrap"
             >
               <Plus className="w-4 h-4" /> Add Employee
@@ -472,133 +417,7 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* ══════════ ADD EMPLOYEE MODAL ══════════ */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">Add New Employee</h2>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleAddSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Full Name */}
-                <div className="space-y-1.5">
-                  <label className={labelCls}>Full Name *</label>
-                  <input required type="text" value={formName} onChange={e => setFormName(e.target.value)} className={fieldCls} placeholder="John Doe" />
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <label className={labelCls}>Email Address *</label>
-                  <input required type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} className={fieldCls} placeholder="john@company.com" />
-                </div>
-
-                {/* Designation */}
-                <div className="space-y-1.5">
-                  <label className={labelCls}>Designation</label>
-                  <DesignationSelect value={formDesignation} onChange={setFormDesignation} designations={designations} />
-                </div>
-
-                {/* Department */}
-                <div className="space-y-1.5">
-                  <label className={labelCls}>Department</label>
-                  <select value={formDepartment} onChange={e => setFormDepartment(e.target.value)} className={fieldCls}>
-                    <option value="">— Select Department —</option>
-                    {departments.map(dept => (
-                      <option key={dept.id} value={dept.name}>{dept.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Employee Type */}
-                <div className="space-y-1.5">
-                  <label className={labelCls}>Employee Type</label>
-                  <select value={formType} onChange={e => setFormType(e.target.value as EmployeeType)} className={fieldCls}>
-                    <option value="">— Select Type —</option>
-                    <option value="IN_HOUSE">In-House</option>
-                    <option value="REMOTE">Remote</option>
-                  </select>
-                </div>
-
-                {/* ZKTeco Enroll Number */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className={labelCls}>ZKTeco Enroll Number</label>
-                    <button type="button" onClick={fetchUnregistered} className="text-xs text-brand-primary font-bold hover:underline flex items-center gap-1">
-                      <RefreshCw className={`w-3 h-3 ${loadingUnregistered ? 'animate-spin' : ''}`} /> Fetch from Device
-                    </button>
-                  </div>
-                  {loadingUnregistered ? (
-                    <div className={`${fieldCls} flex items-center gap-2 text-slate-500`}><RefreshCw className="w-4 h-4 animate-spin"/> Fetching...</div>
-                  ) : (
-                    <select value={formZkEnroll} onChange={e => setFormZkEnroll(e.target.value)} className={fieldCls}>
-                      <option value="">— Select Device User —</option>
-                      {unregisteredUsers.map(u => {
-                        const rawId = (u as any).userId || (u as any).uid || u.deviceUserId;
-                        return (
-                          <option key={rawId} value={rawId ? rawId.toString() : ''}>
-                            [Device ID: {rawId}] - {u.name || 'Unknown'}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  )}
-                </div>
-
-                {/* Password */}
-                <div className="space-y-1.5 md:col-span-2">
-                  <label className={labelCls}>Initial Password *</label>
-                  <PasswordValidator
-                    value={formPassword}
-                    onChange={setFormPassword}
-                    onGenerate={generatePassword}
-                    placeholder="Min 6 characters, number, symbol"
-                  />
-                </div>
-              </div>
-
-              {/* Documents section */}
-              <div className="pt-3 border-t border-slate-100 dark:border-white/10">
-                <h3 className="text-sm font-bold text-slate-700 dark:text-white mb-3 flex items-center gap-2">
-                  <UploadCloud className="w-4 h-4 text-brand-primary" /> Onboarding Documents <span className="text-slate-400 font-normal">(PDF, optional)</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {[
-                    { label: 'CV / Resume', state: cvFile, setter: setCvFile },
-                    { label: 'NID / Passport', state: nidFile, setter: setNidFile },
-                    { label: 'Certificates', state: certFile, setter: setCertFile },
-                  ].map(({ label, state, setter }) => (
-                    <div key={label} className="border-2 border-dashed border-slate-200 dark:border-white/20 rounded-xl p-3 text-center hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer relative">
-                      <input type="file" accept=".pdf" onChange={e => setter(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                      <span className="text-xs font-bold text-slate-500 dark:text-gray-400 block mb-0.5">{label}</span>
-                      <span className="text-[10px] font-medium text-brand-primary block truncate">{state ? state.name : 'Click to attach'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="pt-4 border-t border-slate-100 dark:border-white/10 flex justify-end gap-3">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" disabled={submitting || isSyncing} className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-primary hover:bg-brand-primary/90 transition-all shadow-lg shadow-brand-primary/30 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
-                  {(submitting || isSyncing) && <RefreshCw className="w-4 h-4 animate-spin" />}
-                  {isSyncing ? 'Syncing...' : submitting ? 'Creating...' : 'Save Employee'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ══════════ EDIT EMPLOYEE MODAL ══════════ */}
       {editTarget && (
