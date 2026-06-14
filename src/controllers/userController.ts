@@ -10,7 +10,8 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
     const take = parseInt(limit as string, 10);
     
     const where: any = {
-      employeeId: { not: 'UNMAPPED_FALLBACK' }
+      employeeId: { not: 'UNMAPPED_FALLBACK' },
+      userType: { not: 'Employee' }
     };
     if (search) {
       const q = (search as string).toLowerCase();

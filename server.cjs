@@ -61,6 +61,15 @@ app.prepare()
       // Non-fatal: HTTP server still starts and serves the Next.js app
     }
 
+    httpServer.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${port} is already in use. Please kill the process using it or change the PORT in .env.`);
+        process.exit(1);
+      } else {
+        console.error('❌ HTTP Server Error:', err);
+      }
+    });
+
     httpServer.listen(port, '0.0.0.0', () => {
       console.log(`🚀 Server running on http://0.0.0.0:${port}`);
     });

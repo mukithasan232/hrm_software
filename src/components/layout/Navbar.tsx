@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive } from 'lucide-react';
+import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive, Plug } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/services/api';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -170,16 +170,26 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
               </div>
 
               <div className="p-2">
-                {/* Appearance — Admin/Superadmin only */}
+                {/* Appearance & Integrations — Admin/Superadmin only */}
                 {user && ['Admin', 'Super Admin', 'System Administrator'].includes(typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation) && (
-                  <Link
-                    href="/dashboard/settings/appearance"
-                    onClick={() => setShowProfile(false)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
-                  >
-                    <Paintbrush className="w-4 h-4 flex-shrink-0" />
-                    <span className="font-medium">{t('appearance')}</span>
-                  </Link>
+                  <>
+                    <Link
+                      href="/dashboard/settings/appearance"
+                      onClick={() => setShowProfile(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
+                    >
+                      <Paintbrush className="w-4 h-4 flex-shrink-0" />
+                      <span className="font-medium">{t('appearance')}</span>
+                    </Link>
+                    <Link
+                      href="/dashboard/settings/integrations"
+                      onClick={() => setShowProfile(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
+                    >
+                      <Plug className="w-4 h-4 flex-shrink-0" />
+                      <span className="font-medium">{language === 'bn' ? 'ইন্টিগ্রেশন' : 'Integrations'}</span>
+                    </Link>
+                  </>
                 )}
 
                 <Link

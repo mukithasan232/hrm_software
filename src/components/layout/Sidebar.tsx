@@ -135,53 +135,6 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           );
         })}
 
-        {/* ── Unconditional Administration Links ── */}
-        <div className="pt-1">
-          {!collapsed && (
-            <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-gray-600">
-              {t('administration')}
-            </p>
-          )}
-          {collapsed && (
-            <div className="w-full h-px bg-slate-200 dark:bg-white/10 my-3" />
-          )}
-
-          <Link
-            href="/dashboard/settings/device"
-            onClick={onClose}
-            className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
-              pathname.startsWith('/dashboard/settings/device')
-                ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
-                : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-            } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
-          >
-            <HardDrive className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>Device Config</span>}
-            {collapsed && (
-              <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
-                Device Config
-              </span>
-            )}
-          </Link>
-
-          <Link
-            href="/dashboard/settings/email"
-            onClick={onClose}
-            className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
-              pathname.startsWith('/dashboard/settings/email')
-                ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
-                : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-            } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
-          >
-            <Mail className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>Email Config</span>}
-            {collapsed && (
-              <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
-                Email Config
-              </span>
-            )}
-          </Link>
-        </div>
 
         {/* ── Team Section (Admin / Superadmin only) ── */}
         {canSeeTeam && (

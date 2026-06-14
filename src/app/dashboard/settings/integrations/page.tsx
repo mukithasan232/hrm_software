@@ -3,10 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import {
   Mail, Save, Loader2, Send,
-  Server, User, Lock, Globe, CheckCircle2, AlertCircle,
+  Server, User, Lock, Globe, CheckCircle2, AlertCircle, Shield, Network, Plug
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
+import { useTranslation } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+
+
 
 // ─── Shared input / label styles ─────────────────────────────────────────────
 const inputCls =
@@ -60,7 +65,145 @@ function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function EmailSettingsPage() {
+
+
+function DeviceTab() {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [device, setDevice] = useState({
+    name: 'Main Gate',
+    ipAddress: '',
+    port: '4370',
+    commKey: '0'
+  });
+
+  useEffect(() => {
+    fetchDevice();
+  }, []);
+
+  const fetchDevice = async () => {
+    try {
+      const res = await api.get('/settings/device');
+      if (res.data && res.data.ipAddress) {
+        setDevice({
+          name: res.data.name || 'Main Gate',
+          ipAddress: res.data.ipAddress,
+          port: res.data.port?.toString() || '4370',
+          commKey: res.data.commKey?.toString() || '0'
+        });
+      }
+    } catch (e) {
+      console.error('Failed to fetch device', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.post('/settings/device', device);
+      toast.success('Device settings saved successfully!');
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to save device settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center animate-pulse">Loading settings...</div>;
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-indigo-500/20 text-indigo-500 rounded-xl">
+          <Server className="w-6 h-6" />
+        </div>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Device Settings</h1>
+      </div>
+
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
+        <p className="text-slate-600 dark:text-gray-400 mb-6">
+          Configure the active ZKTeco biometric device connection for the Multi-Tenant SaaS platform.
+        </p>
+
+        <form onSubmit={handleSave} className="space-y-6 max-w-2xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">Device Name</label>
+              <input 
+                type="text" 
+                required 
+                value={device.name}
+                onChange={e => setDevice({...device, name: e.target.value})}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500" 
+                placeholder="e.g. Main Gate" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                <Network className="w-4 h-4 text-indigo-500" /> IP Address
+              </label>
+              <input 
+                type="text" 
+                required 
+                value={device.ipAddress}
+                onChange={e => setDevice({...device, ipAddress: e.target.value})}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500" 
+                placeholder="192.168.1.201" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                <Network className="w-4 h-4 text-emerald-500" /> Port
+              </label>
+              <input 
+                type="number" 
+                required 
+                value={device.port}
+                onChange={e => setDevice({...device, port: e.target.value})}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500" 
+                placeholder="4370" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-orange-500" /> Communication Key
+              </label>
+              <input 
+                type="number" 
+                value={device.commKey}
+                onChange={e => setDevice({...device, commKey: e.target.value})}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500" 
+                placeholder="0" 
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-200 dark:border-white/10">
+            <button 
+              type="submit" 
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-all disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Saving...' : 'Save Configuration'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+}
+
+function EmailTab() {
+
   const [activeTab, setActiveTab] = useState<'MAIN' | 'SMTP'>('SMTP');
 
   // ── SMTP state ──
@@ -380,6 +523,65 @@ export default function EmailSettingsPage() {
           )}
 
         </div>
+      </div>
+    </div>
+  );
+
+}
+
+export default function IntegrationsPage() {
+  const [mainTab, setMainTab] = useState<'ZKTECO' | 'EMAIL'>('ZKTECO');
+  const { user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      const desig = typeof user.designation === 'object' ? (user.designation as any)?.name : user.designation;
+      if (!['Admin', 'Super Admin', 'System Administrator'].includes(desig)) {
+        router.push('/dashboard');
+        toast.error('Unauthorized access');
+      }
+    }
+  }, [user, router]);
+
+  if (!user) return null;
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+            <Plug className="w-6 h-6 text-indigo-500" />
+          </div>
+          Integrations Hub
+        </h1>
+        <p className="text-slate-500 dark:text-gray-400 mt-1 text-sm">
+          Manage hardware integrations and third-party services.
+        </p>
+      </div>
+
+      <div className="flex gap-2 border-b border-slate-200 dark:border-white/10 pb-4">
+        <button
+          onClick={() => setMainTab('ZKTECO')}
+          className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+            mainTab === 'ZKTECO' ? 'bg-brand-primary text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10'
+          }`}
+        >
+          Device Setup (ZKTeco)
+        </button>
+        <button
+          onClick={() => setMainTab('EMAIL')}
+          className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+            mainTab === 'EMAIL' ? 'bg-brand-primary text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10'
+          }`}
+        >
+          Email Setup (SMTP)
+        </button>
+      </div>
+
+      <div className="mt-4">
+        {mainTab === 'ZKTECO' && <DeviceTab />}
+        {mainTab === 'EMAIL' && <EmailTab />}
       </div>
     </div>
   );
