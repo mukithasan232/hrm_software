@@ -85,7 +85,7 @@ async function seedAdmins() {
         isActive:      true,
         documents:     emptyDocuments,
         employeeType:  'IN_HOUSE',
-        userType:      'Employee',
+        userType:      'Super Admin',
       },
     });
     console.log(`  ✅ [User]         Created: ${ultraUser.email}  (DB ID: ${ultraUser.id})`);
@@ -102,7 +102,7 @@ async function seedAdmins() {
         isActive:      true,
         documents:     emptyDocuments,
         employeeType:  'IN_HOUSE',
-        userType:      'Employee',
+        userType:      'Admin',
       },
     });
     console.log(`  ✅ [User]         Created: ${adminUser.email}  (DB ID: ${adminUser.id})`);

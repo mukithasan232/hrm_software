@@ -13,7 +13,12 @@ export async function GET() {
     const employees = await prisma.user.findMany({
       where: { 
         userType: 'Employee',
-        employeeId: { not: 'UNMAPPED_FALLBACK' }
+        employeeId: { not: 'UNMAPPED_FALLBACK' },
+        customDesignation: {
+          name: {
+            notIn: ['Admin', 'Super Admin', 'System Administrator']
+          }
+        }
       },
       include: {
         customDesignation: {
