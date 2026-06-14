@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   UsersRound, Plus, Search, X, Save, Loader2, Trash2, Pencil,
-  Mail, Building2, CalendarDays, Shield, ChevronDown, UserX, UserCheck, KeyRound
+  Mail, Building2, CalendarDays, Shield, ChevronDown, UserX, UserCheck, KeyRound, UploadCloud, RefreshCw
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -16,8 +16,11 @@ const EMPTY_FORM = {
   name: '',
   email: '',
   password: '',
+  role: 'Employee',
   designationId: '',
   department: 'Engineering',
+  employeeType: 'IN_HOUSE',
+  zk_enroll_number: '',
   baseSalary: '',
   sendEmail: true,
 };
@@ -59,6 +62,26 @@ export default function TeamUsersPage() {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // ZKTeco & Files
+  const [unregisteredUsers, setUnregisteredUsers] = useState<{deviceUserId: number, name: string}[]>([]);
+  const [loadingUnregistered, setLoadingUnregistered] = useState(false);
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [nidFile, setNidFile] = useState<File | null>(null);
+  const [certFile, setCertFile] = useState<File | null>(null);
+
+  const fetchUnregistered = async () => {
+    setLoadingUnregistered(true);
+    try {
+      const res = await api.get('/device/users');
+      setUnregisteredUsers(res.data.users || []);
+      toast.success('Fetched users from device successfully');
+    } catch(e) {
+      toast.error('Failed to fetch from device');
+    } finally {
+      setLoadingUnregistered(false);
+    }
+  };
 
   // Fetch logic
   const fetchDesignations = async () => {
@@ -142,6 +165,7 @@ export default function TeamUsersPage() {
       return n > max ? n : max;
     }, 0);
     setForm({ ...EMPTY_FORM, employeeId: `EMP${String(maxId + 1).padStart(3, '0')}` });
+    setCvFile(null); setNidFile(null); setCertFile(null);
     generatePassword();
     setShowModal(true);
   };
@@ -153,8 +177,11 @@ export default function TeamUsersPage() {
       name: u.name || '',
       email: u.email || '',
       password: '',
+      role: u.userType || 'Employee',
       designationId: u.designationId || '',
       department: u.department || 'Engineering',
+      employeeType: u.employeeType || 'IN_HOUSE',
+      zk_enroll_number: u.zk_enroll_number?.toString() || '',
       baseSalary: u.baseSalary?.toString() || '0',
       sendEmail: false, // hidden on edit anyway
     });
@@ -165,24 +192,43 @@ export default function TeamUsersPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const payload = {
-        ...form,
-        baseSalary: Number(form.baseSalary) || 0,
-        designationId: form.designationId || null,
-      };
-
       if (editTarget) {
-        const { password, employeeId, sendEmail, ...updatePayload } = payload;
+        const payload = {
+          ...form,
+          baseSalary: Number(form.baseSalary) || 0,
+          designationId: form.designationId || null,
+        };
+        const { password, employeeId, sendEmail, role, employeeType, zk_enroll_number, ...updatePayload } = payload as any;
         await api.put(`/users/${editTarget.id}`, updatePayload);
         toast.success('User updated!');
       } else {
-        await api.post('/team/users', payload);
-        toast.success(payload.sendEmail ? 'User created & email sent!' : 'User created successfully!');
+        const formData = new FormData();
+        formData.append('role', form.role);
+        formData.append('name', form.name);
+        formData.append('email', form.email);
+        formData.append('password', form.password);
+        formData.append('employeeId', form.employeeId);
+        
+        if (form.role === 'Employee') {
+          if (form.designationId) formData.append('designationId', form.designationId);
+          formData.append('department', form.department);
+          formData.append('baseSalary', form.baseSalary);
+          formData.append('employeeType', form.employeeType);
+          if (form.zk_enroll_number) formData.append('zk_enroll_number', form.zk_enroll_number);
+          if (cvFile) formData.append('cv', cvFile);
+          if (nidFile) formData.append('nid', nidFile);
+          if (certFile) formData.append('certificates', certFile);
+        }
+
+        const res = await fetch('/api/employees', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || data.message || 'Failed to create user');
+        toast.success(form.sendEmail ? 'User created & email sent!' : 'User created successfully!');
       }
       setShowModal(false);
       fetchUsers(true);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Operation failed');
+      toast.error(err.message || err.response?.data?.message || 'Operation failed');
     } finally {
       setSubmitting(false);
     }
@@ -502,63 +548,155 @@ export default function TeamUsersPage() {
                     </div>
                   )}
 
-                  {/* Designation */}
+                  {/* Role */}
                   <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
-                      <Shield className="w-3 h-3 text-indigo-500" />
-                      Designation *
-                    </label>
+                    <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Role *</label>
                     <div className="relative">
                       <select
                         required
-                        value={form.designationId}
-                        onChange={e => setForm({ ...form, designationId: e.target.value })}
+                        value={form.role}
+                        onChange={e => setForm({ ...form, role: e.target.value })}
                         className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
                       >
-                        <option value="" className="bg-white dark:bg-slate-900" disabled>— Select Designation —</option>
-                        {designations.map(r => (
-                          <option key={r.id} value={r.id} className="bg-white dark:bg-slate-900">{r.name}</option>
-                        ))}
+                        <option value="Employee" className="bg-white dark:bg-slate-900">Employee</option>
+                        <option value="User" className="bg-white dark:bg-slate-900">User</option>
+                        <option value="Admin" className="bg-white dark:bg-slate-900">Admin</option>
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
 
+                  {/* Conditional Employee Fields */}
+                  {form.role === 'Employee' && (
+                    <>
+                      {/* Designation */}
+                      <div className="space-y-1 sm:col-span-2">
+                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                          <Shield className="w-3 h-3 text-indigo-500" />
+                          Designation *
+                        </label>
+                        <div className="relative">
+                          <select
+                            required
+                            value={form.designationId}
+                            onChange={e => setForm({ ...form, designationId: e.target.value })}
+                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
+                          >
+                            <option value="" className="bg-white dark:bg-slate-900" disabled>— Select Designation —</option>
+                            {designations.map(r => (
+                              <option key={r.id} value={r.id} className="bg-white dark:bg-slate-900">{r.name}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
+                      </div>
 
-                  {/* Department */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Department</label>
-                    <div className="relative">
-                      <select
-                        value={form.department}
-                        onChange={e => setForm({ ...form, department: e.target.value })}
-                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
-                      >
-                        {DEPARTMENTS.map(d => (
-                          <option key={d} value={d} className="bg-white dark:bg-slate-900">{d}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
+                      {/* Department */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Department</label>
+                        <div className="relative">
+                          <select
+                            value={form.department}
+                            onChange={e => setForm({ ...form, department: e.target.value })}
+                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
+                          >
+                            {DEPARTMENTS.map(d => (
+                              <option key={d} value={d} className="bg-white dark:bg-slate-900">{d}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
+                      </div>
 
-                  {/* Base Salary */}
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Base Salary (per month)</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">৳</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={form.baseSalary}
-                        onChange={e => setForm({ ...form, baseSalary: e.target.value })}
-                        placeholder="65000"
-                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl pl-7 pr-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium"
-                      />
-                    </div>
-                  </div>
+                      {/* Employee Type */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Employee Type</label>
+                        <div className="relative">
+                          <select
+                            value={form.employeeType}
+                            onChange={e => setForm({ ...form, employeeType: e.target.value })}
+                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
+                          >
+                            <option value="IN_HOUSE" className="bg-white dark:bg-slate-900">In-House</option>
+                            <option value="REMOTE" className="bg-white dark:bg-slate-900">Remote</option>
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* ZKTeco Enroll Number */}
+                      <div className="space-y-1 sm:col-span-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">ZKTeco Enroll Number</label>
+                          <button type="button" onClick={fetchUnregistered} className="text-xs text-indigo-500 font-bold hover:underline flex items-center gap-1">
+                            <RefreshCw className={`w-3 h-3 ${loadingUnregistered ? 'animate-spin' : ''}`} /> Fetch from Device
+                          </button>
+                        </div>
+                        {loadingUnregistered ? (
+                          <div className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-500 flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4 animate-spin"/> Fetching...</div>
+                        ) : (
+                          <div className="relative">
+                            <select
+                              value={form.zk_enroll_number}
+                              onChange={e => setForm({ ...form, zk_enroll_number: e.target.value })}
+                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
+                            >
+                              <option value="" className="bg-white dark:bg-slate-900">— Select Device User —</option>
+                              {unregisteredUsers.map(u => {
+                                const rawId = (u as any).userId || (u as any).uid || u.deviceUserId;
+                                return (
+                                  <option key={rawId} value={rawId ? rawId.toString() : ''} className="bg-white dark:bg-slate-900">
+                                    [Device ID: {rawId}] - {u.name || 'Unknown'}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Base Salary */}
+                      <div className="space-y-1 sm:col-span-2">
+                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Base Salary (per month)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">৳</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={form.baseSalary}
+                            onChange={e => setForm({ ...form, baseSalary: e.target.value })}
+                            placeholder="65000"
+                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl pl-7 pr-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
+
+              {/* Documents section */}
+              {form.role === 'Employee' && (
+                <div className="px-6 pb-4">
+                  <h3 className="text-sm font-bold text-slate-700 dark:text-white mb-3 flex items-center gap-2">
+                    <UploadCloud className="w-4 h-4 text-indigo-500" /> Onboarding Documents <span className="text-slate-400 font-normal">(PDF, optional)</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {[
+                      { label: 'CV / Resume', state: cvFile, setter: setCvFile },
+                      { label: 'NID / Passport', state: nidFile, setter: setNidFile },
+                      { label: 'Certificates', state: certFile, setter: setCertFile },
+                    ].map(({ label, state, setter }) => (
+                      <div key={label} className="border-2 border-dashed border-slate-200 dark:border-white/20 rounded-xl p-3 text-center hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer relative">
+                        <input type="file" accept=".pdf" onChange={e => setter(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        <span className="text-xs font-bold text-slate-500 dark:text-gray-400 block mb-0.5">{label}</span>
+                        <span className="text-[10px] font-medium text-indigo-500 block truncate">{state ? state.name : 'Click to attach'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Modal Footer */}
               <div className="px-6 py-4 border-t border-slate-100 dark:border-white/10 flex gap-3 bg-white dark:bg-slate-900 rounded-b-2xl">

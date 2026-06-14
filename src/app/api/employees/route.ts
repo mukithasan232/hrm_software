@@ -43,18 +43,21 @@ export async function POST(req: Request) {
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
+    const role = formData.get('role') as string || 'Employee';
     const designationId = formData.get('designationId') as string;
     const employeeType = formData.get('employeeType') as 'REMOTE' | 'IN_HOUSE';
     const department = formData.get('department') as string;
     const zk_enroll_number_str = formData.get('zk_enroll_number') as string;
     const zk_enroll_number = zk_enroll_number_str && zk_enroll_number_str.trim() !== '' ? parseInt(zk_enroll_number_str, 10) : null;
     
-    console.log("Incoming IDs:", { designationId, department });
-    
+    console.log("Incoming IDs:", { designationId, department, role });
     
     // Validate
-    if (!name || !email || !password || !designationId) {
+    if (!name || !email || !password) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+    }
+    if (role === 'Employee' && !designationId) {
+      return NextResponse.json({ message: 'Designation is required for employees' }, { status: 400 });
     }
 
     // Auto-generate employeeId
@@ -103,53 +106,70 @@ export async function POST(req: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
-    const newUser = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        employeeId: newEmployeeId,
-        designationId,
-        department: department || null,
-        employeeType: employeeType || 'IN_HOUSE',
-        userType: 'Employee',
-        documents: documentPaths,
-        zk_enroll_number: zk_enroll_number,
-      },
-      include: {
-        customDesignation: true,
-      }
-    });
-
-    // --- MAGIC BRIDGE: Backfill Attendance Logs from RawDeviceLog ---
-    if (zk_enroll_number !== null && zk_enroll_number !== undefined) {
-      try {
-        const rawLogs = await prisma.rawDeviceLog.findMany({
-          where: { deviceUserId: zk_enroll_number.toString() }
+    let newUser;
+    try {
+      // Wrap database operations in a $transaction to ensure atomic saves
+      newUser = await prisma.$transaction(async (tx) => {
+        // Step A: Create User record (acts as both User & Employee in this unified schema)
+        const createdUser = await tx.user.create({
+          data: {
+            name,
+            email,
+            password: hashedPassword,
+            employeeId: newEmployeeId,
+            designationId: role === 'Employee' ? designationId : null,
+            department: role === 'Employee' ? (department || null) : null,
+            employeeType: role === 'Employee' ? (employeeType || 'IN_HOUSE') : 'IN_HOUSE',
+            userType: role,
+            documents: role === 'Employee' ? documentPaths : {},
+            zk_enroll_number: role === 'Employee' ? zk_enroll_number : null,
+          },
+          include: {
+            customDesignation: true,
+          }
         });
 
-        if (rawLogs.length > 0) {
-          const attendanceData = rawLogs.map((log: any) => ({
-            employeeId: newUser.id,
-            timestamp: log.recordTime,
-            punchType: log.punchType || 'CheckIn',
-            deviceId: log.ip || 'ZKTeco Device'
-          }));
-
-          await prisma.attendanceLog.createMany({
-            data: attendanceData,
-            skipDuplicates: true
-          });
-
-          await prisma.rawDeviceLog.deleteMany({
+        // Step B: Relational operations / Backfill Attendance Logs from RawDeviceLog
+        if (role === 'Employee' && zk_enroll_number !== null && zk_enroll_number !== undefined) {
+          const rawLogs = await tx.rawDeviceLog.findMany({
             where: { deviceUserId: zk_enroll_number.toString() }
           });
-          console.log(`[Magic Bridge] 🌉 Backfilled ${rawLogs.length} historical punches for ${name}`);
+
+          if (rawLogs.length > 0) {
+            const attendanceData = rawLogs.map((log: any) => ({
+              employeeId: createdUser.id,
+              timestamp: log.recordTime,
+              punchType: log.punchType || 'CheckIn',
+              deviceId: log.ip || 'ZKTeco Device'
+            }));
+
+            await tx.attendanceLog.createMany({
+              data: attendanceData,
+              skipDuplicates: true
+            });
+
+            await tx.rawDeviceLog.deleteMany({
+              where: { deviceUserId: zk_enroll_number.toString() }
+            });
+            console.log(`[Magic Bridge] 🌉 Backfilled ${rawLogs.length} historical punches for ${name}`);
+          }
         }
-      } catch (bridgeErr) {
-        console.error('[Magic Bridge] ❌ Failed to backfill logs:', bridgeErr);
+
+        return createdUser;
+      });
+    } catch (txError: any) {
+      console.error('Transaction Failed:', txError);
+      if (txError.code === 'P2002') {
+        const target = txError.meta?.target || '';
+        if (target.includes('email')) {
+          throw new Error('Email already exists in the system');
+        } else if (target.includes('employeeId')) {
+          throw new Error('Employee ID collision occurred, please try again');
+        } else if (target.includes('zk_enroll_number')) {
+          throw new Error('Device ID (Enroll Number) is already assigned to another user');
+        }
       }
+      throw new Error('Database transaction failed while creating employee record');
     }
 
     // Send Welcome Email
