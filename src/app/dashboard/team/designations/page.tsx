@@ -201,6 +201,18 @@ export default function DesignationsPage() {
     setShowModal(true);
   };
 
+  const handleGrantFullAccess = () => {
+    const newPerms: PermissionsMap = {} as PermissionsMap;
+    SCOPE_MODULES.forEach(m => {
+      newPerms[m.key] = { Access: 'Enabled', Create: 'All', Read: 'All', Edit: 'All', Delete: 'All' };
+    });
+    setPermissions(newPerms);
+  };
+
+  const handleClearAll = () => {
+    setPermissions(buildEmptyPermissions());
+  };
+
   // ── Mutate a single cell ──
   const setCellValue = (modKey: ModuleKey, col: ColKey, val: string) => {
     setPermissions((prev) => ({
@@ -513,16 +525,36 @@ export default function DesignationsPage() {
 
                 {/* ── Scope Level Matrix ── */}
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-700 dark:text-white">Scope Level</h3>
+                      <h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2">
+                        Scope Level
+                        <span className="text-xs font-medium text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-0.5 ml-1">
+                          {countActivePermissions(permissions)} active
+                        </span>
+                      </h3>
                       <p className="text-[11px] text-slate-400 dark:text-gray-600 mt-0.5">
                         Configure granular access scopes per module.
                       </p>
                     </div>
-                    <span className="text-xs font-medium text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-3 py-1">
-                      {countActivePermissions(permissions)} active
-                    </span>
+                    
+                    {/* Bulk Action Buttons */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={handleGrantFullAccess}
+                        className="flex-1 sm:flex-none text-[11px] font-bold px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors shadow-sm shadow-indigo-500/20"
+                      >
+                        Grant Full Access
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearAll}
+                        className="flex-1 sm:flex-none text-[11px] font-bold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-300 rounded-lg transition-colors border border-slate-200 dark:border-white/10"
+                      >
+                        Clear All
+                      </button>
+                    </div>
                   </div>
 
                   <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">

@@ -54,6 +54,8 @@ export async function POST(req: Request) {
     const department = formData.get('department') as string;
     const zk_enroll_number_str = formData.get('zk_enroll_number') as string;
     const zk_enroll_number = zk_enroll_number_str && zk_enroll_number_str.trim() !== '' ? parseInt(zk_enroll_number_str, 10) : null;
+    const baseSalaryStr = formData.get('baseSalary') as string;
+    const baseSalary = baseSalaryStr ? parseFloat(baseSalaryStr) : 0;
     
     console.log("Incoming IDs:", { designationId, department, role });
     
@@ -61,8 +63,8 @@ export async function POST(req: Request) {
     if (!name || !email || !password) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
-    if (role === 'Employee' && !designationId) {
-      return NextResponse.json({ message: 'Designation is required for employees' }, { status: 400 });
+    if (!designationId) {
+      return NextResponse.json({ message: 'Designation is required' }, { status: 400 });
     }
 
     // Auto-generate employeeId
@@ -116,18 +118,22 @@ export async function POST(req: Request) {
       // Wrap database operations in a $transaction to ensure atomic saves
       newUser = await prisma.$transaction(async (tx) => {
         // Step A: Create User record (acts as both User & Employee in this unified schema)
+        // Admins are also employees, so we save all HR fields for all roles.
         const createdUser = await tx.user.create({
           data: {
             name,
             email,
             password: hashedPassword,
             employeeId: newEmployeeId,
-            designationId: role === 'Employee' ? designationId : null,
-            department: role === 'Employee' ? (department || null) : null,
-            employeeType: role === 'Employee' ? (employeeType || 'IN_HOUSE') : 'IN_HOUSE',
             userType: role,
-            documents: role === 'Employee' ? documentPaths : {},
-            zk_enroll_number: role === 'Employee' ? zk_enroll_number : null,
+            
+            // HR-Specific Fields (Populated for ALL roles now)
+            designationId: designationId || null,
+            department: department || null,
+            employeeType: employeeType || 'IN_HOUSE',
+            baseSalary: baseSalary || 0,
+            zk_enroll_number: zk_enroll_number || null,
+            documents: documentPaths,
           },
           include: {
             customDesignation: true,
@@ -135,7 +141,7 @@ export async function POST(req: Request) {
         });
 
         // Step B: Relational operations / Backfill Attendance Logs from RawDeviceLog
-        if (role === 'Employee' && zk_enroll_number !== null && zk_enroll_number !== undefined) {
+        if (zk_enroll_number !== null && zk_enroll_number !== undefined) {
           const rawLogs = await tx.rawDeviceLog.findMany({
             where: { deviceUserId: zk_enroll_number.toString() }
           });

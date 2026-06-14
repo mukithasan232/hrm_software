@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useInView } from 'react-intersection-observer';
 
-const DEPARTMENTS = ['Engineering', 'Finance', 'Operations', 'Sales', 'Marketing', 'HR', 'Product', 'Legal'];
+
 
 const EMPTY_FORM = {
   employeeId: '',
@@ -42,6 +42,7 @@ export default function TeamUsersPage() {
   const { user: authUser } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [designations, setDesignations] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterDesignation, setFilterDesignation] = useState('All');
@@ -86,10 +87,14 @@ export default function TeamUsersPage() {
   };
 
   // Fetch logic
-  const fetchDesignations = async () => {
+  const fetchInitialData = async () => {
     try {
-      const res = await api.get('/team/designations');
-      setDesignations(res.data);
+      const [desRes, deptRes] = await Promise.all([
+        api.get('/team/designations'),
+        api.get('/team/departments')
+      ]);
+      setDesignations(desRes.data);
+      setDepartments(deptRes.data);
     } catch {}
   };
 
@@ -124,7 +129,7 @@ export default function TeamUsersPage() {
 
   // Initial loads and debounced search
   useEffect(() => {
-    fetchDesignations();
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
@@ -211,16 +216,14 @@ export default function TeamUsersPage() {
         formData.append('password', form.password);
         formData.append('employeeId', form.employeeId);
         
-        if (form.role === 'Employee') {
-          if (form.designationId) formData.append('designationId', form.designationId);
-          formData.append('department', form.department);
-          formData.append('baseSalary', form.baseSalary);
-          formData.append('employeeType', form.employeeType);
-          if (form.zk_enroll_number) formData.append('zk_enroll_number', form.zk_enroll_number);
-          if (cvFile) formData.append('cv', cvFile);
-          if (nidFile) formData.append('nid', nidFile);
-          if (certFile) formData.append('certificates', certFile);
-        }
+        if (form.designationId) formData.append('designationId', form.designationId);
+        formData.append('department', form.department);
+        formData.append('baseSalary', form.baseSalary);
+        formData.append('employeeType', form.employeeType);
+        if (form.zk_enroll_number) formData.append('zk_enroll_number', form.zk_enroll_number);
+        if (cvFile) formData.append('cv', cvFile);
+        if (nidFile) formData.append('nid', nidFile);
+        if (certFile) formData.append('certificates', certFile);
 
         const res = await fetch('/api/employees', { method: 'POST', body: formData });
         const data = await res.json();
@@ -559,9 +562,6 @@ export default function TeamUsersPage() {
                     </div>
                   </div>
 
-                  {/* Conditional Employee Fields */}
-                  {form.role === 'Employee' && (
-                    <>
                       {/* Designation */}
                       <div className="space-y-1 sm:col-span-2">
                         <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
@@ -593,8 +593,9 @@ export default function TeamUsersPage() {
                             onChange={e => setForm({ ...form, department: e.target.value })}
                             className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
                           >
-                            {DEPARTMENTS.map(d => (
-                              <option key={d} value={d} className="bg-white dark:bg-slate-900">{d}</option>
+                            <option value="" className="bg-white dark:bg-slate-900">— Select Department —</option>
+                            {departments.map(d => (
+                              <option key={d.id} value={d.name} className="bg-white dark:bg-slate-900">{d.name}</option>
                             ))}
                           </select>
                           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -664,8 +665,6 @@ export default function TeamUsersPage() {
                           />
                         </div>
                       </div>
-                    </>
-                  )}
                 </div>
               </div>
 
