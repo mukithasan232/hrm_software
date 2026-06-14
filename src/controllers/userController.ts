@@ -186,7 +186,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, designationId, department, baseSalary, isActive, employeeType, zk_enroll_number } = req.body as any;
+    const { name, designationId, department, baseSalary, isActive, employeeType, zktecoId, roles } = req.body as any;
     let finalDesignationId = designationId !== undefined ? (designationId || null) : undefined;
     if (finalDesignationId && !finalDesignationId.includes('-')) {
       let desig = await prisma.designation.findFirst({
@@ -198,6 +198,16 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       finalDesignationId = desig.id;
     }
 
+    let rolesToConnect;
+    if (roles) {
+      try {
+        const parsedRoles = typeof roles === 'string' ? JSON.parse(roles) : roles;
+        rolesToConnect = { set: parsedRoles.map((roleId: string) => ({ id: roleId })) };
+      } catch (e) {
+        console.error('Error parsing roles:', e);
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id: id as string },
       data: {
@@ -206,8 +216,9 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         department,
         employeeType: employeeType || undefined,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,
-        zk_enroll_number: zk_enroll_number ? parseInt(zk_enroll_number, 10) : undefined,
-        isActive
+        zktecoId: zktecoId ? parseInt(zktecoId, 10) : undefined,
+        isActive,
+        ...(rolesToConnect && { roles: rolesToConnect }),
       },
       select: {
         id: true,
@@ -220,7 +231,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         employeeType: true,
         baseSalary: true,
         isActive: true,
-        zk_enroll_number: true,
+        zktecoId: true,
       }
     });
 
@@ -230,10 +241,10 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     }
 
     // --- MAGIC BRIDGE: Backfill Attendance Logs from RawDeviceLog ---
-    if (zk_enroll_number !== null && zk_enroll_number !== undefined) {
+    if (zktecoId !== null && zktecoId !== undefined) {
       try {
         const rawLogs = await prisma.rawDeviceLog.findMany({
-          where: { deviceUserId: zk_enroll_number.toString() }
+          where: { deviceUserId: zktecoId.toString() }
         });
 
         if (rawLogs.length > 0) {
@@ -250,7 +261,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
           });
 
           await prisma.rawDeviceLog.deleteMany({
-            where: { deviceUserId: zk_enroll_number.toString() }
+            where: { deviceUserId: zktecoId.toString() }
           });
           console.log(`[Magic Bridge] 🌉 Backfilled ${rawLogs.length} historical punches for ${user.name}`);
         }

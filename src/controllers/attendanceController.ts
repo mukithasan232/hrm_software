@@ -197,20 +197,44 @@ export const getActivePresence = async (req: Request, res: Response) => {
 // @desc    Get all stored attendance logs
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
-    const { page = '1', limit = '50', employeeId, filter, department } = req.query;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
-    const take = parseInt(limit as string);
+    const { page, limit, employeeId, filter, department, startDate, endDate } = req.query;
 
     const where: any = {};
     if (employeeId) where.employeeId = employeeId as string;
     if (department && department !== 'all') where.user = { department: department as string };
 
-    if (filter && filter !== 'all') {
+    const nowUTC = new Date(); // For Ghost Record Mitigation
+
+    if (startDate && endDate) {
+      const startUTC = new Date(`${startDate as string}T00:00:00+06:00`);
+      const endUTC = new Date(`${endDate as string}T23:59:59.999+06:00`);
+      const effectiveEndUTC = endUTC > nowUTC ? nowUTC : endUTC;
+      where.timestamp = { gte: startUTC, lte: effectiveEndUTC };
+    } else if (filter && filter !== 'all') {
       const { start, end } = getDayBoundaries(filter as any);
-      where.timestamp = { gte: start, lte: end };
+      const effectiveEnd = end > nowUTC ? nowUTC : end;
+      where.timestamp = { gte: start, lte: effectiveEnd };
+    } else {
+      where.timestamp = { lte: nowUTC }; // Ignore future ghost records
     }
 
-    const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualCount] = await Promise.all([
+    let skip: number | undefined;
+    let take: number | undefined;
+
+    if (limit) {
+      take = parseInt(limit as string);
+      skip = page ? (parseInt(page as string) - 1) * take : 0;
+    } else if ((!filter || filter === 'all') && !startDate && !endDate) {
+      take = 50;
+      skip = page ? (parseInt(page as string) - 1) * take : 0;
+    }
+
+    const employeeWhere: any = { isActive: true };
+    if (department && department !== 'all') {
+      employeeWhere.department = department as string;
+    }
+
+    const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualCount, totalEmployees, uniquePunches] = await Promise.all([
       prisma.attendanceLog.findMany({
         where, skip, take,
         orderBy: { timestamp: 'desc' },
@@ -219,18 +243,25 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       prisma.attendanceLog.count({ where }),
       prisma.attendanceLog.findMany({ where: { ...where, punchType: 'CheckIn' }, distinct: ['employeeId'], select: { employeeId: true } }),
       prisma.attendanceLog.findMany({ where: { ...where, punchType: 'CheckOut' }, distinct: ['employeeId'], select: { employeeId: true } }),
-      prisma.attendanceLog.count({ where: { ...where, deviceId: 'Manual Entry' } })
+      prisma.attendanceLog.count({ where: { ...where, deviceId: 'Manual Entry' } }),
+      prisma.user.count({ where: employeeWhere }),
+      prisma.attendanceLog.findMany({ where, distinct: ['employeeId'], select: { employeeId: true } })
     ]);
 
     const checkInCount = uniqueCheckIns.length;
     const checkOutCount = uniqueCheckOuts.length;
+    
+    // Calculate strict server-side absent count based on presence (any valid punch = present)
+    const presentCount = uniquePunches.length;
+    const absentCount = Math.max(0, totalEmployees - presentCount);
 
     res.status(200).json({ 
       logs: logs.map(l => ({ ...l, employeeName: l.user?.name || 'Unmapped' })), 
       total, 
       checkInCount, 
       checkOutCount, 
-      manualCount, 
+      manualCount,
+      absentCount, 
       page: parseInt(page as string), 
       limit: take 
     });

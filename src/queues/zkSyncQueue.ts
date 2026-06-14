@@ -20,14 +20,14 @@ async function processJob(job: { id: string; employeeId: string; retryCount: num
       where: { id: job.employeeId }
     });
 
-    if (!employee || !(employee as any).zk_enroll_number) {
+    if (!employee || !(employee as any).zktecoId) {
       throw new Error(`Employee ${job.employeeId} not found or missing enroll number.`);
     }
 
     // 2. Attempt Sync
     const syncResult = await zkService.syncUserToDevice({
       id: employee.id,
-      zk_enroll_number: (employee as any).zk_enroll_number,
+      zktecoId: (employee as any).zktecoId,
       name: employee.name,
       role: employee.designationId ? 0 : 0,
       password: '0'
@@ -43,7 +43,7 @@ async function processJob(job: { id: string; employeeId: string; retryCount: num
     await (prisma as any).zkSyncLog.create({
       data: {
         employeeId: employee.id,
-        enrollNumber: (employee as any).zk_enroll_number,
+        enrollNumber: (employee as any).zktecoId,
         action: syncResult.action,
         status: 'success'
       }
@@ -87,11 +87,11 @@ async function markJobFailed(job: any, errorMessage: string) {
   // Audit log the final failure
   try {
     const employee = await prisma.user.findUnique({ where: { id: job.employeeId } });
-    if (employee && (employee as any).zk_enroll_number) {
+    if (employee && (employee as any).zktecoId) {
       await (prisma as any).zkSyncLog.create({
         data: {
           employeeId: job.employeeId,
-          enrollNumber: (employee as any).zk_enroll_number,
+          enrollNumber: (employee as any).zktecoId,
           action: 'unknown',
           status: 'failure',
           errorMessage: `Final failure after retries: ${errorMessage}`

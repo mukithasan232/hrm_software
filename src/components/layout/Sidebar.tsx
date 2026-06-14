@@ -9,26 +9,25 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBrand } from '@/context/BrandContext';
 import { useTranslation } from '@/context/LanguageContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
 // Nav item keys (translated at render time via t())
 const NAV_ITEM_DEFS = [
-  { key: 'dashboard',  href: '/dashboard',            icon: LayoutDashboard, designations: [] as string[] },
-  { key: 'attendance', href: '/dashboard/attendance', icon: Clock,           designations: [] as string[] },
-  { key: 'leaves',     href: '/dashboard/leaves',     icon: CalendarRange,   designations: [] as string[] },
-  { key: 'announcements', href: '/dashboard/announcements', icon: Megaphone, designations: ['OWNER', 'MANAGER', 'HR', 'Admin', 'Super Admin', 'System Administrator', 'HRM Manager'] },
-  { key: 'myProfile',  href: '/dashboard/profile',    icon: User,            designations: [] as string[] },
+  { key: 'dashboard',  href: '/dashboard',            icon: LayoutDashboard, module: 'Dashboard' },
+  { key: 'attendance', href: '/dashboard/attendance', icon: Clock,           module: 'Attendance' },
+  { key: 'leaves',     href: '/dashboard/leaves',     icon: CalendarRange,   module: 'Leaves' },
+  { key: 'announcements', href: '/dashboard/announcements', icon: Megaphone, module: 'Announcements' },
+  { key: 'myProfile',  href: '/dashboard/profile',    icon: User,            module: 'Profile' },
 ];
 
 const TEAM_SUB_DEFS = [
-  { key: 'designations', href: '/dashboard/team/designations', icon: Shield },
-  { key: 'departments',  href: '/dashboard/team/departments',  icon: Building2 },
-  { key: 'users',        href: '/dashboard/team/users',        icon: UsersRound },
-  { key: 'employees',    href: '/dashboard/team/employees',    icon: Users },
+  { key: 'designations', href: '/dashboard/team/designations', icon: Shield, module: 'Designations' },
+  { key: 'departments',  href: '/dashboard/team/departments',  icon: Building2, module: 'Departments' },
+  { key: 'users',        href: '/dashboard/team/users',        icon: UsersRound, module: 'Users' },
+  { key: 'employees',    href: '/dashboard/team/employees',    icon: Users, module: 'Employees' },
 ];
-
-const TEAM_ALLOWED_DESIGNATIONS = ['Admin', 'Super Admin', 'System Administrator'];
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -40,6 +39,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const { brand } = useBrand();
   const { t } = useTranslation();
+  const { can } = usePermissions();
 
   // Keep Team section open if we're on a /team/* route
   const isTeamActive = pathname.startsWith('/dashboard/team');
@@ -49,17 +49,16 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const collapsed = !mobileOpen && isCollapsed;
 
-  const designationName = typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation;
-  const designationLower = (designationName || '').toLowerCase();
+  const filteredItems = NAV_ITEM_DEFS.filter(item => {
+    if (item.module === 'Dashboard' || item.module === 'Profile') return true;
+    return can(item.module, 'canRead');
+  });
 
-  const filteredItems = NAV_ITEM_DEFS.filter(item =>
-    item.designations.length === 0 || item.designations.map(d => d.toLowerCase()).includes(designationLower)
-  );
-
-  const canSeeTeam = TEAM_ALLOWED_DESIGNATIONS.includes(designationName || '');
+  const filteredTeamItems = TEAM_SUB_DEFS.filter(sub => can(sub.module, 'canRead'));
+  const canSeeTeam = filteredTeamItems.length > 0;
 
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
-  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const initials = user?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -178,7 +177,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               }}
             >
               <div className={`${collapsed ? 'mt-1 space-y-1 mx-2' : 'ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-white/10 pl-3'}`}>
-                {TEAM_SUB_DEFS.map(sub => {
+                {filteredTeamItems.map(sub => {
                   const isSubActive = pathname === sub.href || pathname.startsWith(sub.href);
                   const SubIcon = sub.icon;
                   return (

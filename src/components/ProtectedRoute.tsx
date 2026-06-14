@@ -3,16 +3,23 @@
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 
-// Define which designations can access each route prefix
-const ROUTE_PERMISSIONS: Record<string, string[]> = {
-  '/dashboard/payroll':     ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Engineering Manager', 'Finance Manager', 'Operations Manager', 'Sales Manager', 'Marketing Manager'],
-  '/dashboard/employees':   ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'],
-  '/dashboard/performance': ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Stakeholder', 'Employee'],
-  '/dashboard/leaves':      ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Employee'],
-  '/dashboard/attendance':  ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Employee'],
-  '/dashboard/profile':     ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Stakeholder', 'Employee'],
-  '/dashboard':             ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Stakeholder', 'Employee'],
+// Define which module is required for each route prefix
+const ROUTE_MODULES: Record<string, string> = {
+  '/dashboard/payroll':     'Payroll',
+  '/dashboard/performance': 'Performance',
+  '/dashboard/leaves':      'Leaves',
+  '/dashboard/attendance':  'Attendance',
+  '/dashboard/announcements': 'Announcements',
+  '/dashboard/team/users':  'Users',
+  '/dashboard/team/designations': 'Designations',
+  '/dashboard/team/departments': 'Departments',
+  '/dashboard/team/employees': 'Employees',
+  '/dashboard/team':        'Users',
+  '/dashboard/employees':   'Employees',
+  '/dashboard/profile':     'Profile',
+  '/dashboard':             'Dashboard',
 };
 
 // Where each designation lands after login
@@ -43,11 +50,10 @@ function getAccessDenied(designation: string, path: string) {
         <div className="text-6xl">🔒</div>
         <h1 className="text-2xl font-bold text-white">Access Denied</h1>
         <p className="text-gray-400">
-          Your designation (<span className="text-blue-400 font-semibold">{designation}</span>) does not have
-          permission to access <span className="text-red-400">{path}</span>.
+          Your current roles do not grant permission to access <span className="text-red-400">{path}</span>.
         </p>
         <a
-          href={DESIGNATION_HOME[designation] || '/dashboard'}
+          href={'/dashboard'}
           className="inline-block mt-4 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-all"
         >
           Go to My Dashboard
@@ -59,13 +65,16 @@ function getAccessDenied(designation: string, path: string) {
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedDesignations?: string[]; // optional page-level override
+  allowedDesignations?: string[]; // Kept for legacy support
 }
 
 export default function ProtectedRoute({ children, allowedDesignations }: ProtectedRouteProps) {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { can, loading: permsLoading } = usePermissions();
   const router = useRouter();
   const pathname = usePathname();
+
+  const loading = authLoading || permsLoading;
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -76,25 +85,33 @@ export default function ProtectedRoute({ children, allowedDesignations }: Protec
   if (loading) return getSpinner();
   if (!isAuthenticated || !user) return null;
 
-  // Check route-level permissions
   const designation = user.designation || 'Employee';
 
-  // If caller passed explicit allowedDesignations, use those
-  const requiredDesignations = allowedDesignations ?? getRequiredDesignations(pathname);
+  // Legacy override if explicit array is passed
+  if (allowedDesignations && allowedDesignations.length > 0) {
+    if (!allowedDesignations.includes(designation)) {
+      return getAccessDenied(designation, pathname);
+    }
+  }
 
-  if (requiredDesignations && requiredDesignations.length > 0 && !requiredDesignations.includes(designation)) {
-    return getAccessDenied(designation, pathname);
+  // Multi-Role Granular check
+  const moduleName = getRequiredModule(pathname);
+
+  if (moduleName && moduleName !== 'Dashboard' && moduleName !== 'Profile') {
+    if (!can(moduleName, 'canRead')) {
+      return getAccessDenied(designation, pathname);
+    }
   }
 
   return <>{children}</>;
 }
 
-function getRequiredDesignations(pathname: string): string[] | null {
+function getRequiredModule(pathname: string): string | null {
   // Match the most specific prefix first
-  const sorted = Object.keys(ROUTE_PERMISSIONS).sort((a, b) => b.length - a.length);
+  const sorted = Object.keys(ROUTE_MODULES).sort((a, b) => b.length - a.length);
   for (const route of sorted) {
     if (pathname === route || pathname.startsWith(route + '/')) {
-      return ROUTE_PERMISSIONS[route];
+      return ROUTE_MODULES[route];
     }
   }
   return null; // No restriction

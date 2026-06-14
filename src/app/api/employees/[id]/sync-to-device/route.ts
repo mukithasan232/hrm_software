@@ -17,7 +17,7 @@ export async function POST(
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    if (!(employee as any).zk_enroll_number) {
+    if (!(employee as any).zktecoId) {
       return NextResponse.json(
         { error: `Employee ${id} has no ZKTeco enroll number assigned. Assign one before syncing.` },
         { status: 400 }
@@ -27,7 +27,7 @@ export async function POST(
     try {
       const syncResult = await zkService.syncUserToDevice({
         id: employee.id,
-        zk_enroll_number: (employee as any).zk_enroll_number,
+        zktecoId: (employee as any).zktecoId,
         name: employee.name,
         role: employee.designationId ? 0 : 0, // Simplified role mapping based on what's available
         password: '0'
@@ -37,7 +37,7 @@ export async function POST(
       await (prisma as any).zkSyncLog.create({
         data: {
           employeeId: employee.id,
-          enrollNumber: (employee as any).zk_enroll_number,
+          enrollNumber: (employee as any).zktecoId,
           action: syncResult.action,
           status: 'success'
         }
@@ -71,11 +71,11 @@ export async function POST(
     try {
       const { id } = await params;
       const employee = await prisma.user.findUnique({ where: { id } });
-      if (employee && (employee as any).zk_enroll_number) {
+      if (employee && (employee as any).zktecoId) {
         await (prisma as any).zkSyncLog.create({
           data: {
             employeeId: id,
-            enrollNumber: (employee as any).zk_enroll_number,
+            enrollNumber: (employee as any).zktecoId,
             action: 'unknown',
             status: 'failure',
             errorMessage: error.message || 'Unknown error'

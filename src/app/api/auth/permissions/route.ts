@@ -12,48 +12,38 @@ const getPermissions = async (req: Request) => {
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    include: { 
-      role: { include: { permissions: true } },
-      userPermissions: true
-    }
+    include: { roles: true } as any
   });
 
-  if (!dbUser || (!dbUser.role && (!dbUser.userPermissions || dbUser.userPermissions.length === 0))) {
+  if (!dbUser || !(dbUser as any).roles || (dbUser as any).roles.length === 0) {
     return NextResponse.json({ role: null, permissions: [] });
   }
 
-  // Merge logic: user permissions override role permissions
-  const rolePerms = dbUser.role?.permissions || [];
-  const userPerms = dbUser.userPermissions || [];
-
   const mergedMap = new Map();
-  
-  // Add role permissions first
-  rolePerms.forEach((p: any) => {
-    mergedMap.set(p.moduleName, {
-      moduleName: p.moduleName,
-      canRead: p.canRead,
-      canCreate: p.canCreate,
-      canEdit: p.canEdit,
-      canDelete: p.canDelete,
-    });
-  });
 
-  // Override with user permissions
-  userPerms.forEach((p: any) => {
-    mergedMap.set(p.moduleName, {
-      moduleName: p.moduleName,
-      canRead: p.canRead,
-      canCreate: p.canCreate,
-      canEdit: p.canEdit,
-      canDelete: p.canDelete,
+  (dbUser as any).roles.forEach((role: any) => {
+    const perms = typeof role.permissions === 'string' ? JSON.parse(role.permissions) : role.permissions;
+    if (!perms) return;
+
+    Object.keys(perms).forEach(moduleName => {
+      const p = perms[moduleName];
+      const existing = mergedMap.get(moduleName) || { canRead: false, canCreate: false, canEdit: false, canDelete: false };
+      
+      mergedMap.set(moduleName, {
+        moduleName,
+        canRead: existing.canRead || (p.Read && p.Read !== 'No' && p.Read !== 'Not Set'),
+        canCreate: existing.canCreate || (p.Create && p.Create !== 'No' && p.Create !== 'Not Set'),
+        canEdit: existing.canEdit || (p.Edit && p.Edit !== 'No' && p.Edit !== 'Not Set'),
+        canDelete: existing.canDelete || (p.Delete && p.Delete !== 'No' && p.Delete !== 'Not Set'),
+      });
     });
   });
 
   const mergedPermissions = Array.from(mergedMap.values());
+  const roleNames = (dbUser as any).roles.map((r: any) => r.name).join(', ');
 
   return NextResponse.json({
-    role: dbUser.role?.name || 'Custom',
+    role: roleNames || 'Custom',
     permissions: mergedPermissions
   });
 };

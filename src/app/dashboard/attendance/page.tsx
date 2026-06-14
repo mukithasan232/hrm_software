@@ -25,6 +25,7 @@ export default function AttendancePage() {
   const [checkInCount, setCheckInCount] = useState(0);
   const [checkOutCount, setCheckOutCount] = useState(0);
   const [manualCount, setManualCount] = useState(0);
+  const [absentCount, setAbsentCount] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
   const [manualEntry, setManualEntry] = useState({
@@ -41,14 +42,17 @@ export default function AttendancePage() {
     try {
       if (!isPolling) setLoading(true);
       
-      let filterParam = 'all';
+      let queryParams = `department=${departmentFilter}&_t=${Date.now()}`;
+      
       if (dateRange === 'custom') {
-        filterParam = `${customStartDate}_${customEndDate}`;
+        queryParams += `&startDate=${customStartDate}&endDate=${customEndDate}`;
       } else if (dateRange && dateRange !== 'all-time') {
-        filterParam = dateRange;
+        queryParams += `&filter=${dateRange}`;
+      } else {
+        queryParams += `&filter=all`;
       }
 
-      const res = await api.get(`/attendance/logs?filter=${filterParam}&department=${departmentFilter}&_t=${Date.now()}`, {
+      const res = await api.get(`/attendance/logs?${queryParams}`, {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
           'Pragma': 'no-cache'
@@ -58,22 +62,11 @@ export default function AttendancePage() {
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
       setLogs(logsArray);
       setTotalLogs(data?.total ?? logsArray.length);
-      // Robust Case-Insensitive Filtering
-      const checkIns = logsArray.filter((log: any) => {
-        const pt = log.punchType?.toLowerCase().replace(/\s+/g, '');
-        return pt === 'checkin';
-      }).length;
 
-      const checkOuts = logsArray.filter((log: any) => {
-        const pt = log.punchType?.toLowerCase().replace(/\s+/g, '');
-        return pt === 'checkout';
-      }).length;
-
-      const manuals = logsArray.filter((log: any) => log.deviceId === 'Manual Entry').length;
-
-      setCheckInCount(checkIns);
-      setCheckOutCount(checkOuts);
-      setManualCount(manuals);
+      setCheckInCount(data?.checkInCount ?? 0);
+      setCheckOutCount(data?.checkOutCount ?? 0);
+      setManualCount(data?.manualCount ?? 0);
+      setAbsentCount(data?.absentCount ?? 0);
     } catch {
       toast.error('Failed to load attendance logs');
     } finally {
@@ -83,7 +76,7 @@ export default function AttendancePage() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await api.get('/users');
+      const res = await api.get('/employees');
       const empList = Array.isArray(res.data) ? res.data : (res.data.data || []);
       setEmployees(empList);
     } catch {
@@ -262,10 +255,6 @@ export default function AttendancePage() {
   };
 
   const departments = Array.from(new Set(employees.map(e => e.department).filter(Boolean)));
-  const totalEmployeesInDep = departmentFilter === 'all' 
-    ? employees.length 
-    : employees.filter(e => e.department === departmentFilter).length;
-  const absentCount = Math.max(0, totalEmployeesInDep - checkInCount);
 
   const filteredLogs = logs.filter(log => 
     log.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 

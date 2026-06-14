@@ -9,20 +9,20 @@ export async function GET() {
     const dbUsers = await prisma.user.findMany({
       where: {
         NOT: {
-          zk_enroll_number: null
+          zktecoId: null
         }
       },
       select: {
         id: true,
         name: true,
-        zk_enroll_number: true
+        zktecoId: true
       }
     });
 
     const dbMap = new Map();
     for (const u of dbUsers) {
-      if ((u as any).zk_enroll_number) {
-        dbMap.set((u as any).zk_enroll_number, u);
+      if ((u as any).zktecoId) {
+        dbMap.set((u as any).zktecoId, u);
       }
     }
 

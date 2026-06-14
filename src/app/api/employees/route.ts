@@ -48,16 +48,17 @@ export async function POST(req: Request) {
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
-    const role = formData.get('role') as string || 'Employee';
+    const rolesStr = formData.get('roles') as string;
+    const roleIds = rolesStr ? JSON.parse(rolesStr) : [];
     const designationId = formData.get('designationId') as string;
     const employeeType = formData.get('employeeType') as 'REMOTE' | 'IN_HOUSE';
     const department = formData.get('department') as string;
-    const zk_enroll_number_str = formData.get('zk_enroll_number') as string;
-    const zk_enroll_number = zk_enroll_number_str && zk_enroll_number_str.trim() !== '' ? parseInt(zk_enroll_number_str, 10) : null;
+    const zktecoId_str = formData.get('zktecoId') as string;
+    const zktecoId = zktecoId_str && zktecoId_str.trim() !== '' ? parseInt(zktecoId_str, 10) : null;
     const baseSalaryStr = formData.get('baseSalary') as string;
     const baseSalary = baseSalaryStr ? parseFloat(baseSalaryStr) : 0;
     
-    console.log("Incoming IDs:", { designationId, department, role });
+    console.log("Incoming IDs:", { designationId, department, roleIds });
     
     // Validate
     if (!name || !email || !password) {
@@ -125,14 +126,17 @@ export async function POST(req: Request) {
             email,
             password: hashedPassword,
             employeeId: newEmployeeId,
-            userType: role,
+            userType: 'Employee', // Legacy field fallback
+            roles: {
+              connect: roleIds.map((id: string) => ({ id }))
+            },
             
             // HR-Specific Fields (Populated for ALL roles now)
             designationId: designationId || null,
             department: department || null,
             employeeType: employeeType || 'IN_HOUSE',
             baseSalary: baseSalary || 0,
-            zk_enroll_number: zk_enroll_number || null,
+            zktecoId: zktecoId || null,
             documents: documentPaths,
           },
           include: {
@@ -141,9 +145,9 @@ export async function POST(req: Request) {
         });
 
         // Step B: Relational operations / Backfill Attendance Logs from RawDeviceLog
-        if (zk_enroll_number !== null && zk_enroll_number !== undefined) {
+        if (zktecoId !== null && zktecoId !== undefined) {
           const rawLogs = await tx.rawDeviceLog.findMany({
-            where: { deviceUserId: zk_enroll_number.toString() }
+            where: { deviceUserId: zktecoId.toString() }
           });
 
           if (rawLogs.length > 0) {
@@ -160,7 +164,7 @@ export async function POST(req: Request) {
             });
 
             await tx.rawDeviceLog.deleteMany({
-              where: { deviceUserId: zk_enroll_number.toString() }
+              where: { deviceUserId: zktecoId.toString() }
             });
             console.log(`[Magic Bridge] 🌉 Backfilled ${rawLogs.length} historical punches for ${name}`);
           }
@@ -176,7 +180,7 @@ export async function POST(req: Request) {
           throw new Error('Email already exists in the system');
         } else if (target.includes('employeeId')) {
           throw new Error('Employee ID collision occurred, please try again');
-        } else if (target.includes('zk_enroll_number')) {
+        } else if (target.includes('zktecoId')) {
           throw new Error('Device ID (Enroll Number) is already assigned to another user');
         }
       }
@@ -191,7 +195,7 @@ export async function POST(req: Request) {
         password,
         newUser.customDesignation?.name || 'Employee',
         undefined,
-        zk_enroll_number
+        zktecoId
       );
     } catch (emailError) {
       console.error('Error sending welcome email:', emailError);

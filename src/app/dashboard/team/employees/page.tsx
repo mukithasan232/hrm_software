@@ -26,7 +26,7 @@ interface Employee {
   department?: string;
   profileImage?: string;
   isActive: boolean;
-  zk_enroll_number?: number | null;
+  zktecoId?: number | null;
 }
 
 interface Designation {
@@ -218,8 +218,8 @@ export default function EmployeesPage() {
     setEditDesignation(emp.designationId || emp.designation?.id || '');
     setEditType(emp.employeeType);
     setEditDepartment(emp.department || '');
-    setEditZkEnroll(emp.zk_enroll_number ? emp.zk_enroll_number.toString() : '');
-    setEditZkEnroll(emp.zk_enroll_number ? emp.zk_enroll_number.toString() : '');
+    setEditZkEnroll(emp.zktecoId ? emp.zktecoId.toString() : '');
+    setEditZkEnroll(emp.zktecoId ? emp.zktecoId.toString() : '');
     setEditTarget(emp);
   };
 
@@ -236,7 +236,7 @@ export default function EmployeesPage() {
         employeeType: editType,
       };
       if (editDesignation) payload.designationId = editDesignation;
-      if (editZkEnroll) payload.zk_enroll_number = editZkEnroll;
+      if (editZkEnroll) payload.zktecoId = editZkEnroll;
 
       const res = await api.put(`/users/${editTarget.id}`, payload);
       toast.success('Employee updated successfully!');

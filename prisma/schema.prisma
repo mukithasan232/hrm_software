@@ -131,16 +131,15 @@ model User {
   designationId     String?
   customDesignation Designation? @relation(fields: [designationId], references: [id], onDelete: SetNull)
 
-  // Granular RBAC Role
-  roleId String?
-  role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  // Granular RBAC Role (Many-to-Many)
+  roles Role[] @relation("UserRoles")
 
   // Department Relation
   departmentId     String?
   customDepartment Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
   // ZKTeco hardware mapping
-  zk_enroll_number Int? @unique
+  zktecoId Int? @unique
 
   employeeType     EmployeeType @default(IN_HOUSE)
   userType         String       @default("Employee")
@@ -163,7 +162,6 @@ model User {
   zkSyncLogs     ZkSyncLog[]     @relation("UserZkSyncLogs")
   zkSyncQueues   ZkSyncQueue[]   @relation("UserZkSyncQueue")
   announcements  Announcement[]  @relation("AnnouncementAuthor")
-  userPermissions UserPermission[] @relation("UserPermissions")
 }
 
 // Single-row tenant branding config (white-label SaaS)
@@ -267,41 +265,9 @@ model Role {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
+  permissions Json     @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  permissions Permission[]
-  users       User[]
-}
-
-model Permission {
-  id         String @id @default(uuid())
-  roleId     String
-  role       Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  moduleName String // e.g., "Emails", "Users", "Leaves"
-
-  canCreate Boolean @default(false)
-  canRead   Boolean @default(false)
-  canEdit   Boolean @default(false)
-  canDelete Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([roleId, moduleName])
-}
-
-model UserPermission {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
-  moduleName String   // e.g., 'Emails', 'Users', 'Leaves'
-  canCreate  Boolean  @default(false)
-  canRead    Boolean  @default(false)
-  canEdit    Boolean  @default(false)
-  canDelete  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([userId, moduleName])
+  users       User[]   @relation("UserRoles")
 }

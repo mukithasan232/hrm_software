@@ -5,9 +5,7 @@ import { wrapHandler, corsPreflight } from '@/lib/adapter';
 export const OPTIONS = corsPreflight;
 
 const getRoles = async (req: any, res: any) => {
-  const roles = await prisma.role.findMany({
-    include: { permissions: true }
-  });
+  const roles = await prisma.role.findMany();
   return NextResponse.json(roles);
 };
 
@@ -19,30 +17,15 @@ const upsertRole = async (req: any, res: any) => {
     return NextResponse.json({ error: 'Name and matrix are required' }, { status: 400 });
   }
 
-  // matrix is an object: { [moduleName]: { canRead, canCreate, canEdit, canDelete } }
-  const permissionsData = Object.entries(matrix).map(([moduleName, perms]: any) => ({
-    moduleName,
-    canRead: perms.canRead,
-    canCreate: perms.canCreate,
-    canEdit: perms.canEdit,
-    canDelete: perms.canDelete,
-  }));
+  // matrix is an object: { [moduleName]: { Read, Create, Edit, Delete } }
+  // We just store it as Json now
+  const permissionsData = matrix;
 
   if (id) {
     // Update existing role
-    await prisma.$transaction(async (tx: any) => {
-      await tx.role.update({
-        where: { id },
-        data: { name, description }
-      });
-      // Delete old permissions to replace them
-      await tx.permission.deleteMany({
-        where: { roleId: id }
-      });
-      // Insert new permissions
-      await tx.permission.createMany({
-        data: permissionsData.map(p => ({ ...p, roleId: id }))
-      });
+    await prisma.role.update({
+      where: { id },
+      data: { name, description, permissions: permissionsData }
     });
   } else {
     // Create new role
@@ -50,9 +33,7 @@ const upsertRole = async (req: any, res: any) => {
       data: {
         name,
         description,
-        permissions: {
-          create: permissionsData
-        }
+        permissions: permissionsData
       }
     });
   }
@@ -60,5 +41,5 @@ const upsertRole = async (req: any, res: any) => {
   return NextResponse.json({ success: true });
 };
 
-export const GET = wrapHandler(getRoles, { protect: true, adminOnly: true });
-export const POST = wrapHandler(upsertRole, { protect: true, adminOnly: true });
+export const GET = wrapHandler(getRoles, { protect: true, allowedDesignations: ['Admin', 'Super Admin'] });
+export const POST = wrapHandler(upsertRole, { protect: true, allowedDesignations: ['Admin', 'Super Admin'] });

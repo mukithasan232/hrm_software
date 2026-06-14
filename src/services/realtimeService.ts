@@ -270,7 +270,7 @@ const connectAndListen = async (): Promise<void> => {
             where: {
               OR: [
                 { employeeId: deviceEmpId },
-                { zk_enroll_number: parseInt(deviceEmpId, 10) || -1 }
+                { zktecoId: parseInt(deviceEmpId, 10) || -1 }
               ]
             }
           });

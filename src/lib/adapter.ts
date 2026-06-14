@@ -247,38 +247,9 @@ export function wrapHandler(
         }
 
         if (options.requiredPermissions && options.requiredPermissions.length > 0 && !(mockReq as any).isApiSecretBypass) {
-          // Allow admins to bypass if you want, but strictly enforcing granular RBAC here:
-          const { prisma } = await import('@/lib/prisma');
-          const dbUser = await prisma.user.findUnique({
-            where: { id: mockReq.user?.id },
-            include: { 
-              role: { include: { permissions: true } },
-              userPermissions: true 
-            }
-          });
-
-          if (!dbUser || (!dbUser.role && (!dbUser.userPermissions || dbUser.userPermissions.length === 0))) {
-            console.error(`[Auth Adapter] Access denied. User lacks a role assignment and has no custom permissions.`);
-            return NextResponse.json(
-              { message: 'Role/Permissions not assigned. Granular permission denied.' },
-              { status: 403, headers: getCorsHeaders() }
-            );
-          }
-
+          const { hasPermission } = await import('@/lib/permissions');
           for (const reqPerm of options.requiredPermissions) {
-            // First check user custom permissions (override)
-            const customPerm = dbUser.userPermissions?.find((p: any) => p.moduleName === reqPerm.moduleName);
-            
-            let hasAccess = false;
-            
-            if (customPerm) {
-              hasAccess = !!customPerm[reqPerm.action];
-            } else {
-              // Fallback to role permissions
-              const rolePerm = dbUser.role?.permissions.find((p: any) => p.moduleName === reqPerm.moduleName);
-              hasAccess = !!(rolePerm && rolePerm[reqPerm.action]);
-            }
-
+            const hasAccess = await hasPermission(mockReq.user?.id, reqPerm.moduleName, reqPerm.action);
             if (!hasAccess) {
               console.error(`[Auth Adapter] Access denied. Lacks ${reqPerm.action} on ${reqPerm.moduleName}.`);
               return NextResponse.json(

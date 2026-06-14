@@ -33,12 +33,12 @@ async function main() {
   console.log(`🗑️ Found ${dummyUsers.length} dummy users to clean up.`);
 
   for (const user of dummyUsers) {
-    console.log(`Processing dummy user: ${user.name} (ID: ${user.id}, ZK_UID: ${user.zk_enroll_number})`);
+    console.log(`Processing dummy user: ${user.name} (ID: ${user.id}, ZK_UID: ${user.zktecoId})`);
     
     // Rescue their attendance logs into RawDeviceLog before deleting
     if (user.attendanceLogs.length > 0) {
       const rawLogs = user.attendanceLogs.map((log) => ({
-        deviceUserId: user.zk_enroll_number ? String(user.zk_enroll_number) : user.employeeId,
+        deviceUserId: user.zktecoId ? String(user.zktecoId) : user.employeeId,
         recordTime: log.timestamp,
         punchType: log.punchType,
         ip: log.deviceId
