@@ -720,7 +720,7 @@ export default function TeamUsersPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || (!editTarget && !isPasswordValid)}
+                  disabled={submitting || (!editTarget && !isPasswordValid) || form.roles.length === 0}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all disabled:opacity-50 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

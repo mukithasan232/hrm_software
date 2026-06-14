@@ -278,7 +278,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
 export const createEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId, name, email, password, designationId, department, baseSalary, sendEmail, employeeType } = req.body as any;
+    const { employeeId, name, email, password, designationId, department, baseSalary, sendEmail, employeeType, roles } = req.body as any;
 
     const exists = await prisma.user.findFirst({
       where: {
@@ -316,6 +316,11 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         employeeType: employeeType || 'IN_HOUSE',
         baseSalary: Number(baseSalary) || 0,
         joiningDate: new Date(),
+        ...(roles && {
+          roles: {
+            connect: (typeof roles === 'string' ? JSON.parse(roles) : roles).map((roleId: string) => ({ id: roleId }))
+          }
+        }),
       },
       include: { customDesignation: true }
     });

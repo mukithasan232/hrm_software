@@ -67,6 +67,9 @@ export async function POST(req: Request) {
     if (!designationId) {
       return NextResponse.json({ message: 'Designation is required' }, { status: 400 });
     }
+    if (roleIds.length === 0) {
+      return NextResponse.json({ message: 'Please select at least one role' }, { status: 400 });
+    }
 
     // Auto-generate employeeId
     // Fetch last employee to increment ID

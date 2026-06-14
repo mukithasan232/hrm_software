@@ -224,7 +224,10 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     if (limit) {
       take = parseInt(limit as string);
       skip = page ? (parseInt(page as string) - 1) * take : 0;
-    } else if ((!filter || filter === 'all') && !startDate && !endDate) {
+    } else if (startDate && endDate) {
+      take = 10000; // Large fallback for custom date ranges without limit
+      skip = page ? (parseInt(page as string) - 1) * take : 0;
+    } else if (!filter || filter === 'all') {
       take = 50;
       skip = page ? (parseInt(page as string) - 1) * take : 0;
     }

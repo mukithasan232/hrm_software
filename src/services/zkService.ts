@@ -96,58 +96,28 @@ export function getPunchType(record: any): string {
 export async function resolvePunchType(
   employeeId: string,
   timestamp: Date,
-  log: any,
-  punchHistory?: Map<string, { lastPunchType: string; lastPunchTime: Date }>
+  log: any
 ): Promise<string | null> {
   const tzOffset = 6 * 60 * 60 * 1000;
   const localDate = new Date(timestamp.getTime() + tzOffset);
-  const dateStr = `${localDate.getUTCFullYear()}-${localDate.getUTCMonth() + 1}-${localDate.getUTCDate()}`;
-  const key = `${employeeId}_${dateStr}`;
 
-  if (punchHistory) {
-    // ── BULK SYNC PATH ──────────────────────────────────────────────────────
-    if (!punchHistory.has(key)) {
-      punchHistory.set(key, { lastPunchType: 'CheckIn', lastPunchTime: timestamp });
-      return 'CheckIn';
-    } else {
-      const history = punchHistory.get(key)!;
-
-      // Block EXACT same-second duplicates from the device only
-      if (timestamp.getTime() === history.lastPunchTime.getTime()) {
-        return null; // identical record — skip
-      }
-
-      // If last was CheckIn, this is CheckOut. Else CheckIn.
-      const newPunchType = history.lastPunchType === 'CheckIn' ? 'CheckOut' : 'CheckIn';
-
-      history.lastPunchType = newPunchType;
-      history.lastPunchTime = timestamp;
-
-      return newPunchType;
-    }
-  }
-
-  // ── REAL-TIME PATH ────────────────────────────────────────────────────────
-  // Query DB for today’s existing logs for this employee (including manual entries!)
+  // ── REAL-TIME DB PATH FOR ALL LOGS ────────────────────────────────────────
+  // Query DB for today’s existing logs BEFORE the current timestamp
   const startOfDayLocal = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0, 0));
-  const endOfDayLocal = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 23, 59, 59, 999));
-
   const startOfTodayUTC = new Date(startOfDayLocal.getTime() - tzOffset);
-  const endOfTodayUTC = new Date(endOfDayLocal.getTime() - tzOffset);
 
-  const existingLogs = await prisma.attendanceLog.findMany({
+  const lastLog = await prisma.attendanceLog.findFirst({
     where: {
       employeeId,
       timestamp: {
         gte: startOfTodayUTC,
-        lte: endOfTodayUTC,
+        lte: timestamp,
       },
     },
-    orderBy: { timestamp: 'asc' },
+    orderBy: { timestamp: 'desc' },
   });
 
   // Block exact same-second duplicate from device
-  const lastLog = existingLogs[existingLogs.length - 1];
   if (lastLog && timestamp.getTime() === lastLog.timestamp.getTime()) {
     return null; // exact duplicate — DB upsert will handle idempotency
   }
@@ -369,7 +339,6 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     const sortedRawLogs = Array.isArray(recentLogs) ? [...recentLogs].sort((a: any, b: any) => new Date(a.timestamp || a.recordTime || a.record_time).getTime() - new Date(b.timestamp || b.recordTime || b.record_time).getTime()) : [];
 
     let skipped = 0;
-    const punchHistory = new Map<string, { lastPunchType: string; lastPunchTime: Date }>();
 
     // Track timestamps globally to prevent duplicate compound constraints on exact millisecond Architecture.
     // Track timestamps globally to prevent duplicate compound constraints on exact millisecond
@@ -422,7 +391,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
           continue;
         }
 
-        const punchType = await resolvePunchType(employeeId, timestamp, log, punchHistory);
+        const punchType = await resolvePunchType(employeeId, timestamp, log);
 
         if (!punchType) {
           skipped++;
@@ -654,7 +623,8 @@ async function syncUserToDevice(employee: EmployeePayload): Promise<SyncResult> 
 
     const enrollNumber = (dbUser as any).zktecoId;
     if (!enrollNumber || enrollNumber === 0) {
-      throw new Error(`Employee ${employee.id} has no ZKTeco enroll number assigned. Assign one before syncing.`);
+      console.warn(`[ZKService] Employee ${employee.id} has no ZKTeco enroll number assigned. Bypassing sync.`);
+      return { success: false, action: 'created', enrollNumber: 0 };
     }
 
     // 2. Fetch existing users from the device
