@@ -1,6 +1,21 @@
 import nodemailer from 'nodemailer';
 import { prisma } from '@/lib/prisma';
 
+/**
+ * INBOX SCOPE LOGIC (Backend Scaffold)
+ * ------------------------------------
+ * When fetching emails/inbox records, the API MUST apply Prisma conditions based on the user's Designation Inbox permission:
+ *
+ * 1. OWN scope:
+ *    where: { recipientEmail: user.email }
+ *
+ * 2. DEPARTMENT scope:
+ *    where: { user: { department: user.department } }
+ *
+ * 3. ALL scope:
+ *    Fetch all records without restrictions.
+ */
+
 const getTransporter = async () => {
   try {
     const dbSettings = await prisma.smtpSettings.findFirst();
@@ -96,7 +111,7 @@ export const sendWelcomeEmail = async (
   };
 
   try {
-    const template = await prisma.emailTemplate.findUnique({ where: { type: 'WELCOME_EMAIL' } });
+    const template = await (prisma as any).emailTemplate.findUnique({ where: { type: 'WELCOME_EMAIL' } });
     if (template) {
       subject = compileTemplate(template.subject, variables);
       html = compileTemplate(template.body, variables);
@@ -164,7 +179,7 @@ export const sendLeaveUpdateEmail = async (
   };
 
   try {
-    const template = await prisma.emailTemplate.findUnique({ where: { type: 'LEAVE_UPDATE' } });
+    const template = await (prisma as any).emailTemplate.findUnique({ where: { type: 'LEAVE_UPDATE' } });
     if (template) {
       subject = compileTemplate(template.subject, variables);
       html = compileTemplate(template.body, variables);
@@ -207,7 +222,7 @@ export const buildHRNotificationTemplate = async (title: string, messageBody: st
   };
 
   try {
-    const template = await prisma.emailTemplate.findUnique({ where: { type: 'HR_NOTIFICATION' } });
+    const template = await (prisma as any).emailTemplate.findUnique({ where: { type: 'HR_NOTIFICATION' } });
     if (template) {
       html = compileTemplate(template.body, variables);
     }

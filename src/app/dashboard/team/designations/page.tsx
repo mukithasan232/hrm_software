@@ -10,15 +10,13 @@ import toast from 'react-hot-toast';
 // ─── Scope / Module definitions ───────────────────────────────────────────────
 
 const SCOPE_MODULES = [
-  { label: 'Emails',      key: 'Emails' },
-  { label: 'Attendance',  key: 'Attendance' },
-  { label: 'Leaves',      key: 'Leaves' },
-  { label: 'Employees',   key: 'Employees' },
-  { label: 'Payroll',     key: 'Payroll' },
-  { label: 'Performance', key: 'Performance' },
-  { label: 'Teams',       key: 'Teams' },
-  { label: 'Reports',     key: 'Reports' },
-  { label: 'Settings',    key: 'Settings' },
+  { label: 'Attendance',      key: 'Attendance' },
+  { label: 'Leaves',          key: 'Leaves' },
+  { label: 'Announcements',   key: 'Announcements' },
+  { label: 'Employees',       key: 'Employees' },
+  { label: 'User Management', key: 'User Management' },
+  { label: 'System Settings', key: 'System Settings' },
+  { label: 'Inbox',           key: 'Inbox' },
 ] as const;
 
 type ModuleKey = (typeof SCOPE_MODULES)[number]['key'];
@@ -620,22 +618,7 @@ export default function DesignationsPage() {
                     </div>
                   </div>
 
-                  {/* Legend */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 px-1">
-                    <span className="text-[11px] text-slate-400 dark:text-gray-600 font-medium">Legend:</span>
-                    {[
-                      { val: 'No',         label: 'No access' },
-                      { val: 'Own',        label: 'Own records' },
-                      { val: 'Department', label: 'Department' },
-                      { val: 'All',        label: 'All records' },
-                      { val: 'Enabled',    label: 'Access enabled' },
-                      { val: 'Not Set',    label: 'Not configured' },
-                    ].map(({ val, label }) => (
-                      <span key={val} className={`text-[11px] font-semibold ${valueBadgeClass(val)}`}>
-                        {val} <span className="font-normal text-slate-400 dark:text-gray-600">= {label}</span>
-                      </span>
-                    ))}
-                  </div>
+
                 </div>
               </div>
 

@@ -138,8 +138,10 @@ export default function EmployeesPage() {
     });
     setPermsMatrix(initMatrix);
 
+    const safetyTimer = setTimeout(() => setPermsLoadingState(false), 8000);
+
     try {
-      const res = await api.get(`/users/${emp.id}/permissions`);
+      const res = await api.get(`/users/${emp.id}/permissions`, { timeout: 7000 });
       if (res.data && res.data.length > 0) {
         const loadedMatrix = { ...initMatrix };
         res.data.forEach((p: any) => {
@@ -155,6 +157,7 @@ export default function EmployeesPage() {
     } catch (err) {
       toast.error('Failed to load user permissions');
     } finally {
+      clearTimeout(safetyTimer);
       setPermsLoadingState(false);
     }
   };
@@ -471,7 +474,18 @@ export default function EmployeesPage() {
 
                 {/* ZKTeco Enroll Number */}
                 <div className="space-y-1.5">
-                  <label className={labelCls}>ZKTeco Enroll Number</label>
+                  <div className="flex items-center justify-between">
+                    <label className={labelCls}>ZKTeco Enroll Number</label>
+                    <button
+                      type="button"
+                      onClick={fetchUnregistered}
+                      disabled={loadingUnregistered}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-500 hover:text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${loadingUnregistered ? 'animate-spin' : ''}`} />
+                      Fetch from Device
+                    </button>
+                  </div>
                   {loadingUnregistered ? (
                     <div className={`${fieldCls} flex items-center gap-2 text-slate-500`}><RefreshCw className="w-4 h-4 animate-spin"/> Fetching...</div>
                   ) : (
