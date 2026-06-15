@@ -69,7 +69,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             <img
               src={brand.logoUrl.startsWith('http') || brand.logoUrl.startsWith('data:') 
                 ? brand.logoUrl 
-                : `${BACKEND}${brand.logoUrl}?t=${Date.now()}`}
+                : `${brand.logoUrl}?t=${Date.now()}`}
               alt={brand.companyName || 'Logo'}
               className="h-8 max-w-[140px] object-contain"
               onError={() => setLogoError(true)}

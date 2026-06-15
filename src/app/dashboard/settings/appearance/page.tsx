@@ -373,9 +373,7 @@ export default function AppearancePage() {
                       </span>
                     </div>
                     {(() => {
-                      const parsedLogoUrl = settings.logoUrl.replace(/^\/storage\//, '/api/storage/');
-                      const finalLogoSrc = settings.logoUrl.startsWith('data:') ? settings.logoUrl : `${parsedLogoUrl}?t=${Date.now()}`;
-                      console.log('Rendering current logo src:', finalLogoSrc);
+                      const finalLogoSrc = settings.logoUrl.startsWith('data:') ? settings.logoUrl : `${settings.logoUrl}?t=${Date.now()}`;
                       return (
                         <img 
                           src={finalLogoSrc} 
@@ -411,9 +409,7 @@ export default function AppearancePage() {
                       </span>
                     </div>
                     {(() => {
-                      const parsedFavUrl = settings.faviconUrl.replace(/^\/storage\//, '/api/storage/');
-                      const finalFavSrc = settings.faviconUrl.startsWith('data:') ? settings.faviconUrl : `${parsedFavUrl}?t=${Date.now()}`;
-                      console.log('Rendering current favicon src:', finalFavSrc);
+                      const finalFavSrc = settings.faviconUrl.startsWith('data:') ? settings.faviconUrl : `${settings.faviconUrl}?t=${Date.now()}`;
                       return (
                         <img 
                           src={finalFavSrc} 

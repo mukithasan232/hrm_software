@@ -689,17 +689,15 @@ export default function TeamUsersPage() {
                             className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl pl-7 pr-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium"
                           />
                         </div>
-                      </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Documents section */}
-            {/* Optional Fields (only needed based on HR requirement, but shown for everyone now) */}
-                <div className="px-6 pb-4">
+                {/* Documents section */}
+                <div>
                   <h3 className="text-sm font-bold text-slate-700 dark:text-white mb-3 flex items-center gap-2">
                     <UploadCloud className="w-4 h-4 text-indigo-500" /> Onboarding Documents <span className="text-slate-400 font-normal">(PDF, optional)</span>
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {[
                       { label: 'CV / Resume', state: cvFile, setter: setCvFile },
                       { label: 'NID / Passport', state: nidFile, setter: setNidFile },
@@ -713,6 +711,7 @@ export default function TeamUsersPage() {
                     ))}
                   </div>
                 </div>
+              </div>
 
               {/* Modal Footer */}
               <div className="px-6 py-4 border-t border-slate-100 dark:border-white/10 flex gap-3 bg-white dark:bg-slate-900 rounded-b-2xl">

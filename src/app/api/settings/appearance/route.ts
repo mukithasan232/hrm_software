@@ -102,7 +102,7 @@ export async function PUT(req: NextRequest) {
       const logoFile    = formData.get('logo') as File | null;
       const faviconFile = formData.get('favicon') as File | null;
 
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'branding');
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -110,11 +110,10 @@ export async function PUT(req: NextRequest) {
       if (logoFile && logoFile.size > 0) {
         try {
           const buffer = Buffer.from(await logoFile.arrayBuffer());
-          const ext = logoFile.name.split('.').pop() || 'png';
-          // Use UUID/timestamp to completely avoid naming collisions and browser cache issues
-          const filename = `logo-${Date.now()}.${ext}`;
+          const safeName = logoFile.name.replace(/[^a-zA-Z0-9.-]/g, '-');
+          const filename = `logo-${Date.now()}-${safeName}`;
           fs.writeFileSync(path.join(uploadDir, filename), buffer);
-          logoUrl = `/uploads/branding/${filename}`;
+          logoUrl = `/uploads/${filename}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }
@@ -123,10 +122,10 @@ export async function PUT(req: NextRequest) {
       if (faviconFile && faviconFile.size > 0) {
         try {
           const buffer = Buffer.from(await faviconFile.arrayBuffer());
-          const ext = faviconFile.name.split('.').pop() || 'png';
-          const filename = `favicon-${Date.now()}.${ext}`;
+          const safeName = faviconFile.name.replace(/[^a-zA-Z0-9.-]/g, '-');
+          const filename = `favicon-${Date.now()}-${safeName}`;
           fs.writeFileSync(path.join(uploadDir, filename), buffer);
-          faviconUrl = `/uploads/branding/${filename}`;
+          faviconUrl = `/uploads/${filename}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }
