@@ -320,8 +320,8 @@ const connectAndListen = async (): Promise<void> => {
           if (io) {
             setImmediate(() => {
               io.emit('new-attendance', { ...newLog, employeeName });
-              io.emit('attendanceUpdate', { checkIn: punchType === 'CheckIn' });
-              console.log(`[RealtimeService] 📡 Emitted: ${employeeName} [${punchType}] in ${Date.now() - startTime}ms.`);
+              io.emit('attendanceUpdate', { checkIn: resolvedPunchType === 'CheckIn' });
+              console.log(`[RealtimeService] 📡 Emitted: ${employeeName} [${resolvedPunchType}] in ${Date.now() - startTime}ms.`);
             });
           }
         } catch (err: any) {
