@@ -65,7 +65,9 @@ export default function LoginPage() {
             </div>
           ) : (
             <img 
-              src={logoUrl.startsWith('http') ? logoUrl : `${BACKEND}${logoUrl}`} 
+              src={logoUrl.startsWith('http') || logoUrl.startsWith('data:') 
+                ? logoUrl 
+                : `${BACKEND}${logoUrl}?v=${brand?.updatedAt ? new Date(brand.updatedAt).getTime() : ''}`} 
               alt="Logo" 
               className="h-12 w-auto object-contain mx-auto mb-6"
               onError={() => setLogoError(true)} 

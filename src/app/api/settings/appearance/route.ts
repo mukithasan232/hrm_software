@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 
 import jwt from 'jsonwebtoken';
 import { revalidatePath } from 'next/cache';
+import fs from 'fs';
+import path from 'path';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -100,11 +102,19 @@ export async function PUT(req: NextRequest) {
       const logoFile    = formData.get('logo') as File | null;
       const faviconFile = formData.get('favicon') as File | null;
 
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'branding');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
       if (logoFile && logoFile.size > 0) {
         try {
           const buffer = Buffer.from(await logoFile.arrayBuffer());
-          const mimeType = logoFile.type || 'image/png';
-          logoUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+          const ext = logoFile.name.split('.').pop() || 'png';
+          // Use UUID/timestamp to completely avoid naming collisions and browser cache issues
+          const filename = `logo-${Date.now()}.${ext}`;
+          fs.writeFileSync(path.join(uploadDir, filename), buffer);
+          logoUrl = `/uploads/branding/${filename}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }
@@ -113,8 +123,10 @@ export async function PUT(req: NextRequest) {
       if (faviconFile && faviconFile.size > 0) {
         try {
           const buffer = Buffer.from(await faviconFile.arrayBuffer());
-          const mimeType = faviconFile.type || 'image/x-icon';
-          faviconUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+          const ext = faviconFile.name.split('.').pop() || 'png';
+          const filename = `favicon-${Date.now()}.${ext}`;
+          fs.writeFileSync(path.join(uploadDir, filename), buffer);
+          faviconUrl = `/uploads/branding/${filename}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }

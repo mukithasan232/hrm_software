@@ -10,6 +10,7 @@ export interface BrandSettings {
   faviconUrl:     string | null;
   primaryColor:   string;
   secondaryColor: string;
+  updatedAt?:     string | null;
 }
 
 interface BrandContextValue {
@@ -26,6 +27,7 @@ const DEFAULTS: BrandSettings = {
   faviconUrl:     null,
   primaryColor:   '#8b5cf6',
   secondaryColor: '#06b6d4',
+  updatedAt:      null,
 };
 
 // ── context ───────────────────────────────────────────────────────────────────
@@ -87,6 +89,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
           faviconUrl:     res.data.faviconUrl     || null,
           primaryColor:   res.data.primaryColor   || DEFAULTS.primaryColor,
           secondaryColor: res.data.secondaryColor || DEFAULTS.secondaryColor,
+          updatedAt:      res.data.updatedAt      || null,
         });
       })
       .catch(() => { /* silent — keep defaults */ })

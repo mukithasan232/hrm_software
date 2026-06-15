@@ -67,7 +67,9 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         <div className={`flex items-center gap-2.5 min-w-0 ${collapsed ? 'hidden' : ''}`}>
           {brand.logoUrl && !logoError ? (
             <img
-              src={brand.logoUrl.startsWith('http') ? brand.logoUrl : `${BACKEND}${brand.logoUrl}`}
+              src={brand.logoUrl.startsWith('http') || brand.logoUrl.startsWith('data:') 
+                ? brand.logoUrl 
+                : `${BACKEND}${brand.logoUrl}?v=${brand.updatedAt ? new Date(brand.updatedAt).getTime() : ''}`}
               alt={brand.companyName || 'Logo'}
               className="h-8 max-w-[140px] object-contain"
               onError={() => setLogoError(true)}
