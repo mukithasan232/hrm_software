@@ -104,7 +104,7 @@ export async function PUT(req: NextRequest) {
       const logoFile    = formData.get('logo') as File | null;
       const faviconFile = formData.get('favicon') as File | null;
 
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+      const uploadDir = path.join(process.cwd(), 'public', 'storage');
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -115,7 +115,7 @@ export async function PUT(req: NextRequest) {
           const safeName = logoFile.name.replace(/[^a-zA-Z0-9.-]/g, '-');
           const filename = `logo-${Date.now()}-${safeName}`;
           fs.writeFileSync(path.join(uploadDir, filename), buffer);
-          logoUrl = `/uploads/${filename}`;
+          logoUrl = `/api/storage/${filename}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }
@@ -127,7 +127,7 @@ export async function PUT(req: NextRequest) {
           const safeName = faviconFile.name.replace(/[^a-zA-Z0-9.-]/g, '-');
           const filename = `favicon-${Date.now()}-${safeName}`;
           fs.writeFileSync(path.join(uploadDir, filename), buffer);
-          faviconUrl = `/uploads/${filename}`;
+          faviconUrl = `/api/storage/${filename}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }
