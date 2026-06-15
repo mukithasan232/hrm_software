@@ -568,24 +568,45 @@ export default function TeamUsersPage() {
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">System Roles *</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {(roles || []).map(r => (
-                        <label key={r.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={form.roleIds.includes(r.id)}
-                            onChange={(e) => {
-                              const currentRoles = form.roleIds || [];
-                              if (e.target.checked) {
-                                setForm({ ...form, roleIds: [...currentRoles, r.id] });
-                              } else {
-                                setForm({ ...form, roleIds: currentRoles.filter((value) => value !== r.id) });
-                              }
-                            }}
-                            className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
-                          />
-                          <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{r.name}</span>
-                        </label>
-                      ))}
+                      {(roles && roles.length > 0) ? (
+                        roles.map(r => (
+                          <label key={r.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={form.roleIds.includes(r.id)}
+                              onChange={(e) => {
+                                const currentRoles = form.roleIds || [];
+                                if (e.target.checked) {
+                                  setForm({ ...form, roleIds: [...currentRoles, r.id] });
+                                } else {
+                                  setForm({ ...form, roleIds: currentRoles.filter((value) => value !== r.id) });
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
+                            />
+                            <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{r.name}</span>
+                          </label>
+                        ))
+                      ) : (
+                        ['Admin', 'HR', 'Employee'].map(roleName => (
+                          <label key={roleName} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={form.roleIds.includes(roleName)}
+                              onChange={(e) => {
+                                const currentRoles = form.roleIds || [];
+                                if (e.target.checked) {
+                                  setForm({ ...form, roleIds: [...currentRoles, roleName] });
+                                } else {
+                                  setForm({ ...form, roleIds: currentRoles.filter((value) => value !== roleName) });
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
+                            />
+                            <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{roleName}</span>
+                          </label>
+                        ))
+                      )}
                     </div>
                     {(form.roleIds?.length ?? 0) === 0 && (
                       <p className="text-xs text-red-500 mt-1">Please select at least one role.</p>

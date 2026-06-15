@@ -136,6 +136,7 @@ export default function ProfilePage() {
         profileImage: res.data.user.profileImage,
         designation: res.data.user.designation,
         department: res.data.user.department,
+        phone: res.data.user.phone,
       });
 
       toast.success(t('saveChanges') + '!');

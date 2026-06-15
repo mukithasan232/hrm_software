@@ -11,6 +11,7 @@ interface User {
   designation: string;
   profileImage?: string;
   department?: string;
+  phone?: string;
 }
 
 interface AuthContextType {

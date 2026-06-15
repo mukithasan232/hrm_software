@@ -116,6 +116,7 @@ export const loginUser = async (req: Request, res: Response) => {
       designation: designationName,
       department: user.department,
       profileImage: user.profileImage,
+      phone: user.phone,
       token: generateToken(user.id, designationName),
     });
   } catch (error: any) {
