@@ -23,7 +23,10 @@ fi
 
 # 2.5. Sync biometric data on boot
 echo "🔄 [Boot Sync] Syncing Biometric Data..."
-if ! ./node_modules/.bin/tsx src/scripts/sync-on-boot.ts; then
+if ! ./node_modules/.bin/ts-node \
+    --transpile-only \
+    --compiler-options '{"module":"CommonJS","moduleResolution":"node","esModuleInterop":true}' \
+    src/scripts/sync-on-boot.ts; then
   echo "⚠️  Biometric sync failed. This is non-fatal — server will still start."
 fi
 
