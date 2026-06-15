@@ -64,8 +64,20 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className={`p-5 border-b border-slate-200 dark:border-white/10 flex items-center ${collapsed ? 'justify-center' : 'justify-between'} transition-all`}>
-        <div className={`flex items-center gap-2.5 min-w-0 ${collapsed ? 'hidden' : ''}`}>
-          {brand.logoUrl && !logoError ? (
+        <div className={`flex items-center gap-2.5 min-w-0`}>
+          {collapsed ? (
+            brand.faviconUrl ? (
+              <img
+                src={brand.faviconUrl.startsWith('http') || brand.faviconUrl.startsWith('data:')
+                  ? brand.faviconUrl
+                  : `${brand.faviconUrl}?t=${Date.now()}`}
+                alt="Icon"
+                className="h-8 w-8 object-contain"
+              />
+            ) : (
+              <span className="text-white font-extrabold text-xl tracking-widest block py-2">H</span>
+            )
+          ) : brand.logoUrl && !logoError ? (
             <img
               src={brand.logoUrl.startsWith('http') || brand.logoUrl.startsWith('data:') 
                 ? brand.logoUrl 

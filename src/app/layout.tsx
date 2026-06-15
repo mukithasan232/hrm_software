@@ -7,10 +7,27 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { BrandProvider } from '@/context/BrandContext';
 import { prisma } from '@/lib/prisma';
 
-export const metadata: Metadata = {
-  title: 'HRM & Payroll Portal',
-  description: 'Manage attendance and payroll seamlessly.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  let faviconUrl = '/favicon.ico';
+  let companyName = 'HRM & Payroll Portal';
+  try {
+    const settings = await prisma.tenantSettings.findFirst();
+    if (settings) {
+      if (settings.faviconUrl) faviconUrl = settings.faviconUrl;
+      if (settings.companyName) companyName = settings.companyName;
+    }
+  } catch (e) {
+    console.error('Failed to fetch initial tenant settings for metadata', e);
+  }
+
+  return {
+    title: companyName,
+    description: 'Manage attendance and payroll seamlessly.',
+    icons: {
+      icon: faviconUrl,
+    },
+  };
+}
 
 function hexToRgb(hex: string): string {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
