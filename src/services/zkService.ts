@@ -96,38 +96,58 @@ export function getPunchType(record: any): string {
 export async function resolvePunchType(
   employeeId: string,
   timestamp: Date,
-  log: any
+  log: any,
+  batchState?: Map<string, { lastPunchType: string; timestamp: Date }>
 ): Promise<string | null> {
   const tzOffset = 6 * 60 * 60 * 1000;
   const localDate = new Date(timestamp.getTime() + tzOffset);
+  const dateStr = `${localDate.getUTCFullYear()}-${localDate.getUTCMonth() + 1}-${localDate.getUTCDate()}`;
+  const key = `${employeeId}_${dateStr}`;
 
-  // ── REAL-TIME DB PATH FOR ALL LOGS ────────────────────────────────────────
-  // Query DB for today’s existing logs BEFORE the current timestamp
-  const startOfDayLocal = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0, 0));
-  const startOfTodayUTC = new Date(startOfDayLocal.getTime() - tzOffset);
+  let lastKnownType: string | null = null;
+  let lastKnownTime: Date | null = null;
 
-  const lastLog = await prisma.attendanceLog.findFirst({
-    where: {
-      employeeId,
-      timestamp: {
-        gte: startOfTodayUTC,
-        lte: timestamp,
+  // 1. Check in-memory batch state first
+  if (batchState && batchState.has(key)) {
+    const state = batchState.get(key)!;
+    lastKnownType = state.lastPunchType;
+    lastKnownTime = state.timestamp;
+  } else {
+    // 2. Query DB
+    const startOfDayLocal = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0, 0));
+    const startOfTodayUTC = new Date(startOfDayLocal.getTime() - tzOffset);
+    const endOfTodayUTC = new Date(startOfTodayUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
+
+    const lastLog = await prisma.attendanceLog.findFirst({
+      where: {
+        employeeId,
+        timestamp: {
+          gte: startOfTodayUTC,
+          lte: endOfTodayUTC,
+        },
       },
-    },
-    orderBy: { timestamp: 'desc' },
-  });
+      orderBy: { timestamp: 'desc' },
+    });
+
+    if (lastLog) {
+      lastKnownType = lastLog.punchType;
+      lastKnownTime = lastLog.timestamp;
+    }
+  }
 
   // Block exact same-second duplicate from device
-  if (lastLog && timestamp.getTime() === lastLog.timestamp.getTime()) {
-    return null; // exact duplicate — DB upsert will handle idempotency
+  if (lastKnownTime && timestamp.getTime() === lastKnownTime.getTime()) {
+    return null; // exact duplicate
   }
 
-  if (!lastLog) {
-    return 'CheckIn';
+  const newPunchType = lastKnownType === 'CheckIn' ? 'CheckOut' : 'CheckIn';
+
+  // Save back to batch state for next loop iteration
+  if (batchState) {
+    batchState.set(key, { lastPunchType: newPunchType, timestamp });
   }
 
-  // Toggle based on actual last recorded punch type
-  return lastLog.punchType === 'CheckIn' ? 'CheckOut' : 'CheckIn';
+  return newPunchType;
 }
 
 /**
@@ -194,6 +214,104 @@ export async function healTodaysData(): Promise<void> {
   } catch (err: any) {
     console.error('❌ [healTodaysData] Error healing today\'s logs:', err);
   }
+}
+
+/**
+ * Processes unassigned/unprocessed logs from RawDeviceLog into AttendanceLog
+ * by grouping by employee and date, strictly enforcing chronological CheckIn/CheckOut toggling.
+ */
+export async function processRawDeviceLogs(): Promise<number> {
+  let processedCount = 0;
+  try {
+    const rawLogs = await prisma.rawDeviceLog.findMany({
+      orderBy: { recordTime: 'asc' }
+    });
+
+    if (rawLogs.length === 0) return 0;
+
+    // Fetch mapped users
+    const users = await prisma.user.findMany({
+      where: { zktecoId: { not: null } },
+      select: { id: true, zktecoId: true }
+    });
+    
+    const zktecoIdToUserId = new Map<string, string>();
+    for (const u of users) {
+      if (u.zktecoId) zktecoIdToUserId.set(u.zktecoId.toString(), u.id);
+    }
+
+    const mappedLogs = rawLogs.filter(log => zktecoIdToUserId.has(log.deviceUserId));
+    if (mappedLogs.length === 0) return 0;
+
+    // Group mappedLogs by employeeId + YYYY-MM-DD
+    const grouped: Record<string, typeof rawLogs> = {};
+    const tzOffset = 6 * 60 * 60 * 1000; // UTC+6 Bangladesh
+    
+    for (const log of mappedLogs) {
+      const empId = zktecoIdToUserId.get(log.deviceUserId)!;
+      const localDate = new Date(log.recordTime.getTime() + tzOffset);
+      const dateKey = `${localDate.getUTCFullYear()}-${localDate.getUTCMonth() + 1}-${localDate.getUTCDate()}`;
+      const key = `${empId}_${dateKey}`;
+      
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(log);
+    }
+
+    const newAttendanceLogs: any[] = [];
+    const rawLogIdsToDelete: string[] = [];
+
+    for (const key in grouped) {
+      const logs = grouped[key];
+      const empId = key.split('_')[0];
+      
+      // Sort chronologically (earliest to latest)
+      logs.sort((a, b) => a.recordTime.getTime() - b.recordTime.getTime());
+
+      let currentPunch = 'CheckIn';
+
+      for (let i = 0; i < logs.length; i++) {
+        const log = logs[i];
+
+        // Deduplicate exact same-second punch within the same group
+        if (i > 0 && log.recordTime.getTime() === logs[i-1].recordTime.getTime()) {
+           rawLogIdsToDelete.push(log.id);
+           continue; 
+        }
+
+        newAttendanceLogs.push({
+          employeeId: empId,
+          timestamp: log.recordTime,
+          punchType: currentPunch,
+          deviceId: log.ip || 'RAW_PROCESSOR',
+        });
+        
+        rawLogIdsToDelete.push(log.id);
+        // Toggle for next log in chronological sequence
+        currentPunch = currentPunch === 'CheckIn' ? 'CheckOut' : 'CheckIn';
+      }
+    }
+
+    if (newAttendanceLogs.length > 0) {
+      const result = await prisma.attendanceLog.createMany({
+        data: newAttendanceLogs,
+        skipDuplicates: true // Ignores compound unique constraint violations safely
+      });
+      processedCount = result.count;
+    }
+
+    // Safely cleanup the raw logs that were processed/mapped
+    if (rawLogIdsToDelete.length > 0) {
+      // Chunk deletes to avoid large query limits if necessary, though typical sizes are small
+      await prisma.rawDeviceLog.deleteMany({
+        where: { id: { in: rawLogIdsToDelete } }
+      });
+    }
+
+    console.log(`[ZKService] 🔄 Processed ${processedCount} raw logs into AttendanceLog and deleted mapped raw records.`);
+  } catch (err: any) {
+    console.error('❌ [processRawDeviceLogs] Pipeline Error:', err.message);
+  }
+  return processedCount;
 }
 
 // ─── Connection Helper ─────────────────────────────────────────────────────────────────
@@ -322,8 +440,20 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     const rawLogs = await getAttendanceAsync(zk);
 
-    // Fetch all historical data without an artificial date limit
-    const recentLogs = rawLogs;
+    // Delta Sync Optimization: Track Last Sync Time
+    const latestLog = await prisma.attendanceLog.findFirst({ orderBy: { timestamp: 'desc' } });
+    const lastSyncTime = latestLog ? latestLog.timestamp.getTime() : new Date('2000-01-01').getTime();
+
+    // Backend-Level Filtering (Fallback) - Only process logs newer than the last synced record
+    const recentLogs = rawLogs.filter((log: any) => {
+      const deviceTime = log.timestamp || log.recordTime || log.record_time;
+      if (!deviceTime) return false;
+      
+      const rawTimestamp = parseDeviceTime(deviceTime);
+      rawTimestamp.setMilliseconds(0); // align with insertion logic
+
+      return rawTimestamp.getTime() > lastSyncTime;
+    });
 
     if (recentLogs.length === 0) {
       // Emit socket event to frontend via global.io
@@ -333,7 +463,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
       }
       return { synced: 0, skipped: 0, total: 0 };
     }
-    console.log(`[ZKService] 📋 ${recentLogs.length} recent record(s) from device.`);
+    console.log(`[ZKService] 📋 Delta Sync: ${recentLogs.length} new record(s) out of ${rawLogs.length} total on device.`);
 
     // Sort logs chronologically ascending (earliest to latest) to guarantee correct CheckIn/CheckOut determination
     const sortedRawLogs = Array.isArray(recentLogs) ? [...recentLogs].sort((a: any, b: any) => new Date(a.timestamp || a.recordTime || a.record_time).getTime() - new Date(b.timestamp || b.recordTime || b.record_time).getTime()) : [];
@@ -346,6 +476,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     const formattedLogsArray: any[] = [];
     const unmappedLogsArray: any[] = [];
     const unmappedUsedTimestamps = new Set<string>();
+    const batchState = new Map<string, { lastPunchType: string; timestamp: Date }>();
 
     for (const log of sortedRawLogs) {
       try {
@@ -391,7 +522,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
           continue;
         }
 
-        const punchType = await resolvePunchType(employeeId, timestamp, log);
+        const punchType = await resolvePunchType(employeeId, timestamp, log, batchState);
 
         if (!punchType) {
           skipped++;

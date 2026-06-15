@@ -95,7 +95,7 @@ export const sendWelcomeEmail = async (
   loginUrl?: string,
   deviceId?: number | null
 ) => {
-  const url = loginUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5001/login';
+  const url = loginUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://hrm.fixanyphoto.com/login';
   
   let subject = 'Welcome! Your Login Credentials';
   let html = '';
@@ -162,7 +162,7 @@ export const sendLeaveUpdateEmail = async (
   status: string,
   loginUrl?: string
 ) => {
-  const url = loginUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5001/dashboard/leaves';
+  const url = loginUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://hrm.fixanyphoto.com/dashboard/leaves';
   const isApproved = status.toLowerCase() === 'approved';
   const color = isApproved ? '#10b981' : '#ef4444'; 
   

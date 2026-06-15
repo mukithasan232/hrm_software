@@ -349,7 +349,6 @@ const connectAndListen = async (): Promise<void> => {
         }
       }, 60_000);
 
-      isConnecting = false;
     } catch (err: any) {
       // ── Graceful failure — log and schedule a delayed retry, never crash ──
       const errorMessage = err?.message || (typeof err === 'string' ? err : 'Unknown error');
@@ -359,13 +358,18 @@ const connectAndListen = async (): Promise<void> => {
         console.debug(`[RealtimeService] Debug Stack:`, err.stack);
       }
 
-      isConnecting = false;
       zkInstance = null;
       if (isListenerActive) {
         if (activeReconnectTimeout) clearTimeout(activeReconnectTimeout);
         // Back off 15 seconds before retrying so we don't spam the device
         activeReconnectTimeout = setTimeout(connectAndListen, 15_000);
       }
+    } finally {
+      // STRICT MUTEX/LOCK RELEASE: Guaranteed execution even if catch block throws
+      isConnecting = false;
     }
+  }).catch((err) => {
+    console.error('[RealtimeService] Critical mutex chain failure:', err);
+    isConnecting = false;
   });
 };

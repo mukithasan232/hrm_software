@@ -381,7 +381,12 @@ export default function AppearancePage() {
                           src={finalLogoSrc} 
                           alt="Current Company Logo" 
                           className="h-12 w-auto object-contain rounded-lg border border-slate-200 dark:border-white/20 bg-white"
-                          onError={(e) => { (e.target as HTMLImageElement).src = '/default-logo-placeholder.png'; }}
+                          onError={(e) => { 
+                            const target = e.target as HTMLImageElement;
+                            if (!target.src.includes('default-logo-placeholder.png')) {
+                              target.src = '/default-logo-placeholder.png';
+                            }
+                          }}
                         />
                       );
                     })()}
@@ -414,7 +419,12 @@ export default function AppearancePage() {
                           src={finalFavSrc} 
                           alt="Current Favicon" 
                           className="h-8 w-8 object-contain rounded-lg border border-slate-200 dark:border-white/20 bg-white"
-                          onError={(e) => { (e.target as HTMLImageElement).src = '/default-logo-placeholder.png'; }}
+                          onError={(e) => { 
+                            const target = e.target as HTMLImageElement;
+                            if (!target.src.includes('default-logo-placeholder.png')) {
+                              target.src = '/default-logo-placeholder.png';
+                            }
+                          }}
                         />
                       );
                     })()}

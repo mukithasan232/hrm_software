@@ -437,20 +437,10 @@ export const deleteEmployee = async (req: Request, res: Response): Promise<void>
 
     console.log(`🗑️ [deleteEmployee] Initiating transactional cascade delete for employee ${emp.name} (ID: ${employeeId})`);
 
-    // Delete in a single Prisma transaction to maintain relational integrity
+    // Relational cleanup is primarily handled by onDelete: Cascade in schema.prisma.
+    // However, Announcement does not have cascade delete, so we clean it up manually first.
     await prisma.$transaction([
-      // 1. Delete Daily Attendance records (removed)
-      // 2. Delete Attendance Logs
-      prisma.attendanceLog.deleteMany({ where: { employeeId } }),
-      // 3. Delete Leaves (requested by employee)
-      prisma.leave.deleteMany({ where: { employeeId: id } }),
-      // 4. Delete Notifications
-      prisma.notification.deleteMany({ where: { userId: id } }),
-      // 5. Delete Payroll history
-      prisma.payroll.deleteMany({ where: { employeeId } }),
-      // 6. Delete Performance evaluations
-      prisma.performance.deleteMany({ where: { employeeId: id } }),
-      // 7. Finally, delete the User record
+      prisma.announcement.deleteMany({ where: { authorId: id } }),
       prisma.user.delete({ where: { id } })
     ]);
 

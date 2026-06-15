@@ -180,7 +180,7 @@ export default function LeavesPage() {
                         <td className="px-6 py-4">
                           {l.attachment ? (
                             <a 
-                              href={`http://localhost:5001${l.attachment}`} 
+                              href={l.attachment}
                               target="_blank" rel="noopener noreferrer"
                               className="text-indigo-650 dark:text-blue-400 hover:text-indigo-850 dark:hover:text-blue-300 flex items-center gap-1 font-semibold"
                             >

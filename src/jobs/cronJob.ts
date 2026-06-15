@@ -1,26 +1,43 @@
 import cron from 'node-cron';
-import { fetchDeviceLogs } from '../services/zkService';
+import { fetchDeviceLogs, processRawDeviceLogs } from '../services/zkService';
 import { runWithDeviceLock } from '../services/realtimeService';
 import { processZkSyncQueue } from '../queues/zkSyncQueue';
 
+let isSyncing = false;
+
 export const initCronJobs = () => {
-  // Schedule to run every 5 minutes
-  cron.schedule('*/5 * * * *', async () => {
-    console.log('🕒 Running periodic sync: Fetching ZKTeco Logs (Every 5 min)...');
+  // Schedule to run every 1 minute
+  cron.schedule('* * * * *', async () => {
+    if (isSyncing) {
+      console.log('⚠️ [Cron] Sync already in progress, aborting this minute\'s trigger.');
+      return;
+    }
+    
+    isSyncing = true;
+    console.log('🕒 [Cron] Running periodic sync: Fetching ZKTeco Logs (Every 1 min)...');
     try {
       const syncedCount = await runWithDeviceLock(() => fetchDeviceLogs());
-      console.log(`✅ Periodic sync completed. ${syncedCount} new logs fetched.`);
+      console.log(`✅ [Cron] Periodic sync completed. ${syncedCount} new logs fetched.`);
     } catch (error) {
-      console.error('❌ Periodic sync failed.', error);
+      // Graceful error handling: silent fail in background if offline
+      console.log('⚠️ [Cron] Periodic sync skipped: Device unreachable or offline.');
+    } finally {
+      isSyncing = false;
     }
   });
 
-  // Offline queue processor for User Sync (Runs every 1 minute)
+  // Offline queue processor for User Sync & Raw Logs Mapping (Runs every 1 minute)
   cron.schedule('* * * * *', async () => {
     try {
       await processZkSyncQueue();
     } catch (error) {
       console.error('❌ Offline Queue processing failed.', error);
+    }
+    
+    try {
+      await processRawDeviceLogs();
+    } catch (error) {
+      console.error('❌ Raw Device Log processing failed.', error);
     }
   });
 
