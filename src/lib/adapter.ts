@@ -70,10 +70,13 @@ export async function parseRequest(
     try {
       const formData = await req.formData();
       for (const [key, val] of Array.from(formData.entries())) {
-        if (key === 'attachment' || key === 'avatar') {
+        if (['attachment', 'avatar', 'cv', 'nid', 'certDoc'].includes(key)) {
           if (val && typeof val !== 'string') {
             const fileEntry = val as unknown as File;
-            const uploadSubdir = key === 'avatar' ? 'avatars' : 'leaves';
+            let uploadSubdir = 'documents';
+            if (key === 'avatar') uploadSubdir = 'avatars';
+            else if (key === 'attachment') uploadSubdir = 'leaves';
+            
             const uploadDir = path.join(process.cwd(), 'public', 'uploads', uploadSubdir);
             try {
               await fs.promises.mkdir(uploadDir, { recursive: true });
@@ -84,8 +87,8 @@ export async function parseRequest(
               }
             }
 
-            const ext = path.extname(fileEntry.name || '').toLowerCase() || '.png';
-            const prefix = key === 'avatar' ? 'avatar' : 'leave';
+            const ext = path.extname(fileEntry.name || '').toLowerCase() || '.pdf';
+            const prefix = key;
             // Sanitize filename to prevent directory traversal
             const safeName = (fileEntry.name || 'file').replace(/[^a-zA-Z0-9.\-_]/g, '');
             const filename = `${prefix}-${Date.now()}-${safeName}`;
@@ -99,12 +102,13 @@ export async function parseRequest(
               throw err;
             }
 
-            fileObj = {
+            if (!fileObj) fileObj = {};
+            fileObj[key] = {
               filename,
               originalname: fileEntry.name,
               mimetype: fileEntry.type,
               size: fileEntry.size,
-              path: filepath,
+              path: `/uploads/${uploadSubdir}/${filename}`, // Web-accessible path
             };
           }
         } else {
