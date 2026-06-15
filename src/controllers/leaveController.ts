@@ -41,7 +41,7 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
       return res.status(400).json({ message: 'Invalid start or end date provided' });
     }
 
-    const attachment = req.file ? `/uploads/leaves/${req.file.filename}` : undefined;
+    const attachment = req.file ? `/api/storage/leaves/${req.file.filename}` : undefined;
 
     // ০ থেকে দিন সংখ্যা হিসাব কনফ্লিক্ট এড়াতে গ্যারান্টিড ম্যাথ অপারেশন
     const totalDays = Math.ceil((parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;

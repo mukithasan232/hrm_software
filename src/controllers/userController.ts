@@ -121,7 +121,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (twitter  !== undefined) data.twitter  = sanitizeUrl(twitter);
 
     if ((req as any).file) {
-      data.profileImage = `/uploads/avatars/${(req as any).file.filename}`;
+      data.profileImage = `/api/storage/avatars/${(req as any).file.filename}`;
     }
 
     try {
