@@ -58,7 +58,8 @@ export async function POST(req: Request) {
     const baseSalaryStr = formData.get('baseSalary') as string;
     const baseSalary = baseSalaryStr ? parseFloat(baseSalaryStr) : 0;
     
-    console.log("Incoming IDs:", { designationId, department, roleIds });
+    console.log("DEBUG_REQUEST_BODY:", { name, email, roleIds, designationId, department, employeeType, zktecoId });
+    console.log("ROLES_PAYLOAD:", roleIds);
     
     // Validate
     if (!name || !email || !password) {
@@ -121,7 +122,26 @@ export async function POST(req: Request) {
     try {
       // Wrap database operations in a $transaction to ensure atomic saves
       newUser = await prisma.$transaction(async (tx) => {
-        // Step A: Create User record (acts as both User & Employee in this unified schema)
+        // Step A: Ensure roles exist and get their IDs
+        const actualRoleIds: string[] = [];
+        for (const roleNameOrId of roleIds) {
+          let role = await tx.role.findFirst({
+            where: {
+              OR: [
+                { id: roleNameOrId },
+                { name: roleNameOrId }
+              ]
+            }
+          });
+          if (!role) {
+            role = await tx.role.create({
+              data: { name: roleNameOrId, description: `Auto-created ${roleNameOrId} role` }
+            });
+          }
+          actualRoleIds.push(role.id);
+        }
+
+        // Step A2: Create User record (acts as both User & Employee in this unified schema)
         // Admins are also employees, so we save all HR fields for all roles.
         const createdUser = await tx.user.create({
           data: {
@@ -131,7 +151,7 @@ export async function POST(req: Request) {
             employeeId: newEmployeeId,
             userType: 'Employee', // Legacy field fallback
             roles: {
-              connect: roleIds.map((id: string) => ({ id }))
+              connect: actualRoleIds.map((id: string) => ({ id }))
             },
             
             // HR-Specific Fields (Populated for ALL roles now)
@@ -187,7 +207,7 @@ export async function POST(req: Request) {
           throw new Error('Device ID (Enroll Number) is already assigned to another user');
         }
       }
-      throw new Error('Database transaction failed while creating employee record');
+      throw new Error(`Database transaction failed: ${txError.message}`);
     }
 
     // Send Welcome Email
@@ -207,7 +227,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Employee created successfully', user: newUser }, { status: 201 });
 
   } catch (error: any) {
-    console.error('Employee Creation Error:', error);
-    return NextResponse.json({ error: error.message || "Failed to create employee" }, { status: 400 });
+    console.error('API_VALIDATION_ERROR:', error);
+    return NextResponse.json({ message: error.message || "Failed to create employee" }, { status: 400 });
   }
 }

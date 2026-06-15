@@ -253,7 +253,7 @@ export default function TeamUsersPage() {
       setShowModal(false);
       fetchUsers(true);
     } catch (err: any) {
-      toast.error(err.message || err.response?.data?.message || 'Operation failed');
+      toast.error(err.response?.data?.error || err.response?.data?.message || err.message || 'Operation failed');
     } finally {
       setSubmitting(false);
     }
