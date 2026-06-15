@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Lock, Mail, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useBrand } from '@/context/BrandContext';
@@ -116,6 +117,12 @@ export default function LoginPage() {
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
+            </div>
+
+            <div className="flex justify-end">
+              <Link href="/forgot-password" className="text-xs font-semibold text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+                Forgot Password?
+              </Link>
             </div>
 
             {/* Submit */}

@@ -10,8 +10,8 @@ export const SalarySlipPDF: React.FC<SalarySlipPDFProps> = ({ payroll, monthName
 
   const empName = payroll.user?.name || payroll.name || 'N/A';
   const employeeId = payroll.employeeId || 'N/A';
-  const designation = payroll.user?.designation || 'N/A';
-  const department = payroll.user?.department || 'N/A';
+  const designation = payroll.user?.designation?.name || payroll.user?.designation || 'N/A';
+  const department = payroll.user?.department?.name || payroll.user?.department || 'N/A';
   const month = monthName || String(payroll.month);
   const year = payroll.year;
   const totalDays = payroll.totalDays || 30;

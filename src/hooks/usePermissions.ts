@@ -43,7 +43,8 @@ export function usePermissions() {
 
   const can = useCallback((moduleName: string, action: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete') => {
     const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-    const userDesig = (user?.designation || '').toLowerCase().trim();
+    const designName = typeof user?.designation === 'string' ? user.designation : (user?.designation as any)?.name || '';
+    const userDesig = designName.toLowerCase().trim();
     
     if (ADMIN_DESIGNATIONS.includes(userDesig)) {
       return true;

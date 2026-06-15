@@ -32,7 +32,8 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
 
 export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction) => {
   const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-  const userDesig = (req.user?.designation || '').toLowerCase().trim();
+  const designName = typeof req.user?.designation === 'string' ? req.user.designation : (req.user?.designation as any)?.name || '';
+  const userDesig = designName.toLowerCase().trim();
   
   if (req.user && ADMIN_DESIGNATIONS.includes(userDesig)) {
     next();
@@ -46,7 +47,8 @@ export const authorizeDesignations = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
     const allowedLower = roles.map(r => r.toLowerCase().trim());
-    const userDesig = (req.user?.designation || '').toLowerCase().trim();
+    const designName = typeof req.user?.designation === 'string' ? req.user.designation : (req.user?.designation as any)?.name || '';
+    const userDesig = designName.toLowerCase().trim();
 
     if (!req.user || (!allowedLower.includes(userDesig) && !ADMIN_DESIGNATIONS.includes(userDesig))) {
       console.error(`[Express Auth] Access denied. Allowed: ${roles.join(', ')}, got: "${req.user?.designation}"`);

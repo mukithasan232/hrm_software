@@ -120,8 +120,13 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (github   !== undefined) data.github   = sanitizeUrl(github);
     if (twitter  !== undefined) data.twitter  = sanitizeUrl(twitter);
 
-    if ((req as any).file) {
-      data.profileImage = `/api/storage/avatars/${(req as any).file.filename}`;
+    const reqFile = (req as any).file;
+    if (reqFile) {
+      if (reqFile.avatar) {
+        data.profileImage = reqFile.avatar.path;
+      } else if (reqFile.filename) {
+        data.profileImage = `/api/storage/avatars/${reqFile.filename}`;
+      }
     }
 
     try {

@@ -228,7 +228,8 @@ export function wrapHandler(
         }
 
         const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-        const userDesig = (mockReq.user?.designation || '').toLowerCase().trim();
+        const designName = typeof mockReq.user?.designation === 'string' ? mockReq.user.designation : (mockReq.user?.designation as any)?.name || '';
+        const userDesig = designName.toLowerCase().trim();
 
         if (options.adminOnly && !(mockReq as any).isApiSecretBypass && !ADMIN_DESIGNATIONS.includes(userDesig)) {
           console.error(`[Auth Adapter] Admin access denied. Required admin, got: "${mockReq.user?.designation}"`);

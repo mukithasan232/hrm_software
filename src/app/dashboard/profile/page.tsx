@@ -69,6 +69,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [isNewPasswordValid, setIsNewPasswordValid] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   // ── Phone country-code state ──
   const [countryCode, setCountryCode] = useState('+880');
@@ -84,8 +85,8 @@ export default function ProfilePage() {
       setLocalPhone(local);
       setForm({
         name: user.name || '',
-        designation: (user as any).designation || '',
-        department: (user as any).department || '',
+        designation: (user as any).designation?.name || (user as any).designation || '',
+        department: (user as any).department?.name || (user as any).department || '',
         phone: rawPhone,
         facebook: (user as any).facebook || '',
         linkedin: (user as any).linkedin || '',
@@ -128,9 +129,7 @@ export default function ProfilePage() {
       Object.entries(form).forEach(([k, v]) => formData.append(k, v));
       if (avatarFile) formData.append('avatar', avatarFile);
 
-      const res = await api.put('/users/profile/me', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await api.put('/users/profile/me', formData);
 
       updateUser({
         name: res.data.user.name,
@@ -141,6 +140,7 @@ export default function ProfilePage() {
 
       toast.success(t('saveChanges') + '!');
       setAvatarFile(null);
+      setPreview(null);
       router.refresh();
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to update profile');
@@ -173,7 +173,11 @@ export default function ProfilePage() {
   };
 
   const avatarSrc = preview || (user?.profileImage ? `${BACKEND}${user.profileImage}` : null);
-  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const initials = user?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
+  useEffect(() => {
+    setImgError(false);
+  }, [avatarSrc]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -187,10 +191,11 @@ export default function ProfilePage() {
         <div className="lg:col-span-1 space-y-6">
           <div className="print-hide bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 text-center space-y-4 shadow-sm dark:shadow-2xl">
             <div className="relative inline-block">
-              {avatarSrc ? (
+              {avatarSrc && !imgError ? (
                 <img
                   src={avatarSrc}
                   alt="Profile"
+                  onError={() => setImgError(true)}
                   className="h-28 w-28 rounded-full object-cover border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto"
                 />
               ) : (
@@ -215,9 +220,9 @@ export default function ProfilePage() {
 
             <div>
               <p className="text-slate-900 dark:text-white font-bold text-lg">{user?.name}</p>
-              <p className="text-slate-550 dark:text-gray-400 text-sm font-semibold">{user?.designation}</p>
+              <p className="text-slate-550 dark:text-gray-400 text-sm font-semibold">{(user as any)?.designation?.name || (user as any)?.designation}</p>
               <span className="mt-2 inline-block px-3 py-1 rounded-full text-xs font-bold border bg-brand-primary/10 text-brand-primary border-brand-primary/30">
-                {user?.designation}
+                {(user as any)?.designation?.name || (user as any)?.designation}
               </span>
             </div>
 
@@ -228,7 +233,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-gray-400 font-semibold">
                 <Building className="w-4 h-4 text-slate-400 dark:text-gray-500 flex-shrink-0" />
-                <span className="truncate">{(user as any)?.department || 'Not set'}</span>
+                <span className="truncate">{(user as any)?.department?.name || (user as any)?.department || 'Not set'}</span>
               </div>
             </div>
 
@@ -258,8 +263,8 @@ export default function ProfilePage() {
               </div>
 
               <div className="mb-4">
-                {avatarSrc ? (
-                  <img src={avatarSrc} alt="Profile" className="h-24 w-24 rounded-full object-cover border-4 border-white/20 mx-auto shadow-lg" />
+                {avatarSrc && !imgError ? (
+                  <img src={avatarSrc} alt="Profile" onError={() => setImgError(true)} className="h-24 w-24 rounded-full object-cover border-4 border-white/20 mx-auto shadow-lg" />
                 ) : (
                   <div className="h-24 w-24 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-white/20 shadow-lg mx-auto bg-gradient-to-tr from-indigo-500 to-purple-500">
                     {initials}
@@ -268,7 +273,7 @@ export default function ProfilePage() {
               </div>
 
               <h3 className="font-bold text-xl mb-1">{user?.name}</h3>
-              <p className="text-blue-300 font-semibold text-xs mb-5">{user?.designation || 'Employee'}</p>
+              <p className="text-blue-300 font-semibold text-xs mb-5">{(user as any)?.designation?.name || (user as any)?.designation || 'Employee'}</p>
 
               <div className="bg-white rounded-xl p-2.5 shadow-inner inline-block mb-3">
                 <QRCodeSVG value={(user as any)?.employeeId || 'EMP-UNKNOWN'} size={70} />

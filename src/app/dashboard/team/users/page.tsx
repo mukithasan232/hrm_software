@@ -17,7 +17,7 @@ const EMPTY_FORM = {
   name: '',
   email: '',
   password: '',
-  systemRoles: [] as string[],
+  roleIds: [] as string[],
   designationId: '',
   department: 'Engineering',
   employeeType: 'IN_HOUSE',
@@ -195,7 +195,7 @@ export default function TeamUsersPage() {
       name: u.name || '',
       email: u.email || '',
       password: '',
-      systemRoles: u.roles?.map((r: any) => r.id) || [],
+      roleIds: u.roles?.map((r: any) => r.id) || [],
       designationId: u.designationId || '',
       department: u.department || 'Engineering',
       employeeType: u.employeeType || 'IN_HOUSE',
@@ -216,9 +216,9 @@ export default function TeamUsersPage() {
           baseSalary: Number(form.baseSalary) || 0,
           designationId: form.designationId || null,
         };
-        const { password, employeeId, sendEmail, systemRoles, employeeType, zktecoId, ...updatePayload } = payload as any;
+        const { password, employeeId, sendEmail, roleIds, employeeType, zktecoId, ...updatePayload } = payload as any;
         if (password) updatePayload.password = password;
-        updatePayload.roles = form.systemRoles;
+        updatePayload.roles = form.roleIds;
         
         const formData = new FormData();
         Object.entries(updatePayload).forEach(([key, val]) => {
@@ -245,7 +245,7 @@ export default function TeamUsersPage() {
         if (cvFile) formData.append('cv', cvFile);
         if (nidFile) formData.append('nid', nidFile);
         if (certFile) formData.append('certDoc', certFile);
-        formData.append('roles', JSON.stringify(form.systemRoles));
+        formData.append('roles', JSON.stringify(form.roleIds));
 
         const res = await api.post('/employees', formData);
         toast.success(form.sendEmail ? 'User created & email sent!' : 'User created successfully!');
@@ -568,21 +568,18 @@ export default function TeamUsersPage() {
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">System Roles *</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {((roles?.length ?? 0) > 0 ? roles : [
-                        { id: 'Admin', name: 'Admin' },
-                        { id: 'Ultra Admin', name: 'Ultra Admin' },
-                        { id: 'Employee', name: 'Employee' },
-                        { id: 'HR', name: 'HR' }
-                      ]).map(r => (
+                      {(roles || []).map(r => (
                         <label key={r.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
                           <input
                             type="checkbox"
-                            checked={form.systemRoles.includes(r.id)}
+                            checked={form.roleIds.includes(r.id)}
                             onChange={(e) => {
-                              const newRoles = e.target.checked 
-                                ? [...form.systemRoles, r.id] 
-                                : form.systemRoles.filter(id => id !== r.id);
-                              setForm({ ...form, systemRoles: newRoles });
+                              const currentRoles = form.roleIds || [];
+                              if (e.target.checked) {
+                                setForm({ ...form, roleIds: [...currentRoles, r.id] });
+                              } else {
+                                setForm({ ...form, roleIds: currentRoles.filter((value) => value !== r.id) });
+                              }
                             }}
                             className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
                           />
@@ -590,7 +587,7 @@ export default function TeamUsersPage() {
                         </label>
                       ))}
                     </div>
-                    {(form.systemRoles?.length ?? 0) === 0 && (
+                    {(form.roleIds?.length ?? 0) === 0 && (
                       <p className="text-xs text-red-500 mt-1">Please select at least one role.</p>
                     )}
                   </div>
@@ -732,7 +729,7 @@ export default function TeamUsersPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || (!editTarget && !isPasswordValid) || (form.systemRoles?.length ?? 0) === 0}
+                  disabled={submitting || (!editTarget && !isPasswordValid) || (form.roleIds?.length ?? 0) === 0}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all disabled:opacity-50 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
