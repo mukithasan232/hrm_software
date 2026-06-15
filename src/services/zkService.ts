@@ -104,16 +104,33 @@ export async function resolvePunchType(
   const dateStr = `${localDate.getUTCFullYear()}-${localDate.getUTCMonth() + 1}-${localDate.getUTCDate()}`;
   const key = `${employeeId}_${dateStr}`;
 
+  console.log("DEBUG_PUNCH_TYPE:", log.punchType ?? log.type);
+
+  // 1. Try to map exact values from the device
+  let exactDeviceType: string | null = null;
+  const rawType = (log.punchType ?? log.type)?.toString().toUpperCase();
+  
+  if (rawType !== undefined && rawType !== null && rawType !== 'UNKNOWN' && rawType !== '') {
+    if (['0', 'CHECKIN', 'CHECK-IN', 'IN'].includes(rawType)) {
+      exactDeviceType = 'CheckIn';
+    } else if (['1', 'CHECKOUT', 'CHECK-OUT', 'OUT', '4', '5'].includes(rawType)) {
+      // Note: Some ZK devices use 4/5 for Overtime In/Out. Defaulting 1/OUT to CheckOut.
+      exactDeviceType = 'CheckOut';
+    } else {
+      console.error(`[Worker] Unmapped punch type value: ${rawType} for employee ${employeeId}`);
+    }
+  }
+
   let lastKnownType: string | null = null;
   let lastKnownTime: Date | null = null;
 
-  // 1. Check in-memory batch state first
+  // 2. Fetch last known state for chronological fallback and duplicate detection
   if (batchState && batchState.has(key)) {
     const state = batchState.get(key)!;
     lastKnownType = state.lastPunchType;
     lastKnownTime = state.timestamp;
   } else {
-    // 2. Query DB
+    // Query DB
     const startOfDayLocal = new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0, 0));
     const startOfTodayUTC = new Date(startOfDayLocal.getTime() - tzOffset);
     const endOfTodayUTC = new Date(startOfTodayUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
@@ -140,7 +157,13 @@ export async function resolvePunchType(
     return null; // exact duplicate
   }
 
-  const newPunchType = lastKnownType === 'CheckIn' ? 'CheckOut' : 'CheckIn';
+  // 3. Resolve Final Type: Device Match OR Chronological Toggle
+  let newPunchType = 'CheckIn';
+  if (exactDeviceType) {
+    newPunchType = exactDeviceType;
+  } else {
+    newPunchType = lastKnownType === 'CheckIn' ? 'CheckOut' : 'CheckIn';
+  }
 
   // Save back to batch state for next loop iteration
   if (batchState) {
@@ -280,7 +303,7 @@ export async function processRawDeviceLogs(): Promise<number> {
 
         const punchType = await resolvePunchType(empId, log.recordTime, log as any, batchState);
         
-        if (!punchType || punchType === 'UNKNOWN') {
+        if (!punchType) {
            rawLogIdsToDelete.push(log.id);
            continue;
         }
@@ -535,12 +558,6 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
         if (!punchType) {
           skipped++;
           continue; // Exact-second duplicate — skipped by in-memory Set below
-        }
-
-        if (punchType === 'UNKNOWN') {
-          console.log("[ZKService] ⚠️ Skipping UNKNOWN punch type...");
-          skipped++;
-          continue;
         }
 
         // In-memory dedup: last line of defence before createMany (skipDuplicates:true

@@ -304,16 +304,6 @@ const connectAndListen = async (): Promise<void> => {
           const employeeId = user.id;
           const employeeName = user.name;
 
-          // resolvePunchType now only blocks exact-same-second duplicates (no 30-min guard)
-          let punchType = (data.punchType || 'UNKNOWN').toString().toUpperCase();
-          if (['0', 'CHECKIN'].includes(punchType)) punchType = 'CheckIn';
-          else if (['1', 'CHECKOUT'].includes(punchType)) punchType = 'CheckOut';
-
-          if (punchType === 'UNKNOWN') {
-            console.log("[RealtimeService] ⚠️ Skipping UNKNOWN punch type...");
-            return;
-          }
-
           const resolvedPunchType = await resolvePunchType(employeeId, parsedTimestamp, data);
 
           if (!resolvedPunchType) {
