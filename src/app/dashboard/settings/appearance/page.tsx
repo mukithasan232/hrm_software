@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 interface AppearanceSettings {
   id?: string;
   companyName: string;
+  companyAddress?: string | null;
   logoUrl: string | null;
   faviconUrl: string | null;
   primaryColor: string;
@@ -236,6 +237,7 @@ export default function AppearancePage() {
   const router = useRouter();
   const [settings, setSettings] = useState<AppearanceSettings>({
     companyName: 'HRM Portal',
+    companyAddress: '',
     logoUrl: null,
     faviconUrl: null,
     primaryColor: '#8b5cf6',
@@ -276,6 +278,9 @@ export default function AppearancePage() {
     try {
       const fd = new FormData();
       fd.append('companyName',    settings.companyName);
+      if (settings.companyAddress !== undefined && settings.companyAddress !== null) {
+        fd.append('companyAddress', settings.companyAddress);
+      }
       fd.append('primaryColor',   settings.primaryColor);
       fd.append('secondaryColor', settings.secondaryColor);
       if (logoFile)    fd.append('logo',    logoFile);
@@ -347,6 +352,19 @@ export default function AppearancePage() {
               className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 transition-all font-semibold"
             />
             <p className="text-xs text-slate-400 dark:text-gray-500">Shown in the browser tab, emails, and PDF reports.</p>
+          </div>
+          <div className="space-y-1.5 pt-2">
+            <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
+              Company Address
+            </label>
+            <textarea
+              value={settings.companyAddress || ''}
+              onChange={e => setSettings(s => ({ ...s, companyAddress: e.target.value }))}
+              placeholder="e.g. 123 Business Avenue, City, Country"
+              rows={2}
+              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 transition-all font-semibold resize-none"
+            />
+            <p className="text-xs text-slate-400 dark:text-gray-500">Shown in official documents like Salary Slips and Attendance Reports.</p>
           </div>
         </div>
 

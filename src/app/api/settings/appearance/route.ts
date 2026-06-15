@@ -81,6 +81,7 @@ export async function PUT(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
     
     let companyName: string | undefined;
+    let companyAddress: string | undefined;
     let primaryColor: string | undefined;
     let secondaryColor: string | undefined;
     let logoUrl: string | undefined;
@@ -96,6 +97,7 @@ export async function PUT(req: NextRequest) {
       }
       
       companyName    = (formData.get('companyName') as string) ?? undefined;
+      companyAddress = (formData.get('companyAddress') as string) ?? undefined;
       primaryColor   = (formData.get('primaryColor') as string) ?? undefined;
       secondaryColor = (formData.get('secondaryColor') as string) ?? undefined;
 
@@ -133,6 +135,7 @@ export async function PUT(req: NextRequest) {
     } else {
       const body     = await req.json();
       companyName    = body.companyName;
+      companyAddress = body.companyAddress;
       primaryColor   = body.primaryColor;
       secondaryColor = body.secondaryColor;
       logoUrl        = body.logoUrl;
@@ -142,6 +145,7 @@ export async function PUT(req: NextRequest) {
     // Build partial update (only provided fields)
     const data: Record<string, any> = {};
     if (companyName    !== undefined) data.companyName    = companyName.trim() || 'HRM Portal';
+    if (companyAddress !== undefined) data.companyAddress = companyAddress.trim() || null;
     if (primaryColor   !== undefined) data.primaryColor   = primaryColor.trim() || '#8b5cf6';
     if (secondaryColor !== undefined) data.secondaryColor = secondaryColor.trim() || '#06b6d4';
     if (logoUrl        !== undefined) data.logoUrl        = logoUrl || null;
@@ -153,6 +157,7 @@ export async function PUT(req: NextRequest) {
       : await prisma.tenantSettings.create({
           data: {
             companyName:    data.companyName    ?? 'HRM Portal',
+            companyAddress: data.companyAddress ?? null,
             primaryColor:   data.primaryColor   ?? '#8b5cf6',
             secondaryColor: data.secondaryColor ?? '#06b6d4',
             logoUrl:        data.logoUrl        ?? null,

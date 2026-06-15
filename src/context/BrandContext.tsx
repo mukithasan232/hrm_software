@@ -6,6 +6,7 @@ import api from '@/services/api';
 
 export interface BrandSettings {
   companyName:    string;
+  companyAddress?: string | null;
   logoUrl:        string | null;
   faviconUrl:     string | null;
   primaryColor:   string;
@@ -23,6 +24,7 @@ interface BrandContextValue {
 
 const DEFAULTS: BrandSettings = {
   companyName:    'HRM Portal',
+  companyAddress: null,
   logoUrl:        null,
   faviconUrl:     null,
   primaryColor:   '#8b5cf6',

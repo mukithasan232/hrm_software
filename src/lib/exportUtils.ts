@@ -3,7 +3,12 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toBDDisplay } from './dateUtils';
 
-export const exportToExcel = async (data: any[], filename: string, reportPeriod: string) => {
+export const exportToExcel = async (
+  data: any[],
+  filename: string,
+  reportPeriod: string,
+  brand?: { companyName: string; companyAddress?: string | null; logoUrl?: string | null }
+) => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Export Data');
 
@@ -13,26 +18,40 @@ export const exportToExcel = async (data: any[], filename: string, reportPeriod:
   // Row 1: Title
   worksheet.mergeCells('A1:J1');
   const titleCell = worksheet.getCell('A1');
-  titleCell.value = 'Company Name';
+  titleCell.value = brand?.companyName || 'Company Name';
   titleCell.font = { bold: true, size: 16 };
   titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  // Row 2: Subtitle
-  worksheet.mergeCells('A2:J2');
-  const subtitleCell = worksheet.getCell('A2');
+  let currentHeaderRow = 1;
+
+  // Optional Row: Company Address
+  if (brand?.companyAddress) {
+    currentHeaderRow++;
+    worksheet.mergeCells(`A${currentHeaderRow}:J${currentHeaderRow}`);
+    const addressCell = worksheet.getCell(`A${currentHeaderRow}`);
+    addressCell.value = brand.companyAddress;
+    addressCell.font = { size: 10, italic: true };
+    addressCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  }
+
+  // Next Row: Subtitle
+  currentHeaderRow++;
+  worksheet.mergeCells(`A${currentHeaderRow}:J${currentHeaderRow}`);
+  const subtitleCell = worksheet.getCell(`A${currentHeaderRow}`);
   subtitleCell.value = `Attendance & Payroll Report - ${reportPeriod}`;
   subtitleCell.font = { bold: true, size: 12, italic: true };
   subtitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  // Row 3: Empty spacing
+  // Empty spacing
   worksheet.addRow([]);
 
-  // Task 2: Data Headers (Row 4)
+  // Task 2: Data Headers
   const headers = Object.keys(data[0]);
+  const dataHeaderRowNumber = currentHeaderRow + 2;
   worksheet.addRow(headers);
 
-  // Task 4: Professional Styling for Header Row (Row 4)
-  const headerRow = worksheet.getRow(4);
+  // Task 4: Professional Styling for Header Row
+  const headerRow = worksheet.getRow(dataHeaderRowNumber);
   headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
   headerRow.eachCell((cell) => {
@@ -68,7 +87,7 @@ export const exportToExcel = async (data: any[], filename: string, reportPeriod:
     if (!column) return;
     let maxLength = 0;
     column.eachCell?.({ includeEmpty: true }, (cell, rowNumber) => {
-      if (rowNumber > 3) { // Only consider header and data rows
+      if (rowNumber > dataHeaderRowNumber - 1) { // Only consider header and data rows
         const columnLength = cell.value ? cell.value.toString().length : 10;
         if (columnLength > maxLength) {
           maxLength = columnLength;
@@ -95,7 +114,7 @@ export const exportToPDF = async (
   data: any[],
   filename: string,
   title: string,
-  brand?: { companyName: string; logoUrl: string | null }
+  brand?: { companyName: string; companyAddress?: string | null; logoUrl?: string | null }
 ) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'A4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -109,11 +128,23 @@ export const exportToPDF = async (
       doc.setTextColor(30, 40, 50);
       doc.setFont('helvetica', 'bold');
       doc.text(brand.companyName || 'HRM Portal', 90, startY + 25);
+      if (brand.companyAddress) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(brand.companyAddress, 90, startY + 40);
+        startY += 10;
+      }
     } catch (e) {
       doc.setFontSize(18);
       doc.setTextColor(30, 40, 50);
       doc.setFont('helvetica', 'bold');
       doc.text(brand?.companyName || 'HRM Portal', 40, startY + 25);
+      if (brand?.companyAddress) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(brand.companyAddress, 40, startY + 40);
+        startY += 10;
+      }
     }
     startY += 60;
   } else {
@@ -121,6 +152,12 @@ export const exportToPDF = async (
     doc.setTextColor(30, 40, 50);
     doc.setFont('helvetica', 'bold');
     doc.text(brand?.companyName || 'HRM Portal', 40, startY + 15);
+    if (brand?.companyAddress) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(brand.companyAddress, 40, startY + 30);
+      startY += 10;
+    }
     startY += 50;
   }
 

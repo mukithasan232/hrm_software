@@ -57,9 +57,10 @@ model Leave {
   endDate    DateTime
   reason     String
   startDate  DateTime
-  status     String
+  status     String   @default("Pending")
   totalDays  Int
   type       String
+  attachment String?
   updatedAt  DateTime @updatedAt
 }
 
@@ -168,6 +169,7 @@ model User {
 model TenantSettings {
   id             String   @id @default(uuid())
   companyName    String   @default("HRM Portal")
+  companyAddress String?  @db.Text
   logoUrl        String?  @db.LongText
   faviconUrl     String?  @db.LongText
   primaryColor   String   @default("#8b5cf6")
