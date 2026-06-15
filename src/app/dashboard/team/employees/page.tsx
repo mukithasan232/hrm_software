@@ -153,9 +153,13 @@ export default function EmployeesPage() {
           };
         });
         setPermsMatrix(loadedMatrix);
+      } else {
+        setPermsMatrix(initMatrix);
       }
     } catch (err) {
-      toast.error('Failed to load user permissions');
+      console.error("PERMISSION_FETCH_ERROR:", err);
+      setPermsMatrix(initMatrix);
+      // Removed the toast.error so the user doesn't see a scary error on blank slate
     } finally {
       clearTimeout(safetyTimer);
       setPermsLoadingState(false);

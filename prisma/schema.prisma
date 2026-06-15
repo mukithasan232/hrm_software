@@ -163,6 +163,7 @@ model User {
   zkSyncLogs     ZkSyncLog[]     @relation("UserZkSyncLogs")
   zkSyncQueues   ZkSyncQueue[]   @relation("UserZkSyncQueue")
   announcements  Announcement[]  @relation("AnnouncementAuthor")
+  userPermission UserPermission?
 }
 
 // Single-row tenant branding config (white-label SaaS)
@@ -241,12 +242,12 @@ model SmtpSettings {
   id           String   @id @default(uuid())
   host         String
   port         Int
-  security     String   // e.g., "SSL/TLS", "STARTTLS", "None"
+  security     String // e.g., "SSL/TLS", "STARTTLS", "None"
   username     String
   password     String
   // MAIN tab fields
-  senderName   String?  // e.g., "HRM Portal"
-  senderEmail  String?  // e.g., "no-reply@company.com"
+  senderName   String? // e.g., "HRM Portal"
+  senderEmail  String? // e.g., "no-reply@company.com"
   emailEnabled Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -271,5 +272,14 @@ model Role {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  users       User[]   @relation("UserRoles")
+  users User[] @relation("UserRoles")
+}
+
+model UserPermission {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matrix    Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
