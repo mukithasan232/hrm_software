@@ -2,6 +2,7 @@ import type { Request, Response } from 'express-serve-static-core';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { sendWelcomeEmail } from '../services/emailService';
+import { processRawDeviceLogs } from '../services/zkService';
 
 export const getEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -241,30 +242,11 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     }
 
     // --- MAGIC BRIDGE: Backfill Attendance Logs from RawDeviceLog ---
+    // We removed the manual 'Magic Bridge' backfill here because it hardcoded 'CheckIn'.
     if (zktecoId !== null && zktecoId !== undefined) {
       try {
-        const rawLogs = await prisma.rawDeviceLog.findMany({
-          where: { deviceUserId: zktecoId.toString() }
-        });
-
-        if (rawLogs.length > 0) {
-          const attendanceData = rawLogs.map((log: any) => ({
-            employeeId: user.id,
-            timestamp: log.recordTime,
-            punchType: log.punchType || 'CheckIn',
-            deviceId: log.ip || 'ZKTeco Device'
-          }));
-
-          await prisma.attendanceLog.createMany({
-            data: attendanceData,
-            skipDuplicates: true
-          });
-
-          await prisma.rawDeviceLog.deleteMany({
-            where: { deviceUserId: zktecoId.toString() }
-          });
-          console.log(`[Magic Bridge] 🌉 Backfilled ${rawLogs.length} historical punches for ${user.name}`);
-        }
+        await processRawDeviceLogs();
+        console.log(`[Magic Bridge] 🌉 Triggered official backfill for ${user.name}`);
       } catch (bridgeErr) {
         console.error('[Magic Bridge] ❌ Failed to backfill logs:', bridgeErr);
       }

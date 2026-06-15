@@ -267,7 +267,7 @@ export async function processRawDeviceLogs(): Promise<number> {
       // Sort chronologically (earliest to latest)
       logs.sort((a, b) => a.recordTime.getTime() - b.recordTime.getTime());
 
-      let currentPunch = 'CheckIn';
+      const batchState = new Map<string, { lastPunchType: string; timestamp: Date }>();
 
       for (let i = 0; i < logs.length; i++) {
         const log = logs[i];
@@ -278,16 +278,23 @@ export async function processRawDeviceLogs(): Promise<number> {
            continue; 
         }
 
+        const punchType = await resolvePunchType(empId, log.recordTime, log as any, batchState);
+        
+        if (!punchType || punchType === 'UNKNOWN') {
+           rawLogIdsToDelete.push(log.id);
+           continue;
+        }
+
         newAttendanceLogs.push({
           employeeId: empId,
           timestamp: log.recordTime,
-          punchType: currentPunch,
+          punchType: punchType,
           deviceId: log.ip || 'RAW_PROCESSOR',
         });
         
+        console.log("SYNC_LOG_TYPE:", { userId: empId, timestamp: log.recordTime, type: punchType });
+        
         rawLogIdsToDelete.push(log.id);
-        // Toggle for next log in chronological sequence
-        currentPunch = currentPunch === 'CheckIn' ? 'CheckOut' : 'CheckIn';
       }
     }
 
@@ -523,6 +530,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
         }
 
         const punchType = await resolvePunchType(employeeId, timestamp, log, batchState);
+        console.log("SYNC_LOG_TYPE:", { userId: employeeId, timestamp, type: punchType });
 
         if (!punchType) {
           skipped++;

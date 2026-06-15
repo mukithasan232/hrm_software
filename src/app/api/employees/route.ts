@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { sendWelcomeEmail } from '@/services/emailService';
 import fs from 'fs';
 import path from 'path';
+import { processRawDeviceLogs } from '@/services/zkService';
 
 // GET all employees
 export async function GET() {
@@ -167,31 +168,8 @@ export async function POST(req: Request) {
           }
         });
 
-        // Step B: Relational operations / Backfill Attendance Logs from RawDeviceLog
-        if (zktecoId !== null && zktecoId !== undefined) {
-          const rawLogs = await tx.rawDeviceLog.findMany({
-            where: { deviceUserId: zktecoId.toString() }
-          });
-
-          if (rawLogs.length > 0) {
-            const attendanceData = rawLogs.map((log: any) => ({
-              employeeId: createdUser.id,
-              timestamp: log.recordTime,
-              punchType: log.punchType || 'CheckIn',
-              deviceId: log.ip || 'ZKTeco Device'
-            }));
-
-            await tx.attendanceLog.createMany({
-              data: attendanceData,
-              skipDuplicates: true
-            });
-
-            await tx.rawDeviceLog.deleteMany({
-              where: { deviceUserId: zktecoId.toString() }
-            });
-            console.log(`[Magic Bridge] 🌉 Backfilled ${rawLogs.length} historical punches for ${name}`);
-          }
-        }
+        // We removed the manual 'Magic Bridge' backfill here because it hardcoded 'CheckIn'.
+        // We will call the official processRawDeviceLogs() outside the transaction.
 
         return createdUser;
       });
@@ -208,6 +186,15 @@ export async function POST(req: Request) {
         }
       }
       throw new Error(`Database transaction failed: ${txError.message}`);
+    }
+    
+    // Call the official sync logic which enforces chronological CheckIn/CheckOut toggles
+    try {
+      if (zktecoId !== null && zktecoId !== undefined) {
+        await processRawDeviceLogs();
+      }
+    } catch (e) {
+      console.error('[Magic Bridge] Failed to process raw logs:', e);
     }
 
     // Send Welcome Email
