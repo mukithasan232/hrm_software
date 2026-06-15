@@ -95,10 +95,14 @@ export default function TeamUsersPage() {
         api.get('/team/departments'),
         api.get('/team/roles')
       ]);
-      setDesignations(desRes.data);
-      setDepartments(deptRes.data);
-      setRoles(rolesRes.data);
-    } catch {}
+      setDesignations(desRes?.data || []);
+      setDepartments(deptRes?.data || []);
+      setRoles(rolesRes?.data || []);
+    } catch {
+      setDesignations([]);
+      setDepartments([]);
+      setRoles([]);
+    }
   };
 
   const fetchUsers = useCallback(async (reset = false) => {
@@ -112,18 +116,22 @@ export default function TeamUsersPage() {
       const cursorParam = !reset && nextCursor ? `&cursor=${nextCursor}` : '';
       const res = await api.get(`/team/users?search=${encodeURIComponent(search)}&designation=${encodeURIComponent(filterDesignation)}${cursorParam}&limit=20`);
       
+      const incomingUsers = res?.data?.data || [];
+
       if (reset) {
-        setUsers(res.data.data);
+        setUsers(incomingUsers);
       } else {
         setUsers(prev => {
-          const newUsers = res.data.data.filter((u: any) => !prev.some(p => p.id === u.id));
-          return [...prev, ...newUsers];
+          const safePrev = prev || [];
+          const newUsers = incomingUsers.filter((u: any) => !safePrev.some(p => p.id === u.id));
+          return [...safePrev, ...newUsers];
         });
       }
-      setNextCursor(res.data.nextCursor);
-      setTotalCount(res.data.totalCount);
+      setNextCursor(res?.data?.nextCursor || null);
+      setTotalCount(res?.data?.totalCount || 0);
     } catch {
       toast.error('Failed to load team data');
+      if (reset) setUsers([]);
     } finally {
       setLoading(false);
       setIsFetchingNext(false);
@@ -170,7 +178,7 @@ export default function TeamUsersPage() {
   // ── Modal helpers ──
   const openCreate = () => {
     setEditTarget(null);
-    const maxId = users.reduce((max, u) => {
+    const maxId = (users || []).reduce((max, u) => {
       const n = parseInt(u.employeeId?.replace(/\D/g, '') || '0');
       return n > max ? n : max;
     }, 0);
@@ -281,7 +289,7 @@ export default function TeamUsersPage() {
 
   // Unique designation names for filter — using designations list
   const allDesignationNames = Array.from(new Set([
-    ...designations.map(d => d.name)
+    ...(designations || []).map(d => d.name)
   ])).sort();
 
   return (
@@ -336,7 +344,7 @@ export default function TeamUsersPage() {
 
       {/* ── Data Table ── */}
       <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm overflow-hidden">
-        {loading && users.length === 0 ? (
+        {loading && (users?.length ?? 0) === 0 ? (
           <div className="divide-y divide-slate-100 dark:divide-white/5">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-6 py-4 animate-pulse">
@@ -350,7 +358,7 @@ export default function TeamUsersPage() {
               </div>
             ))}
           </div>
-        ) : users.length === 0 ? (
+        ) : (users?.length ?? 0) === 0 ? (
           <div className="py-20 text-center">
             <UsersRound className="w-12 h-12 mx-auto text-slate-300 dark:text-gray-700 mb-3" />
             <p className="text-slate-400 dark:text-gray-500 font-medium">No users found{search ? ` for "${search}"` : ''}</p>
@@ -370,7 +378,7 @@ export default function TeamUsersPage() {
                 </div>
 
                 <div className="divide-y divide-slate-100 dark:divide-white/5">
-                  {users.map(u => (
+                  {(users || []).map(u => (
                     <div
                       key={u.id}
                       className="grid grid-cols-[2fr_2.5fr_1.5fr_1.5fr_1fr_auto] gap-4 items-center px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
@@ -450,7 +458,7 @@ export default function TeamUsersPage() {
                 <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
               </div>
             )}
-            {!nextCursor && users.length > 0 && (
+            {!nextCursor && (users?.length ?? 0) > 0 && (
               <div className="py-4 text-center text-xs font-semibold text-slate-400 dark:text-gray-600 border-t border-slate-100 dark:border-white/5">
                 End of list
               </div>
@@ -560,7 +568,7 @@ export default function TeamUsersPage() {
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">System Roles *</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {(roles.length > 0 ? roles : [
+                      {((roles?.length ?? 0) > 0 ? roles : [
                         { id: 'Admin', name: 'Admin' },
                         { id: 'Ultra Admin', name: 'Ultra Admin' },
                         { id: 'Employee', name: 'Employee' },
@@ -582,7 +590,7 @@ export default function TeamUsersPage() {
                         </label>
                       ))}
                     </div>
-                    {form.systemRoles.length === 0 && (
+                    {(form.systemRoles?.length ?? 0) === 0 && (
                       <p className="text-xs text-red-500 mt-1">Please select at least one role.</p>
                     )}
                   </div>
@@ -601,7 +609,7 @@ export default function TeamUsersPage() {
                             className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
                           >
                             <option value="" className="bg-white dark:bg-slate-900" disabled>— Select Designation —</option>
-                            {designations.map(r => (
+                            {(designations || []).map(r => (
                               <option key={r.id} value={r.id} className="bg-white dark:bg-slate-900">{r.name}</option>
                             ))}
                           </select>
@@ -619,7 +627,7 @@ export default function TeamUsersPage() {
                             className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
                           >
                             <option value="" className="bg-white dark:bg-slate-900">— Select Department —</option>
-                            {departments.map(d => (
+                            {(departments || []).map(d => (
                               <option key={d.id} value={d.name} className="bg-white dark:bg-slate-900">{d.name}</option>
                             ))}
                           </select>
@@ -661,7 +669,7 @@ export default function TeamUsersPage() {
                               className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
                             >
                               <option value="" className="bg-white dark:bg-slate-900">— Select Device User —</option>
-                              {unregisteredUsers.map(u => {
+                              {(unregisteredUsers || []).map(u => {
                                 const rawId = (u as any).userId || (u as any).uid || u.deviceUserId;
                                 return (
                                   <option key={rawId} value={rawId ? rawId.toString() : ''} className="bg-white dark:bg-slate-900">
@@ -724,7 +732,7 @@ export default function TeamUsersPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || (!editTarget && !isPasswordValid) || form.roles.length === 0}
+                  disabled={submitting || (!editTarget && !isPasswordValid) || (form.systemRoles?.length ?? 0) === 0}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all disabled:opacity-50 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
