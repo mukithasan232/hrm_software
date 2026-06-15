@@ -305,6 +305,16 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       finalDesignationId = desig.id;
     }
 
+    let actualRoleIds: string[] = [];
+    if (roles) {
+      const parsedRoles = typeof roles === 'string' ? JSON.parse(roles) : roles;
+      for (const rId of parsedRoles) {
+        let r = await prisma.role.findFirst({ where: { OR: [{ id: rId }, { name: rId }] } });
+        if (!r) r = await prisma.role.create({ data: { name: rId, description: `Auto-created ${rId}` } });
+        actualRoleIds.push(r.id);
+      }
+    }
+
     const user = await prisma.user.create({
       data: {
         employeeId,
@@ -318,7 +328,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         joiningDate: new Date(),
         ...(roles && {
           roles: {
-            connect: (typeof roles === 'string' ? JSON.parse(roles) : roles).map((roleId: string) => ({ id: roleId }))
+            connect: actualRoleIds.map((id: string) => ({ id }))
           }
         }),
       },
@@ -363,6 +373,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
       user: userWithoutPassword,
     });
   } catch (error: any) {
+    console.error('API_VALIDATION_ERROR:', error);
     res.status(500).json({ message: 'Failed to create employee', error: error.message });
   }
 };
