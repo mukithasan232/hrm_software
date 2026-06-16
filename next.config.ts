@@ -13,6 +13,8 @@ const nextConfig = {
     'zkteco-js',
     'node-zklib',
     '@prisma/adapter-mariadb',
+    'prisma',
+    '@prisma/client',
     'socket.io',
     'bcryptjs',
     'jsonwebtoken',

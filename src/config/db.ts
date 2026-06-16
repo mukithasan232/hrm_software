@@ -1,6 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
-
 // ─── Persistence Guard ────────────────────────────────────────────────────────
 // Warn loudly at startup if DATABASE_URL is missing or looks like a local/temp
 // path that would be wiped on container restart (e.g. SQLite, in-memory).
@@ -16,20 +14,10 @@ if (!rawDbUrl) {
 }
 
 const dbUrl = new URL(rawDbUrl || 'mysql://username:password@localhost:3306/hrm_database');
-const poolConfig = {
-  host: dbUrl.hostname,
-  port: Number(dbUrl.port) || 3306,
-  user: dbUrl.username,
-  password: dbUrl.password,
-  database: dbUrl.pathname.slice(1),
-  connectionLimit: 10,
-};
 
-const adapter = new PrismaMariaDb(poolConfig);
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-
-export const prisma = globalForPrisma.prisma || new PrismaClient({ adapter });
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
