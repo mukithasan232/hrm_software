@@ -43,7 +43,7 @@ export default function TeamUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [designations, setDesignations] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [availableRoles, setAvailableRoles] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterDesignation, setFilterDesignation] = useState('All');
@@ -97,11 +97,11 @@ export default function TeamUsersPage() {
       ]);
       setDesignations(desRes?.data || []);
       setDepartments(deptRes?.data || []);
-      setAvailableRoles(rolesRes?.data || []);
+      setRoles(rolesRes?.data || []);
     } catch {
       setDesignations([]);
       setDepartments([]);
-      setAvailableRoles([]);
+      setRoles([]);
     }
   };
 
@@ -291,6 +291,36 @@ export default function TeamUsersPage() {
   const allDesignationNames = Array.from(new Set([
     ...(designations || []).map(d => d.name)
   ])).sort();
+
+  const handleRoleChange = (roleId: string, checked: boolean) => {
+    const currentRoles = form.roleIds || [];
+    if (checked) {
+      setForm({ ...form, roleIds: [...currentRoles, roleId] });
+    } else {
+      setForm({ ...form, roleIds: currentRoles.filter((value) => value !== roleId) });
+    }
+  };
+
+  // Add the dummy Checkbox component required by the prompt
+  const Checkbox = ({ label, onCheckedChange }: { label: string, onCheckedChange: (c: boolean) => void }) => {
+    // In order for the checkbox to show correct state, we check if the label's corresponding role ID is in form.roleIds
+    // However, since we just need it to work as instructed, we'll implement it strictly
+    const isChecked = form.roleIds?.includes(
+       roles.find(r => r.name === label)?.id
+    ) || false;
+    
+    return (
+      <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+        <input
+          type="checkbox"
+          checked={isChecked}
+          onChange={(e) => onCheckedChange(e.target.checked)}
+          className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
+        />
+        <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{label}</span>
+      </label>
+    );
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -568,27 +598,12 @@ export default function TeamUsersPage() {
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">System Roles *</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {(availableRoles && availableRoles.length > 0) ? (
-                        availableRoles.map(role => (
-                          <label key={role.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={form.roleIds.includes(role.id)}
-                              onChange={(e) => {
-                                const currentRoles = form.roleIds || [];
-                                if (e.target.checked) {
-                                  setForm({ ...form, roleIds: [...currentRoles, role.id] });
-                                } else {
-                                  setForm({ ...form, roleIds: currentRoles.filter((value) => value !== role.id) });
-                                }
-                              }}
-                              className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
-                            />
-                            <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{role.name}</span>
-                          </label>
-                        ))
+                      {roles.length === 0 ? (
+                        <span className="text-sm text-gray-500">Loading roles...</span>
                       ) : (
-                        <p className="text-sm text-slate-500 dark:text-gray-400">Loading roles...</p>
+                        roles.map(role => (
+                          <Checkbox key={role.id} label={role.name} onCheckedChange={(checked) => handleRoleChange(role.id, checked)} />
+                        ))
                       )}
                     </div>
                     {(form.roleIds?.length ?? 0) === 0 && (
