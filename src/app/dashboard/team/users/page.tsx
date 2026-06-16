@@ -43,7 +43,7 @@ export default function TeamUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [designations, setDesignations] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [roles, setRoles] = useState<any[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterDesignation, setFilterDesignation] = useState('All');
@@ -97,11 +97,11 @@ export default function TeamUsersPage() {
       ]);
       setDesignations(desRes?.data || []);
       setDepartments(deptRes?.data || []);
-      setRoles(rolesRes?.data || []);
+      setAvailableRoles(rolesRes?.data || []);
     } catch {
       setDesignations([]);
       setDepartments([]);
-      setRoles([]);
+      setAvailableRoles([]);
     }
   };
 
@@ -568,23 +568,23 @@ export default function TeamUsersPage() {
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">System Roles *</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {(roles && roles.length > 0) ? (
-                        roles.map(r => (
-                          <label key={r.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                      {(availableRoles && availableRoles.length > 0) ? (
+                        availableRoles.map(role => (
+                          <label key={role.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
                             <input
                               type="checkbox"
-                              checked={form.roleIds.includes(r.id)}
+                              checked={form.roleIds.includes(role.id)}
                               onChange={(e) => {
                                 const currentRoles = form.roleIds || [];
                                 if (e.target.checked) {
-                                  setForm({ ...form, roleIds: [...currentRoles, r.id] });
+                                  setForm({ ...form, roleIds: [...currentRoles, role.id] });
                                 } else {
-                                  setForm({ ...form, roleIds: currentRoles.filter((value) => value !== r.id) });
+                                  setForm({ ...form, roleIds: currentRoles.filter((value) => value !== role.id) });
                                 }
                               }}
                               className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
                             />
-                            <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{r.name}</span>
+                            <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{role.name}</span>
                           </label>
                         ))
                       ) : (
