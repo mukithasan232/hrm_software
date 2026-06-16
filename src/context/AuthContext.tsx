@@ -12,6 +12,8 @@ interface User {
   profileImage?: string;
   department?: string;
   phone?: string;
+  roles?: any[];
+  permissions?: any;
 }
 
 interface AuthContextType {

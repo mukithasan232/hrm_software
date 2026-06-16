@@ -3,8 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 
-const generateToken = (id: string, designationName: string) => {
-  return jwt.sign({ id, designation: designationName }, process.env.JWT_SECRET || 'fallback_secret', {
+const generateToken = (id: string, designationName: string, roles: any[] = [], permissions: any = {}) => {
+  return jwt.sign({ id, designation: designationName, roles, permissions }, process.env.JWT_SECRET || 'fallback_secret', {
     expiresIn: '1d',
   });
 };
@@ -49,7 +49,7 @@ export const registerUser = async (req: Request, res: Response) => {
       name: user.name,
       email: user.email,
       designation: user.customDesignation?.name || 'Employee',
-      token: generateToken(user.id, user.customDesignation?.name || 'Employee'),
+      token: generateToken(user.id, user.customDesignation?.name || 'Employee', [], {}),
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -79,7 +79,9 @@ export const loginUser = async (req: Request, res: Response) => {
         ]
       },
       include: {
-        customDesignation: true
+        customDesignation: true,
+        roles: true,
+        userPermission: true
       }
     });
 
@@ -106,6 +108,8 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 
     const designationName = user.customDesignation?.name || 'Employee';
+    const roles = user.roles || [];
+    const permissions = user.userPermission?.matrix || {};
 
     console.log(`[Auth] ✅ Login success: ${user.email} (Designation: ${designationName})`);
 
@@ -117,7 +121,9 @@ export const loginUser = async (req: Request, res: Response) => {
       department: user.department,
       profileImage: user.profileImage,
       phone: user.phone,
-      token: generateToken(user.id, designationName),
+      roles: roles,
+      permissions: permissions,
+      token: generateToken(user.id, designationName, roles, permissions),
     });
   } catch (error: any) {
     console.error(`[Auth] 🔥 Server Error during login: ${error.message}`);

@@ -588,24 +588,7 @@ export default function TeamUsersPage() {
                           </label>
                         ))
                       ) : (
-                        ['Admin', 'HR', 'Employee'].map(roleName => (
-                          <label key={roleName} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={form.roleIds.includes(roleName)}
-                              onChange={(e) => {
-                                const currentRoles = form.roleIds || [];
-                                if (e.target.checked) {
-                                  setForm({ ...form, roleIds: [...currentRoles, roleName] });
-                                } else {
-                                  setForm({ ...form, roleIds: currentRoles.filter((value) => value !== roleName) });
-                                }
-                              }}
-                              className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
-                            />
-                            <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{roleName}</span>
-                          </label>
-                        ))
+                        <p className="text-sm text-slate-500 dark:text-gray-400">Loading roles...</p>
                       )}
                     </div>
                     {(form.roleIds?.length ?? 0) === 0 && (

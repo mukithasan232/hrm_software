@@ -157,13 +157,8 @@ export async function resolvePunchType(
     return null; // exact duplicate
   }
 
-  // 3. Resolve Final Type: Device Match OR Chronological Toggle
-  let newPunchType = 'CheckIn';
-  if (exactDeviceType) {
-    newPunchType = exactDeviceType;
-  } else {
-    newPunchType = lastKnownType === 'CheckIn' ? 'CheckOut' : 'CheckIn';
-  }
+  // 3. Resolve Final Type: Strict Chronological Toggle (Ignore Device State)
+  let newPunchType = lastKnownType === 'CheckIn' ? 'CheckOut' : 'CheckIn';
 
   // Save back to batch state for next loop iteration
   if (batchState) {

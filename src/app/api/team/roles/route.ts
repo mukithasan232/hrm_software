@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-
+export const revalidate = 0;
 import { corsPreflight } from '@/lib/adapter';
 import { wrapHandler } from '@/lib/adapter';
 import { getRoles, createRole } from '@/controllers/roleController';

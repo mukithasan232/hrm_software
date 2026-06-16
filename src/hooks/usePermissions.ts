@@ -46,7 +46,9 @@ export function usePermissions() {
     const designName = typeof user?.designation === 'string' ? user.designation : (user?.designation as any)?.name || '';
     const userDesig = designName.toLowerCase().trim();
     
-    if (ADMIN_DESIGNATIONS.includes(userDesig)) {
+    const hasAdminRole = user?.roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
+
+    if (ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole) {
       return true;
     }
 

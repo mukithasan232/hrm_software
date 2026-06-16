@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-
+export const revalidate = 0;
 import { wrapHandler, corsPreflight } from '@/lib/adapter';
 import { getEmployees, createEmployee } from '@/controllers/userController';
 
