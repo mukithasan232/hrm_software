@@ -49,7 +49,11 @@ function classifyError(err: any): string {
   } else if (err instanceof Error) {
     errorStr = err.message;
   } else if (err && typeof err === 'object') {
-    errorStr = err.message || err.err?.message || JSON.stringify(err);
+    try {
+      errorStr = err.message || err.err?.message || String(err);
+    } catch {
+      errorStr = 'Object (circular structure)';
+    }
   } else {
     errorStr = String(err);
   }
