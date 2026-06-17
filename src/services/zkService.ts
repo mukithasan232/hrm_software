@@ -340,6 +340,35 @@ export async function processRawDeviceLogs(): Promise<number> {
 }
 
 // ─── Connection Helper ─────────────────────────────────────────────────────────────────
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+async function safeDisconnect(zk: any) {
+  try {
+    if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
+      if (typeof zk.disconnect === 'function') {
+        await zk.disconnect();
+      } else if (typeof zk.free === 'function') {
+        await zk.free();
+      }
+    }
+  } catch (err: any) {
+    if (err.message && err.message.toLowerCase().includes('timeout')) {
+      console.warn('[ZK] Non-fatal timeout during disconnect');
+      try {
+        if (zk.ztcp && zk.ztcp.socket && typeof zk.ztcp.socket.destroy === 'function') {
+          zk.ztcp.socket.destroy();
+        } else if (zk.socket && typeof zk.socket.destroy === 'function') {
+          zk.socket.destroy();
+        }
+      } catch (destroyErr) {
+        // Ignore destroy error
+      }
+    } else {
+      console.error('[ZKService] ❌ Cleanup failed:', err.message);
+    }
+  }
+}
+
 async function connectProperly(zk: any): Promise<void> {
   // Try TCP first
   try {
@@ -612,17 +641,7 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
     console.error(`[ZKService] ❌ ${reason}`);
     throw new Error(reason);
   } finally {
-    try {
-      if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
-        if (typeof zk.disconnect === 'function') {
-          await zk.disconnect();
-        } else if (typeof zk.free === 'function') {
-          await zk.free();
-        }
-      }
-    } catch (err: any) {
-      console.error('[ZKService] ❌ Cleanup failed:', err.message);
-    }
+    await safeDisconnect(zk);
   }
 };
 
@@ -653,17 +672,7 @@ export const getDeviceUsers = async (): Promise<any[]> => {
   } catch (err: any) {
     throw new Error(classifyError(err));
   } finally {
-    try {
-      if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
-        if (typeof zk.disconnect === 'function') {
-          await zk.disconnect();
-        } else if (typeof zk.free === 'function') {
-          await zk.free();
-        }
-      }
-    } catch (err: any) {
-      console.error('[ZKService] ❌ Cleanup failed:', err.message);
-    }
+    await safeDisconnect(zk);
   }
 };
 
@@ -678,17 +687,7 @@ export const pingDevice = async (): Promise<{ reachable: boolean; info?: any; er
   } catch (err: any) {
     return { reachable: false, error: classifyError(err) };
   } finally {
-    try {
-      if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
-        if (typeof zk.disconnect === 'function') {
-          await zk.disconnect();
-        } else if (typeof zk.free === 'function') {
-          await zk.free();
-        }
-      }
-    } catch (err: any) {
-      console.error('[ZKService] ❌ Cleanup failed:', err.message);
-    }
+    await safeDisconnect(zk);
   }
 };
 
@@ -737,17 +736,7 @@ export async function withZKConnection<T>(fn: (zk: any) => Promise<T>): Promise<
 
     return await fn(zk);
   } finally {
-    try {
-      if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
-        if (typeof zk.disconnect === 'function') {
-          await zk.disconnect();
-        } else if (typeof zk.free === 'function') {
-          await zk.free();
-        }
-      }
-    } catch (err: any) {
-      console.error('[ZKService] ❌ Cleanup failed in withZKConnection:', err.message);
-    }
+    await safeDisconnect(zk);
   }
 }
 
@@ -795,6 +784,7 @@ async function syncUserToDevice(employee: EmployeePayload): Promise<SyncResult> 
     try {
       await zk.setUser(enrollNumber, enrollNumber.toString(), safeName, password, role);
       console.log(`[ZKService] User ${safeName} (Enroll: ${enrollNumber}) ${action} on device.`);
+      await delay(1000); // Give the device 1 second to process
     } catch (err: any) {
       console.error(`[ZKService] Failed to set user ${enrollNumber}:`, err);
       throw new Error(`Failed to set user on device: ${err.message || err.toString()}`);
@@ -818,6 +808,7 @@ async function deleteUserFromDevice(enrollNumber: number): Promise<void> {
       // Library method might differ, usually deleteUser takes the ID as string or number
       await zk.deleteUser(enrollNumber);
       console.log(`[ZKService] User ${enrollNumber} deleted from device.`);
+      await delay(1000); // Give the device 1 second to process
     } catch (err: any) {
       console.error(`[ZKService] Failed to delete user ${enrollNumber}:`, err);
       throw new Error(`Failed to delete user on device: ${err.message || err.toString()}`);

@@ -22,7 +22,6 @@ const EMPTY_FORM = {
   department: 'Engineering',
   employeeType: 'IN_HOUSE',
   zktecoId: '',
-  baseSalary: '',
   sendEmail: true,
 };
 
@@ -70,9 +69,6 @@ export default function TeamUsersPage() {
   // ZKTeco & Files
   const [unregisteredUsers, setUnregisteredUsers] = useState<{deviceUserId: number, name: string}[]>([]);
   const [loadingUnregistered, setLoadingUnregistered] = useState(false);
-  const [cvFile, setCvFile] = useState<File | null>(null);
-  const [nidFile, setNidFile] = useState<File | null>(null);
-  const [certFile, setCertFile] = useState<File | null>(null);
 
   const fetchUnregistered = async () => {
     setLoadingUnregistered(true);
@@ -183,7 +179,6 @@ export default function TeamUsersPage() {
       return n > max ? n : max;
     }, 0);
     setForm({ ...EMPTY_FORM, employeeId: `EMP${String(maxId + 1).padStart(3, '0')}` });
-    setCvFile(null); setNidFile(null); setCertFile(null);
     generatePassword();
     setShowModal(true);
   };
@@ -200,7 +195,6 @@ export default function TeamUsersPage() {
       department: u.department || 'Engineering',
       employeeType: u.employeeType || 'IN_HOUSE',
       zktecoId: u.zktecoId?.toString() || '',
-      baseSalary: u.baseSalary?.toString() || '0',
       sendEmail: false, // hidden on edit anyway
     });
     setShowModal(true);
@@ -213,7 +207,6 @@ export default function TeamUsersPage() {
       if (editTarget) {
         const payload = {
           ...form,
-          baseSalary: Number(form.baseSalary) || 0,
           designationId: form.designationId || null,
         };
         const { password, employeeId, sendEmail, roleIds, employeeType, zktecoId, ...updatePayload } = payload as any;
@@ -239,12 +232,8 @@ export default function TeamUsersPage() {
         
         if (form.designationId) formData.append('designationId', form.designationId);
         formData.append('department', form.department);
-        formData.append('baseSalary', form.baseSalary);
         formData.append('employeeType', form.employeeType);
         if (form.zktecoId) formData.append('zktecoId', form.zktecoId);
-        if (cvFile) formData.append('cv', cvFile);
-        if (nidFile) formData.append('nid', nidFile);
-        if (certFile) formData.append('certDoc', certFile);
         formData.append('roles', JSON.stringify(form.roleIds));
 
         const res = await api.post('/employees', formData);
@@ -699,40 +688,6 @@ export default function TeamUsersPage() {
                         )}
                       </div>
 
-                      {/* Base Salary */}
-                      <div className="space-y-1 sm:col-span-2">
-                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Base Salary (per month)</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">৳</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={form.baseSalary}
-                            onChange={e => setForm({ ...form, baseSalary: e.target.value })}
-                            placeholder="65000"
-                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl pl-7 pr-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium"
-                          />
-                        </div>
-                  </div>
-                </div>
-
-                {/* Documents section */}
-                <div>
-                  <h3 className="text-sm font-bold text-slate-700 dark:text-white mb-3 flex items-center gap-2">
-                    <UploadCloud className="w-4 h-4 text-indigo-500" /> Onboarding Documents <span className="text-slate-400 font-normal">(PDF, optional)</span>
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {[
-                      { label: 'CV / Resume', state: cvFile, setter: setCvFile },
-                      { label: 'NID / Passport', state: nidFile, setter: setNidFile },
-                      { label: 'Certificates', state: certFile, setter: setCertFile },
-                    ].map(({ label, state, setter }) => (
-                      <div key={label} className="border-2 border-dashed border-slate-200 dark:border-white/20 rounded-xl p-3 text-center hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer relative">
-                        <input type="file" accept=".pdf" onChange={e => setter(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                        <span className="text-xs font-bold text-slate-500 dark:text-gray-400 block mb-0.5">{label}</span>
-                        <span className="text-[10px] font-medium text-indigo-500 block truncate">{state ? state.name : 'Click to attach'}</span>
-                      </div>
-                    ))}
                   </div>
                 </div>
               </div>

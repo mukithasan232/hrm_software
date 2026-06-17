@@ -129,7 +129,9 @@ export default function ProfilePage() {
       Object.entries(form).forEach(([k, v]) => formData.append(k, v));
       if (avatarFile) formData.append('avatar', avatarFile);
 
-      const res = await api.put('/users/profile/me', formData);
+      const res = await api.put('/users/profile/me', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
       updateUser({
         name: res.data.user.name,
