@@ -49,5 +49,3 @@ const getHardwareUsers = async (req: any, res: any) => {
 };
 
 export const GET = wrapHandler(getHardwareUsers, { protect: true, allowedDesignations: ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Owner'] });
-
-export const GET = wrapHandler(getHardwareUsers, { protect: true, allowedDesignations: ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'Owner'] });
