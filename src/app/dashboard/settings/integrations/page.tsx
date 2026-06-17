@@ -639,12 +639,12 @@ function TemplatesTab() {
               theme: 'dark',
               panels: { tools: { dock: 'right' } }
             },
-            mergeTags: [
-              { name: 'Employee Name', value: '{{name}}' },
-              { name: 'Message Body', value: '{{messageBody}}' },
-              { name: 'Title', value: '{{title}}' },
-              { name: 'Current Year', value: '{{currentYear}}' }
-            ]
+            mergeTags: {
+              name: { name: 'Employee Name', value: '{{name}}' },
+              messageBody: { name: 'Message Body', value: '{{messageBody}}' },
+              title: { name: 'Title', value: '{{title}}' },
+              currentYear: { name: 'Current Year', value: '{{currentYear}}' }
+            }
           }}
         />
       </div>
