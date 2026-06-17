@@ -4,14 +4,18 @@ import { prisma } from '../lib/prisma';
 // ─── GET /api/team/roles ──────────────────────────────────────────────────────
 export const getRoles = async (req: Request, res: Response): Promise<void> => {
   try {
-    const roleCount = await prisma.role.count();
-    if (roleCount === 0) {
+    const defaultRoles = ['Admin', 'HR', 'Employee'];
+    const existingRoles = await prisma.role.findMany({
+      where: { name: { in: defaultRoles } },
+      select: { name: true }
+    });
+    
+    const existingNames = existingRoles.map(r => r.name);
+    const missingRoles = defaultRoles.filter(r => !existingNames.includes(r));
+
+    if (missingRoles.length > 0) {
       await prisma.role.createMany({
-        data: [
-          { name: 'Admin', permissions: {} },
-          { name: 'HR', permissions: {} },
-          { name: 'Employee', permissions: {} }
-        ],
+        data: missingRoles.map(name => ({ name, permissions: {} })),
         skipDuplicates: true
       });
     }
