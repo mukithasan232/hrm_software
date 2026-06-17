@@ -290,26 +290,6 @@ export default function TeamUsersPage() {
     }
   };
 
-  // Add the dummy Checkbox component required by the prompt
-  const Checkbox = ({ label, onCheckedChange }: { label: string, onCheckedChange: (c: boolean) => void }) => {
-    // In order for the checkbox to show correct state, we check if the label's corresponding role ID is in form.roleIds
-    // However, since we just need it to work as instructed, we'll implement it strictly
-    const isChecked = form.roleIds?.includes(
-       roles.find(r => r.name === label)?.id
-    ) || false;
-    
-    return (
-      <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
-        <input
-          type="checkbox"
-          checked={isChecked}
-          onChange={(e) => onCheckedChange(e.target.checked)}
-          className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
-        />
-        <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{label}</span>
-      </label>
-    );
-  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -591,7 +571,15 @@ export default function TeamUsersPage() {
                         <span className="text-sm text-gray-500">Loading roles...</span>
                       ) : (
                         roles.map(role => (
-                          <Checkbox key={role.id} label={role.name} onCheckedChange={(checked) => handleRoleChange(role.id, checked)} />
+                          <label key={role.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={form.roleIds?.includes(role.id) || false}
+                              onChange={(e) => handleRoleChange(role.id, e.target.checked)}
+                              className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
+                            />
+                            <span className="text-sm text-slate-700 dark:text-gray-200 font-medium">{role.name}</span>
+                          </label>
                         ))
                       )}
                     </div>
