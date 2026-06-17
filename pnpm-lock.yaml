@@ -143,6 +143,9 @@ importers:
       react-dom:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
+      react-email-editor:
+        specifier: ^1.8.0
+        version: 1.8.0(react@19.2.4)
       react-hot-toast:
         specifier: ^2.6.0
         version: 2.6.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -945,6 +948,9 @@ packages:
   '@typescript-eslint/visitor-keys@8.59.4':
     resolution: {integrity: sha512-U3gxVaDVnuZKhSspW/MzMxE1kq7zOdc072FcSNoqA1I9p8HyKbBFfEHoWckBAMgNMph4MamwS5iTVzFmrnt8TQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@unlayer/types@1.433.0':
+    resolution: {integrity: sha512-CQONTpsCd+GtUluP8R4AY1nhIKgoH4HUSQZIovmlQVzZnTRpQdWoWIPg219+gPZTAYSkaK7ylZZNJPK/CTnsjA==}
 
   '@unrs/resolver-binding-android-arm-eabi@1.12.2':
     resolution: {integrity: sha512-g5T90pqg1bo/7mytQx6F4iBNC0Wsh9cu+z9veDbFjc7HjpesJFWD7QMS0NGStXM075+7dJPPVvBbpZlnrdpi/w==}
@@ -2831,6 +2837,12 @@ packages:
     peerDependencies:
       react: ^19.2.4
 
+  react-email-editor@1.8.0:
+    resolution: {integrity: sha512-wauG/fES4k3VueIYVvsnxL+6+AAOw8oG3r1QlQclnC2aErpsjJSDmYgQRmDBhkts0QTKJf4uPiXOd3OxPv50OA==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>=15'
+
   react-hot-toast@2.6.0:
     resolution: {integrity: sha512-bH+2EBMZ4sdyou/DPrfgIouFpcRLCJ+HoCA32UoAYHn6T3Ur5yfcDCeSr5mwldl6pFOsiocmrXMuoCJ1vV8bWg==}
     engines: {node: '>=10'}
@@ -4162,6 +4174,8 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.59.4
       eslint-visitor-keys: 5.0.1
+
+  '@unlayer/types@1.433.0': {}
 
   '@unrs/resolver-binding-android-arm-eabi@1.12.2':
     optional: true
@@ -6194,6 +6208,11 @@ snapshots:
     dependencies:
       react: 19.2.4
       scheduler: 0.27.0
+
+  react-email-editor@1.8.0(react@19.2.4):
+    dependencies:
+      '@unlayer/types': 1.433.0
+      react: 19.2.4
 
   react-hot-toast@2.6.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
