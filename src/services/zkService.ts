@@ -42,13 +42,25 @@ export const parseDeviceTime = (deviceDateInput: any): Date => {
 // ─── Error Classification ──────────────────────────────────────────────────────
 function classifyError(err: any): string {
   console.error('[ZKService] Raw Error:', err);
-  const errorStr: string = typeof err === 'string' ? err : (err?.message || err?.toString() || '');
+  
+  let errorStr = '';
+  if (typeof err === 'string') {
+    errorStr = err;
+  } else if (err instanceof Error) {
+    errorStr = err.message;
+  } else if (err && typeof err === 'object') {
+    errorStr = err.message || err.err?.message || JSON.stringify(err);
+  } else {
+    errorStr = String(err);
+  }
+
   const msg = errorStr.toLowerCase();
   if (msg.includes('econnrefused')) return 'Connection refused — device offline or wrong port.';
   if (msg.includes('etimedout') || msg.includes('timeout')) return 'Connection timed out — device unreachable on the network.';
   if (msg.includes('enotfound')) return 'Host not found — check the IP address.';
   if (msg.includes('subarray') || msg.includes('null')) return 'Device returned an unreadable packet. Check firmware compatibility.';
-  return errorStr || 'Unknown ZKTeco device error.';
+  
+  return errorStr === '[object Object]' ? 'Unknown ZKTeco device error.' : (errorStr || 'Unknown ZKTeco device error.');
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
