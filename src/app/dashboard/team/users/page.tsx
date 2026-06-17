@@ -651,22 +651,23 @@ export default function TeamUsersPage() {
                           <div className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-500 flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4 animate-spin"/> Fetching...</div>
                         ) : (
                           <div className="relative">
-                            <select
+                            <input
+                              type="number"
+                              min="1"
+                              max="32767"
                               value={form.zktecoId}
                               onChange={e => setForm({ ...form, zktecoId: e.target.value })}
-                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
-                            >
-                              <option value="" className="bg-white dark:bg-slate-900">— Select Device User —</option>
-                              {(unregisteredUsers || []).map(u => {
-                                const rawId = (u as any).userId || (u as any).uid || u.deviceUserId;
-                                return (
-                                  <option key={rawId} value={rawId ? rawId.toString() : ''} className="bg-white dark:bg-slate-900">
-                                    [Device ID: {rawId}] - {u.name || 'Unknown'}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                              list="zktecoUsersList"
+                              placeholder="e.g. 1 (Manual entry or Fetch)"
+                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium"
+                            />
+                            <datalist id="zktecoUsersList">
+                              {(unregisteredUsers || []).map((u: any) => (
+                                <option key={u.deviceUserId || u.userId} value={u.deviceUserId || u.userId}>
+                                  {u.name}
+                                </option>
+                              ))}
+                            </datalist>
                           </div>
                         )}
                       </div>

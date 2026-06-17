@@ -10,8 +10,17 @@ import api from '@/services/api';
 import { useTranslation } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 
-
+const EmailEditor = dynamic(() => import('react-email-editor').then((mod) => mod.EmailEditor), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[700px] w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl animate-pulse">
+      <div className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+      <span className="text-slate-400 font-medium tracking-wide">Loading Drag & Drop Editor...</span>
+    </div>
+  )
+});
 
 // ─── Shared input / label styles ─────────────────────────────────────────────
 const inputCls =
@@ -530,141 +539,114 @@ function EmailTab() {
 }
 
 function TemplatesTab() {
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [selectedType, setSelectedType] = useState('WELCOME_EMAIL');
-  
-  const [form, setForm] = useState({
-    subject: '',
-    body: ''
-  });
+  const [subject, setSubject] = useState('Welcome to the Team!');
+  const [isSaving, setIsSaving] = useState(false);
+  const editorRef = React.useRef<any>(null);
 
   const TEMPLATE_TYPES = [
-    { value: 'WELCOME_EMAIL', label: 'Welcome Email', vars: '{{name}}, {{email}}, {{password}}, {{designation}}, {{url}}, {{deviceId}}, {{currentYear}}' },
-    { value: 'LEAVE_UPDATE', label: 'Leave Update Email', vars: '{{name}}, {{leaveType}}, {{status}}, {{url}}, {{color}}, {{currentYear}}' },
-    { value: 'HR_NOTIFICATION', label: 'HR Notification Email', vars: '{{title}}, {{messageBody}}, {{currentYear}}' }
+    { value: 'WELCOME_EMAIL', label: 'Welcome Email' },
+    { value: 'LEAVE_UPDATE', label: 'Leave Update Email' },
+    { value: 'HR_NOTIFICATION', label: 'HR Notification Email' }
   ];
 
   useEffect(() => {
-    fetchTemplates();
-  }, []);
-
-  const fetchTemplates = async () => {
-    setLoading(true);
-    // Safety net: force-stop loading after 8 seconds regardless
-    const safetyTimer = setTimeout(() => setLoading(false), 8000);
-    try {
-      const res = await api.get('/settings/email/templates', { timeout: 7000 });
-      const data = Array.isArray(res.data) ? res.data : [];
-      setTemplates(data);
-      const current = data.find((t: any) => t.type === selectedType);
-      if (current) {
-        setForm({ subject: current.subject, body: current.body });
-      } else {
-        setForm({ subject: '', body: '' });
+    const fetchTemplate = async () => {
+      try {
+        const res = await api.get(`/settings/email/templates?type=${selectedType}`);
+        const data = Array.isArray(res.data) ? res.data.find((t: any) => t.type === selectedType) : null;
+        
+        if (data) {
+          setSubject(data.subject || '');
+          if (data.designJson && editorRef.current?.editor) {
+            editorRef.current.editor.loadDesign(data.designJson);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load template', err);
       }
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e.response?.data?.message || e.message || 'Failed to fetch templates');
-    } finally {
-      clearTimeout(safetyTimer);
-      setLoading(false);
-    }
+    };
+    fetchTemplate();
+  }, [selectedType]);
+
+  const handleSave = () => {
+    if (!editorRef.current?.editor) return;
+    setIsSaving(true);
+
+    editorRef.current.editor.exportHtml(async (data: any) => {
+      const { design, html } = data;
+
+      try {
+        await api.post('/settings/email/templates', {
+          type: selectedType,
+          subject,
+          body: html,
+          designJson: design
+        });
+        toast.success('Template saved successfully!');
+      } catch (error) {
+        console.error('Error saving:', error);
+        toast.error('Failed to save template.');
+      } finally {
+        setIsSaving(false);
+      }
+    });
   };
-
-  useEffect(() => {
-    const current = templates.find((t: any) => t.type === selectedType);
-    if (current) {
-      setForm({ subject: current.subject, body: current.body });
-    } else {
-      setForm({ subject: '', body: '' });
-    }
-  }, [selectedType, templates]);
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await api.post('/settings/email/templates', {
-        type: selectedType,
-        subject: form.subject,
-        body: form.body
-      });
-      toast.success('Template saved successfully!');
-      fetchTemplates();
-    } catch (e: any) {
-      toast.error('Failed to save template');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) return <div className="p-8 text-center animate-pulse">Loading templates...</div>;
-
-  const currentTypeInfo = TEMPLATE_TYPES.find(t => t.value === selectedType);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
-        <p className="text-slate-600 dark:text-gray-400 mb-6">
-          Customize automated system emails. If left blank or unsaved, the system will use a default template.
-        </p>
-
-        <form onSubmit={handleSave} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">Select Template Type</label>
-            <select
-              value={selectedType}
-              onChange={e => setSelectedType(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500"
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-6 rounded-2xl">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Template Type</label>
+            <select 
+              value={selectedType} 
+              onChange={(e) => setSelectedType(e.target.value)}
+              className={inputCls}
             >
               {TEMPLATE_TYPES.map(t => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
           </div>
-
-          <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
-            <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium mb-1">Available Variables for this template:</p>
-            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-mono">{currentTypeInfo?.vars}</p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">Email Subject</label>
+          <div>
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Email Subject</label>
             <input 
               type="text" 
-              required 
-              value={form.subject}
-              onChange={e => setForm({...form, subject: e.target.value})}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500" 
-              placeholder="e.g. Welcome to {{currentYear}}!" 
+              value={subject} 
+              onChange={(e) => setSubject(e.target.value)}
+              className={inputCls}
+              placeholder="e.g. Welcome to the company!"
             />
           </div>
+        </div>
+        <button 
+          onClick={handleSave} 
+          disabled={isSaving}
+          className="bg-brand-primary hover:bg-brand-primary/90 disabled:opacity-50 text-white font-medium py-2.5 px-6 rounded-xl transition-colors whitespace-nowrap shadow-lg shadow-brand-primary/20 flex items-center gap-2"
+        >
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {isSaving ? 'Saving...' : 'Save Template'}
+        </button>
+      </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">Email HTML Body</label>
-            <textarea 
-              required 
-              rows={12}
-              value={form.body}
-              onChange={e => setForm({...form, body: e.target.value})}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-sm" 
-              placeholder="<div>Hi {{name}}, ...</div>" 
-            />
-          </div>
-
-          <div className="pt-4 border-t border-slate-200 dark:border-white/10">
-            <button 
-              type="submit" 
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-all disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'Saving...' : 'Save Template'}
-            </button>
-          </div>
-        </form>
+      <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl h-[750px] bg-slate-50 dark:bg-slate-900">
+        <EmailEditor
+          ref={editorRef}
+          options={{
+            projectId: 0,
+            appearance: {
+              theme: 'dark',
+              panels: { tools: { dock: 'right' } }
+            },
+            mergeTags: [
+              { name: 'Employee Name', value: '{{name}}' },
+              { name: 'Message Body', value: '{{messageBody}}' },
+              { name: 'Title', value: '{{title}}' },
+              { name: 'Current Year', value: '{{currentYear}}' }
+            ]
+          }}
+        />
       </div>
     </div>
   );

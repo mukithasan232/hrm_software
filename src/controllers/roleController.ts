@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 // ─── GET /api/team/roles ──────────────────────────────────────────────────────
 export const getRoles = async (req: Request, res: Response): Promise<void> => {
   try {
-    const defaultRoles = ['Admin', 'HR', 'Employee'];
+    const defaultRoles = ['Admin', 'Employee'];
     const existingRoles = await prisma.role.findMany({
       where: { name: { in: defaultRoles } },
       select: { name: true }

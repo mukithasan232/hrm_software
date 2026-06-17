@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { type, subject, body } = await req.json();
+    const { type, subject, body, designJson } = await req.json();
 
     if (!type || !subject || !body) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400, headers: getCorsHeaders() });
@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
     const template = await Promise.race([
       (prisma as any).emailTemplate.upsert({
         where: { type },
-        update: { subject, body },
-        create: { type, subject, body },
+        update: { subject, body, designJson: designJson || null },
+        create: { type, subject, body, designJson: designJson || null },
       }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('DB query timed out after 5s')), 5000)
