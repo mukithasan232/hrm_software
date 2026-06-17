@@ -290,7 +290,6 @@ model PasswordResetToken {
   email   String
   token   String   @unique
   expires DateTime
-  
+
   @@unique([email, token])
 }
-
