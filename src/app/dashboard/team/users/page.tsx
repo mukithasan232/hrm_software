@@ -688,7 +688,6 @@ export default function TeamUsersPage() {
                         )}
                       </div>
 
-                  </div>
                 </div>
               </div>
 
