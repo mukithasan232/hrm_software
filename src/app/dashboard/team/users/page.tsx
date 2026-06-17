@@ -174,11 +174,7 @@ export default function TeamUsersPage() {
   // ── Modal helpers ──
   const openCreate = () => {
     setEditTarget(null);
-    const maxId = (users || []).reduce((max, u) => {
-      const n = parseInt(u.employeeId?.replace(/\D/g, '') || '0');
-      return n > max ? n : max;
-    }, 0);
-    setForm({ ...EMPTY_FORM, employeeId: `EMP${String(maxId + 1).padStart(3, '0')}` });
+    setForm({ ...EMPTY_FORM, employeeId: '' });
     generatePassword();
     setShowModal(true);
   };
@@ -492,19 +488,18 @@ export default function TeamUsersPage() {
               <div className="overflow-y-auto flex-1 p-6 space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-                  {/* Employee ID */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Employee ID *</label>
-                    <input
-                      type="text"
-                      required
-                      value={form.employeeId}
-                      onChange={e => setForm({ ...form, employeeId: e.target.value })}
-                      disabled={!!editTarget}
-                      placeholder="EMP001"
-                      className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                    />
-                  </div>
+                  {/* Employee ID - Only show on edit */}
+                  {editTarget && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Employee ID</label>
+                      <input
+                        type="text"
+                        value={form.employeeId}
+                        disabled
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      />
+                    </div>
+                  )}
 
 
                   {/* Full Name */}

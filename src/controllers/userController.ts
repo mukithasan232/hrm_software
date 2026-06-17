@@ -265,16 +265,22 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
 export const createEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId, name, email, password, designationId, department, baseSalary, sendEmail, employeeType, roles } = req.body as any;
+    const { name, email, password, designationId, department, baseSalary, sendEmail, employeeType, roles } = req.body as any;
+
+    // Auto-generate Employee ID sequentially
+    const allUsers = await prisma.user.findMany({ select: { employeeId: true } });
+    const maxId = allUsers.reduce((max, u) => {
+      const n = parseInt(u.employeeId?.replace(/\\D/g, '') || '0', 10);
+      return n > max ? n : max;
+    }, 0);
+    const generatedEmployeeId = `EMP${String(maxId + 1).padStart(3, '0')}`;
 
     const exists = await prisma.user.findFirst({
-      where: {
-        OR: [{ email }, { employeeId }]
-      }
+      where: { email }
     });
 
     if (exists) {
-      res.status(400).json({ message: 'An employee with this email or Employee ID already exists.' });
+      res.status(400).json({ message: 'An employee with this email already exists.' });
       return;
     }
 
@@ -304,7 +310,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
 
     const user = await prisma.user.create({
       data: {
-        employeeId,
+        employeeId: generatedEmployeeId,
         name,
         email,
         password: hashed,
@@ -324,7 +330,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
 
     if (sendEmail) {
       try {
-        await sendWelcomeEmail(email, name, plainPassword, user.customDesignation?.name || 'Employee');
+        await sendWelcomeEmail(email, name, plainPassword, user.customDesignation?.name || 'Employee', undefined, undefined, generatedEmployeeId);
       } catch (emailError: any) {
         console.error('[createEmployee] Failed to send welcome email:', emailError.message);
       }
