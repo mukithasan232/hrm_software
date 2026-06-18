@@ -11,10 +11,12 @@ import toast from 'react-hot-toast';
 import { useTranslation } from '@/context/LanguageContext';
 import { toBDDisplay, getBDToday } from '@/lib/dateUtils';
 import { io as socketIO } from 'socket.io-client';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function DashboardOverview() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { can } = usePermissions();
   const [stats, setStats] = useState({
     employees: 0,
     pendingLeaves: 0,
@@ -180,47 +182,53 @@ export default function DashboardOverview() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md">
-          <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{isAdmin ? t('presentNow') : 'Status Today'}</p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className={`h-2 w-2 rounded-full ${stats.activeNow > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
-              <p className="text-3xl font-bold text-slate-800 dark:text-white">
-                {loading ? '-' : (isAdmin ? stats.activeNow : (stats.activeNow > 0 ? 'Present' : 'Absent'))}
-              </p>
+        {can('Attendance', 'canRead') && (
+          <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md">
+            <div>
+              <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{isAdmin ? t('presentNow') : 'Status Today'}</p>
+              <div className="flex items-center gap-2 mt-2">
+                <span className={`h-2 w-2 rounded-full ${stats.activeNow > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
+                <p className="text-3xl font-bold text-slate-800 dark:text-white">
+                  {loading ? '-' : (isAdmin ? stats.activeNow : (stats.activeNow > 0 ? 'Present' : 'Absent'))}
+                </p>
+              </div>
+            </div>
+            <div className="p-4 bg-emerald-500/20 rounded-xl text-emerald-500 dark:text-emerald-400">
+              <Clock className="w-6 h-6" />
             </div>
           </div>
-          <div className="p-4 bg-emerald-500/20 rounded-xl text-emerald-500 dark:text-emerald-400">
-            <Clock className="w-6 h-6" />
-          </div>
-        </div>
+        )}
 
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-orange-500/50 dark:hover:border-orange-500/50 transition-all shadow-sm dark:shadow-md">
-          <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{isAdmin ? 'Total Absent' : 'Absent Days'}</p>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.totalAbsent}</p>
+        {can('Attendance', 'canRead') && (
+          <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-orange-500/50 dark:hover:border-orange-500/50 transition-all shadow-sm dark:shadow-md">
+            <div>
+              <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{isAdmin ? 'Total Absent' : 'Absent Days'}</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.totalAbsent}</p>
+            </div>
+            <div className="p-4 bg-orange-500/20 rounded-xl text-orange-500 dark:text-orange-400">
+              <UserMinus className="w-6 h-6" />
+            </div>
           </div>
-          <div className="p-4 bg-orange-500/20 rounded-xl text-orange-500 dark:text-orange-400">
-            <UserMinus className="w-6 h-6" />
-          </div>
-        </div>
+        )}
 
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-purple-500/50 dark:hover:border-purple-500/50 transition-all shadow-sm dark:shadow-md">
-          <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{t('pendingLeaves')}</p>
-            <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.pendingLeaves}</p>
+        {can('Leaves', 'canRead') && (
+          <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-purple-500/50 dark:hover:border-purple-500/50 transition-all shadow-sm dark:shadow-md">
+            <div>
+              <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{t('pendingLeaves')}</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.pendingLeaves}</p>
+            </div>
+            <div className="p-4 bg-purple-500/20 rounded-xl text-purple-500 dark:text-purple-400">
+              <CalendarRange className="w-6 h-6" />
+            </div>
           </div>
-          <div className="p-4 bg-purple-500/20 rounded-xl text-purple-500 dark:text-purple-400">
-            <CalendarRange className="w-6 h-6" />
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           {/* Notice Board */}
-      {announcements.length > 0 && (
+      {can('Announcements', 'canRead') && announcements.length > 0 && (
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-indigo-200 dark:border-indigo-500/20 rounded-3xl p-6 shadow-md dark:shadow-2xl">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -272,8 +280,9 @@ export default function DashboardOverview() {
       )}
 
       {/* Live Activity Feed */}
-      <div className="w-full">
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl flex flex-col">
+      {can('Attendance', 'canRead') && (
+        <div className="w-full">
+          <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -353,40 +362,42 @@ export default function DashboardOverview() {
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Right Column: Analytics */}
       <div className="lg:col-span-1 space-y-6">
         {/* Weekly Attendance Chart */}
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-brand-primary/20 rounded-lg text-brand-primary">
-              <BarChart3 className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white">{isAdmin ? 'Weekly Attendance' : 'My Weekly Attendance'}</h3>
-          </div>
-          <div className="h-64 w-full">
-            {loading ? (
-              <div className="h-full flex items-center justify-center">
-                <RefreshCw className="w-6 h-6 text-brand-primary animate-spin" />
+        {can('Attendance', 'canRead') && (
+          <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-brand-primary/20 rounded-lg text-brand-primary">
+                <BarChart3 className="w-5 h-5" />
               </div>
-            ) : weeklyAnalytics.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-slate-400">No data available</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyAnalytics} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" opacity={0.2} vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" axisLine={false} tickLine={false} />
-                  <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="present" name="Present" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="absent" name="Absent" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">{isAdmin ? 'Weekly Attendance' : 'My Weekly Attendance'}</h3>
+            </div>
+            <div className="h-64 w-full">
+              {loading ? (
+                <div className="h-full flex items-center justify-center">
+                  <RefreshCw className="w-6 h-6 text-brand-primary animate-spin" />
+                </div>
+              ) : weeklyAnalytics.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-slate-400">No data available</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyAnalytics} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" opacity={0.2} vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" axisLine={false} tickLine={false} />
+                    <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                    <Bar dataKey="present" name="Present" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar dataKey="absent" name="Absent" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Department Distribution */}
         {isAdmin && (

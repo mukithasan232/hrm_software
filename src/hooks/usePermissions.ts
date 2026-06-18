@@ -27,9 +27,8 @@ export function usePermissions() {
       return true;
     }
 
-    // Rely exclusively on the Role permission matrix (RBAC)
+    // Rely exclusively on the Role permission matrix (RBAC) (legacy fallback)
     if (user?.roles && user.roles.length > 0) {
-      // If ANY role grants the permission, return true (additive)
       for (const role of user.roles) {
         if (role?.permissions && role.permissions[moduleName]) {
           if (role.permissions[moduleName][action] === true) {
@@ -37,6 +36,24 @@ export function usePermissions() {
           }
         }
       }
+    }
+
+    // 1. Check user.permissions (which contains merged Designation + Roles + UserOverrides)
+    if (user?.permissions && user.permissions[moduleName]) {
+      const modPerms = user.permissions[moduleName];
+      
+      const checkValue = (val: any) => {
+        if (val === true) return true;
+        if (typeof val === 'string' && val.toLowerCase() !== 'no' && val.toLowerCase() !== 'not-set' && val.toLowerCase() !== 'not set') {
+          return true;
+        }
+        return false;
+      };
+
+      if (action === 'canRead' && (checkValue(modPerms.Read) || checkValue(modPerms.Access) || checkValue(modPerms.canRead))) return true;
+      if (action === 'canCreate' && (checkValue(modPerms.Create) || checkValue(modPerms.canCreate))) return true;
+      if (action === 'canEdit' && (checkValue(modPerms.Edit) || checkValue(modPerms.canEdit))) return true;
+      if (action === 'canDelete' && (checkValue(modPerms.Delete) || checkValue(modPerms.canDelete))) return true;
     }
 
     return false;
