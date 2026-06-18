@@ -7,14 +7,6 @@ module.exports = {
             env: {
                 NODE_ENV: "production",
             }
-        },
-        {
-            name: "zkteco-worker",
-            script: "./worker.js",
-            restart_delay: 5000,
-            env: {
-                NODE_ENV: "production",
-            }
         }
     ]
 };
