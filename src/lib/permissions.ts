@@ -59,11 +59,20 @@ export async function hasPermission(
 
   if (!mergedPerms[moduleName]) return false;
 
-  const val = mergedPerms[moduleName][jsonAction] || mergedPerms[moduleName][action];
-  if (val === true) return true;
-  if (typeof val === 'string' && val.toLowerCase() !== 'no' && val.toLowerCase() !== 'not set' && val.toLowerCase() !== 'not-set') {
-    return true;
-  }
+  const modPerms = mergedPerms[moduleName];
+
+  const checkValue = (val: any) => {
+    if (val === true) return true;
+    if (typeof val === 'string' && val.toLowerCase() !== 'no' && val.toLowerCase() !== 'not set' && val.toLowerCase() !== 'not-set') {
+      return true;
+    }
+    return false;
+  };
+
+  if (action === 'canRead' && (checkValue(modPerms.Read) || checkValue(modPerms.Access) || checkValue(modPerms.canRead))) return true;
+  if (action === 'canCreate' && (checkValue(modPerms.Create) || checkValue(modPerms.canCreate))) return true;
+  if (action === 'canEdit' && (checkValue(modPerms.Edit) || checkValue(modPerms.canEdit))) return true;
+  if (action === 'canDelete' && (checkValue(modPerms.Delete) || checkValue(modPerms.canDelete))) return true;
 
   return false;
 }
