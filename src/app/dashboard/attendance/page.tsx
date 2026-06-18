@@ -67,8 +67,8 @@ export default function AttendancePage() {
       setCheckOutCount(data?.checkOutCount ?? 0);
       setManualCount(data?.manualCount ?? 0);
       setAbsentCount(data?.absentCount ?? 0);
-    } catch {
-      toast.error('Failed to load attendance logs');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.message || 'Failed to load attendance logs');
     } finally {
       setLoading(false);
     }
