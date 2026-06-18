@@ -109,7 +109,30 @@ export const loginUser = async (req: Request, res: Response) => {
 
     const designationName = user.customDesignation?.name || 'Employee';
     const roles = user.roles || [];
-    const permissions = user.userPermission?.matrix || {};
+    
+    // Merge all permission sources: Designation -> Roles -> UserOverrides
+    let permissions = {};
+    if (user.customDesignation?.permissions) {
+      const dPerms = typeof user.customDesignation.permissions === 'string' 
+        ? JSON.parse(user.customDesignation.permissions) 
+        : user.customDesignation.permissions;
+      permissions = { ...permissions, ...dPerms };
+    }
+    
+    roles.forEach((r: any) => {
+      if (r.permissions) {
+        const rPerms = typeof r.permissions === 'string' ? JSON.parse(r.permissions) : r.permissions;
+        permissions = { ...permissions, ...rPerms };
+      }
+    });
+
+    if (user.userPermission?.matrix) {
+      const uPerms = typeof user.userPermission.matrix === 'string'
+        ? JSON.parse(user.userPermission.matrix)
+        : user.userPermission.matrix;
+      // User specific permissions override designation/role permissions
+      permissions = { ...permissions, ...uPerms };
+    }
 
     console.log(`[Auth] ✅ Login success: ${user.email} (Designation: ${designationName})`);
 
