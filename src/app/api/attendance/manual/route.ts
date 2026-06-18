@@ -5,5 +5,5 @@ import { createManualLog } from '@/controllers/attendanceController';
 
 export const POST = wrapHandler(createManualLog, {
   protect: true,
-  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'Employee']
+  requiredPermissions: [{ moduleName: 'Attendance', action: 'canCreate' }]
 });

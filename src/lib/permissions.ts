@@ -14,12 +14,14 @@ export async function hasPermission(
 
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
-    include: { roles: true } as any
+    include: { 
+      roles: true,
+      customDesignation: true,
+      userPermission: true
+    } as any
   });
 
-  if (!dbUser || !(dbUser as any).roles || (dbUser as any).roles.length === 0) {
-    return false;
-  }
+  if (!dbUser) return false;
 
   const actionMap: Record<string, string> = {
     canRead: 'Read',
@@ -29,13 +31,39 @@ export async function hasPermission(
   };
   const jsonAction = actionMap[action] || action;
 
-  // Logical OR across all roles
-  return (dbUser as any).roles.some((role: any) => {
-    const perms = typeof role.permissions === 'string' ? JSON.parse(role.permissions) : role.permissions;
-    if (!perms || !perms[moduleName]) return false;
-    
-    const val = perms[moduleName][jsonAction];
-    // Access is granted if it's not explicitly 'No' or 'Not Set'
-    return val && val !== 'No' && val !== 'Not Set';
-  });
+  // Merge permissions from Designation -> Roles -> UserOverrides
+  let mergedPerms: any = {};
+  
+  if ((dbUser as any).customDesignation?.permissions) {
+    const dPerms = typeof (dbUser as any).customDesignation.permissions === 'string' 
+      ? JSON.parse((dbUser as any).customDesignation.permissions) 
+      : (dbUser as any).customDesignation.permissions;
+    mergedPerms = { ...mergedPerms, ...dPerms };
+  }
+
+  if ((dbUser as any).roles && (dbUser as any).roles.length > 0) {
+    (dbUser as any).roles.forEach((r: any) => {
+      if (r.permissions) {
+        const rPerms = typeof r.permissions === 'string' ? JSON.parse(r.permissions) : r.permissions;
+        mergedPerms = { ...mergedPerms, ...rPerms };
+      }
+    });
+  }
+
+  if ((dbUser as any).userPermission?.matrix) {
+    const uPerms = typeof (dbUser as any).userPermission.matrix === 'string'
+      ? JSON.parse((dbUser as any).userPermission.matrix)
+      : (dbUser as any).userPermission.matrix;
+    mergedPerms = { ...mergedPerms, ...uPerms };
+  }
+
+  if (!mergedPerms[moduleName]) return false;
+
+  const val = mergedPerms[moduleName][jsonAction] || mergedPerms[moduleName][action];
+  if (val === true) return true;
+  if (typeof val === 'string' && val.toLowerCase() !== 'no' && val.toLowerCase() !== 'not set' && val.toLowerCase() !== 'not-set') {
+    return true;
+  }
+
+  return false;
 }

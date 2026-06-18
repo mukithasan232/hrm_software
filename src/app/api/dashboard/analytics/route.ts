@@ -68,5 +68,5 @@ const getAnalytics = async (req: any, res: any) => {
 
 export const GET = wrapHandler(getAnalytics, {
   protect: true,
-  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'Owner', 'Manager', 'Employee']
+  requiredPermissions: [{ moduleName: 'Attendance', action: 'canRead' }]
 });

@@ -12,7 +12,7 @@ export const POST = wrapHandler(createAnnouncement, {
 // All authenticated users can fetch their announcements
 export const GET = wrapHandler(getAnnouncements, {
   protect: true,
-  allowedDesignations: ['Employee', 'HRM Manager', 'Stakeholder', 'Admin', 'Super Admin', 'System Administrator']
+  requiredPermissions: [{ moduleName: 'Announcements', action: 'canRead' }]
 });
 
 // Admins can clear all announcements

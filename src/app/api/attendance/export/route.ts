@@ -6,5 +6,5 @@ import { exportAttendanceLogs } from '@/controllers/attendanceController';
 
 export const GET = wrapHandler(exportAttendanceLogs, {
   protect: true,
-  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'Stakeholder', 'Employee']
+  requiredPermissions: [{ moduleName: 'Attendance', action: 'canRead' }]
 });
