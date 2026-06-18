@@ -52,7 +52,11 @@ export default function DashboardOverview() {
       }, {});
       setDepartmentData(Object.keys(deptCounts).map(key => ({ name: key, value: deptCounts[key] })));
 
-      const employeeCount = usersRes.data.totalCount || usersRes.data.data?.length || usersRes.data.length || 0;
+      const isAdminStatus = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(
+        (user as any)?.designation || ''
+      );
+
+      const employeeCount = isAdminStatus ? (usersRes.data.totalCount || usersRes.data.data?.length || usersRes.data.length || 0) : 1;
       const presentCount = presenceRes.data.activeNow || 0;
 
       setStats({
@@ -173,10 +177,12 @@ export default function DashboardOverview() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{t('presentNow')}</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{isAdmin ? t('presentNow') : 'Status Today'}</p>
             <div className="flex items-center gap-2 mt-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <p className="text-3xl font-bold text-slate-800 dark:text-white">{loading ? '-' : stats.activeNow}</p>
+              <span className={`h-2 w-2 rounded-full ${stats.activeNow > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">
+                {loading ? '-' : (isAdmin ? stats.activeNow : (stats.activeNow > 0 ? 'Present' : 'Absent'))}
+              </p>
             </div>
           </div>
           <div className="p-4 bg-emerald-500/20 rounded-xl text-emerald-500 dark:text-emerald-400">
@@ -186,7 +192,7 @@ export default function DashboardOverview() {
 
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between hover:border-orange-500/50 dark:hover:border-orange-500/50 transition-all shadow-sm dark:shadow-md">
           <div>
-            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">Total Absent</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">{isAdmin ? 'Total Absent' : 'Absent Days'}</p>
             <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{loading ? '-' : stats.totalAbsent}</p>
           </div>
           <div className="p-4 bg-orange-500/20 rounded-xl text-orange-500 dark:text-orange-400">
@@ -266,7 +272,7 @@ export default function DashboardOverview() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              {t('liveActivity')}
+              {isAdmin ? t('liveActivity') : 'My Punches'}
             </h3>
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
               <div className="flex items-center bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 transition-all focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 w-full sm:w-auto">
@@ -352,7 +358,7 @@ export default function DashboardOverview() {
             <div className="p-2 bg-brand-primary/20 rounded-lg text-brand-primary">
               <BarChart3 className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Weekly Attendance</h3>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">{isAdmin ? 'Weekly Attendance' : 'My Weekly Attendance'}</h3>
           </div>
           <div className="h-64 w-full">
             {loading ? (
@@ -378,51 +384,53 @@ export default function DashboardOverview() {
         </div>
 
         {/* Department Distribution */}
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500">
-              <PieChartIcon className="w-5 h-5" />
+        {isAdmin && (
+          <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500">
+                <PieChartIcon className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Department Overview</h3>
             </div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Department Overview</h3>
+            <div className="h-64 w-full relative">
+              {loading ? (
+                <div className="h-full flex items-center justify-center">
+                  <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
+                </div>
+              ) : departmentData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-slate-400">No data available</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={departmentData}
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {departmentData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
+                    />
+                    <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+              {!loading && departmentData.length > 0 && (
+                <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none pb-4">
+                  <span className="text-3xl font-bold text-slate-800 dark:text-white">{stats.employees}</span>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Total</span>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="h-64 w-full relative">
-            {loading ? (
-              <div className="h-full flex items-center justify-center">
-                <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
-              </div>
-            ) : departmentData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-slate-400">No data available</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={departmentData}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {departmentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
-                  />
-                  <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-            {!loading && departmentData.length > 0 && (
-              <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none pb-4">
-                <span className="text-3xl font-bold text-slate-800 dark:text-white">{stats.employees}</span>
-                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Total</span>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
       
       </div>

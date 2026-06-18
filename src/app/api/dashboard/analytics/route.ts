@@ -9,12 +9,19 @@ const BD_TZ = 'Asia/Dhaka';
 
 const getAnalytics = async (req: any, res: any) => {
   try {
-    const totalEmployees = await prisma.user.count({
-      where: {
-        isActive: true,
-        userType: 'Employee'
-      }
-    });
+    const user = (req as any).user;
+    const userRole = user?.designation || '';
+    const isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'HR'].includes(userRole);
+
+    let totalEmployees = 1;
+    if (isAdmin) {
+      totalEmployees = await prisma.user.count({
+        where: {
+          isActive: true,
+          userType: 'Employee'
+        }
+      });
+    }
 
     const today = new Date();
     const analytics = [];
@@ -26,11 +33,17 @@ const getAnalytics = async (req: any, res: any) => {
       const startUTC = new Date(`${dateStr}T00:00:00+06:00`);
       const endUTC = new Date(`${dateStr}T23:59:59.999+06:00`);
 
+      const whereClause: any = {
+        timestamp: { gte: startUTC, lte: endUTC },
+        user: { employeeId: { not: 'UNMAPPED_FALLBACK' } }
+      };
+
+      if (!isAdmin && user?.id) {
+        whereClause.employeeId = user.id;
+      }
+
       const presentRecords = await prisma.attendanceLog.findMany({
-        where: {
-          timestamp: { gte: startUTC, lte: endUTC },
-          user: { employeeId: { not: 'UNMAPPED_FALLBACK' } }
-        },
+        where: whereClause,
         distinct: ['employeeId'],
         select: { employeeId: true }
       });

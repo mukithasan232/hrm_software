@@ -145,17 +145,23 @@ export const exportAttendanceLogs = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Get active presence stats for dashboard
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const userRole = user?.designation || '';
+    const isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'HR'].includes(userRole);
+
     const queryDate = req.query.date as string | undefined;
     const { start, end } = queryDate ? getDayBoundaries(queryDate) : getTodayBoundaries();
 
-    // 1. Fetch all attendance logs for the period, ordered by latest first
+    const whereClause: any = { timestamp: { gte: start, lte: end } };
+    if (!isAdmin && user?.id) {
+      whereClause.employeeId = user.id;
+    }
+
+    // 1. Fetch attendance logs for the period, ordered by latest first
     const todaysLogs = await prisma.attendanceLog.findMany({
-      where: { 
-        timestamp: { gte: start, lte: end }
-      },
+      where: whereClause,
       include: { user: { select: { name: true } } },
       orderBy: { timestamp: 'desc' }
     });
