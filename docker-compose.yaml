@@ -1,6 +1,0 @@
-services:
-  web:
-    build: .
-    network_mode: "host"
-    environment:
-      - PORT=3000
