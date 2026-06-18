@@ -67,14 +67,15 @@ async function seedAdmins() {
 
     const emptyDocuments: Prisma.JsonObject = {};
 
-    // ── Step 3: Delete existing users and create fresh ───────────────────────────
-    const deleted = await prisma.user.deleteMany({
-      where: { email: { in: [ULTRA_EMAIL, ADMIN_EMAIL] } },
-    });
-    console.log(`  🗑️  [Delete]       Removed ${deleted.count} existing records`);
-
-    const ultraUser = await prisma.user.create({
-      data: {
+    // ── Step 3: Upsert existing users to preserve foreign keys ───────────────────
+    const ultraUser = await prisma.user.upsert({
+      where: { email: ULTRA_EMAIL },
+      update: {
+        password:      ultraHash,
+        designationId: superAdminDesignation.id,
+        userType:      'Super Admin',
+      },
+      create: {
         email:         ULTRA_EMAIL,
         employeeId:    'ADM-ULTRA',
         name:          'Ultra Admin',
@@ -88,10 +89,16 @@ async function seedAdmins() {
         userType:      'Super Admin',
       },
     });
-    console.log(`  ✅ [User]         Created: ${ultraUser.email}  (DB ID: ${ultraUser.id})`);
+    console.log(`  ✅ [User]         Upserted: ${ultraUser.email}  (DB ID: ${ultraUser.id})`);
 
-    const adminUser = await prisma.user.create({
-      data: {
+    const adminUser = await prisma.user.upsert({
+      where: { email: ADMIN_EMAIL },
+      update: {
+        password:      adminHash,
+        designationId: adminDesignation.id,
+        userType:      'Admin',
+      },
+      create: {
         email:         ADMIN_EMAIL,
         employeeId:    'ADM-STD',
         name:          'Admin User',
@@ -105,7 +112,7 @@ async function seedAdmins() {
         userType:      'Admin',
       },
     });
-    console.log(`  ✅ [User]         Created: ${adminUser.email}  (DB ID: ${adminUser.id})`);
+    console.log(`  ✅ [User]         Upserted: ${adminUser.email}  (DB ID: ${adminUser.id})`);
 
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('  🎉 Seed complete. Login credentials:');
