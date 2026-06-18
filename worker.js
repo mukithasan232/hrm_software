@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
 
 const DEVICE_IP = '192.168.10.185';
 const DEVICE_PORT = 4370;
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 40000;
 const STATE_FILE = path.join(__dirname, 'worker-state.json');
 
 // --- State Management ---
@@ -33,7 +33,7 @@ function updateProcessedCount(count) {
 async function syncBiometricData() {
     console.log(`\n[${new Date().toISOString()}] 🔄 Starting ZKTeco data sync...`);
 
-    const zkInstance = new ZKLib(DEVICE_IP, DEVICE_PORT, 10000, 4000);
+    const zkInstance = new ZKLib(DEVICE_IP, DEVICE_PORT, 40000, 0);
 
     try {
         // Attempt TCP first for large payloads
@@ -55,7 +55,7 @@ async function syncBiometricData() {
         if (typeof zkInstance.connect === 'function') {
             await Promise.race([
                 zkInstance.connect(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Connect method timeout')), 5000))
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Connect method timeout')), 20000))
             ]);
         }
         console.log('[Info] Connected to ZKTeco device successfully.');

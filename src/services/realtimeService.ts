@@ -6,12 +6,12 @@ import { resolvePunchType, parseDeviceTime } from './zkService';
 import dgram from 'dgram';
 
 // ─── Connection Constants ────────────────────────────────────────────────────
-const ZK_TIMEOUT = 10000; // Reduced to 10s — enough for LAN, fast enough to fail quickly
+const ZK_TIMEOUT = 40000; // Increased to 40s to prevent TIMEOUT_ON_WRITING_MESSAGE for slow networks
 const ZK_INPORT = 0;
 
 // ─── Connection Timeout ──────────────────────────────────────────────────────
 // How long a single connect() call is allowed to run before we abort.
-const CONNECT_TIMEOUT_MS = 5000;
+const CONNECT_TIMEOUT_MS = 20000;
 
 // ─── PRIVATE: Pre-flight Network Check ───────────────────────────────────────
 /**

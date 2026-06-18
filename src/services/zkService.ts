@@ -412,7 +412,7 @@ async function connectProperly(zk: any): Promise<void> {
     if (typeof zk.connect === 'function') {
       await Promise.race([
         zk.connect(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout - device unreachable')), 5000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout - device unreachable')), 20000))
       ]);
     }
     console.log(`[ZKService] 🔌 Connected using ${zk.connectionType.toUpperCase()}`);
