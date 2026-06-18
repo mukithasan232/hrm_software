@@ -3,6 +3,7 @@ module.exports = {
         {
             name: "nextjs-app",
             script: "./server.cjs",
+            restart_delay: 5000,
             env: {
                 NODE_ENV: "production",
             }
@@ -10,6 +11,7 @@ module.exports = {
         {
             name: "zkteco-worker",
             script: "./worker.js",
+            restart_delay: 5000,
             env: {
                 NODE_ENV: "production",
             }
