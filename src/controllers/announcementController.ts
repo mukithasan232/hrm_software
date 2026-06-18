@@ -94,3 +94,23 @@ export const getAnnouncements = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 };
+
+export const deleteAnnouncement = async (req: Request, res: Response) => {
+  try {
+    const { id } = (req as any).params;
+    await prisma.announcement.delete({ where: { id } });
+    res.status(200).json({ message: 'Announcement deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to delete announcement', error: error.message });
+  }
+};
+
+export const clearAnnouncements = async (req: Request, res: Response) => {
+  try {
+    // Delete all announcements
+    await prisma.announcement.deleteMany({});
+    res.status(200).json({ message: 'Notice board cleared successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to clear notice board', error: error.message });
+  }
+};

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Users, CalendarRange, RefreshCw, Clock, Megaphone, BarChart3, PieChart as PieChartIcon, UserMinus } from 'lucide-react';
+import { Users, CalendarRange, RefreshCw, Clock, Megaphone, BarChart3, PieChart as PieChartIcon, UserMinus, Trash2, X } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell
@@ -126,6 +126,31 @@ export default function DashboardOverview() {
     setSyncing(false);
   };
 
+  const handleClearBoard = async () => {
+    if (!window.confirm('Are you sure you want to clear the entire notice board? This cannot be undone.')) return;
+    try {
+      await api.delete('/announcements');
+      setAnnouncements([]);
+      toast.success('Notice board cleared');
+    } catch (e) {
+      toast.error('Failed to clear board');
+    }
+  };
+
+  const handleDeleteNotice = async (id: string) => {
+    try {
+      await api.delete(`/announcements/${id}`);
+      setAnnouncements(prev => prev.filter(a => a.id !== id));
+      toast.success('Announcement deleted');
+    } catch (e) {
+      toast.error('Failed to delete announcement');
+    }
+  };
+
+  const isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(
+    (user as any)?.designation || ''
+  );
+
   const COLORS = ['#8b5cf6', '#06b6d4', '#f59e0b', '#10b981', '#f43f5e', '#6366f1'];
 
   return (
@@ -186,24 +211,43 @@ export default function DashboardOverview() {
           {/* Notice Board */}
       {announcements.length > 0 && (
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-indigo-200 dark:border-indigo-500/20 rounded-3xl p-6 shadow-md dark:shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-400">
-              <Megaphone className="w-5 h-5" />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+                <Megaphone className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Notice Board</h3>
             </div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Notice Board</h3>
+            {isAdmin && (
+              <button 
+                onClick={handleClearBoard}
+                className="text-xs flex items-center gap-1 font-bold text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-3 h-3" /> Clear All
+              </button>
+            )}
           </div>
           
           <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
             {announcements.map((notice) => {
               const isNew = (new Date().getTime() - new Date(notice.createdAt).getTime()) < 24 * 60 * 60 * 1000;
               return (
-                <div key={notice.id} className="p-4 bg-indigo-50/50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 relative">
+                <div key={notice.id} className="p-4 bg-indigo-50/50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 relative group">
                   {isNew && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm animate-pulse">
                       NEW
                     </span>
                   )}
-                  <h4 className="font-bold text-slate-800 dark:text-white text-sm md:text-base">{notice.title}</h4>
+                  {isAdmin && (
+                    <button 
+                      onClick={() => handleDeleteNotice(notice.id)}
+                      className="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete Announcement"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  <h4 className="font-bold text-slate-800 dark:text-white text-sm md:text-base pr-6">{notice.title}</h4>
                   <p className="text-slate-600 dark:text-slate-300 text-xs md:text-sm mt-1 whitespace-pre-wrap">{notice.message}</p>
                   <div className="flex items-center justify-between mt-3 text-[10px] text-slate-500 dark:text-slate-400">
                     <span>By {notice.author?.name || 'Admin'}</span>
