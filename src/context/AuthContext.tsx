@@ -14,6 +14,7 @@ interface User {
   phone?: string;
   roles?: any[];
   permissions?: any;
+  employeeId?: string;
 }
 
 interface AuthContextType {

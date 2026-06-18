@@ -46,6 +46,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
     res.status(201).json({
       id: user.id,
+      employeeId: user.employeeId,
       name: user.name,
       email: user.email,
       designation: user.customDesignation?.name || 'Employee',
@@ -138,6 +139,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
     res.json({
       id: user.id,
+      employeeId: user.employeeId,
       name: user.name,
       email: user.email,
       designation: designationName,

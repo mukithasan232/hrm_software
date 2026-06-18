@@ -161,8 +161,13 @@ export default function DashboardOverview() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="py-2">
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
-            Welcome, {user?.name || 'Super Admin'}
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-white flex flex-wrap items-center gap-3">
+            <span>Welcome, {user?.name || 'Super Admin'}</span>
+            {user?.employeeId && user.employeeId !== 'UNMAPPED_FALLBACK' && (
+              <span className="text-sm font-mono bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-500/30">
+                {user.employeeId}
+              </span>
+            )}
           </h1>
         </div>
         <button 

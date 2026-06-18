@@ -66,11 +66,17 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-4">
-          <span className="text-slate-800 dark:text-white font-semibold text-sm hidden sm:block">
-            {t('welcome')},{' '}
-            <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">
-              {user?.name || 'User'}
+          <span className="text-slate-800 dark:text-white font-semibold text-sm hidden sm:flex items-center gap-2">
+            <span>{t('welcome')},{' '}
+              <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary">
+                {user?.name || 'User'}
+              </span>
             </span>
+            {user?.employeeId && user.employeeId !== 'UNMAPPED_FALLBACK' && (
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-[10px] font-mono text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-white/10">
+                {user.employeeId}
+              </span>
+            )}
           </span>
           <BDClock />
         </div>
@@ -160,10 +166,17 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl dark:shadow-2xl overflow-hidden z-50">
               {/* User info header */}
               <div className="p-4 border-b border-slate-100 dark:border-white/10">
-                <p className="text-slate-800 dark:text-white font-medium text-sm">{user?.name}</p>
-                <p className="text-slate-500 dark:text-gray-500 text-xs">{user?.email}</p>
+                <p className="text-slate-800 dark:text-white font-medium text-sm flex items-center gap-2">
+                  {user?.name}
+                  {user?.employeeId && user.employeeId !== 'UNMAPPED_FALLBACK' && (
+                    <span className="text-[10px] font-mono text-slate-500 dark:text-gray-400 bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10">
+                      {user.employeeId}
+                    </span>
+                  )}
+                </p>
+                <p className="text-slate-500 dark:text-gray-500 text-xs mt-0.5">{user?.email}</p>
                 <span
-                  className="mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-primary/20 text-brand-primary"
+                  className="mt-2 inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-primary/20 text-brand-primary"
                 >
                   {typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation}
                 </span>
