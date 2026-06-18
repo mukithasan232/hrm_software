@@ -23,46 +23,55 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
 
-export const connectDB = async () => {
-  try {
-    await prisma.$connect();
-    console.log('✅ Prisma connected to database successfully.');
-    console.log(`   DB Host: ${dbUrl.hostname}:${dbUrl.port || 3306} / ${dbUrl.pathname.slice(1)}`);
-
-    // ── Startup cleanup: remove records with empty-string employeeId ──────
-    // These are invalid referential-integrity violations, NOT real attendance logs.
-    // Manual entries (deviceId = 'Manual Entry') will NEVER match this filter.
+export const connectDB = async (retries = 5, delay = 5000) => {
+  for (let i = 0; i < retries; i++) {
     try {
-      const cleanedLogs = await prisma.attendanceLog.deleteMany({
-        where: { employeeId: '' }
-      });
-      if (cleanedLogs.count > 0) {
-        console.log(`🧹 Cleaned up ${cleanedLogs.count} invalid attendance logs (empty employeeId).`);
+      await prisma.$connect();
+      console.log('✅ Prisma connected to database successfully.');
+      console.log(`   DB Host: ${dbUrl.hostname}:${dbUrl.port || 3306} / ${dbUrl.pathname.slice(1)}`);
+
+      // ── Startup cleanup: remove records with empty-string employeeId ──────
+      try {
+        const cleanedLogs = await prisma.attendanceLog.deleteMany({
+          where: { employeeId: '' }
+        });
+        if (cleanedLogs.count > 0) {
+          console.log(`🧹 Cleaned up ${cleanedLogs.count} invalid attendance logs (empty employeeId).`);
+        }
+
+        const cleanedPayrolls = await prisma.payroll.deleteMany({
+          where: { employeeId: '' }
+        });
+        if (cleanedPayrolls.count > 0) {
+          console.log(`🧹 Cleaned up ${cleanedPayrolls.count} invalid payroll records (empty employeeId).`);
+        }
+      } catch (e: any) {
+        console.warn('⚠️ [Cleanup] Error running startup cleanup:', e.message);
       }
 
-      const cleanedPayrolls = await prisma.payroll.deleteMany({
-        where: { employeeId: '' }
-      });
-      if (cleanedPayrolls.count > 0) {
-        console.log(`🧹 Cleaned up ${cleanedPayrolls.count} invalid payroll records (empty employeeId).`);
+      // ── Manual entry persistence verification ────────────────────────────
+      try {
+        const manualCount = await prisma.attendanceLog.count({
+          where: { deviceId: 'Manual Entry' }
+        });
+        console.log(`📋 [DB] Manual attendance entries in DB: ${manualCount}`);
+      } catch (e: any) {
+        console.warn('⚠️ [DB] Could not count manual entries:', e.message);
       }
-    } catch (e: any) {
-      console.warn('⚠️ [Cleanup] Error running startup cleanup:', e.message);
-    }
 
-    // ── Manual entry persistence verification ────────────────────────────
-    // Confirms the AttendanceLog table is reachable and manual entries survive.
-    try {
-      const manualCount = await prisma.attendanceLog.count({
-        where: { deviceId: 'Manual Entry' }
-      });
-      console.log(`📋 [DB] Manual attendance entries in DB: ${manualCount}`);
-    } catch (e: any) {
-      console.warn('⚠️ [DB] Could not count manual entries:', e.message);
+      // Connection succeeded, exit loop
+      return;
+      
+    } catch (error: any) {
+      console.error(`❌ Prisma connection attempt ${i + 1} failed: ${error.message}`);
+      if (i < retries - 1) {
+        console.log(`⏳ Retrying in ${delay / 1000} seconds...`);
+        await new Promise(res => setTimeout(res, delay));
+        delay *= 2; // exponential backoff
+      } else {
+        console.error('❌ Max retries reached. Database is completely unreachable.');
+        console.error('   ⚠️ Server will continue running. DB-dependent routes may fail until connection is restored.');
+      }
     }
-
-  } catch (error: any) {
-    console.error(`❌ Prisma connection error: ${error.message}`);
-    console.error('   ⚠️  Server will continue running. DB-dependent routes may fail until connection is restored.');
   }
 };

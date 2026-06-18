@@ -73,6 +73,25 @@ app.prepare()
     httpServer.listen(port, '0.0.0.0', () => {
       console.log(`🚀 Server running on http://0.0.0.0:${port}`);
     });
+
+    // ── Graceful Shutdown ──────────────────────────────────────────────────
+    // Ensures port 3000 is released cleanly before PM2 restarts the app
+    const shutdown = (signal) => {
+      console.log(`\n[Server] Received ${signal}. Closing HTTP server and releasing port ${port}...`);
+      httpServer.close(() => {
+        console.log('[Server] HTTP server closed. Port released.');
+        process.exit(0);
+      });
+      // Force exit if connections linger longer than 5s
+      setTimeout(() => {
+        console.error('[Server] Forceful shutdown due to lingering connections.');
+        process.exit(1);
+      }, 5000).unref();
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+
   })
   .catch((err) => {
     console.error('❌ [Fatal] app.prepare() failed:', err);
