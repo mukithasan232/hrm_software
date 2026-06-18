@@ -83,11 +83,17 @@ jobs:
               -H "Accept: application/json" \
               "${BASE_URL}/api/v1/deployments/${DEPLOY_UUID}")
 
-            STATUS=$(echo "$RESP" | jq -r '.status // empty')
+            # Handle potential non-JSON responses (like 502 Bad Gateway) gracefully
+            if ! STATUS=$(echo "$RESP" | jq -r '.status // empty' 2>/dev/null); then
+              echo "[$i] Warning: Received invalid response from Coolify API. Retrying..."
+              sleep 10
+              continue
+            fi
+            
             echo "[$i] status: ${STATUS:-unknown}"
 
             # Print any logs returned
-            LOGS=$(echo "$RESP" | jq -r '.logs // empty')
+            LOGS=$(echo "$RESP" | jq -r '.logs // empty' 2>/dev/null || true)
             if [ -n "$LOGS" ] && [ "$LOGS" != "null" ]; then
               TOTAL_LINES=$(echo "$LOGS" | wc -l)
               if [ "$TOTAL_LINES" -gt "$LAST_LOG_LINE" ]; then
