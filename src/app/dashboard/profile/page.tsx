@@ -177,6 +177,10 @@ export default function ProfilePage() {
         designation: res.data.user.designation,
         department: res.data.user.department,
         phone: res.data.user.phone,
+        facebookUrl: res.data.user.facebookUrl,
+        linkedinUrl: res.data.user.linkedinUrl,
+        githubUrl: res.data.user.githubUrl,
+        portfolioUrl: res.data.user.portfolioUrl,
       });
 
       toast.success(t('saveChanges') + '!');
@@ -424,8 +428,9 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={form.designation}
-                    onChange={e => setForm({ ...form, designation: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25 transition-all font-semibold"
+                    readOnly
+                    disabled
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25 transition-all font-semibold opacity-70 cursor-not-allowed"
                   />
                 </div>
                 <div className="space-y-1">
@@ -433,8 +438,9 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={form.department}
-                    onChange={e => setForm({ ...form, department: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25 transition-all font-semibold"
+                    readOnly
+                    disabled
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25 transition-all font-semibold opacity-70 cursor-not-allowed"
                   />
                 </div>
               </div>
