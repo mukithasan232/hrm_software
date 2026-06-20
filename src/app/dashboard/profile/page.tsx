@@ -125,10 +125,47 @@ export default function ProfilePage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const sanitizeLink = (val: string, prefix: string) => {
+        if (!val) return '';
+        let clean = val.trim();
+        if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+        
+        // Strip common prefixes if they pasted partially
+        if (prefix === 'facebook') {
+          clean = clean.replace(/^(?:www\.)?(?:facebook\.com|fb\.com)\//i, '');
+          return `https://facebook.com/${clean}`;
+        }
+        if (prefix === 'linkedin') {
+          clean = clean.replace(/^(?:www\.)?linkedin\.com\/(?:in\/)?/i, '');
+          clean = clean.replace(/^in\//i, '');
+          return `https://linkedin.com/in/${clean}`;
+        }
+        if (prefix === 'github') {
+          clean = clean.replace(/^(?:www\.)?github\.com\//i, '');
+          return `https://github.com/${clean}`;
+        }
+        if (prefix === 'portfolio') {
+          return `https://${clean}`;
+        }
+        return clean;
+      };
+
+      const sanitizedForm = {
+        ...form,
+        facebookUrl: sanitizeLink(form.facebookUrl, 'facebook'),
+        linkedinUrl: sanitizeLink(form.linkedinUrl, 'linkedin'),
+        githubUrl: sanitizeLink(form.githubUrl, 'github'),
+        portfolioUrl: sanitizeLink(form.portfolioUrl, 'portfolio'),
+      };
+
       const formData = new FormData();
-      // Append all form fields (name, designation, department, phone, social links)
-      Object.entries(form).forEach(([k, v]) => formData.append(k, v));
+      // Append all sanitized form fields
+      Object.entries(sanitizedForm).forEach(([k, v]) => formData.append(k, v));
       if (avatarFile) formData.append('avatar', avatarFile);
+
+      // Log payload for debugging
+      const payloadObj = Object.fromEntries(formData.entries());
+      console.log('Sending payload:', payloadObj);
 
       const res = await api.put('/users/profile/me', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -147,7 +184,15 @@ export default function ProfilePage() {
       setPreview(null);
       router.refresh();
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to update profile');
+      const status = e.response?.status;
+      const errMsg = e.response?.data?.message || e.response?.data?.error || 'Failed to update profile';
+      const details = e.response?.data?.details ? ` - ${e.response.data.details}` : '';
+      
+      if (status === 400) {
+        toast.error(`Validation Error: ${errMsg}${details}`, { duration: 6000 });
+      } else {
+        toast.error(`${errMsg}${details}`);
+      }
     } finally {
       setSaving(false);
     }

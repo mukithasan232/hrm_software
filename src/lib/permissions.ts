@@ -23,6 +23,17 @@ export async function hasPermission(
 
   if (!dbUser) return false;
 
+  // --- ADMIN BYPASS ---
+  const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
+  const designName = typeof (dbUser as any).customDesignation?.name === 'string' ? (dbUser as any).customDesignation.name : '';
+  const userDesig = designName.toLowerCase().trim();
+  const hasAdminRole = (dbUser as any).roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
+
+  if (ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole) {
+    return true; // Admins bypass all permission checks and have full access
+  }
+  // --------------------
+
   const actionMap: Record<string, string> = {
     canRead: 'Read',
     canCreate: 'Create',

@@ -13,6 +13,7 @@ export interface MockRequest {
   user?: {
     id: string;
     designation: string;
+    roles?: any[];
   };
   file?: {
     filename: string;
@@ -141,6 +142,7 @@ export async function parseRequest(
         user = {
           id: decoded.id,
           designation: decoded.designation,
+          roles: decoded.roles || [],
         };
       } catch (_) {}
     }
@@ -230,8 +232,12 @@ export function wrapHandler(
         const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
         const designName = typeof mockReq.user?.designation === 'string' ? mockReq.user.designation : (mockReq.user?.designation as any)?.name || '';
         const userDesig = designName.toLowerCase().trim();
+        const hasAdminRole = mockReq.user?.roles?.some((r: any) => 
+          ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim())
+        );
+        const isAdmin = ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
 
-        if (options.adminOnly && !(mockReq as any).isApiSecretBypass && !ADMIN_DESIGNATIONS.includes(userDesig)) {
+        if (options.adminOnly && !(mockReq as any).isApiSecretBypass && !isAdmin) {
           console.error(`[Auth Adapter] Admin access denied. Required admin, got: "${mockReq.user?.designation}"`);
           return NextResponse.json(
             { message: 'Not authorized as an admin' },
@@ -242,7 +248,7 @@ export function wrapHandler(
         if (options.allowedDesignations && !(mockReq as any).isApiSecretBypass) {
           const allowedLower = options.allowedDesignations.map((d: string) => d.toLowerCase().trim());
           // Allow any ultra admin or any admin designation to bypass specific designation restrictions just in case
-          if (!allowedLower.includes(userDesig) && !ADMIN_DESIGNATIONS.includes(userDesig)) {
+          if (!allowedLower.includes(userDesig) && !isAdmin) {
             console.error(`[Auth Adapter] Access denied. Allowed: ${allowedLower.join(', ')}, got: "${mockReq.user?.designation}"`);
             return NextResponse.json(
               { message: `Designation (${mockReq.user?.designation}) is not allowed to access this resource.` },
