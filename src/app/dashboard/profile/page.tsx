@@ -61,7 +61,7 @@ export default function ProfilePage() {
 
   const [form, setForm] = useState({
     name: '', designation: '', department: '', phone: '',
-    facebook: '', linkedin: '', github: '',
+    facebookUrl: '', linkedinUrl: '', githubUrl: '', portfolioUrl: ''
   });
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [preview, setPreview] = useState<string | null>(null);
@@ -83,15 +83,16 @@ export default function ProfilePage() {
       const { code, local } = parsePhone(rawPhone);
       setCountryCode(code);
       setLocalPhone(local);
-      setForm({
-        name: user.name || '',
-        designation: (user as any).designation?.name || (user as any).designation || '',
-        department: (user as any).department?.name || (user as any).department || '',
-        phone: rawPhone,
-        facebook: (user as any).facebook || '',
-        linkedin: (user as any).linkedin || '',
-        github: (user as any).github || '',
-      });
+        setForm({
+          name: user.name || '',
+          designation: user.designation || (user as any).designation?.name || '',
+          department: user.department || (user as any).department?.name || '',
+          phone: rawPhone,
+          facebookUrl: (user as any).facebookUrl || '',
+          linkedinUrl: (user as any).linkedinUrl || '',
+          githubUrl: (user as any).githubUrl || '',
+          portfolioUrl: (user as any).portfolioUrl || '',
+        });
     }
   }, [user]);
 
@@ -431,8 +432,8 @@ export default function ProfilePage() {
                   <span className="px-3 py-2.5 border-r border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 text-xs font-mono select-none whitespace-nowrap">fb.com/</span>
                   <input
                     type="url"
-                    value={form.facebook}
-                    onChange={e => setForm({ ...form, facebook: e.target.value })}
+                    value={form.facebookUrl}
+                    onChange={e => setForm({ ...form, facebookUrl: e.target.value })}
                     placeholder="https://facebook.com/username"
                     className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none font-medium"
                   />
@@ -449,8 +450,8 @@ export default function ProfilePage() {
                   <span className="px-3 py-2.5 border-r border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 text-xs font-mono select-none whitespace-nowrap">in/</span>
                   <input
                     type="url"
-                    value={form.linkedin}
-                    onChange={e => setForm({ ...form, linkedin: e.target.value })}
+                    value={form.linkedinUrl}
+                    onChange={e => setForm({ ...form, linkedinUrl: e.target.value })}
                     placeholder="https://linkedin.com/in/username"
                     className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none font-medium"
                   />
@@ -467,9 +468,27 @@ export default function ProfilePage() {
                   <span className="px-3 py-2.5 border-r border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 text-xs font-mono select-none whitespace-nowrap">github.com/</span>
                   <input
                     type="url"
-                    value={form.github}
-                    onChange={e => setForm({ ...form, github: e.target.value })}
+                    value={form.githubUrl}
+                    onChange={e => setForm({ ...form, githubUrl: e.target.value })}
                     placeholder="https://github.com/username"
+                    className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Portfolio */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                  Portfolio URL
+                </label>
+                <div className="flex items-center rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 focus-within:ring-2 focus-within:ring-blue-500/25 transition-all overflow-hidden">
+                  <span className="px-3 py-2.5 border-r border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 text-xs font-mono select-none whitespace-nowrap">https://</span>
+                  <input
+                    type="url"
+                    value={form.portfolioUrl}
+                    onChange={e => setForm({ ...form, portfolioUrl: e.target.value })}
+                    placeholder="your-portfolio.com"
                     className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none font-medium"
                   />
                 </div>

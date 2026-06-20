@@ -43,13 +43,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = (userData: User, token: string) => {
-    Cookies.set('token', token, { expires: 1 });
+    Cookies.set('token', token, { 
+      expires: 30, // 30 days persistent storage
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/'
+    });
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
   };
 
   const logout = () => {
-    Cookies.remove('token');
+    Cookies.remove('token', { path: '/' });
     localStorage.removeItem('user');
     setUser(null);
     router.push('/login');

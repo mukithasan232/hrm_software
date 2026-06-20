@@ -123,6 +123,7 @@ model User {
   isActive     Boolean  @default(true)
   baseSalary   Float    @default(0)
   department   String?
+  designation  String?
   joiningDate  DateTime @default(now())
   profileImage String?
   createdAt    DateTime @default(now())
@@ -149,11 +150,15 @@ model User {
   resetTokenExpiry DateTime?
 
   // Contact & Social Media
-  phone    String?
-  facebook String?
-  linkedin String?
-  github   String?
-  twitter  String?
+  phone        String?
+  facebook     String?
+  linkedin     String?
+  github       String?
+  twitter      String?
+  facebookUrl  String?
+  linkedinUrl  String?
+  githubUrl    String?
+  portfolioUrl String?
 
   attendanceLogs AttendanceLog[] @relation("UserAttendance")
   leaves         Leave[]         @relation("UserLeaves")

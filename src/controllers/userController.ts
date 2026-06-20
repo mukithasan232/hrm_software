@@ -79,22 +79,23 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         email: true,
         customDesignation: { select: { id: true, name: true } },
         department: true,
+        designation: true,
         baseSalary: true,
         isActive: true,
         joiningDate: true,
         profileImage: true,
         phone: true,
-        facebook: true,
-        linkedin: true,
-        github: true,
-        twitter: true,
+        facebookUrl: true,
+        linkedinUrl: true,
+        githubUrl: true,
+        portfolioUrl: true,
       }
     });
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
     }
-    res.status(200).json({ ...user, designation: (user as any).customDesignation });
+    res.status(200).json({ ...user, designation: user.designation || (user as any).customDesignation?.name });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to fetch profile', error: error.message });
   }
@@ -102,8 +103,21 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
 
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user.id;
-    const { name, department, designation, phone, facebook, linkedin, github, twitter } = req.body as any;
+    const loggedInUser = (req as any).user;
+    const { id, name, department, designation, phone, facebookUrl, linkedinUrl, githubUrl, portfolioUrl } = req.body as any;
+    const targetUserId = id || loggedInUser.id;
+
+    if (targetUserId !== loggedInUser.id) {
+      const adminCheck = await prisma.user.findUnique({
+        where: { id: loggedInUser.id },
+        include: { customDesignation: true }
+      });
+      const isAdmin = ['Admin', 'Super Admin'].includes(adminCheck?.customDesignation?.name || '');
+      if (!isAdmin) {
+        res.status(403).json({ message: 'Not authorized to edit other profiles' });
+        return;
+      }
+    }
 
     // Helper: trim & store empty string as null so DB stays clean
     const sanitizeUrl = (val: string | undefined) =>
@@ -112,13 +126,13 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     const data: any = {};
     if (name?.trim()) data.name = name.trim();
     if (department !== undefined) data.department = department?.trim() || null;
-    // designation is actually linked to designationId in the DB, but profile update likely doesn't change it, so we don't map it here or we handle it carefully.
+    if (designation !== undefined) data.designation = designation?.trim() || null;
     
     if (phone !== undefined)    data.phone    = phone?.trim() || null;
-    if (facebook !== undefined) data.facebook = sanitizeUrl(facebook);
-    if (linkedin !== undefined) data.linkedin = sanitizeUrl(linkedin);
-    if (github   !== undefined) data.github   = sanitizeUrl(github);
-    if (twitter  !== undefined) data.twitter  = sanitizeUrl(twitter);
+    if (facebookUrl !== undefined) data.facebookUrl = sanitizeUrl(facebookUrl);
+    if (linkedinUrl !== undefined) data.linkedinUrl = sanitizeUrl(linkedinUrl);
+    if (githubUrl   !== undefined) data.githubUrl   = sanitizeUrl(githubUrl);
+    if (portfolioUrl !== undefined) data.portfolioUrl = sanitizeUrl(portfolioUrl);
 
     const reqFile = (req as any).file;
     if (reqFile) {
@@ -131,23 +145,24 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 
     try {
       const user = await prisma.user.update({
-        where: { id: userId },
+        where: { id: targetUserId },
         data,
         select: {
           id: true,
           name: true,
           email: true,
           department: true,
+          designation: true,
           customDesignation: { select: { id: true, name: true } },
           profileImage: true,
           phone: true,
-          facebook: true,
-          linkedin: true,
-          github: true,
-          twitter: true,
+          facebookUrl: true,
+          linkedinUrl: true,
+          githubUrl: true,
+          portfolioUrl: true,
         }
       });
-      res.status(200).json({ message: 'Profile updated successfully', user: { ...user, designation: (user as any).customDesignation } });
+      res.status(200).json({ message: 'Profile updated successfully', user: { ...user, designation: user.designation || (user as any).customDesignation?.name } });
     } catch (dbError: any) {
       console.error('[Profile Update Error]: ', dbError);
       res.status(500).json({ error: 'Database update failed', details: dbError.message });
