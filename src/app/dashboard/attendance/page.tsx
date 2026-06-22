@@ -28,6 +28,8 @@ export default function AttendancePage() {
   const [absentCount, setAbsentCount] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const [manualEntry, setManualEntry] = useState({
     employeeId: '',
     punchType: 'CheckIn',
@@ -84,12 +86,26 @@ export default function AttendancePage() {
     }
   };
 
+  const fetchDepartments = async () => {
+    setDepartmentsLoading(true);
+    try {
+      const res = await api.get('/team/departments');
+      const deptList = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      setDepartments(deptList);
+    } catch {
+      console.error('Failed to fetch departments');
+    } finally {
+      setDepartmentsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchLogs();
   }, [dateRange, customStartDate, customEndDate, departmentFilter]);
 
   useEffect(() => {
     fetchEmployees();
+    fetchDepartments();
 
     // Polling every 15s as a fallback (Socket.IO is the primary real-time path)
     const intervalId = setInterval(() => {
@@ -254,7 +270,7 @@ export default function AttendancePage() {
     }
   };
 
-  const departments = Array.from(new Set(employees.map(e => e.department).filter(Boolean)));
+  // departments are fetched from /team/departments via fetchDepartments()
 
   const filteredLogs = logs.filter(log => 
     log.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -294,12 +310,12 @@ export default function AttendancePage() {
           <select 
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
-            disabled={syncing}
+            disabled={syncing || departmentsLoading}
             className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium w-full md:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value="all">All Departments</option>
-            {departments.map((dep: any) => (
-              <option key={dep} value={dep}>{dep}</option>
+            <option value="all">{departmentsLoading ? 'Loading...' : 'All Departments'}</option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>{dept.name}</option>
             ))}
           </select>
 
