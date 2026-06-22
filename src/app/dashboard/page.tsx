@@ -94,9 +94,9 @@ export default function DashboardOverview() {
 
       const employeeCount = isAdminStatus
         ? usersRes.data.totalCount ||
-          usersRes.data.data?.length ||
-          usersRes.data.length ||
-          0
+        usersRes.data.data?.length ||
+        usersRes.data.length ||
+        0
         : 1;
       const presentCount = presenceRes.data.activeNow || 0;
 
@@ -334,7 +334,7 @@ export default function DashboardOverview() {
                 {announcements.map((notice) => {
                   const isNew =
                     new Date().getTime() -
-                      new Date(notice.createdAt).getTime() <
+                    new Date(notice.createdAt).getTime() <
                     24 * 60 * 60 * 1000;
                   return (
                     <div
@@ -459,11 +459,10 @@ export default function DashboardOverview() {
 
                           {/* Status Badge */}
                           <div
-                            className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${
-                              isCheckIn
+                            className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${isCheckIn
                                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                                 : "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
-                            }`}
+                              }`}
                           >
                             {isCheckIn
                               ? t("checkIn") || "Check In"

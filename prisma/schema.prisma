@@ -12,6 +12,20 @@ enum EmployeeType {
   IN_HOUSE
 }
 
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  PENDING
+  COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
 // Dynamic Designation model for the RBAC Team module
 // permissions is stored as JSON: { "attendance.view": true, "leaves.approve": true, ... }
 model Designation {
@@ -169,6 +183,8 @@ model User {
   zkSyncQueues   ZkSyncQueue[]   @relation("UserZkSyncQueue")
   announcements  Announcement[]  @relation("AnnouncementAuthor")
   userPermission UserPermission?
+  assignedTasks  Task[]          @relation("AssignedTasks")
+  createdTasks   Task[]          @relation("CreatedTasks")
 }
 
 // Single-row tenant branding config (white-label SaaS)
@@ -297,4 +313,23 @@ model PasswordResetToken {
   expires DateTime
 
   @@unique([email, token])
+}
+
+model Task {
+  id           String       @id @default(uuid())
+  title        String
+  description  String?      @db.Text
+  startDate    DateTime?
+  dueDate      DateTime?
+  status       TaskStatus   @default(TODO)
+  priority     TaskPriority @default(NORMAL)
+  assignedToId String
+  assignedTo   User         @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
+  createdById  String
+  createdBy    User         @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
 }

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
-  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail
+  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -15,11 +15,12 @@ const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_UR
 
 // Nav item keys (translated at render time via t())
 const NAV_ITEM_DEFS = [
-  { key: 'dashboard',  href: '/dashboard',            icon: LayoutDashboard, module: 'Dashboard' },
-  { key: 'attendance', href: '/dashboard/attendance', icon: Clock,           module: 'Attendance' },
-  { key: 'leaves',     href: '/dashboard/leaves',     icon: CalendarRange,   module: 'Leaves' },
-  { key: 'announcements', href: '/dashboard/announcements', icon: Megaphone, module: 'Announcements' },
-  { key: 'myProfile',  href: '/dashboard/profile',    icon: User,            module: 'Profile' },
+  { key: 'dashboard',    href: '/dashboard',            icon: LayoutDashboard, module: 'Dashboard'    },
+  { key: 'attendance',   href: '/dashboard/attendance', icon: Clock,           module: 'Attendance'   },
+  { key: 'leaves',       href: '/dashboard/leaves',     icon: CalendarRange,   module: 'Leaves'       },
+  { key: 'announcements',href: '/dashboard/announcements', icon: Megaphone,   module: 'Announcements'},
+  { key: 'tasks',        href: '/dashboard/tasks',      icon: CheckSquare,     module: 'Tasks'        },
+  { key: 'myProfile',    href: '/dashboard/profile',    icon: User,            module: 'Profile'      },
 ];
 
 const TEAM_SUB_DEFS = [

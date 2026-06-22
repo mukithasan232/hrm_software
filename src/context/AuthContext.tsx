@@ -15,6 +15,10 @@ interface User {
   roles?: any[];
   permissions?: any;
   employeeId?: string;
+  facebookUrl?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+  portfolioUrl?: string;
 }
 
 interface AuthContextType {

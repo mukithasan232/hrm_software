@@ -18,6 +18,7 @@
     "db:clean-db-dry": "DRY_RUN=true npx tsx prisma/clean-db.ts"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^6.6.0",
     "@tailwindcss/postcss": "^4.1.8",
