@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { wrapHandler } from '@/lib/adapter';
 
 // Fallback JSON structure required by frontend
-const MODULES = ['Emails', 'Users', 'Attendance', 'Teams', 'Leaves', 'Payroll'];
+const MODULES = ['Emails', 'Users', 'Attendance', 'Teams', 'Leaves', 'Payroll', 'Tasks'];
 const getFallbackMatrix = () => {
   return MODULES.map(mod => ({
     moduleName: mod,

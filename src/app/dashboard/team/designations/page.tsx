@@ -17,17 +17,27 @@ const SCOPE_MODULES = [
   { label: 'User Management', key: 'User Management' },
   { label: 'System Settings', key: 'System Settings' },
   { label: 'Inbox',           key: 'Inbox' },
+  { label: 'Tasks',           key: 'Tasks' },
 ] as const;
 
 type ModuleKey = (typeof SCOPE_MODULES)[number]['key'];
 
 // Columns and their allowed option sets
-const ALL_COLS    = ['Access', 'Create', 'Read', 'Edit', 'Delete'] as const;
+const ALL_COLS = ['Access', 'Create', 'Read', 'Edit', 'Delete'] as const;
 
 type ColKey = (typeof ALL_COLS)[number];
 
 const CRUD_OPTIONS   = ['No', 'Own', 'Department', 'All'] as const;
 const TOGGLE_OPTIONS = ['Not Set', 'Enabled'] as const;
+
+// Which options each column uses
+const COL_OPTIONS: Record<ColKey, typeof CRUD_OPTIONS | typeof TOGGLE_OPTIONS> = {
+  Access: TOGGLE_OPTIONS,
+  Create: CRUD_OPTIONS,
+  Read:   CRUD_OPTIONS,
+  Edit:   CRUD_OPTIONS,
+  Delete: CRUD_OPTIONS,
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,11 +68,14 @@ function buildEmptyPermissions(): PermissionsMap {
 // Normalise legacy lowercase DB values → new capitalised display strings
 const VALUE_UPGRADE: Record<string, string> = {
   'no': 'No', 'own': 'Own', 'department': 'Department', 'all': 'All',
-  'not-set': 'Not Set', 'enabled': 'Enabled',
+  'not-set': 'Not Set', 'not set': 'Not Set', 'notset': 'Not Set',
+  'enabled': 'Enabled', 'yes': 'Enabled', 'true': 'Enabled',
 };
 function normaliseVal(v: any): string {
-  if (typeof v !== 'string') return v;
-  return VALUE_UPGRADE[v.toLowerCase()] ?? v;
+  if (v === true)  return 'Enabled';
+  if (v === false) return 'No';
+  if (typeof v !== 'string') return String(v ?? '');
+  return VALUE_UPGRADE[v.toLowerCase().trim()] ?? v;
 }
 
 function mergePermissions(saved: any): PermissionsMap {
@@ -128,25 +141,54 @@ function ScopeSelect({
   value,
   options,
   onChange,
+  isToggle = false,
 }: {
   value: string;
   options: readonly string[];
   onChange: (val: string) => void;
+  isToggle?: boolean;
 }) {
+  // Ensure value is valid for the current options; fall back to first option
+  const safeValue = options.includes(value as any) ? value : options[0];
+
   return (
-    <div className="relative inline-flex items-center">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`appearance-none bg-transparent border-0 pr-5 pl-1 py-1 text-xs font-semibold focus:outline-none focus:ring-0 cursor-pointer ${valueBadgeClass(value)}`}
-      >
-        {options.map((opt) => (
-          <option key={opt} value={opt} className="text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800">
-            {opt}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="absolute right-0 w-3 h-3 pointer-events-none text-slate-400" />
+    <div className="relative inline-flex items-center justify-center">
+      {isToggle ? (
+        // Toggle: render as a pill badge button that cycles between Not Set / Enabled
+        <button
+          type="button"
+          onClick={() => {
+            const next = safeValue === 'Enabled' ? 'Not Set' : 'Enabled';
+            onChange(next);
+          }}
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+            safeValue === 'Enabled'
+              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+              : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-gray-500 border-slate-200 dark:border-white/10'
+          }`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${
+            safeValue === 'Enabled' ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-gray-600'
+          }`} />
+          {safeValue === 'Enabled' ? 'Enabled' : 'Off'}
+        </button>
+      ) : (
+        // Scope select: dropdown
+        <>
+          <select
+            value={safeValue}
+            onChange={(e) => onChange(e.target.value)}
+            className={`appearance-none bg-transparent border-0 pr-5 pl-1 py-1 text-xs font-semibold focus:outline-none focus:ring-0 cursor-pointer ${valueBadgeClass(safeValue)}`}
+          >
+            {options.map((opt) => (
+              <option key={opt} value={opt} className="text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800">
+                {opt}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-0 w-3 h-3 pointer-events-none text-slate-400" />
+        </>
+      )}
     </div>
   );
 }
@@ -597,12 +639,13 @@ export default function DesignationsPage() {
                                   </div>
                                 </td>
 
-                                {/* Access (toggle) */}
-                                <td className="px-4 py-2.5 text-center">
+                                {/* Access (toggle pill) */}
+                                <td className="px-4 py-2.5 text-center bg-indigo-50/30 dark:bg-indigo-900/10">
                                   <ScopeSelect
                                     value={rowPerms.Access}
                                     options={TOGGLE_OPTIONS}
                                     onChange={(v) => setCellValue(mod.key, 'Access', v)}
+                                    isToggle
                                   />
                                 </td>
 

@@ -4,8 +4,7 @@ import { wrapHandler } from '@/lib/adapter';
 import { getEmployees, createEmployee } from '@/controllers/userController';
 
 export const GET = wrapHandler(getEmployees, {
-  protect: true,
-  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'Stakeholder']
+  protect: true
 });
 
 export const POST = wrapHandler(createEmployee, {

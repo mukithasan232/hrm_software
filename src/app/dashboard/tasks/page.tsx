@@ -137,7 +137,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
         toast.success('Task updated!');
       } else {
         await api.post('/tasks', form);
-        toast.success('Task created!');
+        toast.success('Task Assigned & Notification Sent');
       }
       onSaved();
       onClose();
@@ -352,14 +352,12 @@ function KanbanCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
   const { user } = useAuth();
-  const { can } = usePermissions();
+  const { can, scope: getScope } = usePermissions();
 
-  const admin = can('Tasks', 'canCreate');
-  // fallback: check designation/roles directly for admins who may not have "Tasks" module permission
-  const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-  const designName = typeof user?.designation === 'string' ? user.designation : (user?.designation as any)?.name || '';
-  const hasAdminRole = user?.roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
-  const isAdminUser = !!(admin || ADMIN_DESIGNATIONS.includes(designName.toLowerCase().trim()) || hasAdminRole);
+  // Derive exact RBAC scope for Tasks read — 'No'|'Own'|'Department'|'All'
+  const taskScope = getScope('Tasks', 'canRead');
+  const isAdminUser = taskScope === 'All';
+  const canManageTasks = can('Tasks', 'canCreate'); // true only for admins / designations with Create permission
 
   const [view, setView]             = useState<'list' | 'kanban'>('list');
   const [tasks, setTasks]           = useState<Task[]>([]);
@@ -406,8 +404,8 @@ export default function TasksPage() {
 
   useEffect(() => {
     fetchTasks();
-    if (isAdminUser) fetchEmployees();
-  }, [fetchTasks, fetchEmployees, isAdminUser]);
+    if (canManageTasks) fetchEmployees();
+  }, [fetchTasks, fetchEmployees, canManageTasks]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this task permanently?')) return;
@@ -467,7 +465,9 @@ export default function TasksPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Task Management</h1>
           <p className="text-slate-500 dark:text-gray-400 mt-1 text-sm font-medium">
-            {filtered.length} task{filtered.length !== 1 ? 's' : ''}{!isAdminUser ? ' assigned to you' : ''}
+            {filtered.length} task{filtered.length !== 1 ? 's' : ''}
+            {taskScope === 'Department' && <span className="ml-1.5 text-blue-500 font-semibold">(Department View)</span>}
+            {taskScope === 'Own' && <span className="ml-1.5 text-amber-500 font-semibold">(My Tasks)</span>}
           </p>
         </div>
 
@@ -526,8 +526,8 @@ export default function TasksPage() {
             </button>
           </div>
 
-          {/* Create button — admin only */}
-          {isAdminUser && (
+          {/* Create button — shown only for users with Create permission */}
+          {canManageTasks && (
             <button
               onClick={() => { setEditingTask(null); setModalOpen(true); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition-all"
@@ -591,14 +591,14 @@ export default function TasksPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdminUser ? 8 : 7} className="px-5 py-16 text-center text-slate-400 dark:text-gray-500">
+                    <td colSpan={canManageTasks ? 8 : 7} className="px-5 py-16 text-center text-slate-400 dark:text-gray-500">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
                           <CheckCircle2 className="w-6 h-6 text-slate-300 dark:text-gray-600" />
                         </div>
                         <p className="font-semibold">No tasks found</p>
                         <p className="text-xs">
-                          {isAdminUser ? 'Create your first task using the button above.' : 'No tasks have been assigned to you yet.'}
+                          {canManageTasks ? 'Create your first task using the button above.' : taskScope === 'Department' ? 'No tasks found in your department.' : 'No tasks have been assigned to you yet.'}
                         </p>
                       </div>
                     </td>
@@ -628,9 +628,7 @@ export default function TasksPage() {
                         </td>
                         <td className="px-5 py-4"><PriorityBadge priority={task.priority} /></td>
                         <td className="px-5 py-4">
-                          {isAdminUser ? (
-                            <StatusBadge status={task.status} />
-                          ) : (
+                          {isAdminUser || task.assignedToId === user?.id ? (
                             <select
                               value={task.status}
                               onChange={async e => {
@@ -648,6 +646,8 @@ export default function TasksPage() {
                             >
                               {STATUS_COLUMNS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                             </select>
+                          ) : (
+                            <StatusBadge status={task.status} />
                           )}
                         </td>
                         <td className="px-5 py-4 text-sm text-slate-600 dark:text-gray-300 font-medium">{fmtDate(task.startDate)}</td>
@@ -658,7 +658,7 @@ export default function TasksPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-sm text-slate-400 dark:text-gray-500 font-medium">{fmtDate(task.createdAt)}</td>
-                        {isAdminUser && (
+                        {canManageTasks && (
                           <td className="px-5 py-4">
                             <div className="flex items-center justify-end gap-2">
                               <button
@@ -735,7 +735,7 @@ export default function TasksPage() {
                             key={task.id}
                             task={task}
                             index={index}
-                            canManage={isAdminUser}
+                            canManage={canManageTasks}
                             onEdit={t => { setEditingTask(t); setModalOpen(true); }}
                             onDelete={handleDelete}
                           />
@@ -745,8 +745,8 @@ export default function TasksPage() {
                     )}
                   </Droppable>
 
-                  {/* Quick-add button in each column for admins */}
-                  {isAdminUser && (
+                  {/* Quick-add button in each column for users with create permission */}
+                  {canManageTasks && (
                     <button
                       onClick={() => { setEditingTask(null); setModalOpen(true); }}
                       className="mt-3 w-full py-2.5 text-xs font-semibold text-slate-400 dark:text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 border border-dashed border-slate-200 dark:border-white/10 hover:border-indigo-400/40 rounded-xl transition-all flex items-center justify-center gap-1"
@@ -766,7 +766,7 @@ export default function TasksPage() {
         <TaskModal
           task={editingTask}
           employees={employees}
-          isAdmin={isAdminUser}
+          isAdmin={canManageTasks}
           onClose={() => { setModalOpen(false); setEditingTask(null); }}
           onSaved={fetchTasks}
         />

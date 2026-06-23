@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseRequest, getCorsHeaders } from '@/lib/adapter';
+import { getPermissionScope } from '@/lib/permissions';
 
 const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
 
@@ -38,10 +39,39 @@ export async function GET(req: NextRequest) {
     }
 
     // ── 2. Build Prisma filter ────────────────────────────────────────────────
-    const admin = isAdmin(mockReq.user);
-    const where = admin ? {} : { assignedToId: mockReq.user.id };
+    const scope = await getPermissionScope(mockReq.user.id, 'Tasks', 'canRead');
+    console.log(`[Tasks GET] user=${mockReq.user.id} scope=${scope}`);
 
-    console.log(`[Tasks GET] user=${mockReq.user.id} isAdmin=${admin}`);
+    if (scope === 'No') {
+      return NextResponse.json(
+        { message: 'Permission denied for Tasks module' },
+        { status: 403, headers: getCorsHeaders() }
+      );
+    }
+
+    let where: any = {};
+    if (scope === 'All') {
+      where = {};
+    } else if (scope === 'Department') {
+      const dbUser = await prisma.user.findUnique({ where: { id: mockReq.user.id } });
+      const depId = dbUser?.departmentId;
+      const depName = dbUser?.department;
+      
+      if (depId || depName) {
+        where = {
+          assignedTo: {
+            OR: [
+              ...(depId ? [{ departmentId: depId }] : []),
+              ...(depName ? [{ department: depName }] : []),
+            ]
+          }
+        };
+      } else {
+        where = { assignedToId: mockReq.user.id };
+      }
+    } else {
+      where = { assignedToId: mockReq.user.id };
+    }
 
     // ── 3. Query ──────────────────────────────────────────────────────────────
     const tasks = await prisma.task.findMany({
@@ -103,6 +133,18 @@ export async function POST(req: NextRequest) {
         createdById: mockReq.user.id,
       },
       include: TASK_INCLUDE,
+    });
+
+    // Inject notification for the assigned user
+    await prisma.notification.create({
+      data: {
+        userId: assignedToId,
+        titleEn: 'New Task Assigned',
+        titleBn: 'নতুন টাস্ক দেওয়া হয়েছে',
+        messageEn: `You have been assigned a new task: "${task.title}"`,
+        messageBn: `আপনাকে একটি নতুন টাস্ক দেওয়া হয়েছে: "${task.title}"`,
+        type: 'TASK'
+      }
     });
 
     return NextResponse.json(task, { status: 201, headers: getCorsHeaders() });

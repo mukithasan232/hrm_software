@@ -634,6 +634,7 @@ export default function TeamUsersPage() {
                           >
                             <option value="IN_HOUSE" className="bg-white dark:bg-slate-900">In-House</option>
                             <option value="REMOTE" className="bg-white dark:bg-slate-900">Remote</option>
+                            <option value="HYBRID" className="bg-white dark:bg-slate-900">Hybrid</option>
                           </select>
                           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                         </div>

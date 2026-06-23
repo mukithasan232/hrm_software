@@ -90,20 +90,22 @@ export default function EmployeesPage() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [search, setSearch] = useState('');
 
-  const [unregisteredUsers, setUnregisteredUsers] = useState<{deviceUserId: number, name: string}[]>([]);
-  const [loadingUnregistered, setLoadingUnregistered] = useState(false);
+  const [deviceUsers, setDeviceUsers] = useState<any[]>([]);
+  const [isFetchingZk, setIsFetchingZk] = useState(false);
 
   const fetchUnregistered = async () => {
-    setLoadingUnregistered(true);
+    setIsFetchingZk(true);
     try {
       const res = await api.get('/device/users');
-      setUnregisteredUsers(res.data.users || []);
-      toast.success('Fetched users from device successfully');
+      console.log('ZKTeco Data:', res.data);
+      const users = Array.isArray(res.data) ? res.data : (res.data?.data || res.data?.users || []);
+      setDeviceUsers(users);
+      toast.success("Fetched successfully");
     } catch(e) {
       console.error(e);
-      toast.error('Failed to fetch from device');
+      toast.error("Failed to fetch");
     } finally {
-      setLoadingUnregistered(false);
+      setIsFetchingZk(false);
     }
   };
 
@@ -414,21 +416,22 @@ export default function EmployeesPage() {
                     <button
                       type="button"
                       onClick={fetchUnregistered}
-                      disabled={loadingUnregistered}
+                      disabled={isFetchingZk}
                       className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-500 hover:text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50"
                     >
-                      <RefreshCw className={`w-3 h-3 ${loadingUnregistered ? 'animate-spin' : ''}`} />
-                      Fetch from Device
+                      <RefreshCw className={`w-3 h-3 ${isFetchingZk ? 'animate-spin' : ''}`} />
+                      {isFetchingZk ? 'Fetching...' : 'Fetch from Device'}
                     </button>
                   </div>
-                  {loadingUnregistered ? (
+                  {isFetchingZk ? (
                     <div className={`${fieldCls} flex items-center gap-2 text-slate-500`}><RefreshCw className="w-4 h-4 animate-spin"/> Fetching...</div>
                   ) : (
                     <select value={editZkEnroll} onChange={e => setEditZkEnroll(e.target.value)} className={fieldCls}>
-                      <option value="">— Select Unregistered Device User —</option>
-                      {editZkEnroll && <option value={editZkEnroll}>[Current ID: {editZkEnroll}] (Keep current)</option>}
-                      {unregisteredUsers.map(u => (
-                        <option key={u.deviceUserId} value={u.deviceUserId}>[Device ID: {u.deviceUserId}] - {u.name}</option>
+                      <option value="">--- Select Unregistered Device ---</option>
+                      {deviceUsers.map((user: any, index: number) => (
+                        <option key={index} value={user.userId}>
+                          {user.name || 'Unknown User'} (ID: {user.userId})
+                        </option>
                       ))}
                     </select>
                   )}

@@ -64,8 +64,8 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className={`p-5 border-b border-slate-200 dark:border-white/10 flex items-center ${collapsed ? 'justify-center' : 'justify-between'} transition-all`}>
-        <div className={`flex items-center gap-2.5 min-w-0`}>
+      <div className={`p-5 border-b border-slate-200 dark:border-white/10 flex items-center ${collapsed ? 'justify-center' : 'justify-start'} transition-all`}>
+        <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
           {collapsed ? (
             brand.faviconUrl ? (
               <img
@@ -76,7 +76,9 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 className="h-8 w-8 object-contain"
               />
             ) : (
-              <span className="text-white font-extrabold text-xl tracking-widest block py-2">H</span>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-lg shadow-md flex-shrink-0">
+                {brand.companyName ? brand.companyName.charAt(0).toUpperCase() : 'H'}
+              </div>
             )
           ) : brand.logoUrl && !logoError ? (
             <img
@@ -88,24 +90,13 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               onError={() => setLogoError(true)}
             />
           ) : (
-            <span className="text-white font-extrabold text-2xl tracking-widest block py-2">HRM</span>
+            <span className="text-slate-800 dark:text-white font-extrabold text-2xl tracking-widest block py-2">HRM</span>
           )}
         </div>
 
-        {/* Toggle Button for Desktop */}
-        {!mobileOpen && (
-          <button 
-            onClick={() => setIsCollapsed(!isCollapsed)} 
-            className={`p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors ${collapsed ? 'mx-auto' : ''}`}
-            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-          </button>
-        )}
-
         {/* Mobile Close Button */}
         {mobileOpen && onClose && (
-          <button onClick={onClose} className="md:hidden p-1 text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white flex-shrink-0">
+          <button onClick={onClose} className="md:hidden p-1 text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white flex-shrink-0 ml-auto">
             <X className="w-5 h-5" />
           </button>
         )}
@@ -225,51 +216,48 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className={`p-3 border-t border-slate-200 dark:border-white/10 space-y-2 ${collapsed ? 'flex flex-col items-center' : ''}`}>
-        {/* Mobile App Download Card */}
-        <a
-          href="https://drive.google.com/file/d/16FpY6WfJG6HB6EPgEU4vdRVqAGx0A02c/view?usp=drive_link"
-          download="HRM-App.apk"
-          className={`flex items-center gap-3 py-2.5 border border-brand-primary/20 rounded-xl transition-all group relative ${
-            collapsed 
-              ? 'justify-center w-10 h-10 px-0 bg-brand-primary/10 hover:bg-brand-primary/20' 
-              : 'px-3 w-full text-left bg-gradient-to-tr from-brand-primary/10 to-brand-secondary/10 hover:from-brand-primary/20 hover:to-brand-secondary/20'
-          }`}
-        >
-          <div className={`${collapsed ? '' : 'p-1.5 bg-brand-primary/20'} text-brand-primary rounded-lg group-hover:scale-110 transition-transform`}>
-            <Smartphone className="h-5 w-5" />
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] uppercase tracking-wider font-bold text-brand-primary/80">
-                {t('download')}
-              </p>
-              <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
-                {t('androidApp')}
-              </p>
-            </div>
-          )}
-          {collapsed && (
-            <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
-              {t('androidApp')}
-            </span>
-          )}
-        </a>
+      <div className={`p-3 border-t border-slate-200 dark:border-white/10 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`}>
+        {!collapsed && (
+          <>
+            {/* Mobile App Download Card */}
+            <a
+              href="https://drive.google.com/file/d/16FpY6WfJG6HB6EPgEU4vdRVqAGx0A02c/view?usp=drive_link"
+              download="HRM-App.apk"
+              className="flex items-center gap-3 py-2.5 border border-brand-primary/20 rounded-xl transition-all group relative px-3 w-full text-left bg-gradient-to-tr from-brand-primary/10 to-brand-secondary/10 hover:from-brand-primary/20 hover:to-brand-secondary/20"
+            >
+              <div className="p-1.5 bg-brand-primary/20 text-brand-primary rounded-lg group-hover:scale-110 transition-transform">
+                <Smartphone className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-brand-primary/80">
+                  {t('download')}
+                </p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
+                  {t('androidApp')}
+                </p>
+              </div>
+            </a>
 
-        <button
-          onClick={logout}
-          className={`flex items-center gap-3 py-2.5 text-red-500 hover:bg-red-500/5 dark:hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium group relative ${
-            collapsed ? 'justify-center w-10 h-10 px-0' : 'px-4 w-full text-left'
-          }`}
-        >
-          <LogOut className="h-5 w-5" />
-          {!collapsed && <span>{t('signOut')}</span>}
-          {collapsed && (
-            <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700">
-              {t('signOut')}
-            </span>
-          )}
-        </button>
+            <button
+              onClick={logout}
+              className="flex items-center gap-3 py-2.5 px-4 w-full text-left text-red-500 hover:bg-red-500/5 dark:hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium group relative"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>{t('signOut')}</span>
+            </button>
+          </>
+        )}
+
+        {/* Toggle Button for Desktop - Moved to Bottom */}
+        {!mobileOpen && (
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)} 
+            className="p-2.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-200 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/10 transition-all flex items-center justify-center w-full"
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -281,15 +269,20 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         <SidebarContent />
       </aside>
 
-      {/* Mobile Overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-white/10 flex flex-col transition-colors duration-300">
-            <SidebarContent />
-          </aside>
-        </div>
-      )}
+      {/* Mobile Drawer (Animated) */}
+      <div 
+        className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ${mobileOpen ? 'visible' : 'invisible'}`}
+      >
+        <div 
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${mobileOpen ? 'opacity-100' : 'opacity-0'}`} 
+          onClick={onClose} 
+        />
+        <aside 
+          className={`absolute left-0 top-0 bottom-0 w-72 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-white/10 flex flex-col transition-transform duration-300 ease-in-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        >
+          <SidebarContent />
+        </aside>
+      </div>
     </>
   );
 }

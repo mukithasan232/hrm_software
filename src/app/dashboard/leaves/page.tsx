@@ -15,12 +15,21 @@ export default function LeavesPage() {
   const [loading, setLoading] = useState(true);
 
   // Apply leave form state
-  const [type, setType] = useState('Sick');
+  const [paymentType, setPaymentType] = useState('');       // 'Paid Leave' | 'Unpaid Leave'
+  const [leaveCategory, setLeaveCategory] = useState('');   // 'Sick Leave' | 'Casual Leave' (only for Paid)
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Build the combined type string for the API
+  const buildLeaveType = (): string => {
+    if (paymentType === 'Unpaid Leave') return 'Unpaid';
+    if (paymentType === 'Paid Leave' && leaveCategory === 'Sick Leave') return 'Sick';
+    if (paymentType === 'Paid Leave' && leaveCategory === 'Casual Leave') return 'Casual';
+    return '';
+  };
 
   const fetchLeaves = async () => {
     try {
@@ -39,10 +48,23 @@ export default function LeavesPage() {
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate two-tier selection
+    if (!paymentType) {
+      toast.error('Please select a Leave Type (Paid or Unpaid).');
+      return;
+    }
+    if (paymentType === 'Paid Leave' && !leaveCategory) {
+      toast.error('Please select a Category (Sick or Casual) for Paid Leave.');
+      return;
+    }
+
+    const leaveType = buildLeaveType();
+
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('type', type);
+      formData.append('type', leaveType);
       formData.append('startDate', startDate);
       formData.append('endDate', endDate);
       formData.append('reason', reason);
@@ -54,7 +76,13 @@ export default function LeavesPage() {
       toast.success('Leave applied successfully');
       fetchLeaves();
       router.refresh();
-      setStartDate(''); setEndDate(''); setReason(''); setAttachment(null);
+      // Reset form
+      setPaymentType('');
+      setLeaveCategory('');
+      setStartDate('');
+      setEndDate('');
+      setReason('');
+      setAttachment(null);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to apply');
     } finally {
@@ -65,7 +93,7 @@ export default function LeavesPage() {
   const updateStatus = async (id: string, status: string) => {
     try {
       await api.patch(`/leaves/status/${id}`, { status });
-      toast.success(`Leave ${status}`);
+      toast.success(`Leave ${status} & Notification Sent`);
       fetchLeaves();
     } catch (e: any) {
       toast.error('Failed to update status');
@@ -90,17 +118,59 @@ export default function LeavesPage() {
               <Calendar className="w-5 h-5 text-indigo-650 dark:text-blue-400" /> Apply for Leave
             </h2>
             <form onSubmit={handleApply} className="space-y-4 md:space-y-6">
+              {/* Field 1: Primary — Paid vs Unpaid */}
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Leave Type</label>
-                <select 
-                  value={type} onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-semibold"
-                >
-                  <option value="Sick" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Sick Leave</option>
-                  <option value="Casual" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Casual Leave</option>
-                  <option value="Annual" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Annual Leave</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={paymentType}
+                    onChange={(e) => {
+                      setPaymentType(e.target.value);
+                      setLeaveCategory(''); // reset category when payment type changes
+                    }}
+                    required
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-semibold"
+                  >
+                    <option value="" disabled className="bg-white dark:bg-slate-900 text-slate-400">Select type…</option>
+                    <option value="Paid Leave" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Paid Leave</option>
+                    <option value="Unpaid Leave" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Unpaid Leave</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </div>
+                </div>
               </div>
+
+              {/* Field 2: Conditional — Category (only for Paid Leave) */}
+              {paymentType === 'Paid Leave' && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Category</label>
+                  <div className="relative">
+                    <select
+                      value={leaveCategory}
+                      onChange={(e) => setLeaveCategory(e.target.value)}
+                      required
+                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-semibold"
+                    >
+                      <option value="" disabled className="bg-white dark:bg-slate-900 text-slate-400">Select category…</option>
+                      <option value="Sick Leave" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Sick Leave</option>
+                      <option value="Casual Leave" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Casual Leave</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 dark:text-gray-500 pl-1">This leave will be deducted from your annual balance.</p>
+                </div>
+              )}
+
+              {/* Info tag for Unpaid */}
+              {paymentType === 'Unpaid Leave' && (
+                <div className="flex items-start gap-2 bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-xl px-4 py-3 animate-in fade-in duration-200">
+                  <svg className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <p className="text-[11px] text-orange-600 dark:text-orange-400 font-medium">Unpaid leave will not be deducted from your annual leave balance but will affect your payroll.</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Start Date</label>

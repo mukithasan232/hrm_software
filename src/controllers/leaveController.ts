@@ -74,7 +74,7 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
       titleBn: 'নতুন ছুটির আবেদন',
       messageEn: `${applyingUser?.name || 'An employee'} applied for ${type} leave.`,
       messageBn: `${applyingUser?.name || 'একজন কর্মচারী'} ${type} ছুটির আবেদন করেছেন।`,
-      type: 'LeaveRequest'
+      type: 'LEAVE'
     }));
 
     if (notifications.length > 0) {
@@ -135,6 +135,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
     if (!leave) return res.status(404).json({ message: 'Leave not found' });
 
     const statusEn = status;
+
     const statusBn = status === 'Approved' ? 'অনুমোদিত' : status === 'Rejected' ? 'প্রত্যাখ্যাত' : 'মুলতুবি';
 
     await prisma.notification.create({
@@ -144,7 +145,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
         titleBn: `ছুটির আবেদন ${statusBn}`,
         messageEn: `Your ${leave.type} leave request has been ${statusEn}.`,
         messageBn: `আপনার ${leave.type} ছুটির আবেদনটি ${statusBn} হয়েছে।`,
-        type: 'LeaveUpdate'
+        type: 'LEAVE'
       }
     });
 

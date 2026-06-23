@@ -8,7 +8,6 @@ export const OPTIONS = corsPreflight;
 
 export const GET = wrapHandler(getDepartments, {
   protect: true,
-  allowedDesignations: ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'],
 });
 
 export const POST = wrapHandler(createDepartment, {

@@ -13,7 +13,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <Navbar onMobileMenuToggleAction={() => setMobileMenuOpen(!mobileMenuOpen)} />
-          <main className="flex-1 overflow-y-auto pt-20 px-4 pb-6 md:p-8 relative">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden pt-20 px-4 pb-6 md:p-8 relative">
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] -z-10" />
             {children}
           </main>

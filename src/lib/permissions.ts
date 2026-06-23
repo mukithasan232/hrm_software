@@ -10,7 +10,19 @@ export async function hasPermission(
   moduleName: string,
   action: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete'
 ): Promise<boolean> {
-  if (!userId) return false;
+  const scope = await getPermissionScope(userId, moduleName, action);
+  return scope !== 'No';
+}
+
+/**
+ * Gets the explicit permission scope for a user, module, and action.
+ */
+export async function getPermissionScope(
+  userId: string | undefined,
+  moduleName: string,
+  action: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete'
+): Promise<'No' | 'Own' | 'Department' | 'All'> {
+  if (!userId) return 'No';
 
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
@@ -21,7 +33,7 @@ export async function hasPermission(
     } as any
   });
 
-  if (!dbUser) return false;
+  if (!dbUser) return 'No';
 
   // --- ADMIN BYPASS ---
   const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
@@ -30,7 +42,7 @@ export async function hasPermission(
   const hasAdminRole = (dbUser as any).roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
 
   if (ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole) {
-    return true; // Admins bypass all permission checks and have full access
+    return 'All'; // Admins bypass all permission checks and have full access
   }
   // --------------------
 
@@ -68,22 +80,34 @@ export async function hasPermission(
     mergedPerms = { ...mergedPerms, ...uPerms };
   }
 
-  if (!mergedPerms[moduleName]) return false;
+  if (!mergedPerms[moduleName]) return 'No';
 
   const modPerms = mergedPerms[moduleName];
 
-  const checkValue = (val: any) => {
-    if (val === true) return true;
-    if (typeof val === 'string' && val.toLowerCase() !== 'no' && val.toLowerCase() !== 'not set' && val.toLowerCase() !== 'not-set') {
-      return true;
+  // We check for the explicit string 'All', 'Department', 'Own', 'No'
+  // Or fallbacks like true/'enabled'/'yes' -> 'Own'
+  const val = modPerms[jsonAction] || modPerms[action];
+  
+  if (typeof val === 'string') {
+    const lower = val.toLowerCase();
+    if (lower === 'all') return 'All';
+    if (lower === 'department') return 'Department';
+    if (lower === 'own') return 'Own';
+    if (lower === 'yes' || lower === 'enabled') return 'Own';
+    return 'No';
+  } else if (val === true) {
+    return 'Own';
+  }
+
+  // Also check if Access is 'enabled' or 'yes' and action is canRead as fallback
+  if (action === 'canRead') {
+    const accessVal = modPerms.Access || modPerms.canRead;
+    if (accessVal === true) return 'Own';
+    if (typeof accessVal === 'string') {
+      const lowerAccess = accessVal.toLowerCase();
+      if (lowerAccess === 'enabled' || lowerAccess === 'yes') return 'Own';
     }
-    return false;
-  };
+  }
 
-  if (action === 'canRead' && (checkValue(modPerms.Read) || checkValue(modPerms.Access) || checkValue(modPerms.canRead))) return true;
-  if (action === 'canCreate' && (checkValue(modPerms.Create) || checkValue(modPerms.canCreate))) return true;
-  if (action === 'canEdit' && (checkValue(modPerms.Edit) || checkValue(modPerms.canEdit))) return true;
-  if (action === 'canDelete' && (checkValue(modPerms.Delete) || checkValue(modPerms.canDelete))) return true;
-
-  return false;
+  return 'No';
 }

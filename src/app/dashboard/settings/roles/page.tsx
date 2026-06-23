@@ -13,7 +13,7 @@ interface PermissionMatrix {
   };
 }
 
-const MODULES = ['Emails', 'Users', 'Attendance', 'Teams', 'Leaves', 'Payroll'];
+const MODULES = ['Emails', 'Users', 'Attendance', 'Teams', 'Leaves', 'Payroll', 'Tasks'];
 
 export default function RolesPage() {
   const [roles, setRoles] = useState<any[]>([]);

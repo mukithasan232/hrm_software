@@ -11,7 +11,6 @@ export const GET = async (req: any, ctx: any) => {
   try {
     const handler = wrapHandler(getEmployees, {
       protect: true,
-      allowedDesignations: ['Admin', 'Super Admin', 'System Administrator'],
     });
     return await handler(req, ctx);
   } catch (error: any) {
