@@ -127,6 +127,13 @@ export const loginUser = async (req: Request, res: Response) => {
       }
     });
 
+    if (user.permissions) {
+      const dbPerms = typeof user.permissions === 'string'
+        ? JSON.parse(user.permissions)
+        : user.permissions;
+      permissions = { ...permissions, ...dbPerms };
+    }
+
     if (user.userPermission?.matrix) {
       const uPerms = typeof user.userPermission.matrix === 'string'
         ? JSON.parse(user.userPermission.matrix)

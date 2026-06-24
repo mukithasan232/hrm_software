@@ -3,13 +3,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
-  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare
+  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare, Volume2
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBrand } from '@/context/BrandContext';
 import { useTranslation } from '@/context/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { checkPermission } from '@/utils/checkPermission';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -52,20 +53,24 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const filteredItems = NAV_ITEM_DEFS.filter(item => {
     if (item.module === 'Dashboard' || item.module === 'Profile') return true;
-    return can(item.module, 'canRead');
+    return checkPermission(user, item.module, 'view');
   });
 
-  const filteredTeamItems = TEAM_SUB_DEFS.filter(sub => can(sub.module, 'canRead'));
+  const filteredTeamItems = TEAM_SUB_DEFS.filter(sub => checkPermission(user, sub.module, 'view'));
   const canSeeTeam = filteredTeamItems.length > 0;
 
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
   const initials = user?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
+  const isAdminUser = user && ['Admin', 'Super Admin', 'System Administrator'].includes(
+    typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation
+  );
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className={`p-5 border-b border-slate-200 dark:border-white/10 flex items-center ${collapsed ? 'justify-center' : 'justify-start'} transition-all`}>
-        <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
+      <div className={`px-5 h-16 border-b border-slate-200 dark:border-white/10 flex items-center ${collapsed ? 'justify-center' : 'justify-start'} transition-all flex-shrink-0`}>
+        <div className="flex items-center gap-2.5 min-w-0 overflow-hidden h-full">
           {collapsed ? (
             brand.faviconUrl ? (
               <img
@@ -73,6 +78,8 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   ? brand.faviconUrl
                   : `${brand.faviconUrl}?t=${Date.now()}`}
                 alt="Icon"
+                width={32}
+                height={32}
                 className="h-8 w-8 object-contain"
               />
             ) : (
@@ -86,6 +93,8 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 ? brand.logoUrl 
                 : `${brand.logoUrl}?t=${Date.now()}`}
               alt={brand.companyName || 'Logo'}
+              width={140}
+              height={32}
               className="h-8 max-w-[140px] object-contain"
               onError={() => setLogoError(true)}
             />
@@ -211,6 +220,36 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 })}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── Settings Section (Admin / Superadmin only) ── */}
+        {isAdminUser && (
+          <div className="pt-1">
+             <Link
+               href="/dashboard/settings/notifications"
+               onClick={onClose}
+               className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
+                 pathname.startsWith('/dashboard/settings')
+                   ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
+                   : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+               } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
+             >
+               <Volume2
+                 className={`h-5 w-5 flex-shrink-0 transition-colors ${
+                   pathname.startsWith('/dashboard/settings') ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
+                 }`}
+               />
+               {!collapsed && <span className="capitalize">Admin Settings</span>}
+               {!collapsed && pathname.startsWith('/dashboard/settings') && (
+                 <span className="ml-auto h-1.5 w-1.5 rounded-full flex-shrink-0 bg-brand-primary" />
+               )}
+               {collapsed && (
+                 <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700 capitalize">
+                   Admin Settings
+                 </span>
+               )}
+             </Link>
           </div>
         )}
       </nav>

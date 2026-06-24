@@ -34,6 +34,13 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   const prevUnreadCount = useRef(0);
   const unreadCount = notifications?.filter(n => !n.read).length || 0;
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   const fetchNotifications = async () => {
     try {
       const res = await api.get('/notifications');
@@ -105,8 +112,12 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-3">
-
           <BDClock />
+          <div className="hidden md:block">
+            <span className="text-gray-400 text-sm font-medium">
+              {getGreeting()}, {user?.name || 'Admin'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -128,7 +139,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl dark:shadow-2xl overflow-hidden z-50 flex flex-col max-h-[32rem]">
+            <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-gray-700/50 rounded-2xl shadow-xl dark:shadow-lg dark:shadow-black/20 overflow-hidden z-50 flex flex-col max-h-[32rem]">
               <div className="p-4 border-b border-slate-100 dark:border-white/10 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
                   <h3 className="font-bold text-slate-800 dark:text-white text-base">Notifications</h3>
@@ -186,7 +197,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                     return (
                     <div
                       key={n.id}
-                      className={`relative p-3 mb-1 rounded-xl transition-colors flex gap-3 ${!n.read ? 'bg-indigo-50/60 dark:bg-indigo-500/10' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}
+                      className={`relative p-3 mb-1 rounded-xl transition-colors duration-150 flex gap-3 ${!n.read ? 'bg-indigo-50/60 dark:bg-indigo-500/10' : 'hover:bg-slate-50 dark:hover:bg-gray-700 dark:hover:text-white'}`}
                     >
                       {!n.read && (
                         <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand-primary" />
@@ -229,7 +240,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
           </button>
 
           {showProfile && (
-            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl dark:shadow-2xl overflow-hidden z-50">
+            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-gray-700/50 rounded-2xl shadow-xl dark:shadow-lg dark:shadow-black/20 overflow-hidden z-50">
               {/* User info header */}
               <div className="p-4 border-b border-slate-100 dark:border-white/10">
                 <p className="text-slate-800 dark:text-white font-medium text-sm flex items-center gap-2">
@@ -255,7 +266,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                     <Link
                       href="/dashboard/settings/appearance"
                       onClick={() => setShowProfile(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150 group text-brand-primary hover:bg-slate-100 dark:hover:bg-gray-700 dark:hover:text-white"
                     >
                       <Paintbrush className="w-4 h-4 flex-shrink-0" />
                       <span className="font-medium">{t('appearance')}</span>
@@ -263,33 +274,27 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                     <Link
                       href="/dashboard/settings/integrations"
                       onClick={() => setShowProfile(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150 group text-brand-primary hover:bg-slate-100 dark:hover:bg-gray-700 dark:hover:text-white"
                     >
                       <Plug className="w-4 h-4 flex-shrink-0" />
                       <span className="font-medium">{language === 'bn' ? 'ইন্টিগ্রেশন' : 'Integrations'}</span>
                     </Link>
-                    <Link
-                      href="/dashboard/settings/notifications"
-                      onClick={() => setShowProfile(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group text-brand-primary hover:bg-brand-primary/10"
-                    >
-                      <Volume2 className="w-4 h-4 flex-shrink-0" />
-                      <span className="font-medium">{language === 'bn' ? 'নোটিফিকেশন সাউন্ডস' : 'Notification Sounds'}</span>
-                    </Link>
                   </>
                 )}
+
+
 
                 <Link
                   href="/dashboard/profile"
                   onClick={() => setShowProfile(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 text-sm transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 dark:hover:text-white text-sm transition-colors duration-150"
                 >
                   <Settings className="w-4 h-4" /> {t('profileSettings')}
                 </Link>
 
                 <button
                   onClick={logout}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/5 dark:hover:bg-red-500/10 text-sm transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/5 dark:hover:bg-gray-700 text-sm transition-colors duration-150"
                 >
                   <LogOut className="w-4 h-4" /> {t('signOut')}
                 </button>

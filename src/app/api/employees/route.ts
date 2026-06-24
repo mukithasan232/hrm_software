@@ -7,20 +7,39 @@ import { sendWelcomeEmail } from '@/services/emailService';
 import fs from 'fs';
 import path from 'path';
 import { processRawDeviceLogs } from '@/services/zkService';
+import { wrapHandler } from '@/lib/adapter';
+import { checkPermission } from '@/utils/checkPermission';
 
 // GET all employees
-export async function GET() {
+export const GET = wrapHandler(async (req: any, res: any) => {
   try {
-    const employees = await prisma.user.findMany({
-      where: { 
-        userType: 'Employee',
-        employeeId: { not: 'UNMAPPED_FALLBACK' },
-        customDesignation: {
-          name: {
-            notIn: ['Admin', 'Super Admin', 'System Administrator']
-          }
+    const user = req.user;
+    const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'];
+    const designName = typeof user?.designation === 'string' ? user.designation : (user?.designation as any)?.name || '';
+    const userDesig = designName.toLowerCase().trim();
+    const hasAdminRole = user?.roles?.some((r: any) => 
+      ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim())
+    );
+    const isAdmin = ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
+    
+    const hasGlobalView = isAdmin || checkPermission(user, 'Employees', 'view');
+
+    const where: any = { 
+      userType: 'Employee',
+      employeeId: { not: 'UNMAPPED_FALLBACK' },
+      customDesignation: {
+        name: {
+          notIn: ['Admin', 'Super Admin', 'System Administrator']
         }
-      },
+      }
+    };
+
+    if (user && !hasGlobalView) {
+      where.id = user.id;
+    }
+
+    const employees = await prisma.user.findMany({
+      where,
       include: {
         customDesignation: {
           select: { name: true }
@@ -29,17 +48,17 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     });
 
-    const mappedEmployees = employees.map(emp => ({
+    const mappedEmployees = employees.map((emp: any) => ({
       ...emp,
       designation: (emp as any).customDesignation
     }));
 
-    return NextResponse.json(mappedEmployees);
+    return res.status(200).json(mappedEmployees);
   } catch (error: any) {
     console.error('Error fetching employees:', error);
-    return NextResponse.json({ message: 'Failed to fetch employees', error: error.message }, { status: 500 });
+    return res.status(500).json({ message: 'Failed to fetch employees', error: error.message });
   }
-}
+}, { protect: true });
 
 // POST to create a new employee with files
 export async function POST(req: Request) {
@@ -58,6 +77,10 @@ export async function POST(req: Request) {
     const zktecoId = zktecoId_str && zktecoId_str.trim() !== '' ? parseInt(zktecoId_str, 10) : null;
     const baseSalaryStr = formData.get('baseSalary') as string;
     const baseSalary = baseSalaryStr ? parseFloat(baseSalaryStr) : 0;
+    const leaveConfigStr = formData.get('leaveConfig') as string;
+    const leaveConfig = leaveConfigStr ? JSON.parse(leaveConfigStr) : undefined;
+    const permissionsStr = formData.get('permissions') as string;
+    const permissions = permissionsStr ? JSON.parse(permissionsStr) : undefined;
     
     console.log("DEBUG_REQUEST_BODY:", { name, email, roleIds, designationId, department, employeeType, zktecoId });
     console.log("ROLES_PAYLOAD:", roleIds);
@@ -162,6 +185,8 @@ export async function POST(req: Request) {
             baseSalary: baseSalary || 0,
             zktecoId: zktecoId || null,
             documents: documentPaths,
+            leaveConfig: leaveConfig || {},
+            permissions: permissions || {},
           },
           include: {
             customDesignation: true,

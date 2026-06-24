@@ -16,11 +16,13 @@ export interface MockRequest {
     roles?: any[];
   };
   file?: {
-    filename: string;
-    originalname: string;
-    mimetype: string;
-    size: number;
-    path: string;
+    [key: string]: {
+      filename: string;
+      originalname: string;
+      mimetype: string;
+      size: number;
+      path: string;
+    };
   };
   isApiSecretBypass?: boolean;
 }

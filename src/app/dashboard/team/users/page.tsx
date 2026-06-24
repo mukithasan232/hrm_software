@@ -9,8 +9,29 @@ import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidat
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useInView } from 'react-intersection-observer';
+import PageGuard from '@/components/auth/PageGuard';
 
 
+
+const DEFAULT_PERMISSIONS = {
+  attendance: { view: false, create: false, edit: false, delete: false },
+  leaves: { view: false, create: false, edit: false, delete: false },
+  tasks: { view: false, create: false, edit: false, delete: false },
+  employees: { view: false, create: false, edit: false, delete: false },
+  payroll: { view: false, create: false, edit: false, delete: false },
+  departments: { view: false, create: false, edit: false, delete: false },
+  settings: { view: false, create: false, edit: false, delete: false },
+};
+
+const ALL_PERMISSIONS = {
+  attendance: { view: true, create: true, edit: true, delete: true },
+  leaves: { view: true, create: true, edit: true, delete: true },
+  tasks: { view: true, create: true, edit: true, delete: true },
+  employees: { view: true, create: true, edit: true, delete: true },
+  payroll: { view: true, create: true, edit: true, delete: true },
+  departments: { view: true, create: true, edit: true, delete: true },
+  settings: { view: true, create: true, edit: true, delete: true },
+};
 
 const EMPTY_FORM = {
   employeeId: '',
@@ -23,6 +44,10 @@ const EMPTY_FORM = {
   employeeType: 'IN_HOUSE',
   zktecoId: '',
   sendEmail: true,
+  casualLeave: '' as number | '',
+  sickLeave: '' as number | '',
+  annualLeave: '' as number | '',
+  permissions: { ...DEFAULT_PERMISSIONS },
 };
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
@@ -61,6 +86,11 @@ export default function TeamUsersPage() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [submitting, setSubmitting] = useState(false);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
+
+  // Inline Designation
+  const [showInlineDesig, setShowInlineDesig] = useState(false);
+  const [newDesigName, setNewDesigName] = useState('');
+  const [creatingDesig, setCreatingDesig] = useState(false);
 
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
@@ -176,6 +206,7 @@ export default function TeamUsersPage() {
     setEditTarget(null);
     setForm({ ...EMPTY_FORM, employeeId: '' });
     generatePassword();
+    setShowInlineDesig(false);
     setShowModal(true);
   };
 
@@ -192,7 +223,12 @@ export default function TeamUsersPage() {
       employeeType: u.employeeType || 'IN_HOUSE',
       zktecoId: u.zktecoId?.toString() || '',
       sendEmail: false, // hidden on edit anyway
+      casualLeave: u.leaveConfig?.casual ?? '',
+      sickLeave: u.leaveConfig?.sick ?? '',
+      annualLeave: u.leaveConfig?.annual ?? '',
+      permissions: u.permissions ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) : { ...DEFAULT_PERMISSIONS },
     });
+    setShowInlineDesig(false);
     setShowModal(true);
   };
 
@@ -205,14 +241,19 @@ export default function TeamUsersPage() {
           ...form,
           designationId: form.designationId || null,
         };
-        const { password, employeeId, sendEmail, roleIds, employeeType, zktecoId, ...updatePayload } = payload as any;
+        const { password, employeeId, sendEmail, roleIds, employeeType, zktecoId, casualLeave, sickLeave, annualLeave, ...updatePayload } = payload as any;
         if (password) updatePayload.password = password;
         updatePayload.roles = form.roleIds;
+        updatePayload.leaveConfig = JSON.stringify({
+          casual: casualLeave !== '' ? Number(casualLeave) : null,
+          sick: sickLeave !== '' ? Number(sickLeave) : null,
+          annual: annualLeave !== '' ? Number(annualLeave) : null,
+        });
         
         const formData = new FormData();
         Object.entries(updatePayload).forEach(([key, val]) => {
-          if (key === 'roles') {
-            formData.append('roles', JSON.stringify(val));
+          if (key === 'roles' || key === 'permissions') {
+            formData.append(key, JSON.stringify(val));
           } else {
             formData.append(key, val as string);
           }
@@ -231,6 +272,12 @@ export default function TeamUsersPage() {
         formData.append('employeeType', form.employeeType);
         if (form.zktecoId) formData.append('zktecoId', form.zktecoId);
         formData.append('roles', JSON.stringify(form.roleIds));
+        formData.append('permissions', JSON.stringify(form.permissions));
+        formData.append('leaveConfig', JSON.stringify({
+          casual: form.casualLeave !== '' ? Number(form.casualLeave) : null,
+          sick: form.sickLeave !== '' ? Number(form.sickLeave) : null,
+          annual: form.annualLeave !== '' ? Number(form.annualLeave) : null,
+        }));
 
         const res = await api.post('/employees', formData);
         toast.success(form.sendEmail ? 'User created & email sent!' : 'User created successfully!');
@@ -241,6 +288,32 @@ export default function TeamUsersPage() {
       toast.error(err.response?.data?.error || err.response?.data?.message || err.message || 'Operation failed');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCreateDesignation = async () => {
+    if (!newDesigName.trim()) return toast.error('Designation name required');
+    setCreatingDesig(true);
+    try {
+      const res = await api.post('/team/designations', { name: newDesigName.trim(), description: '' });
+      setDesignations(prev => [...prev, res.data]);
+      
+      // Reset permissions to default and select new designation
+      setForm({ ...form, designationId: res.data.id, permissions: { ...DEFAULT_PERMISSIONS } });
+      
+      setShowInlineDesig(false);
+      setNewDesigName('');
+      
+      toast.success('Designation saved! Please configure permissions for this new role.');
+      
+      // Scroll to permission matrix
+      setTimeout(() => {
+        document.getElementById('permission-matrix')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    } catch (e: any) {
+      toast.error('Failed to create designation');
+    } finally {
+      setCreatingDesig(false);
     }
   };
 
@@ -279,16 +352,26 @@ export default function TeamUsersPage() {
 
   const handleRoleChange = (roleId: string, checked: boolean) => {
     const currentRoles = form.roleIds || [];
+    const roleObj = roles.find(r => r.id === roleId);
+    let nextPermissions = { ...form.permissions };
+
     if (checked) {
-      setForm({ ...form, roleIds: [...currentRoles, roleId] });
+      if (roleObj && (roleObj.name === 'Admin' || roleObj.name === 'Super Admin')) {
+        nextPermissions = { ...ALL_PERMISSIONS };
+      }
+      setForm({ ...form, roleIds: [...currentRoles, roleId], permissions: nextPermissions });
     } else {
-      setForm({ ...form, roleIds: currentRoles.filter((value) => value !== roleId) });
+      if (roleObj && (roleObj.name === 'Admin' || roleObj.name === 'Super Admin')) {
+        nextPermissions = { ...DEFAULT_PERMISSIONS };
+      }
+      setForm({ ...form, roleIds: currentRoles.filter((value) => value !== roleId), permissions: nextPermissions });
     }
   };
 
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+    <PageGuard moduleName="Users">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -329,10 +412,10 @@ export default function TeamUsersPage() {
             className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-700 dark:text-white text-sm appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 min-w-[140px] shadow-sm font-medium"
           >
             <option value="All" className="bg-white dark:bg-slate-900">All Designations</option>
-            {allDesignationNames.map(r => (
-              <option key={r} value={r} className="bg-white dark:bg-slate-900">{r}</option>
+            {allDesignationNames.map((r, idx) => (
+              <option key={r || `desig-${idx}`} value={r} className="bg-white dark:bg-slate-900">{r}</option>
             ))}
-          </select>
+            </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         </div>
       </div>
@@ -585,24 +668,44 @@ export default function TeamUsersPage() {
 
                       {/* Designation */}
                       <div className="space-y-1 sm:col-span-2">
-                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
-                          <Shield className="w-3 h-3 text-indigo-500" />
-                          Designation *
+                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide flex items-center justify-between gap-1.5">
+                          <span className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-indigo-500" /> Designation *</span>
+                          {!showInlineDesig && (
+                            <button type="button" onClick={() => setShowInlineDesig(true)} className="text-[10px] text-indigo-500 hover:underline font-bold">+ Add New</button>
+                          )}
                         </label>
-                        <div className="relative">
-                          <select
-                            required
-                            value={form.designationId}
-                            onChange={e => setForm({ ...form, designationId: e.target.value })}
-                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
-                          >
-                            <option value="" className="bg-white dark:bg-slate-900" disabled>— Select Designation —</option>
-                            {(designations || []).map(r => (
-                              <option key={r.id} value={r.id} className="bg-white dark:bg-slate-900">{r.name}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                        </div>
+                        {showInlineDesig ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={newDesigName}
+                              onChange={e => setNewDesigName(e.target.value)}
+                              placeholder="New Designation Name"
+                              className="flex-1 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                            />
+                            <button type="button" onClick={handleCreateDesignation} disabled={creatingDesig} className="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+                              {creatingDesig ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Save'}
+                            </button>
+                            <button type="button" onClick={() => setShowInlineDesig(false)} className="px-3 py-2 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-slate-300 dark:hover:bg-white/20 transition-colors">
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <select
+                              required
+                              value={form.designationId}
+                              onChange={e => setForm({ ...form, designationId: e.target.value })}
+                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
+                            >
+                              <option value="" className="bg-white dark:bg-slate-900" disabled>— Select Designation —</option>
+                              {(designations || []).map((r, idx) => (
+                                <option key={r.id || `desig-opt-${idx}`} value={r.id} className="bg-white dark:bg-slate-900">{r.name}</option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                          </div>
+                        )}
                       </div>
 
                       {/* Department */}
@@ -615,8 +718,8 @@ export default function TeamUsersPage() {
                             className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
                           >
                             <option value="" className="bg-white dark:bg-slate-900">— Select Department —</option>
-                            {(departments || []).map(d => (
-                              <option key={d.id} value={d.name} className="bg-white dark:bg-slate-900">{d.name}</option>
+                            {(departments || []).map((d, idx) => (
+                              <option key={d.id || `dept-opt-${idx}`} value={d.name} className="bg-white dark:bg-slate-900">{d.name}</option>
                             ))}
                           </select>
                           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -663,14 +766,95 @@ export default function TeamUsersPage() {
                               className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium"
                             />
                             <datalist id="zktecoUsersList">
-                              {(unregisteredUsers || []).map((u: any) => (
-                                <option key={u.deviceUserId || u.userId} value={u.deviceUserId || u.userId}>
+                              {(unregisteredUsers || []).map((u: any, idx) => (
+                                <option key={u.deviceUserId || u.userId || `zk-${idx}`} value={u.deviceUserId || u.userId}>
                                   {u.name}
                                 </option>
                               ))}
                             </datalist>
                           </div>
                         )}
+                      </div>
+
+                      {/* Leave Overrides */}
+                      <div className="space-y-1 sm:col-span-2 pt-4 border-t border-slate-100 dark:border-white/10">
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Leave Overrides (Optional)</h3>
+                        <p className="text-[10px] text-slate-500 mb-3">Leave blank to use Department defaults.</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Casual</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={form.casualLeave}
+                              onChange={e => setForm({ ...form, casualLeave: e.target.value === '' ? '' : Number(e.target.value) })}
+                              placeholder="Default"
+                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Sick</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={form.sickLeave}
+                              onChange={e => setForm({ ...form, sickLeave: e.target.value === '' ? '' : Number(e.target.value) })}
+                              placeholder="Default"
+                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Annual</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={form.annualLeave}
+                              onChange={e => setForm({ ...form, annualLeave: e.target.value === '' ? '' : Number(e.target.value) })}
+                              placeholder="Default"
+                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Permission Matrix */}
+                      <div id="permission-matrix" className="space-y-1 sm:col-span-2 pt-4 border-t border-slate-100 dark:border-white/10">
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Permission Matrix</h3>
+                        <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden bg-slate-50 dark:bg-black/30">
+                          <div className="grid grid-cols-5 bg-slate-100 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 p-3 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wider">
+                            <div className="col-span-1">Module</div>
+                            <div className="text-center">View</div>
+                            <div className="text-center">Create</div>
+                            <div className="text-center">Edit</div>
+                            <div className="text-center">Delete</div>
+                          </div>
+                          {Object.keys(DEFAULT_PERMISSIONS).map((moduleKey) => {
+                            const perms = (form.permissions as any)[moduleKey] || { view: false, create: false, edit: false, delete: false };
+                            return (
+                              <div key={moduleKey} className="grid grid-cols-5 items-center p-3 border-b last:border-0 border-slate-100 dark:border-white/5 hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                                <div className="col-span-1 text-sm font-medium text-slate-700 dark:text-gray-300 capitalize">{moduleKey}</div>
+                                {['view', 'create', 'edit', 'delete'].map((action) => (
+                                  <div key={`${moduleKey}-${action}`} className="text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={perms[action] || false}
+                                      onChange={e => {
+                                        setForm({
+                                          ...form,
+                                          permissions: {
+                                            ...form.permissions,
+                                            [moduleKey]: { ...perms, [action]: e.target.checked }
+                                          }
+                                        });
+                                      }}
+                                      className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
 
                 </div>
@@ -734,5 +918,6 @@ export default function TeamUsersPage() {
         </div>
       )}
     </div>
+    </PageGuard>
   );
 }

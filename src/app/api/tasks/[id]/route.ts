@@ -75,6 +75,7 @@ export async function PATCH(
         ...(status !== undefined      && { status }),
         ...(priority !== undefined    && { priority }),
         ...(assignedToId !== undefined && { assignedToId }),
+        ...(mockReq.file?.attachment?.path && { attachment: mockReq.file.attachment.path }),
       },
       include: TASK_INCLUDE,
     });

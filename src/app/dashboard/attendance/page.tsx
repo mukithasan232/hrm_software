@@ -10,6 +10,8 @@ import toast from 'react-hot-toast';
 import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateUtils';
 import { exportToExcel, exportToPDF } from '@/lib/exportUtils';
 import { io as socketIO } from 'socket.io-client';
+import { useAuth } from '@/context/AuthContext';
+import { checkPermission } from '@/utils/checkPermission';
 
 export default function AttendancePage() {
   const { t } = useTranslation();
@@ -30,8 +32,16 @@ export default function AttendancePage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const { user } = useAuth();
+  
+  const isAdminUser = ['admin', 'super admin', 'system administrator', 'hrm manager'].includes(
+    (typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation)?.toLowerCase()
+  ) || user?.roles?.some((r: any) => ['admin', 'super admin', 'system administrator', 'hrm manager'].includes((r?.name || r)?.toLowerCase()));
+  
+  const canCreateAll = isAdminUser || checkPermission(user, 'Attendance', 'create');
+
   const [manualEntry, setManualEntry] = useState({
-    employeeId: '',
+    employeeId: canCreateAll ? '' : (user?.employeeId || user?.id || ''),
     punchType: 'CheckIn',
     timestamp: getBDNowLocal()
   });
@@ -487,14 +497,18 @@ export default function AttendancePage() {
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500" />
                   <select 
                     required
-                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none font-semibold"
+                    disabled={!canCreateAll}
+                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none font-semibold disabled:opacity-75 disabled:cursor-not-allowed"
                     value={manualEntry.employeeId}
                     onChange={(e) => setManualEntry({...manualEntry, employeeId: e.target.value})}
                   >
-                    <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('select_an_employee') || 'Select an employee...'}</option>
+                    {canCreateAll && <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('select_an_employee') || 'Select an employee...'}</option>}
                     {employees.map(emp => (
                       <option key={emp.id} value={emp.employeeId} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{emp.name} (ID: {emp.employeeId})</option>
                     ))}
+                    {!canCreateAll && !employees.find(e => e.employeeId === user?.employeeId) && (
+                      <option value={user?.employeeId} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{user?.name} (ID: {user?.employeeId})</option>
+                    )}
                   </select>
                 </div>
               </div>

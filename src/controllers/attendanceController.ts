@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express-serve-static-core'
 import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs } from '../services/zkService';
 import { runWithDeviceLock, startRealtimeListener } from '../services/realtimeService';
 import { prisma } from '../lib/prisma';
+import { checkPermission } from '../utils/checkPermission';
 import bcrypt from 'bcryptjs';
 import { Parser } from 'json2csv';
 
@@ -114,7 +115,17 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
 // @route   GET /api/attendance/export
 export const exportAttendanceLogs = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const userRole = user?.designation || '';
+    const isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'HR'].includes(userRole);
+
+    const where: any = {};
+    if (!isAdmin && user?.id) {
+      where.employeeId = user.id;
+    }
+
     const logs = await prisma.attendanceLog.findMany({
+      where,
       orderBy: { timestamp: 'desc' },
       include: {
         user: { select: { name: true, employeeId: true } }
@@ -203,10 +214,18 @@ export const getActivePresence = async (req: Request, res: Response) => {
 // @desc    Get all stored attendance logs
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const userRole = user?.designation || '';
+    const isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'HR'].includes(userRole);
+
     const { page, limit, employeeId, filter, department, startDate, endDate } = req.query;
 
     const where: any = {};
-    if (employeeId) where.employeeId = employeeId as string;
+    if (!isAdmin && user?.id) {
+      where.employeeId = user.id;
+    } else if (employeeId) {
+      where.employeeId = employeeId as string;
+    }
     if (department && department !== 'all') where.user = { department: department as string };
 
     const nowUTC = new Date(); // For Ghost Record Mitigation
@@ -279,7 +298,6 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
   }
 };
 
-// @desc    Create manual attendance record
 export const createManualLog = async (req: Request, res: Response): Promise<void> => {
   try {
     const { employeeId, timestamp, punchType } = req.body;
@@ -291,6 +309,23 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       res.status(400).json({ message: 'Invalid timestamp format.' });
       return;
     }
+    
+    // --- Security RBAC Check ---
+    const reqUser = (req as any).user;
+    const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hrm manager'];
+    const designName = typeof reqUser?.designation === 'object' ? reqUser?.designation?.name : reqUser?.designation;
+    const userDesig = (designName || '').toLowerCase().trim();
+    const hasAdminRole = reqUser?.roles?.some((r: any) =>
+      ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim())
+    );
+    const isAdmin = ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
+    const canCreateAll = isAdmin || checkPermission(reqUser, 'Attendance', 'create');
+
+    if (!canCreateAll && String(employeeId) !== String(reqUser.id) && String(employeeId) !== String(reqUser.employeeId)) {
+      res.status(403).json({ message: 'Forbidden: You do not have permission to create attendance for other employees.' });
+      return;
+    }
+    // ---------------------------
 
     // Resolve the actual User UUID from the given employeeId
     const user = await prisma.user.findFirst({

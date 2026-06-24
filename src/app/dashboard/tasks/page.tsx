@@ -7,12 +7,14 @@ import {
 import {
   Plus, LayoutList, Columns3, Search, X, Loader2, Pencil, Trash2,
   CalendarDays, User as UserIcon, ChevronDown, Flag, AlertTriangle,
-  CheckCircle2, Clock, Circle, Hourglass,
+  CheckCircle2, Clock, Circle, Hourglass, Paperclip, CheckSquare,
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/context/AuthContext';
+import { checkPermission } from '@/utils/checkPermission';
+import PageGuard from '@/components/auth/PageGuard';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
@@ -41,6 +43,7 @@ interface Task {
   assignedTo: AssignedUser;
   createdById: string;
   createdBy: { id: string; name: string };
+  attachment?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -124,6 +127,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
     status: (task?.status || 'TODO') as TaskStatus,
     assignedToId: task?.assignedToId || '',
   });
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,11 +136,19 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
     if (!form.assignedToId) return toast.error('Please assign the task to a user');
     setSaving(true);
     try {
+      const formData = new FormData();
+      Object.entries(form).forEach(([k, v]) => formData.append(k, v as string));
+      if (attachment) formData.append('attachment', attachment);
+
       if (task) {
-        await api.patch(`/tasks/${task.id}`, form);
+        await api.patch(`/tasks/${task.id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
         toast.success('Task updated!');
       } else {
-        await api.post('/tasks', form);
+        await api.post('/tasks', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
         toast.success('Task Assigned & Notification Sent');
       }
       onSaved();
@@ -241,6 +253,26 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
             </select>
           </div>
 
+          {/* Attachment */}
+          <div>
+            <label className={label}>Attachment (Optional)</label>
+            <div className="flex items-center gap-2">
+              <label className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-black/20 border border-dashed border-slate-300 dark:border-white/20 hover:border-indigo-500/50 rounded-xl px-4 py-2.5 text-slate-500 dark:text-gray-400 cursor-pointer transition-all">
+                <Paperclip className="w-4 h-4 text-slate-400" />
+                <span className="text-sm truncate font-medium">{attachment ? attachment.name : 'Select file or screenshot'}</span>
+                <input type="file" className="hidden" onChange={(e) => setAttachment(e.target.files?.[0] || null)} />
+              </label>
+              {attachment && (
+                <button type="button" onClick={() => setAttachment(null)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            {task?.attachment && !attachment && (
+               <p className="text-[10px] text-blue-500 mt-1">Current attachment: {task.attachment.split('/').pop()}</p>
+            )}
+          </div>
+
           {/* Actions */}
           <div className="pt-2 flex gap-3">
             <button
@@ -267,9 +299,9 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
 
 // ─── Kanban Card ──────────────────────────────────────────────────────────────
 function KanbanCard({
-  task, index, canManage, onEdit, onDelete,
+  task, index, canEdit, canDelete, onEdit, onDelete,
 }: {
-  task: Task; index: number; canManage: boolean;
+  task: Task; index: number; canEdit: boolean; canDelete: boolean;
   onEdit: (t: Task) => void; onDelete: (id: string) => void;
 }) {
   const overdue = isOverdue(task.dueDate, task.status);
@@ -322,25 +354,35 @@ function KanbanCard({
             )}
           </div>
 
+          {task.attachment && (
+            <div className="mt-2.5 flex items-center gap-1 text-[10px] text-blue-500 bg-blue-50 dark:bg-blue-500/10 w-fit px-2 py-0.5 rounded-md font-semibold">
+              <Paperclip className="w-3 h-3" /> Attachment
+            </div>
+          )}
+
           <div className="mt-2.5">
             <PriorityBadge priority={task.priority} />
           </div>
 
           {/* Action buttons */}
-          {canManage && (
+          {(canEdit || canDelete) && (
             <div className="absolute top-2 right-7 hidden group-hover:flex items-center gap-1">
-              <button
-                onClick={() => onEdit(task)}
-                className="p-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-white/10 text-slate-500 hover:text-indigo-500 transition-colors shadow-sm"
-              >
-                <Pencil className="w-3 h-3" />
-              </button>
-              <button
-                onClick={() => onDelete(task.id)}
-                className="p-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-white/10 text-slate-500 hover:text-red-500 transition-colors shadow-sm"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => onEdit(task)}
+                  className="p-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-white/10 text-slate-500 hover:text-indigo-500 transition-colors shadow-sm"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  onClick={() => onDelete(task.id)}
+                  className="p-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-white/10 text-slate-500 hover:text-red-500 transition-colors shadow-sm"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -352,12 +394,13 @@ function KanbanCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
   const { user } = useAuth();
-  const { can, scope: getScope } = usePermissions();
+  const { scope: getScope } = usePermissions();
 
-  // Derive exact RBAC scope for Tasks read — 'No'|'Own'|'Department'|'All'
   const taskScope = getScope('Tasks', 'canRead');
   const isAdminUser = taskScope === 'All';
-  const canManageTasks = can('Tasks', 'canCreate'); // true only for admins / designations with Create permission
+  const canCreateTasks = checkPermission(user, 'Tasks', 'create');
+  const canEditTasks = checkPermission(user, 'Tasks', 'edit');
+  const canDeleteTasks = checkPermission(user, 'Tasks', 'delete');
 
   const [view, setView]             = useState<'list' | 'kanban'>('list');
   const [tasks, setTasks]           = useState<Task[]>([]);
@@ -404,8 +447,8 @@ export default function TasksPage() {
 
   useEffect(() => {
     fetchTasks();
-    if (canManageTasks) fetchEmployees();
-  }, [fetchTasks, fetchEmployees, canManageTasks]);
+    if (canCreateTasks || canEditTasks) fetchEmployees();
+  }, [fetchTasks, fetchEmployees, canCreateTasks, canEditTasks]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this task permanently?')) return;
@@ -458,7 +501,8 @@ export default function TasksPage() {
   const selectCls = 'bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium appearance-none pr-8';
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <PageGuard moduleName="Tasks">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {/* ─── Header ─── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -527,7 +571,7 @@ export default function TasksPage() {
           </div>
 
           {/* Create button — shown only for users with Create permission */}
-          {canManageTasks && (
+          {canCreateTasks && (
             <button
               onClick={() => { setEditingTask(null); setModalOpen(true); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition-all"
@@ -585,21 +629,23 @@ export default function TasksPage() {
                   <th className="px-5 py-4 font-bold">Start Date</th>
                   <th className="px-5 py-4 font-bold">Due Date</th>
                   <th className="px-5 py-4 font-bold">Created</th>
-                  {isAdminUser && <th className="px-5 py-4 font-bold text-right">Actions</th>}
+                  {(canEditTasks || canDeleteTasks) && <th className="px-5 py-4 font-bold text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={canManageTasks ? 8 : 7} className="px-5 py-16 text-center text-slate-400 dark:text-gray-500">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
-                          <CheckCircle2 className="w-6 h-6 text-slate-300 dark:text-gray-600" />
+                    <td colSpan={(canEditTasks || canDeleteTasks) ? 8 : 7} className="px-5 py-16 text-center text-slate-400 dark:text-gray-500">
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <div className="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-full">
+                          <CheckSquare className="w-8 h-8 text-slate-300 dark:text-slate-600" />
                         </div>
-                        <p className="font-semibold">No tasks found</p>
-                        <p className="text-xs">
-                          {canManageTasks ? 'Create your first task using the button above.' : taskScope === 'Department' ? 'No tasks found in your department.' : 'No tasks have been assigned to you yet.'}
-                        </p>
+                        <div>
+                          <p className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-1">No tasks found</p>
+                          <p className="text-sm">
+                            {canCreateTasks ? 'Create your first task using the button above.' : taskScope === 'Department' ? 'No tasks found in your department.' : 'No tasks have been assigned to you yet.'}
+                          </p>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -628,7 +674,7 @@ export default function TasksPage() {
                         </td>
                         <td className="px-5 py-4"><PriorityBadge priority={task.priority} /></td>
                         <td className="px-5 py-4">
-                          {isAdminUser || task.assignedToId === user?.id ? (
+                          {canEditTasks || task.assignedToId === user?.id ? (
                             <select
                               value={task.status}
                               onChange={async e => {
@@ -658,27 +704,31 @@ export default function TasksPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-sm text-slate-400 dark:text-gray-500 font-medium">{fmtDate(task.createdAt)}</td>
-                        {canManageTasks && (
+                        {(canEditTasks || canDeleteTasks) && (
                           <td className="px-5 py-4">
                             <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => { setEditingTask(task); setModalOpen(true); }}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-all"
-                                title="Edit"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(task.id)}
-                                disabled={deletingId === task.id}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-50"
-                                title="Delete"
-                              >
-                                {deletingId === task.id
-                                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                                  : <Trash2 className="w-4 h-4" />
-                                }
-                              </button>
+                              {canEditTasks && (
+                                <button
+                                  onClick={() => { setEditingTask(task); setModalOpen(true); }}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-all"
+                                  title="Edit"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              )}
+                              {canDeleteTasks && (
+                                <button
+                                  onClick={() => handleDelete(task.id)}
+                                  disabled={deletingId === task.id}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-50"
+                                  title="Delete"
+                                >
+                                  {deletingId === task.id
+                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : <Trash2 className="w-4 h-4" />
+                                  }
+                                </button>
+                              )}
                             </div>
                           </td>
                         )}
@@ -735,7 +785,8 @@ export default function TasksPage() {
                             key={task.id}
                             task={task}
                             index={index}
-                            canManage={canManageTasks}
+                            canEdit={canEditTasks}
+                            canDelete={canDeleteTasks}
                             onEdit={t => { setEditingTask(t); setModalOpen(true); }}
                             onDelete={handleDelete}
                           />
@@ -746,7 +797,7 @@ export default function TasksPage() {
                   </Droppable>
 
                   {/* Quick-add button in each column for users with create permission */}
-                  {canManageTasks && (
+                  {canCreateTasks && (
                     <button
                       onClick={() => { setEditingTask(null); setModalOpen(true); }}
                       className="mt-3 w-full py-2.5 text-xs font-semibold text-slate-400 dark:text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 border border-dashed border-slate-200 dark:border-white/10 hover:border-indigo-400/40 rounded-xl transition-all flex items-center justify-center gap-1"
@@ -766,11 +817,12 @@ export default function TasksPage() {
         <TaskModal
           task={editingTask}
           employees={employees}
-          isAdmin={canManageTasks}
+          isAdmin={isAdminUser}
           onClose={() => { setModalOpen(false); setEditingTask(null); }}
           onSaved={fetchTasks}
         />
-      )}
-    </div>
+        )}
+      </div>
+    </PageGuard>
   );
 }

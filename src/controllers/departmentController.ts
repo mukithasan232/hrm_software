@@ -16,14 +16,20 @@ export const getDepartments = async (req: MockRequest, res: MockResponse) => {
 
 export const createDepartment = async (req: MockRequest, res: MockResponse) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, leaveConfig } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
 
     const exists = await prisma.department.findUnique({ where: { name } });
     if (exists) return res.status(400).json({ message: 'Department already exists' });
 
     const newDept = await prisma.department.create({
-      data: { name, description },
+      data: { 
+        name, 
+        description, 
+        leaveConfig: leaveConfig || {},
+        totalCasualLeaves: leaveConfig?.casual || 0,
+        totalSickLeaves: leaveConfig?.sick || 0
+      },
     });
 
     res.status(201).json(newDept);
@@ -35,11 +41,18 @@ export const createDepartment = async (req: MockRequest, res: MockResponse) => {
 export const updateDepartment = async (req: MockRequest, res: MockResponse) => {
   try {
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name, description, leaveConfig } = req.body;
+
+    const dataToUpdate: any = { name, description };
+    if (leaveConfig !== undefined) {
+      dataToUpdate.leaveConfig = leaveConfig;
+      dataToUpdate.totalCasualLeaves = leaveConfig?.casual || 0;
+      dataToUpdate.totalSickLeaves = leaveConfig?.sick || 0;
+    }
 
     const updated = await prisma.department.update({
       where: { id },
-      data: { name, description },
+      data: dataToUpdate,
     });
 
     res.status(200).json(updated);

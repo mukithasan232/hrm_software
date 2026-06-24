@@ -42,9 +42,12 @@ model Designation {
 
 model Department {
   id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
+  name              String   @unique
+  description       String?
+  leaveConfig       Json?    @default("{}")
+  totalCasualLeaves Int      @default(0)
+  totalSickLeaves   Int      @default(0)
+  createdAt         DateTime @default(now())
   updatedAt   DateTime @updatedAt
   users       User[]
 }
@@ -136,8 +139,12 @@ model User {
   name         String
   password     String
   isActive     Boolean  @default(true)
-  baseSalary   Float    @default(0)
-  department   String?
+  baseSalary            Float    @default(0)
+  leaveConfig           Json?    @default("{}")
+  casualLeaveAdjustment Int      @default(0)
+  sickLeaveAdjustment   Int      @default(0)
+  permissions           Json?    @default("{}")
+  department            String?
   designation  String?
   joiningDate  DateTime @default(now())
   profileImage String?
@@ -320,6 +327,7 @@ model Task {
   id           String       @id @default(uuid())
   title        String
   description  String?      @db.Text
+  attachment   String?
   startDate    DateTime?
   dueDate      DateTime?
   status       TaskStatus   @default(TODO)

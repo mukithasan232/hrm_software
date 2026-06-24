@@ -44,9 +44,13 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
         customDesignation: { select: { id: true, name: true } },
         department: true,
         baseSalary: true,
+        leaveConfig: true,
         isActive: true,
         joiningDate: true,
         profileImage: true,
+        casualLeaveAdjustment: true,
+        sickLeaveAdjustment: true,
+        permissions: true,
         createdAt: true,
         updatedAt: true,
       }
@@ -207,7 +211,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, designationId, department, baseSalary, isActive, employeeType, zktecoId, roles } = req.body as any;
+    const { name, designationId, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions } = req.body as any;
     let finalDesignationId = designationId !== undefined ? (designationId || null) : undefined;
     if (finalDesignationId && !finalDesignationId.includes('-')) {
       let desig = await prisma.designation.findFirst({
@@ -237,7 +241,11 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         department,
         employeeType: employeeType || undefined,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,
+        leaveConfig: leaveConfig !== undefined ? (typeof leaveConfig === 'string' ? JSON.parse(leaveConfig) : leaveConfig) : undefined,
         zktecoId: zktecoId ? parseInt(zktecoId, 10) : undefined,
+        casualLeaveAdjustment: casualLeaveAdjustment !== undefined ? Number(casualLeaveAdjustment) : undefined,
+        sickLeaveAdjustment: sickLeaveAdjustment !== undefined ? Number(sickLeaveAdjustment) : undefined,
+        permissions: permissions !== undefined ? (typeof permissions === 'string' ? JSON.parse(permissions) : permissions) : undefined,
         isActive,
         ...(rolesToConnect && { roles: rolesToConnect }),
       },
@@ -251,6 +259,10 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         department: true,
         employeeType: true,
         baseSalary: true,
+        leaveConfig: true,
+        casualLeaveAdjustment: true,
+        sickLeaveAdjustment: true,
+        permissions: true,
         isActive: true,
         zktecoId: true,
       }
@@ -280,7 +292,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
 export const createEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password, designationId, department, baseSalary, sendEmail, employeeType, roles } = req.body as any;
+    const { name, email, password, designationId, department, baseSalary, sendEmail, employeeType, roles, leaveConfig } = req.body as any;
 
     // Auto-generate Employee ID sequentially
     const allUsers = await prisma.user.findMany({ select: { employeeId: true } });
@@ -333,6 +345,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         department,
         employeeType: employeeType || 'IN_HOUSE',
         baseSalary: Number(baseSalary) || 0,
+        leaveConfig: leaveConfig ? (typeof leaveConfig === 'string' ? JSON.parse(leaveConfig) : leaveConfig) : {},
         joiningDate: new Date(),
         ...(roles && {
           roles: {

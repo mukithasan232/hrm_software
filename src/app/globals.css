@@ -49,3 +49,33 @@
     width: 350px !important;
   }
 }
+
+@layer components {
+  /* Select dropdowns in dark mode */
+  .dark select option,
+  .dark select {
+    background-color: #1E293B;
+    color: #f8fafc;
+  }
+  
+  .dark select:focus {
+    border-color: rgba(75, 85, 99, 0.5); /* gray-700/50 */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+}

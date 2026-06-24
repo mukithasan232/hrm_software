@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import PageGuard from '@/components/auth/PageGuard';
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<any[]>([]);
@@ -17,6 +18,9 @@ export default function DepartmentsPage() {
   const [editTarget, setEditTarget] = useState<any | null>(null);
   const [departmentName, setDepartmentName] = useState('');
   const [departmentDesc, setDepartmentDesc] = useState('');
+  const [casualLeave, setCasualLeave] = useState<number>(10);
+  const [sickLeave, setSickLeave] = useState<number>(14);
+  const [annualLeave, setAnnualLeave] = useState<number>(15);
   const [submitting, setSubmitting] = useState(false);
 
   // Delete confirm
@@ -42,6 +46,9 @@ export default function DepartmentsPage() {
     setEditTarget(null);
     setDepartmentName('');
     setDepartmentDesc('');
+    setCasualLeave(10);
+    setSickLeave(14);
+    setAnnualLeave(15);
     setShowModal(true);
   };
 
@@ -49,6 +56,9 @@ export default function DepartmentsPage() {
     setEditTarget(department);
     setDepartmentName(department.name);
     setDepartmentDesc(department.description || '');
+    setCasualLeave(department.totalCasualLeaves ?? department.leaveConfig?.casual ?? 10);
+    setSickLeave(department.totalSickLeaves ?? department.leaveConfig?.sick ?? 14);
+    setAnnualLeave(department.leaveConfig?.annual ?? 15);
     setShowModal(true);
   };
 
@@ -61,7 +71,15 @@ export default function DepartmentsPage() {
     }
     setSubmitting(true);
     try {
-      const payload = { name: departmentName.trim(), description: departmentDesc.trim() };
+      const payload = { 
+        name: departmentName.trim(), 
+        description: departmentDesc.trim(),
+        leaveConfig: {
+          casual: Number(casualLeave) || 0,
+          sick: Number(sickLeave) || 0,
+          annual: Number(annualLeave) || 0,
+        }
+      };
       if (editTarget) {
         await api.put(`/team/departments/${editTarget.id}`, payload);
         toast.success('Department updated successfully!');
@@ -100,7 +118,8 @@ export default function DepartmentsPage() {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <PageGuard moduleName="Departments">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -309,6 +328,42 @@ export default function DepartmentsPage() {
                   />
                 </div>
 
+                <div className="pt-2">
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-3">Default Leave Allocation (Days)</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Casual</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={casualLeave}
+                        onChange={e => setCasualLeave(Number(e.target.value))}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Sick</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={sickLeave}
+                        onChange={e => setSickLeave(Number(e.target.value))}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Annual</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={annualLeave}
+                        onChange={e => setAnnualLeave(Number(e.target.value))}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
               {/* Modal Footer */}
@@ -370,5 +425,6 @@ export default function DepartmentsPage() {
         </div>
       )}
     </div>
+    </PageGuard>
   );
 }

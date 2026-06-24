@@ -131,6 +131,7 @@ export async function POST(req: NextRequest) {
         priority: priority || 'NORMAL',
         assignedToId,
         createdById: mockReq.user.id,
+        attachment: mockReq.file?.attachment?.path || null,
       },
       include: TASK_INCLUDE,
     });

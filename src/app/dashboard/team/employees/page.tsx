@@ -10,6 +10,8 @@ import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useDeviceSync } from '@/hooks/useDeviceSync';
 import { usePermissions } from '@/hooks/usePermissions';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import PageGuard from '@/components/auth/PageGuard';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -27,6 +29,9 @@ interface Employee {
   profileImage?: string;
   isActive: boolean;
   zktecoId?: number | null;
+  leaveConfig?: any;
+  casualLeaveAdjustment?: number;
+  sickLeaveAdjustment?: number;
 }
 
 interface Designation {
@@ -129,13 +134,18 @@ export default function EmployeesPage() {
   const [editType, setEditType] = useState<EmployeeType>('IN_HOUSE');
   const [editDepartment, setEditDepartment] = useState('');
   const [editZkEnroll, setEditZkEnroll] = useState('');
+  const [casualLeave, setCasualLeave] = useState<number | ''>('');
+  const [sickLeave, setSickLeave] = useState<number | ''>('');
+  const [annualLeave, setAnnualLeave] = useState<number | ''>('');
+  const [casualLeaveAdjustment, setCasualLeaveAdjustment] = useState<number>(0);
+  const [sickLeaveAdjustment, setSickLeaveAdjustment] = useState<number>(0);
 
   // ── Data Fetching ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [empRes, desRes, deptRes] = await Promise.all([
-        fetch('/api/employees').then(r => r.json()),
+        api.get('/employees').then(r => r.data).catch(() => []),
         api.get('/team/designations').then(r => r.data).catch(() => []),
         api.get('/team/departments').then(r => r.data).catch(() => []),
       ]);
@@ -163,7 +173,11 @@ export default function EmployeesPage() {
     setEditType(emp.employeeType);
     setEditDepartment(emp.department || '');
     setEditZkEnroll(emp.zktecoId ? emp.zktecoId.toString() : '');
-    setEditZkEnroll(emp.zktecoId ? emp.zktecoId.toString() : '');
+    setCasualLeave(emp.leaveConfig?.casual ?? '');
+    setSickLeave(emp.leaveConfig?.sick ?? '');
+    setAnnualLeave(emp.leaveConfig?.annual ?? '');
+    setCasualLeaveAdjustment(emp.casualLeaveAdjustment ?? 0);
+    setSickLeaveAdjustment(emp.sickLeaveAdjustment ?? 0);
     setEditTarget(emp);
   };
 
@@ -178,6 +192,13 @@ export default function EmployeesPage() {
         name: editName,
         department: editDepartment,
         employeeType: editType,
+        leaveConfig: {
+          casual: casualLeave !== '' ? Number(casualLeave) : null,
+          sick: sickLeave !== '' ? Number(sickLeave) : null,
+          annual: annualLeave !== '' ? Number(annualLeave) : null,
+        },
+        casualLeaveAdjustment: Number(casualLeaveAdjustment),
+        sickLeaveAdjustment: Number(sickLeaveAdjustment),
       };
       if (editDesignation) payload.designationId = editDesignation;
       if (editZkEnroll) payload.zktecoId = editZkEnroll;
@@ -224,7 +245,8 @@ export default function EmployeesPage() {
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
+    <PageGuard moduleName="Employees">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -308,6 +330,14 @@ export default function EmployeesPage() {
                     <Building2 className="w-3 h-3 flex-shrink-0" /> {emp.department}
                   </p>
                 )}
+                <div className="flex gap-2 mt-2">
+                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 rounded">
+                    CL Adj: {emp.casualLeaveAdjustment ?? 0 > 0 ? '+' : ''}{emp.casualLeaveAdjustment ?? 0}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-orange-50 dark:bg-orange-500/10 text-orange-600 rounded">
+                    SL Adj: {emp.sickLeaveAdjustment ?? 0 > 0 ? '+' : ''}{emp.sickLeaveAdjustment ?? 0}
+                  </span>
+                </div>
               </div>
 
               {/* Footer: type badge + action buttons */}
@@ -438,6 +468,71 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
+              {/* Leave Overrides */}
+              <div className="pt-2">
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Leave Overrides (Optional)</h3>
+                <p className="text-[10px] text-slate-500 mb-3">Leave blank to use Department defaults.</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className={labelCls}>Casual</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={casualLeave}
+                      onChange={e => setCasualLeave(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Default"
+                      className={fieldCls}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className={labelCls}>Sick</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={sickLeave}
+                      onChange={e => setSickLeave(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Default"
+                      className={fieldCls}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className={labelCls}>Annual</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={annualLeave}
+                      onChange={e => setAnnualLeave(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Default"
+                      className={fieldCls}
+                    />
+                  </div>
+                </div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-white mt-4 mb-2">Leave Adjustments (+/-)</h3>
+                <p className="text-[10px] text-slate-500 mb-3">Add or subtract leaves (e.g. 2 or -1).</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className={labelCls}>Casual Adjustment</label>
+                    <input
+                      type="number"
+                      value={casualLeaveAdjustment}
+                      onChange={e => setCasualLeaveAdjustment(Number(e.target.value))}
+                      placeholder="0"
+                      className={fieldCls}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className={labelCls}>Sick Adjustment</label>
+                    <input
+                      type="number"
+                      value={sickLeaveAdjustment}
+                      onChange={e => setSickLeaveAdjustment(Number(e.target.value))}
+                      placeholder="0"
+                      className={fieldCls}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Actions */}
               <div className="pt-4 border-t border-slate-100 dark:border-white/10 flex justify-end gap-3">
                 <button type="button" onClick={() => setEditTarget(null)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
@@ -490,6 +585,7 @@ export default function EmployeesPage() {
         </div>
       )}
 
-    </div>
+      </div>
+    </PageGuard>
   );
 }
