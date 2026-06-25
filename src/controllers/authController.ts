@@ -138,9 +138,10 @@ export const loginUser = async (req: Request, res: Response) => {
       const uPerms = typeof user.userPermission.matrix === 'string'
         ? JSON.parse(user.userPermission.matrix)
         : user.userPermission.matrix;
-      // User specific permissions override designation/role permissions
       permissions = { ...permissions, ...uPerms };
     }
+
+    user.permissions = permissions;
 
     console.log(`[Auth] ✅ Login success: ${user.email} (Designation: ${designationName})`);
 
@@ -154,8 +155,8 @@ export const loginUser = async (req: Request, res: Response) => {
       profileImage: user.profileImage,
       phone: user.phone,
       roles: roles,
-      permissions: permissions,
-      token: generateToken(user.id, designationName, roles, permissions),
+      permissions: user.permissions,
+      token: generateToken(user.id, designationName, roles, user.permissions),
     });
   } catch (error: any) {
     console.error(`[Auth] 🔥 Server Error during login: ${error.message}`);

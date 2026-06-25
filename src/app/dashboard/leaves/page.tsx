@@ -14,6 +14,9 @@ export default function LeavesPage() {
   const [leaves, setLeaves] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+
   // Apply leave form state
   const [paymentType, setPaymentType] = useState('');       // 'Paid Leave' | 'Unpaid Leave'
   const [leaveCategory, setLeaveCategory] = useState('');   // 'Sick Leave' | 'Casual Leave' (only for Paid)
@@ -42,9 +45,22 @@ export default function LeavesPage() {
     }
   };
 
+  const fetchEmployees = async () => {
+    try {
+      const res = await api.get('/employees');
+      // If it returns an array directly, set it, else check res.data.data
+      setEmployees(Array.isArray(res.data) ? res.data : res.data.data || []);
+    } catch (e) {
+      console.error('Failed to load employees', e);
+    }
+  };
+
   useEffect(() => {
-    if (user) fetchLeaves();
-  }, [user]);
+    if (user) {
+      fetchLeaves();
+      if (canManage) fetchEmployees();
+    }
+  }, [user, canManage]);
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +84,9 @@ export default function LeavesPage() {
       formData.append('startDate', startDate);
       formData.append('endDate', endDate);
       formData.append('reason', reason);
+      if (canManage && selectedEmployeeId) {
+        formData.append('targetEmployeeId', selectedEmployeeId);
+      }
       if (attachment) formData.append('attachment', attachment);
 
       await api.post('/leaves/apply', formData, {
@@ -82,6 +101,7 @@ export default function LeavesPage() {
       setStartDate('');
       setEndDate('');
       setReason('');
+      setSelectedEmployeeId('');
       setAttachment(null);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to apply');
@@ -118,6 +138,31 @@ export default function LeavesPage() {
               <Calendar className="w-5 h-5 text-indigo-650 dark:text-blue-400" /> Apply for Leave
             </h2>
             <form onSubmit={handleApply} className="space-y-4 md:space-y-6">
+              
+              {/* Admin Employee Selection */}
+              {canManage && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Select Employee (Admin Only)</label>
+                  <div className="relative">
+                    <select
+                      value={selectedEmployeeId}
+                      onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 appearance-none font-semibold"
+                    >
+                      <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Self (Apply for myself)</option>
+                      {employees.map((emp: any) => (
+                        <option key={emp.id} value={emp.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                          {emp.name} ({emp.employeeId})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Field 1: Primary — Paid vs Unpaid */}
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-650 dark:text-gray-400">Leave Type</label>

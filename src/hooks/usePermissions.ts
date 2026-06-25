@@ -30,8 +30,9 @@ export function usePermissions() {
     // Rely exclusively on the Role permission matrix (RBAC) (legacy fallback)
     if (user?.roles && user.roles.length > 0) {
       for (const role of user.roles) {
-        if (role?.permissions && role.permissions[moduleName]) {
-          if (role.permissions[moduleName][action] === true) {
+        if (role?.permissions) {
+          const roleKey = Object.keys(role.permissions).find(k => k.toLowerCase() === moduleName.toLowerCase());
+          if (roleKey && role.permissions[roleKey][action] === true) {
             return true;
           }
         }
@@ -39,21 +40,24 @@ export function usePermissions() {
     }
 
     // 1. Check user.permissions (which contains merged Designation + Roles + UserOverrides)
-    if (user?.permissions && user.permissions[moduleName]) {
-      const modPerms = user.permissions[moduleName];
-      
-      const checkValue = (val: any) => {
-        if (val === true) return true;
-        if (typeof val === 'string' && val.toLowerCase() !== 'no' && val.toLowerCase() !== 'not-set' && val.toLowerCase() !== 'not set') {
-          return true;
-        }
-        return false;
-      };
+    if (user?.permissions) {
+      const exactKey = Object.keys(user.permissions).find(k => k.toLowerCase() === moduleName.toLowerCase());
+      if (exactKey) {
+        const modPerms = user.permissions[exactKey];
+        
+        const checkValue = (val: any) => {
+          if (val === true) return true;
+          if (typeof val === 'string' && val.toLowerCase() !== 'no' && val.toLowerCase() !== 'not-set' && val.toLowerCase() !== 'not set') {
+            return true;
+          }
+          return false;
+        };
 
-      if (action === 'canRead' && (checkValue(modPerms.Read) || checkValue(modPerms.Access) || checkValue(modPerms.canRead))) return true;
-      if (action === 'canCreate' && (checkValue(modPerms.Create) || checkValue(modPerms.canCreate))) return true;
-      if (action === 'canEdit' && (checkValue(modPerms.Edit) || checkValue(modPerms.canEdit))) return true;
-      if (action === 'canDelete' && (checkValue(modPerms.Delete) || checkValue(modPerms.canDelete))) return true;
+        if (action === 'canRead' && (checkValue(modPerms.Read) || checkValue(modPerms.Access) || checkValue(modPerms.canRead))) return true;
+        if (action === 'canCreate' && (checkValue(modPerms.Create) || checkValue(modPerms.canCreate))) return true;
+        if (action === 'canEdit' && (checkValue(modPerms.Edit) || checkValue(modPerms.canEdit))) return true;
+        if (action === 'canDelete' && (checkValue(modPerms.Delete) || checkValue(modPerms.canDelete))) return true;
+      }
     }
 
     return false;
@@ -74,25 +78,28 @@ export function usePermissions() {
     const actionMap: Record<string, string> = { canRead: 'Read', canCreate: 'Create', canEdit: 'Edit', canDelete: 'Delete' };
     const jsonAction = actionMap[action] || action;
 
-    if (user?.permissions && user.permissions[moduleName]) {
-      const modPerms = user.permissions[moduleName];
-      const val = modPerms[jsonAction] || modPerms[action];
-      if (typeof val === 'string') {
-        const lower = val.toLowerCase().trim();
-        if (lower === 'all') return 'All';
-        if (lower === 'department') return 'Department';
-        if (lower === 'own') return 'Own';
-        if (lower === 'yes' || lower === 'enabled') return 'Own';
-        return 'No';
-      }
-      if (val === true) return 'Own';
-      // Fallback: check Access for canRead
-      if (action === 'canRead') {
-        const accessVal = modPerms.Access || modPerms.canRead;
-        if (accessVal === true) return 'Own';
-        if (typeof accessVal === 'string') {
-          const lA = accessVal.toLowerCase().trim();
-          if (lA === 'enabled' || lA === 'yes') return 'Own';
+    if (user?.permissions) {
+      const exactKey = Object.keys(user.permissions).find(k => k.toLowerCase() === moduleName.toLowerCase());
+      if (exactKey) {
+        const modPerms = user.permissions[exactKey];
+        const val = modPerms[jsonAction] || modPerms[action];
+        if (typeof val === 'string') {
+          const lower = val.toLowerCase().trim();
+          if (lower === 'all') return 'All';
+          if (lower === 'department') return 'Department';
+          if (lower === 'own') return 'Own';
+          if (lower === 'yes' || lower === 'enabled') return 'Own';
+          return 'No';
+        }
+        if (val === true) return 'Own';
+        // Fallback: check Access for canRead
+        if (action === 'canRead') {
+          const accessVal = modPerms.Access || modPerms.canRead;
+          if (accessVal === true) return 'Own';
+          if (typeof accessVal === 'string') {
+            const lA = accessVal.toLowerCase().trim();
+            if (lA === 'enabled' || lA === 'yes') return 'Own';
+          }
         }
       }
     }

@@ -575,7 +575,7 @@ export default function DashboardOverview() {
                   <p className="text-[10px] text-slate-400 dark:text-gray-500 font-medium">Mon – Sat (Sun excluded)</p>
                 </div>
               </div>
-              <div className="h-64 w-full">
+              <div className="w-full" style={{ minHeight: '300px', height: '100%', width: '100%' }}>
                 {loading ? (
                   <div className="h-full flex items-center justify-center">
                     <RefreshCw className="w-6 h-6 text-brand-primary animate-spin" />
@@ -662,7 +662,7 @@ export default function DashboardOverview() {
                   Department Overview
                 </h3>
               </div>
-              <div className="h-64 w-full relative">
+              <div className="w-full relative" style={{ minHeight: '300px', height: '100%', width: '100%' }}>
                 {loading ? (
                   <div className="h-full flex items-center justify-center">
                     <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />

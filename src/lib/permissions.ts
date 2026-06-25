@@ -80,9 +80,10 @@ export async function getPermissionScope(
     mergedPerms = { ...mergedPerms, ...uPerms };
   }
 
-  if (!mergedPerms[moduleName]) return 'No';
+  const moduleKeyLower = moduleName.toLowerCase();
+  const modPerms = mergedPerms[moduleName] || mergedPerms[moduleKeyLower];
 
-  const modPerms = mergedPerms[moduleName];
+  if (!modPerms) return 'No';
 
   // We check for the explicit string 'All', 'Department', 'Own', 'No'
   // Or fallbacks like true/'enabled'/'yes' -> 'Own'
@@ -94,14 +95,14 @@ export async function getPermissionScope(
     if (lower === 'department') return 'Department';
     if (lower === 'own') return 'Own';
     if (lower === 'yes' || lower === 'enabled') return 'Own';
-    return 'No';
+    if (action !== 'canRead') return 'No';
   } else if (val === true) {
     return 'Own';
   }
 
   // Also check if Access is 'enabled' or 'yes' and action is canRead as fallback
   if (action === 'canRead') {
-    const accessVal = modPerms.Access || modPerms.canRead;
+    const accessVal = modPerms.Access || modPerms.access || modPerms.canRead || modPerms.view || modPerms.read;
     if (accessVal === true) return 'Own';
     if (typeof accessVal === 'string') {
       const lowerAccess = accessVal.toLowerCase();

@@ -20,12 +20,22 @@ interface MulterRequest extends Omit<Request, 'file' | 'files'> {
 
 export const applyLeave = async (req: MulterRequest, res: Response) => {
   try {
-    const { type, startDate, endDate, reason } = req.body;
+    const { type, startDate, endDate, reason, targetEmployeeId } = req.body;
     
     // Securely extract the user ID from the session (JWT token)
-    const employeeId = (req as any).user.id;
+    let employeeId = (req as any).user.id;
     if (!employeeId) {
       return res.status(401).json({ message: 'Unauthorized: User session missing' });
+    }
+
+    if (targetEmployeeId && targetEmployeeId !== employeeId) {
+      const userDesig = (req as any).user.customDesignation?.name || (req as any).user.designation;
+      const isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HR', 'HR Manager', 'Manager'].includes(userDesig);
+      if (isAdmin) {
+        employeeId = targetEmployeeId;
+      } else {
+        return res.status(403).json({ message: 'Forbidden: Only admins can assign leave to other employees' });
+      }
     }
 
     // Validate ENUM-like leaveType to ensure frontend consistency

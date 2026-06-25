@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { processRawDeviceLogs } from '@/services/zkService';
 import { wrapHandler } from '@/lib/adapter';
-import { checkPermission } from '@/utils/checkPermission';
+import { checkPermission, getPermissionScopeSync } from '@/utils/checkPermission';
 
 // GET all employees
 export const GET = wrapHandler(async (req: any, res: any) => {
@@ -22,7 +22,8 @@ export const GET = wrapHandler(async (req: any, res: any) => {
     );
     const isAdmin = ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
     
-    const hasGlobalView = isAdmin || checkPermission(user, 'Employees', 'view');
+    // Instead of boolean checkPermission, get the exact scope level
+    const readScope = isAdmin ? 'all' : getPermissionScopeSync(user, 'Employees', 'read');
 
     const where: any = { 
       userType: 'Employee',
@@ -34,8 +35,15 @@ export const GET = wrapHandler(async (req: any, res: any) => {
       }
     };
 
-    if (user && !hasGlobalView) {
-      where.id = user.id;
+    if (!isAdmin) {
+      if (readScope === 'all') {
+        // can view all, do nothing
+      } else if (readScope === 'department' && user.department) {
+        where.department = user.department;
+      } else {
+        // default to 'own' or 'no' (if 'no', they shouldn't even be here, but restrict to self just in case)
+        where.id = user.id;
+      }
     }
 
     const employees = await prisma.user.findMany({

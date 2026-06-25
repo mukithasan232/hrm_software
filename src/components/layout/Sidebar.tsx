@@ -38,7 +38,7 @@ interface SidebarProps {
 
 export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const { brand } = useBrand();
   const { t } = useTranslation();
   const { can } = usePermissions();
@@ -53,10 +53,10 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const filteredItems = NAV_ITEM_DEFS.filter(item => {
     if (item.module === 'Dashboard' || item.module === 'Profile') return true;
-    return checkPermission(user, item.module, 'view');
+    return checkPermission(user, item.module.toLowerCase(), 'access');
   });
 
-  const filteredTeamItems = TEAM_SUB_DEFS.filter(sub => checkPermission(user, sub.module, 'view'));
+  const filteredTeamItems = TEAM_SUB_DEFS.filter(sub => checkPermission(user, sub.module.toLowerCase(), 'access'));
   const canSeeTeam = filteredTeamItems.length > 0;
 
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
@@ -300,6 +300,21 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       </div>
     </div>
   );
+
+  if (loading) {
+    return (
+      <aside className={`hidden md:flex ${isCollapsed ? 'w-20' : 'w-64'} border-r border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-black/40 backdrop-blur-lg flex-col h-screen flex-shrink-0 transition-all duration-300 ease-in-out z-40`}>
+        <div className="flex flex-col h-full animate-pulse p-4 space-y-4">
+          <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded w-1/2 mb-8" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-10 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+            ))}
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <>

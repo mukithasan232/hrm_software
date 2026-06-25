@@ -145,6 +145,7 @@ export async function parseRequest(
           id: decoded.id,
           designation: decoded.designation,
           roles: decoded.roles || [],
+          permissions: decoded.permissions || {},
         };
       } catch (_) {}
     }

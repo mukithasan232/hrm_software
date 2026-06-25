@@ -14,9 +14,6 @@ const SCOPE_MODULES = [
   { label: 'Leaves',          key: 'Leaves' },
   { label: 'Announcements',   key: 'Announcements' },
   { label: 'Employees',       key: 'Employees' },
-  { label: 'User Management', key: 'User Management' },
-  { label: 'System Settings', key: 'System Settings' },
-  { label: 'Inbox',           key: 'Inbox' },
   { label: 'Tasks',           key: 'Tasks' },
 ] as const;
 

@@ -81,7 +81,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         employeeId: true,
         name: true,
         email: true,
-        customDesignation: { select: { id: true, name: true } },
+        customDesignation: { select: { id: true, name: true, permissions: true } },
         department: true,
         designation: true,
         baseSalary: true,
@@ -89,6 +89,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         joiningDate: true,
         profileImage: true,
         phone: true,
+        permissions: true,
         facebookUrl: true,
         linkedinUrl: true,
         githubUrl: true,
@@ -99,7 +100,28 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
       res.status(404).json({ message: 'User not found' });
       return;
     }
-    res.status(200).json({ ...user, designation: user.designation || (user as any).customDesignation?.name });
+    
+    // Fallback: merge customDesignation permissions if user.permissions is not already merged
+    let finalPerms = {};
+    if (user.customDesignation?.permissions) {
+      const dPerms = typeof user.customDesignation.permissions === 'string' 
+        ? JSON.parse(user.customDesignation.permissions) 
+        : user.customDesignation.permissions;
+      finalPerms = { ...finalPerms, ...dPerms };
+    }
+    if (user.permissions) {
+      const uPerms = typeof user.permissions === 'string' 
+        ? JSON.parse(user.permissions) 
+        : user.permissions;
+      finalPerms = { ...finalPerms, ...uPerms };
+    }
+    (user as any).permissions = finalPerms;
+
+    res.status(200).json({ 
+      ...user, 
+      permissions: finalPerms,
+      designation: user.designation || (user as any).customDesignation?.name 
+    });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to fetch profile', error: error.message });
   }

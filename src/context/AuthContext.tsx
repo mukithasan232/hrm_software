@@ -42,6 +42,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const token = Cookies.get('token');
     if (storedUser && token) {
       setUser(JSON.parse(storedUser));
+      
+      // Fetch fresh profile in the background to ensure permissions/roles are up to date
+      fetch('/api/users/profile/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.id) {
+          const updatedUser = { ...JSON.parse(storedUser), ...data };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+        }
+      })
+      .catch(err => console.error('Failed to hydrate fresh user profile:', err));
     }
     setLoading(false);
   }, []);
