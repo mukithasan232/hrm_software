@@ -12,6 +12,19 @@ import { useTranslation } from '@/context/LanguageContext';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
+const getNotificationLink = (type?: string) => {
+  switch (type?.toUpperCase()) {
+    case 'TASK': return '/dashboard/tasks';
+    case 'LEAVE': return '/dashboard/leaves';
+    case 'USER_MANAGEMENT': return '/dashboard/employees';
+    case 'ANNOUNCEMENT': return '/dashboard/announcements';
+    case 'PERFORMANCE': return '/dashboard/performance';
+    case 'PAYROLL': return '/dashboard/payroll';
+    case 'ATTENDANCE': return '/dashboard/attendance';
+    default: return '/dashboard';
+  }
+};
+
 export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggleAction?: () => void }) {
   const { user, logout } = useAuth();
   const { brand } = useBrand();
@@ -195,9 +208,17 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                     const dispTitle = language === 'bn' ? (n.titleBn || n.titleEn || n.title) : (n.titleEn || n.titleBn || n.title);
                     const dispMsg = language === 'bn' ? (n.messageBn || n.messageEn || n.message) : (n.messageEn || n.messageBn || n.message);
                     return (
-                    <div
+                    <Link
+                      href={getNotificationLink(n.type)}
+                      onClick={() => {
+                        if (!n.read) {
+                          api.patch('/notifications', { id: n.id }).catch(() => {});
+                          setNotifications(prev => prev.map(notif => notif.id === n.id ? { ...notif, read: true } : notif));
+                        }
+                        setShowNotifications(false);
+                      }}
                       key={n.id}
-                      className={`relative p-3 mb-1 rounded-xl transition-colors duration-150 flex gap-3 ${!n.read ? 'bg-indigo-50/60 dark:bg-indigo-500/10' : 'hover:bg-slate-50 dark:hover:bg-gray-700 dark:hover:text-white'}`}
+                      className={`relative p-3 mb-1 rounded-xl transition-colors duration-150 flex gap-3 block ${!n.read ? 'bg-indigo-50/60 dark:bg-indigo-500/10' : 'hover:bg-slate-50 dark:hover:bg-gray-700 dark:hover:text-white'}`}
                     >
                       {!n.read && (
                         <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand-primary" />
@@ -213,7 +234,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                           {new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
-                    </div>
+                    </Link>
                     );
                   })
                 )}
