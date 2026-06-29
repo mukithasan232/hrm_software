@@ -1,9 +1,9 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.zoho.com',
-  port: 465,
-  secure: true, // MUST be true for port 465 (Zoho SSL requirement)
+  host: process.env.SMTP_HOST || 'smtp.zoho.com',
+  port: Number(process.env.SMTP_PORT) || 465,
+  secure: process.env.SMTP_PORT === '587' ? false : true,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
