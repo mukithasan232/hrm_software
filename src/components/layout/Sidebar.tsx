@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
@@ -67,19 +68,19 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   );
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className={`px-5 h-16 border-b border-slate-200 dark:border-white/10 flex items-center ${collapsed ? 'justify-center' : 'justify-start'} transition-all flex-shrink-0`}>
-        <div className="flex items-center gap-2.5 min-w-0 overflow-hidden h-full">
+      <div className={`h-16 w-full flex-shrink-0 flex items-center ${collapsed ? 'justify-center' : 'justify-start'} overflow-hidden border-b border-slate-200 dark:border-white/10 px-5 transition-all`}>
+        <div className="flex items-center gap-2.5 min-w-0 overflow-hidden h-full w-full">
           {collapsed ? (
             brand.faviconUrl ? (
-              <img
-                src={brand.faviconUrl.startsWith('http') || brand.faviconUrl.startsWith('data:')
-                  ? brand.faviconUrl
-                  : `${brand.faviconUrl}?t=${Date.now()}`}
+              <Image
+                src={brand.faviconUrl}
                 alt="Icon"
                 width={32}
                 height={32}
+                priority={true}
+                unoptimized={true}
                 className="h-8 w-8 object-contain"
               />
             ) : (
@@ -88,13 +89,13 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               </div>
             )
           ) : brand.logoUrl && !logoError ? (
-            <img
-              src={brand.logoUrl.startsWith('http') || brand.logoUrl.startsWith('data:') 
-                ? brand.logoUrl 
-                : `${brand.logoUrl}?t=${Date.now()}`}
+            <Image
+              src={brand.logoUrl}
               alt={brand.companyName || 'Logo'}
               width={140}
               height={32}
+              priority={true}
+              unoptimized={true}
               className="h-8 max-w-[140px] object-contain"
               onError={() => setLogoError(true)}
             />
@@ -113,9 +114,10 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
 
 
-      {/* Nav Items */}
-      <nav className="flex-1 px-3 mt-4 space-y-1 overflow-y-auto">
-        {filteredItems.map(item => {
+      {/* Nav Items Container */}
+      <div className="flex-1 overflow-y-auto w-full">
+        <nav className="px-3 mt-4 space-y-1">
+          {filteredItems.map(item => {
           const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           const Icon = item.icon;
           return (
@@ -253,6 +255,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           </div>
         )}
       </nav>
+      </div>
 
       {/* Footer */}
       <div className={`p-3 border-t border-slate-200 dark:border-white/10 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`}>

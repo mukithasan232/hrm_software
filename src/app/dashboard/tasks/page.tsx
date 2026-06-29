@@ -268,8 +268,11 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
                 </button>
               )}
             </div>
-            {task?.attachment && !attachment && (
-               <p className="text-[10px] text-blue-500 mt-1">Current attachment: {task.attachment.split('/').pop()}</p>
+            {task?.attachment && task.attachment !== '' && !attachment && (
+              <div className="mt-2">
+                <img src={task.attachment} alt="Attachment" className="max-h-32 rounded-lg object-contain border border-slate-200 dark:border-white/10" />
+                <p className="text-[10px] text-blue-500 mt-1">Current attachment: {task.attachment.split('/').pop()}</p>
+              </div>
             )}
           </div>
 

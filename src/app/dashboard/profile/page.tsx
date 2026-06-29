@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Camera, Save, Lock, User, Mail, Building, Printer, ChevronDown } from 'lucide-react';
+import { Camera, Save, Lock, User, Mail, Building, Printer, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useBrand } from '@/context/BrandContext';
@@ -66,10 +66,14 @@ export default function ProfilePage() {
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [preview, setPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [isSavingPersonal, setIsSavingPersonal] = useState(false);
+  const [isSavingSocial, setIsSavingSocial] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [isNewPasswordValid, setIsNewPasswordValid] = useState(false);
   const [imgError, setImgError] = useState(false);
+  
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // ── Phone country-code state ──
   const [countryCode, setCountryCode] = useState('+880');
@@ -121,9 +125,10 @@ export default function ProfilePage() {
     setPreview(URL.createObjectURL(file));
   };
 
-  const handleProfileSave = async (e: React.FormEvent) => {
+  const handleProfileSave = async (e: React.FormEvent, source: 'personal' | 'social' = 'personal') => {
     e.preventDefault();
-    setSaving(true);
+    if (source === 'social') setIsSavingSocial(true);
+    else setIsSavingPersonal(true);
     try {
       const sanitizeLink = (val: string, prefix: string) => {
         if (!val) return '';
@@ -198,7 +203,8 @@ export default function ProfilePage() {
         toast.error(`${errMsg}${details}`);
       }
     } finally {
-      setSaving(false);
+      setIsSavingPersonal(false);
+      setIsSavingSocial(false);
     }
   };
 
@@ -346,7 +352,7 @@ export default function ProfilePage() {
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
               <User className="w-5 h-5 text-blue-550 dark:text-blue-400" /> {t('personalInfo')}
             </h2>
-            <form onSubmit={handleProfileSave} className="space-y-4">
+            <form onSubmit={(e) => handleProfileSave(e, 'personal')} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold">{t('fullName')}</label>
@@ -448,11 +454,11 @@ export default function ProfilePage() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={isSavingPersonal}
                   className="flex items-center gap-2 px-6 py-2.5 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-brand-primary/40 cursor-pointer hover:opacity-90 bg-brand-primary"
                 >
                   <Save className="w-4 h-4" />
-                  {saving ? t('saving') : t('saveChanges')}
+                  {isSavingPersonal ? t('saving') : t('saveChanges')}
                 </button>
               </div>
             </form>
@@ -550,12 +556,12 @@ export default function ProfilePage() {
             {/* Save button mirrors Personal Info save */}
             <div className="pt-4">
               <button
-                onClick={handleProfileSave}
-                disabled={saving}
+                onClick={(e) => handleProfileSave(e, 'social')}
+                disabled={isSavingSocial}
                 className="flex items-center gap-2 px-6 py-2.5 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-brand-primary/40 cursor-pointer hover:opacity-90 bg-brand-primary"
               >
                 <Save className="w-4 h-4" />
-                {saving ? t('saving') : t('saveChanges')}
+                {isSavingSocial ? t('saving') : t('saveChanges')}
               </button>
             </div>
           </div>
@@ -566,15 +572,24 @@ export default function ProfilePage() {
               <Lock className="w-5 h-5 text-purple-550 dark:text-purple-400" /> {t('changePassword')}
             </h2>
             <form onSubmit={handlePasswordChange} className="space-y-4">
-              <div className="space-y-1">
+              <div className="space-y-1 relative">
                 <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold">Current Password</label>
-                <input
-                  type="password"
-                  required
-                  value={passwords.currentPassword}
-                  onChange={e => setPasswords({ ...passwords, currentPassword: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/25 transition-all font-semibold"
-                />
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    required
+                    value={passwords.currentPassword}
+                    onChange={e => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 pr-10 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/25 transition-all font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                  >
+                    {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -587,15 +602,24 @@ export default function ProfilePage() {
                     className="focus:ring-purple-500/25"
                   />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 relative">
                   <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold">Confirm New Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={passwords.confirmPassword}
-                    onChange={e => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/25 transition-all font-semibold"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      required
+                      value={passwords.confirmPassword}
+                      onChange={e => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 pr-10 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/25 transition-all font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="pt-2">
