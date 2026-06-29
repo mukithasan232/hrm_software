@@ -91,6 +91,7 @@ model Notification {
   messageBn String?
   read      Boolean  @default(false)
   type      String
+  referenceId String?
   updatedAt DateTime @updatedAt
   userId    String
   user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)

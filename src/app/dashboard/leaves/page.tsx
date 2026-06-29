@@ -25,6 +25,7 @@ export default function LeavesPage() {
   const [reason, setReason] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   // Build the combined type string for the API
   const buildLeaveType = (): string => {
@@ -57,7 +58,27 @@ export default function LeavesPage() {
 
   useEffect(() => {
     if (user) {
-      fetchLeaves();
+      fetchLeaves().then(() => {
+        if (typeof window !== 'undefined') {
+          const searchParams = new URLSearchParams(window.location.search);
+          const leaveId = searchParams.get('id');
+          if (leaveId) {
+            setHighlightedId(leaveId);
+            setTimeout(() => {
+              const el = document.getElementById(`leave-${leaveId}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+            
+            // Clean up the URL
+            const url = new URL(window.location.href);
+            url.searchParams.delete('id');
+            window.history.replaceState({}, '', url.toString());
+            
+            // Remove highlight after a few seconds
+            setTimeout(() => setHighlightedId(null), 3000);
+          }
+        }
+      });
       if (canManage) fetchEmployees();
     }
   }, [user, canManage]);
@@ -282,7 +303,7 @@ export default function LeavesPage() {
                     <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">No leaves found.</td></tr>
                   ) : (
                     leaves.map((l) => (
-                      <tr key={l.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                      <tr id={`leave-${l.id}`} key={l.id} className={`transition-colors ${highlightedId === l.id ? 'bg-indigo-50 dark:bg-indigo-500/20 shadow-inner' : 'hover:bg-slate-50/50 dark:hover:bg-white/[0.02]'}`}>
                         {canManage && (
                           <td className="px-6 py-4 text-slate-900 dark:text-white font-bold">
                             {l.employee?.name} <span className="block text-xs text-slate-500 dark:text-gray-500 font-normal mt-0.5">{l.employee?.employeeId}</span>

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { sendWelcomeEmail } from '../services/emailService';
 import { processRawDeviceLogs } from '../services/zkService';
+import { eventEmitter } from '../lib/eventEmitter';
 
 export const getEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -405,6 +406,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
 
       if (notifications.length > 0) {
         await prisma.notification.createMany({ data: notifications });
+        notifications.forEach((n) => eventEmitter.emit('new-notification', { ...n, id: Math.random().toString(36).substring(7), createdAt: new Date() }));
       }
     } catch (notifyError: any) {
       console.error('[createEmployee] Failed to create notifications:', notifyError.message);

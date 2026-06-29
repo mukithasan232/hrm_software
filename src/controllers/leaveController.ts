@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express-serve-static-core';
 import { prisma } from '../lib/prisma';
 import { sendLeaveUpdateEmail } from '../services/emailService';
+import { eventEmitter } from '../lib/eventEmitter';
 
 // 💡 Multer-এর জন্য এক্সপ্রেস Request টাইপকে সম্পূর্ণ টাইপসেফ করা হলো
 interface MulterRequest extends Omit<Request, 'file' | 'files'> {
@@ -84,13 +85,17 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
       titleBn: 'নতুন ছুটির আবেদন',
       messageEn: `${applyingUser?.name || 'An employee'} applied for ${type} leave.`,
       messageBn: `${applyingUser?.name || 'একজন কর্মচারী'} ${type} ছুটির আবেদন করেছেন।`,
-      type: 'LEAVE'
+      type: 'LEAVE',
+      referenceId: leave.id
     }));
 
     if (notifications.length > 0) {
       await prisma.notification.createMany({
         data: notifications
       });
+      // Broadcast the notifications in real-time
+      // Note: createMany doesn't return the IDs, but for real-time we mainly need the payload to show in the dropdown
+      notifications.forEach((n) => eventEmitter.emit('new-notification', { ...n, id: Math.random().toString(36).substring(7), createdAt: new Date() }));
     }
 
     return res.status(201).json({ message: 'Leave applied successfully', leave });
@@ -148,16 +153,19 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
 
     const statusBn = status === 'Approved' ? 'অনুমোদিত' : status === 'Rejected' ? 'প্রত্যাখ্যাত' : 'মুলতুবি';
 
-    await prisma.notification.create({
+    const newNotification = await prisma.notification.create({
       data: {
         userId: leave.employeeId,
         titleEn: `Leave Request ${statusEn}`,
         titleBn: `ছুটির আবেদন ${statusBn}`,
         messageEn: `Your ${leave.type} leave request has been ${statusEn}.`,
         messageBn: `আপনার ${leave.type} ছুটির আবেদনটি ${statusBn} হয়েছে।`,
-        type: 'LEAVE'
+        type: 'LEAVE',
+        referenceId: leave.id
       }
     });
+    
+    eventEmitter.emit('new-notification', newNotification);
 
     if (leave.user?.email && leave.user?.name) {
       await sendLeaveUpdateEmail((leave.user as any).email, leave.user.name, leave.type, statusEn);

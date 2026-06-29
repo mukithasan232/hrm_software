@@ -498,20 +498,12 @@ export default function TasksPage() {
     try {
       setLoading(true);
       const res = await api.get('/tasks');
-      // Guard: ensure the API returned an array, not an error object
       const data = Array.isArray(res.data) ? res.data : [];
       setTasks(data);
+      return data;
     } catch (error: any) {
-      // Log full response so devtools shows the exact server error
-      if (error?.response) {
-        console.error('[Tasks] Fetch failed — HTTP', error.response.status);
-        console.error('[Tasks] Server response:', error.response.data);
-        console.error('[Tasks] Headers:', error.response.headers);
-      } else {
-        console.error('[Tasks] Fetch failed — network/unexpected error:', error?.message);
-      }
-      const serverMsg = error?.response?.data?.message;
-      toast.error(serverMsg ? `Tasks: ${serverMsg}` : 'Failed to load tasks');
+      toast.error(error?.response?.data?.message ? `Tasks: ${error.response.data.message}` : 'Failed to load tasks');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -527,7 +519,25 @@ export default function TasksPage() {
   }, []);
 
   useEffect(() => {
-    fetchTasks();
+    fetchTasks().then((loadedTasks) => {
+      // Check URL for ID parameter (e.g. from notifications)
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const taskId = searchParams.get('id');
+        if (taskId) {
+          const taskToOpen = loadedTasks.find((t: Task) => t.id === taskId);
+          if (taskToOpen) {
+            setEditingTask(taskToOpen);
+            setModalOpen(true);
+            
+            // Clean up the URL
+            const url = new URL(window.location.href);
+            url.searchParams.delete('id');
+            window.history.replaceState({}, '', url.toString());
+          }
+        }
+      }
+    });
     if (canCreateTasks || canEditTasks) fetchEmployees();
   }, [fetchTasks, fetchEmployees, canCreateTasks, canEditTasks]);
 

@@ -12,10 +12,12 @@ import { useTranslation } from '@/context/LanguageContext';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
-const getNotificationLink = (type?: string) => {
-  switch (type?.toUpperCase()) {
-    case 'TASK': return '/dashboard/tasks';
-    case 'LEAVE': return '/dashboard/leaves';
+const getNotificationLink = (n: any) => {
+  const type = n.type?.toUpperCase();
+  const idParam = n.referenceId ? `?id=${n.referenceId}` : '';
+  switch (type) {
+    case 'TASK': return `/dashboard/tasks${idParam}`;
+    case 'LEAVE': return `/dashboard/leaves${idParam}`;
     case 'USER_MANAGEMENT': return '/dashboard/employees';
     case 'ANNOUNCEMENT': return '/dashboard/announcements';
     case 'PERFORMANCE': return '/dashboard/performance';
@@ -76,9 +78,33 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      // Polling for real-time updates
-      const interval = setInterval(fetchNotifications, 5000);
-      return () => clearInterval(interval);
+      
+      // Initialize SSE for real-time notifications
+      const eventSource = new EventSource('/api/sse/notifications');
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const newNotification = JSON.parse(event.data);
+          
+          // Only process notifications meant for this user (or global ones like announcements)
+          if (newNotification.userId && newNotification.userId !== user.id && newNotification.type !== 'Announcement') return;
+          
+          setNotifications(prev => [newNotification, ...prev]);
+          prevUnreadCount.current = prevUnreadCount.current + 1;
+          
+          // Play sound
+          const audio = new Audio('/notification.mp3');
+          audio.play().catch(err => console.warn("Autoplay prevented by browser:", err));
+          
+          // Show toast
+          const msg = newNotification.messageEn || newNotification.messageBn || newNotification.message || 'New Notification';
+          toast.success(msg);
+        } catch (e) {
+          console.error("Failed to parse SSE notification:", e);
+        }
+      };
+
+      return () => eventSource.close();
     }
   }, [user]);
 
@@ -209,7 +235,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                     const dispMsg = language === 'bn' ? (n.messageBn || n.messageEn || n.message) : (n.messageEn || n.messageBn || n.message);
                     return (
                     <Link
-                      href={getNotificationLink(n.type)}
+                      href={getNotificationLink(n)}
                       onClick={() => {
                         if (!n.read) {
                           api.patch('/notifications', { id: n.id }).catch(() => {});

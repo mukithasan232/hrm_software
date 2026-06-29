@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseRequest, getCorsHeaders } from '@/lib/adapter';
 import { getPermissionScope } from '@/lib/permissions';
+import { eventEmitter } from '@/lib/eventEmitter';
 
 const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
 
@@ -137,16 +138,19 @@ export async function POST(req: NextRequest) {
     });
 
     // Inject notification for the assigned user
-    await prisma.notification.create({
+    const newNotification = await prisma.notification.create({
       data: {
         userId: assignedToId,
         titleEn: 'New Task Assigned',
         titleBn: 'নতুন টাস্ক দেওয়া হয়েছে',
         messageEn: `You have been assigned a new task: "${task.title}"`,
         messageBn: `আপনাকে একটি নতুন টাস্ক দেওয়া হয়েছে: "${task.title}"`,
-        type: 'TASK'
+        type: 'TASK',
+        referenceId: task.id
       }
     });
+
+    eventEmitter.emit('new-notification', newNotification);
 
     return NextResponse.json(task, { status: 201, headers: getCorsHeaders() });
   } catch (error: any) {

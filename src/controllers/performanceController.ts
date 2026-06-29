@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express-serve-static-core';
 import { prisma } from '../lib/prisma';
+import { eventEmitter } from '../lib/eventEmitter';
 
 export const getPerformanceStats = async (req: Request, res: Response) => {
   try {
@@ -113,6 +114,7 @@ export const calculateEOTM = async (req: Request, res: Response) => {
     await prisma.notification.createMany({
       data: notifications
     });
+    notifications.forEach((n) => eventEmitter.emit('new-notification', { ...n, id: Math.random().toString(36).substring(7), createdAt: new Date() }));
 
     res.status(200).json({ message: 'EOTM calculated successfully! Winner announced.', winner: updatedWinner });
   } catch (error: any) {
