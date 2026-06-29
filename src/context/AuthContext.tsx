@@ -63,9 +63,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = (userData: User, token: string) => {
+    // Derive secure from actual protocol, not NODE_ENV.
+    // HTTP LAN access (192.168.x.x) has no HTTPS, so secure cookies fail.
+    const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
     Cookies.set('token', token, { 
-      expires: 30, // 30 days persistent storage
-      secure: process.env.NODE_ENV === 'production',
+      expires: 30,
+      secure: isSecure,
       sameSite: 'lax',
       path: '/'
     });
