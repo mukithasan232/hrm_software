@@ -20,17 +20,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'If that email exists, a new password has been sent.' });
     }
 
-    // Generate a new random password
     const newPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + "1!";
-
-    // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update the user's password in the database
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    });
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -42,10 +33,27 @@ export async function POST(req: Request) {
       </div>
     `;
 
-    await sendEmail({
-      to: email,
-      subject: 'Your New Password',
-      html: emailHtml
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      return NextResponse.json({ 
+        message: 'Email service is not configured. Please contact administrator to reset your password.' 
+      }, { status: 500 });
+    }
+
+    try {
+      await sendEmail({
+        to: email,
+        subject: 'Your New Password',
+        html: emailHtml
+      });
+    } catch (emailError: any) {
+      console.error('Failed to send email:', emailError);
+      return NextResponse.json({ message: 'Failed to send email. Please check SMTP settings.', error: emailError.message }, { status: 500 });
+    }
+
+    // Only update the user's password in the database if the email was successfully sent
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
     });
 
     return NextResponse.json({ message: 'If that email exists, a new password has been sent.' });
