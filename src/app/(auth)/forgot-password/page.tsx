@@ -15,6 +15,7 @@ export default function ForgotPasswordPage() {
 
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const logoUrl = brand?.logoUrl;
 
@@ -46,7 +47,7 @@ export default function ForgotPasswordPage() {
             <div className="flex flex-col items-center justify-center gap-3 mb-6 animate-pulse">
               <div className="h-12 w-12 bg-slate-200 dark:bg-white/10 rounded-lg"></div>
             </div>
-          ) : !logoUrl ? (
+          ) : (!logoUrl || logoError) ? (
             <div className="flex flex-col items-center justify-center gap-3 mb-6">
               <span className="text-white font-extrabold text-2xl tracking-widest block py-2">HRM</span>
             </div>
@@ -57,6 +58,7 @@ export default function ForgotPasswordPage() {
                 : `${BACKEND}${logoUrl}?t=${Date.now()}`} 
               alt="Logo" 
               className="h-12 w-auto object-contain mx-auto mb-6"
+              onError={() => setLogoError(true)}
             />
           )}
         </div>
