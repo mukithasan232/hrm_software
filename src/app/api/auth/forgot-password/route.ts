@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import { sendEmail } from '@/lib/email';
+import { sendMail } from '@/services/emailService';
 
 export async function POST(req: Request) {
   try {
@@ -52,13 +52,8 @@ export async function POST(req: Request) {
 
     console.log('Reset Link generated:', resetLink); // Useful for development if SMTP fails
 
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      // If no SMTP settings, just succeed so the dev can use the console link
-      return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' });
-    }
-
     try {
-      await sendEmail({
+      await sendMail({
         to: email,
         subject: 'Password Reset',
         html: emailHtml
