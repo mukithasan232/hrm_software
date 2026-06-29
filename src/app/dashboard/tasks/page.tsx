@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DragDropContext, Droppable, Draggable, DropResult,
 } from '@hello-pangea/dnd';
@@ -117,6 +117,59 @@ interface TaskModalProps {
   isAdmin: boolean;
 }
 
+function CustomSelect({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { value: string; label: string; element: React.ReactNode }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => o.value === value);
+
+  return (
+    <div className="relative" ref={ref}>
+      <div
+        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-medium cursor-pointer flex justify-between items-center"
+        onClick={() => setOpen(!open)}
+      >
+        <div className="pointer-events-none">{selectedOption ? selectedOption.element : 'Select...'}</div>
+        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </div>
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden py-1 max-h-60 overflow-y-auto">
+          {options.map((opt) => (
+            <div
+              key={opt.value}
+              className={`px-4 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex items-center ${value === opt.value ? 'bg-slate-50 dark:bg-white/5' : ''}`}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+            >
+              <div className="pointer-events-none">{opt.element}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskModalProps) {
   const [form, setForm] = useState({
     title: task?.title || '',
@@ -231,40 +284,51 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={label}>Priority</label>
-              <select className={`${field} appearance-none cursor-pointer`} value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value as TaskPriority })}>
-                <option value="LOW">Low</option>
-                <option value="NORMAL">Normal</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
+              <CustomSelect
+                value={form.priority}
+                onChange={(val) => setForm({ ...form, priority: val as TaskPriority })}
+                options={Object.entries(PRIORITY_CONFIG).map(([k, v]) => ({
+                  value: k,
+                  label: v.label,
+                  element: <PriorityBadge priority={k as TaskPriority} />
+                }))}
+              />
             </div>
             <div>
               <label className={label}>Status</label>
-              <select className={`${field} appearance-none cursor-pointer`} value={form.status} onChange={e => setForm({ ...form, status: e.target.value as TaskStatus })}>
-                <option value="TODO">To Do</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="PENDING">Pending</option>
-                <option value="COMPLETED">Completed</option>
-              </select>
+              <CustomSelect
+                value={form.status}
+                onChange={(val) => setForm({ ...form, status: val as TaskStatus })}
+                options={STATUS_COLUMNS.map(c => ({
+                  value: c.key,
+                  label: c.label,
+                  element: <StatusBadge status={c.key} />
+                }))}
+              />
             </div>
           </div>
 
           {/* Assigned To */}
           <div>
             <label className={label}>Assign To *</label>
-            <select
-              className={`${field} appearance-none cursor-pointer`}
+            <CustomSelect
               value={form.assignedToId}
-              onChange={e => setForm({ ...form, assignedToId: e.target.value })}
-              required
-            >
-              <option value="">— Select employee —</option>
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} ({emp.employeeId})
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setForm({ ...form, assignedToId: val })}
+              options={[
+                { value: '', label: '— Select employee —', element: <span className="text-slate-500 dark:text-gray-400">— Select employee —</span> },
+                ...employees.map(emp => ({
+                  value: emp.id,
+                  label: emp.name,
+                  element: (
+                    <div className="flex items-center gap-2">
+                      <Avatar user={emp} />
+                      <span className="font-semibold text-slate-800 dark:text-gray-200">{emp.name}</span>
+                      <span className="text-xs text-slate-400 dark:text-gray-500">({emp.employeeId})</span>
+                    </div>
+                  )
+                }))
+              ]}
+            />
           </div>
 
           {/* Attachment */}
