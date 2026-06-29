@@ -130,6 +130,8 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
   const [attachment, setAttachment] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return toast.error('Title is required');
@@ -205,11 +207,23 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={label}>Start Date</label>
-              <input type="date" className={field} value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
+              <input 
+                type="date" 
+                className={field} 
+                value={form.startDate} 
+                min={task?.startDate ? undefined : todayStr}
+                onChange={e => setForm({ ...form, startDate: e.target.value })} 
+              />
             </div>
             <div>
               <label className={label}>Due Date</label>
-              <input type="date" className={field} value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
+              <input 
+                type="date" 
+                className={field} 
+                value={form.dueDate} 
+                min={form.startDate || (task?.dueDate ? undefined : todayStr)}
+                onChange={e => setForm({ ...form, dueDate: e.target.value })} 
+              />
             </div>
           </div>
 
