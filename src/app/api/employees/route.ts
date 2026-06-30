@@ -23,7 +23,15 @@ export const GET = wrapHandler(async (req: any, res: any) => {
     const isAdmin = ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
     
     // Instead of boolean checkPermission, get the exact scope level
-    const readScope = isAdmin ? 'all' : getPermissionScopeSync(user, 'Employees', 'read');
+    let readScope = isAdmin ? 'all' : getPermissionScopeSync(user, 'Employees', 'read');
+    
+    // If fetching for task assignment, evaluate task scope as a fallback
+    if (!isAdmin && req.query?.purpose === 'task_assignment') {
+      const taskScope = getPermissionScopeSync(user, 'Tasks', 'create');
+      if (taskScope === 'all' || taskScope === 'department') {
+        readScope = taskScope;
+      }
+    }
 
     const where: any = { 
       userType: 'Employee',

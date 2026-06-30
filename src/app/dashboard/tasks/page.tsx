@@ -574,7 +574,7 @@ export default function TasksPage() {
 
   const fetchEmployees = useCallback(async () => {
     try {
-      const res = await api.get('/employees');
+      const res = await api.get('/employees?purpose=task_assignment');
       setEmployees(Array.isArray(res.data) ? res.data : res.data.data || []);
     } catch {
       console.error('Failed to fetch employees');
@@ -738,30 +738,6 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* ─── Stat Cards ─── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {STATUS_COLUMNS.map(col => {
-          const Icon = col.icon;
-          const count = tasks.filter(t => t.status === col.key).length;
-          return (
-            <div
-              key={col.key}
-              onClick={() => setStatusFilter(statusFilter === col.key ? 'ALL' : col.key)}
-              className={`bg-white dark:bg-white/5 border rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md shadow-sm ${
-                statusFilter === col.key
-                  ? `${col.border} ring-2 ring-offset-0 ${col.bg}`
-                  : 'border-slate-200 dark:border-white/10'
-              }`}
-            >
-              <div className={`flex items-center gap-2 ${col.color} text-xs font-bold uppercase tracking-wider mb-1`}>
-                <Icon className="w-3.5 h-3.5" />
-                {col.label}
-              </div>
-              <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{count}</p>
-            </div>
-          );
-        })}
-      </div>
 
       {/* ─── Loading ─── */}
       {loading && (
