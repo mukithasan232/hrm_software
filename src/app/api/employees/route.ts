@@ -52,7 +52,8 @@ export const GET = wrapHandler(async (req: any, res: any) => {
         customDesignation: {
           select: { name: true }
         },
-        shift: true
+        shift: true,
+        customDepartment: true
       },
       orderBy: { createdAt: 'desc' }
     });

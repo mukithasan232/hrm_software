@@ -165,30 +165,36 @@ export default function AttendancePage() {
     fetchLogs();
   }, [dateRange, customStartDate, customEndDate, departmentFilter]);
 
-  // Auto-select PunchType based on last punch
-  useEffect(() => {
-    if (isModalOpen && manualEntry.employeeId) {
-      const empLogs = logs.filter(l => 
-        (l.employeeId === manualEntry.employeeId || l.id === manualEntry.employeeId) && 
-        toBDDisplay(l.timestamp, 'yyyy-MM-dd') === getBDToday()
-      );
-      
-      if (empLogs.length > 0) {
-        // logs are sorted desc
-        const latest = empLogs[0];
-        if (latest.punchType?.toLowerCase().includes('in')) {
-          setManualEntry(prev => ({ ...prev, punchType: 'CheckOut' }));
-        } else {
-          setManualEntry(prev => ({ ...prev, punchType: 'CheckIn' }));
-        }
-      } else {
-        setManualEntry(prev => ({ ...prev, punchType: 'CheckIn' }));
+  const updateManualEntryForEmployee = (empId: string) => {
+    let calculatedPunchType = 'CheckIn';
+    if (empId && logs) {
+      const today = getBDToday();
+      const userLogsToday = logs.filter(log => {
+        const logDate = toBDDisplay(log.timestamp, 'yyyy-MM-dd');
+        return (String(log.employeeId) === String(empId) || String(log.user?.employeeId) === String(empId)) && logDate === today;
+      });
+
+      userLogsToday.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      const lastAction = userLogsToday[0];
+
+      if (lastAction && (lastAction.punchType === 'CheckIn' || lastAction.punchType?.toLowerCase().includes('in'))) {
+        calculatedPunchType = 'CheckOut';
       }
-      
-      // Update timestamp to now when modal opens or employee changes
-      setManualEntry(prev => ({ ...prev, timestamp: getBDNowLocal() }));
     }
-  }, [manualEntry.employeeId, isModalOpen, logs]);
+
+    setManualEntry(prev => ({
+      ...prev,
+      employeeId: empId,
+      punchType: calculatedPunchType,
+      timestamp: getBDNowLocal()
+    }));
+  };
+
+  const handleOpenModal = () => {
+    const defaultEmpId = canCreateAll ? '' : (user?.employeeId || user?.id || '');
+    updateManualEntryForEmployee(defaultEmpId);
+    setIsModalOpen(true);
+  };
 
   useEffect(() => {
     fetchEmployees();
@@ -387,7 +393,7 @@ export default function AttendancePage() {
         </div>
         <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenModal}
             className="flex justify-center items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium w-full md:w-auto"
           >
             <Plus className="w-4 h-4" /> {t('manualEntry')}
@@ -588,7 +594,7 @@ export default function AttendancePage() {
                     disabled={!canCreateAll}
                     className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none font-semibold disabled:opacity-75 disabled:cursor-not-allowed"
                     value={manualEntry.employeeId}
-                    onChange={(e) => setManualEntry({...manualEntry, employeeId: e.target.value})}
+                    onChange={(e) => updateManualEntryForEmployee(e.target.value)}
                   >
                     {canCreateAll && <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('select_an_employee') || 'Select an employee...'}</option>}
                     {employees.map(emp => (

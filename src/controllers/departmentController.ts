@@ -16,7 +16,7 @@ export const getDepartments = async (req: MockRequest, res: MockResponse) => {
 
 export const createDepartment = async (req: MockRequest, res: MockResponse) => {
   try {
-    const { name, description, leaveConfig } = req.body;
+    const { name, description, leaveConfig, shiftStartTime, shiftEndTime } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
 
     const exists = await prisma.department.findUnique({ where: { name } });
@@ -28,7 +28,9 @@ export const createDepartment = async (req: MockRequest, res: MockResponse) => {
         description, 
         leaveConfig: leaveConfig || {},
         totalCasualLeaves: leaveConfig?.casual || 0,
-        totalSickLeaves: leaveConfig?.sick || 0
+        totalSickLeaves: leaveConfig?.sick || 0,
+        shiftStartTime: shiftStartTime || '09:00',
+        shiftEndTime: shiftEndTime || '17:00'
       },
     });
 
@@ -41,7 +43,7 @@ export const createDepartment = async (req: MockRequest, res: MockResponse) => {
 export const updateDepartment = async (req: MockRequest, res: MockResponse) => {
   try {
     const { id } = req.params;
-    const { name, description, leaveConfig } = req.body;
+    const { name, description, leaveConfig, shiftStartTime, shiftEndTime } = req.body;
 
     const dataToUpdate: any = { name, description };
     if (leaveConfig !== undefined) {
@@ -49,6 +51,8 @@ export const updateDepartment = async (req: MockRequest, res: MockResponse) => {
       dataToUpdate.totalCasualLeaves = leaveConfig?.casual || 0;
       dataToUpdate.totalSickLeaves = leaveConfig?.sick || 0;
     }
+    if (shiftStartTime !== undefined) dataToUpdate.shiftStartTime = shiftStartTime;
+    if (shiftEndTime !== undefined) dataToUpdate.shiftEndTime = shiftEndTime;
 
     const updated = await prisma.department.update({
       where: { id },

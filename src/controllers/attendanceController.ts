@@ -369,9 +369,9 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
 
     // --- Late Detection ---
     if (punchType === 'CheckIn') {
-      const shiftStartTimeStr = user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
+      const expectedShiftStart = user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
       const checkInLocalStr = formatInTimeZone(parsedDate, BD_TZ, 'yyyy-MM-dd');
-      const shiftStartLocalStr = `${checkInLocalStr}T${shiftStartTimeStr}:00+06:00`;
+      const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;
       const shiftStartUTC = new Date(shiftStartLocalStr);
       
       const gracePeriodMs = 10 * 60 * 1000; // 10 minutes
@@ -399,8 +399,8 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
               userId: admin.id,
               titleEn: 'Late Check-in',
               titleBn: 'দেরিতে উপস্থিতি',
-              messageEn: `${user.name} checked in late at ${formatInTimeZone(parsedDate, BD_TZ, 'hh:mm a')}`,
-              messageBn: `${user.name} দেরিতে উপস্থিত হয়েছেন ${formatInTimeZone(parsedDate, BD_TZ, 'hh:mm a')} টায়`,
+              messageEn: `${user.name} checked in late for the ${expectedShiftStart} shift.`,
+              messageBn: `${user.name} ${expectedShiftStart} শিফটের জন্য দেরিতে উপস্থিত হয়েছেন।`,
               type: 'ATTENDANCE_LATE',
               referenceId: log.id
             }

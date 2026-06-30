@@ -109,8 +109,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!isAdmin(mockReq.user)) {
-      return NextResponse.json({ message: 'Admin only' }, { status: 403, headers: getCorsHeaders() });
+    const scope = await getPermissionScope(mockReq.user.id, 'Tasks', 'canCreate');
+    if (!isAdmin(mockReq.user) && scope === 'No') {
+      return NextResponse.json({ message: 'Permission denied to create tasks' }, { status: 403, headers: getCorsHeaders() });
     }
 
     const { title, description, startDate, dueDate, status, priority, assignedToId } = mockReq.body;

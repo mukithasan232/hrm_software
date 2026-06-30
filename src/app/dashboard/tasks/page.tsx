@@ -115,16 +115,23 @@ interface TaskModalProps {
   onClose: () => void;
   onSaved: () => void;
   isAdmin: boolean;
+  mode?: 'view' | 'edit';
+  canEditTasks?: boolean;
+  canCreateTasks?: boolean;
+  currentUserId?: string;
+  onModeChange?: (mode: 'view' | 'edit') => void;
 }
 
 function CustomSelect({
   value,
   onChange,
   options,
+  disabled
 }: {
   value: string;
   onChange: (val: string) => void;
   options: { value: string; label: string; element: React.ReactNode }[];
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -144,8 +151,8 @@ function CustomSelect({
   return (
     <div className="relative" ref={ref}>
       <div
-        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-medium cursor-pointer flex justify-between items-center"
-        onClick={() => setOpen(!open)}
+        className={`w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-medium flex justify-between items-center ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+        onClick={() => !disabled && setOpen(!open)}
       >
         <div className="pointer-events-none">{selectedOption ? selectedOption.element : 'Select...'}</div>
         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -170,7 +177,7 @@ function CustomSelect({
   );
 }
 
-function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskModalProps) {
+function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = 'edit', canEditTasks = false, canCreateTasks = false, currentUserId, onModeChange }: TaskModalProps) {
   const [form, setForm] = useState({
     title: task?.title || '',
     description: task?.description || '',
@@ -183,10 +190,15 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
   const [attachment, setAttachment] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const isCreating = !task;
+  const isReadOnly = mode === 'view' || (isCreating ? !canCreateTasks : !canEditTasks);
+  const canEditStatus = !isReadOnly || task?.assignedToId === currentUserId;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     if (!form.title.trim()) return toast.error('Title is required');
     if (!form.assignedToId) return toast.error('Please assign the task to a user');
     setSaving(true);
@@ -215,15 +227,24 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
     }
   };
 
-  const field = 'w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-medium';
+  const field = 'w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed';
   const label = 'block text-xs font-semibold text-slate-500 dark:text-gray-400 mb-1.5';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-            {task ? 'Edit Task' : 'Create New Task'}
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            {isReadOnly ? 'Task Details' : task ? 'Edit Task' : 'Create New Task'}
+            {isReadOnly && canEditTasks && onModeChange && (
+              <button
+                type="button"
+                onClick={() => onModeChange('edit')}
+                className="p-1.5 ml-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center gap-1 text-xs"
+              >
+                <Pencil className="w-3 h-3" /> Edit
+              </button>
+            )}
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">
             <X className="w-5 h-5" />
@@ -241,6 +262,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
               value={form.title}
               onChange={e => setForm({ ...form, title: e.target.value })}
               required
+              disabled={isReadOnly}
             />
           </div>
 
@@ -253,6 +275,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
               placeholder="Optional task description..."
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
+              disabled={isReadOnly}
             />
           </div>
 
@@ -266,6 +289,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
                 value={form.startDate} 
                 min={task?.startDate ? undefined : todayStr}
                 onChange={e => setForm({ ...form, startDate: e.target.value })} 
+                disabled={isReadOnly}
               />
             </div>
             <div>
@@ -276,6 +300,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
                 value={form.dueDate} 
                 min={form.startDate || (task?.dueDate ? undefined : todayStr)}
                 onChange={e => setForm({ ...form, dueDate: e.target.value })} 
+                disabled={isReadOnly}
               />
             </div>
           </div>
@@ -292,13 +317,27 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
                   label: v.label,
                   element: <PriorityBadge priority={k as TaskPriority} />
                 }))}
+                disabled={isReadOnly}
               />
             </div>
             <div>
               <label className={label}>Status</label>
               <CustomSelect
                 value={form.status}
-                onChange={(val) => setForm({ ...form, status: val as TaskStatus })}
+                onChange={async (val) => {
+                  const newStatus = val as TaskStatus;
+                  setForm({ ...form, status: newStatus });
+                  if (isReadOnly && canEditStatus && task) {
+                    try {
+                      await api.patch(`/tasks/${task.id}`, { status: newStatus });
+                      toast.success('Status updated');
+                      onSaved();
+                    } catch (e: any) {
+                      toast.error('Failed to update status');
+                    }
+                  }
+                }}
+                disabled={!canEditStatus}
                 options={STATUS_COLUMNS.map(c => ({
                   value: c.key,
                   label: c.label,
@@ -328,49 +367,71 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
                   )
                 }))
               ]}
+              disabled={isReadOnly}
             />
           </div>
 
           {/* Attachment */}
           <div>
             <label className={label}>Attachment (Optional)</label>
-            <div className="flex items-center gap-2">
-              <label className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-black/20 border border-dashed border-slate-300 dark:border-white/20 hover:border-indigo-500/50 rounded-xl px-4 py-2.5 text-slate-500 dark:text-gray-400 cursor-pointer transition-all">
-                <Paperclip className="w-4 h-4 text-slate-400" />
-                <span className="text-sm truncate font-medium">{attachment ? attachment.name : 'Select file or screenshot'}</span>
-                <input type="file" className="hidden" onChange={(e) => setAttachment(e.target.files?.[0] || null)} />
-              </label>
-              {attachment && (
-                <button type="button" onClick={() => setAttachment(null)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg">
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
+            {!isReadOnly && (
+              <div className="flex items-center gap-2">
+                <label className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-black/20 border border-dashed border-slate-300 dark:border-white/20 hover:border-indigo-500/50 rounded-xl px-4 py-2.5 text-slate-500 dark:text-gray-400 cursor-pointer transition-all">
+                  <Paperclip className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm truncate font-medium">{attachment ? attachment.name : 'Select file or screenshot'}</span>
+                  <input type="file" className="hidden" onChange={(e) => setAttachment(e.target.files?.[0] || null)} />
+                </label>
+                {attachment && (
+                  <button type="button" onClick={() => setAttachment(null)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg">
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            )}
             {task?.attachment && task.attachment !== '' && !attachment && (
               <div className="mt-2">
-                <img src={task.attachment} alt="Attachment" className="max-h-32 rounded-lg object-contain border border-slate-200 dark:border-white/10" />
-                <p className="text-[10px] text-blue-500 mt-1">Current attachment: {task.attachment.split('/').pop()}</p>
+                <a href={task.attachment} target="_blank" rel="noopener noreferrer" className="inline-block cursor-pointer hover:opacity-80 transition-opacity relative group">
+                  <img src={task.attachment} alt="Attachment" className="max-h-32 rounded-lg object-contain border border-slate-200 dark:border-white/10" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                    <Search className="w-6 h-6 text-white" />
+                  </div>
+                </a>
+                <p className="text-[10px] text-blue-500 mt-1 flex items-center gap-1">
+                  <Search className="w-3 h-3" /> Click image to view / download
+                </p>
               </div>
             )}
           </div>
 
           {/* Actions */}
           <div className="pt-2 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 text-sm"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {saving ? 'Saving…' : task ? 'Update Task' : 'Create Task'}
-            </button>
+            {!isReadOnly ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 text-sm"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {saving ? 'Saving…' : task ? 'Update Task' : 'Create Task'}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium text-sm"
+              >
+                Close
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -380,10 +441,10 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin }: TaskMo
 
 // ─── Kanban Card ──────────────────────────────────────────────────────────────
 function KanbanCard({
-  task, index, canEdit, canDelete, onEdit, onDelete,
+  task, index, canEdit, canDelete, onEdit, onView, onDelete,
 }: {
   task: Task; index: number; canEdit: boolean; canDelete: boolean;
-  onEdit: (t: Task) => void; onDelete: (id: string) => void;
+  onEdit: (t: Task) => void; onView: (t: Task) => void; onDelete: (id: string) => void;
 }) {
   const overdue = isOverdue(task.dueDate, task.status);
   return (
@@ -393,11 +454,12 @@ function KanbanCard({
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className={`group relative bg-white dark:bg-slate-800/80 border rounded-2xl p-4 shadow-sm transition-all select-none cursor-grab active:cursor-grabbing
+            className={`group relative bg-white dark:bg-slate-800/80 border rounded-2xl p-4 shadow-sm transition-all select-none cursor-grab active:cursor-grabbing
             ${snapshot.isDragging
               ? 'shadow-2xl border-indigo-500/50 ring-2 ring-indigo-500/30 rotate-1'
               : 'border-slate-200 dark:border-white/10 hover:border-indigo-400/40 dark:hover:border-white/20 hover:shadow-md'
             }`}
+          onClick={() => onView(task)}
         >
           {/* Priority dot */}
           <div className={`absolute top-3 right-3 w-2 h-2 rounded-full ${
@@ -450,7 +512,7 @@ function KanbanCard({
             <div className="absolute top-2 right-7 hidden group-hover:flex items-center gap-1">
               {canEdit && (
                 <button
-                  onClick={() => onEdit(task)}
+                  onClick={(e) => { e.stopPropagation(); onEdit(task); }}
                   className="p-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-white/10 text-slate-500 hover:text-indigo-500 transition-colors shadow-sm"
                 >
                   <Pencil className="w-3 h-3" />
@@ -458,7 +520,7 @@ function KanbanCard({
               )}
               {canDelete && (
                 <button
-                  onClick={() => onDelete(task.id)}
+                  onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
                   className="p-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-white/10 text-slate-500 hover:text-red-500 transition-colors shadow-sm"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -491,6 +553,7 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter]     = useState<TaskStatus | 'ALL'>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'ALL'>('ALL');
   const [modalOpen, setModalOpen]   = useState(false);
+  const [modalMode, setModalMode]   = useState<'view' | 'edit'>('view');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -528,6 +591,7 @@ export default function TasksPage() {
           const taskToOpen = loadedTasks.find((t: Task) => t.id === taskId);
           if (taskToOpen) {
             setEditingTask(taskToOpen);
+            setModalMode('view');
             setModalOpen(true);
             
             // Clean up the URL
@@ -664,7 +728,7 @@ export default function TasksPage() {
           {/* Create button — shown only for users with Create permission */}
           {canCreateTasks && (
             <button
-              onClick={() => { setEditingTask(null); setModalOpen(true); }}
+              onClick={() => { setEditingTask(null); setModalMode('edit'); setModalOpen(true); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition-all"
             >
               <Plus className="w-4 h-4" />
@@ -800,7 +864,7 @@ export default function TasksPage() {
                             <div className="flex items-center justify-end gap-2">
                               {canEditTasks && (
                                 <button
-                                  onClick={() => { setEditingTask(task); setModalOpen(true); }}
+                                  onClick={(e) => { e.stopPropagation(); setEditingTask(task); setModalMode('edit'); setModalOpen(true); }}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-all"
                                   title="Edit"
                                 >
@@ -809,7 +873,7 @@ export default function TasksPage() {
                               )}
                               {canDeleteTasks && (
                                 <button
-                                  onClick={() => handleDelete(task.id)}
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
                                   disabled={deletingId === task.id}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-50"
                                   title="Delete"
@@ -878,7 +942,8 @@ export default function TasksPage() {
                             index={index}
                             canEdit={canEditTasks}
                             canDelete={canDeleteTasks}
-                            onEdit={t => { setEditingTask(t); setModalOpen(true); }}
+                            onView={t => { setEditingTask(t); setModalMode('view'); setModalOpen(true); }}
+                            onEdit={t => { setEditingTask(t); setModalMode('edit'); setModalOpen(true); }}
                             onDelete={handleDelete}
                           />
                         ))}
@@ -890,7 +955,7 @@ export default function TasksPage() {
                   {/* Quick-add button in each column for users with create permission */}
                   {canCreateTasks && (
                     <button
-                      onClick={() => { setEditingTask(null); setModalOpen(true); }}
+                      onClick={() => { setEditingTask(null); setModalMode('edit'); setModalOpen(true); }}
                       className="mt-3 w-full py-2.5 text-xs font-semibold text-slate-400 dark:text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 border border-dashed border-slate-200 dark:border-white/10 hover:border-indigo-400/40 rounded-xl transition-all flex items-center justify-center gap-1"
                     >
                       <Plus className="w-3.5 h-3.5" /> Add task
@@ -909,6 +974,11 @@ export default function TasksPage() {
           task={editingTask}
           employees={employees}
           isAdmin={isAdminUser}
+          mode={modalMode}
+          canEditTasks={canEditTasks}
+          canCreateTasks={canCreateTasks}
+          currentUserId={user?.id}
+          onModeChange={(mode) => setModalMode(mode)}
           onClose={() => { setModalOpen(false); setEditingTask(null); }}
           onSaved={fetchTasks}
         />

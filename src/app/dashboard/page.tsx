@@ -136,14 +136,10 @@ export default function DashboardOverview() {
         
         let shift = { start: "09:00", end: "17:00" };
         if (currentUserData) {
-          if (currentUserData.shiftStartTime) {
-            shift = { start: currentUserData.shiftStartTime, end: currentUserData.shiftEndTime || "17:00" };
-          } else if (currentUserData.department) {
-            const userDept = deptsList.find((d: any) => d.name === currentUserData.department || d.id === currentUserData.departmentId);
-            if (userDept && userDept.shiftStartTime) {
-              shift = { start: userDept.shiftStartTime, end: userDept.shiftEndTime || "17:00" };
-            }
-          }
+          const userDept = deptsList.find((d: any) => d.name === currentUserData.department || d.id === currentUserData.departmentId);
+          const rawStartTime = currentUserData.shiftStartTime || currentUserData?.shift?.startTime || currentUserData?.customDepartment?.shiftStartTime || userDept?.shiftStartTime || "09:00";
+          const rawEndTime = currentUserData.shiftEndTime || currentUserData?.shift?.endTime || currentUserData?.customDepartment?.shiftEndTime || userDept?.shiftEndTime || "17:00";
+          shift = { start: rawStartTime, end: rawEndTime };
         }
         setAssignedShift(shift);
       }

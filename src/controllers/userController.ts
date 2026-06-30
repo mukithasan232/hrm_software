@@ -238,7 +238,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, designationId, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions } = req.body as any;
+    const { name, designationId, shiftId, shiftStartTime, shiftEndTime, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions } = req.body as any;
     let finalDesignationId = designationId !== undefined ? (designationId || null) : undefined;
     if (finalDesignationId && !finalDesignationId.includes('-')) {
       let desig = await prisma.designation.findFirst({
@@ -265,6 +265,9 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       data: {
         name,
         designationId: finalDesignationId,
+        shiftId: shiftId || undefined,
+        shiftStartTime: shiftStartTime !== undefined ? shiftStartTime : undefined,
+        shiftEndTime: shiftEndTime !== undefined ? shiftEndTime : undefined,
         department,
         employeeType: employeeType || undefined,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,

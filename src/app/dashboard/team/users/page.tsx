@@ -41,6 +41,8 @@ const EMPTY_FORM = {
   roleIds: [] as string[],
   designationId: '',
   shiftId: '',
+  shiftStartTime: '',
+  shiftEndTime: '',
   department: 'Engineering',
   employeeType: 'IN_HOUSE',
   zktecoId: '',
@@ -231,6 +233,8 @@ export default function TeamUsersPage() {
       roleIds: u.roles?.map((r: any) => r.id) || [],
       designationId: u.designationId || '',
       shiftId: u.shiftId || '',
+      shiftStartTime: u.shiftStartTime || '',
+      shiftEndTime: u.shiftEndTime || '',
       department: u.department || 'Engineering',
       employeeType: u.employeeType || 'IN_HOUSE',
       zktecoId: u.zktecoId?.toString() || '',
@@ -282,6 +286,8 @@ export default function TeamUsersPage() {
         
         if (form.designationId) formData.append('designationId', form.designationId);
         if (form.shiftId) formData.append('shiftId', form.shiftId);
+        if (form.shiftStartTime) formData.append('shiftStartTime', form.shiftStartTime);
+        if (form.shiftEndTime) formData.append('shiftEndTime', form.shiftEndTime);
         formData.append('department', form.department);
         formData.append('employeeType', form.employeeType);
         if (form.zktecoId) formData.append('zktecoId', form.zktecoId);
@@ -866,6 +872,32 @@ export default function TeamUsersPage() {
                             </datalist>
                           </div>
                         )}
+                      </div>
+
+                      {/* Shift Override */}
+                      <div className="space-y-1 sm:col-span-2 pt-4 border-t border-slate-100 dark:border-white/10">
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Shift Override (Optional)</h3>
+                        <p className="text-[10px] text-slate-500 mb-3">Overrides the assigned shift times for this specific user.</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Start Time</label>
+                            <input
+                              type="time"
+                              value={form.shiftStartTime}
+                              onChange={e => setForm({ ...form, shiftStartTime: e.target.value })}
+                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">End Time</label>
+                            <input
+                              type="time"
+                              value={form.shiftEndTime}
+                              onChange={e => setForm({ ...form, shiftEndTime: e.target.value })}
+                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                            />
+                          </div>
+                        </div>
                       </div>
 
                       {/* Leave Overrides */}

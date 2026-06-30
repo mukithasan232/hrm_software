@@ -15,6 +15,12 @@ const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_UR
 
 const getNotificationLink = (n: any) => {
   const type = n.type?.toUpperCase();
+  const title = (n.titleEn || n.titleBn || n.title || '').toLowerCase();
+  
+  if (type === 'ATTENDANCE' || title.includes('late')) {
+    return '/dashboard/attendance';
+  }
+
   const idParam = n.referenceId ? `?id=${n.referenceId}` : '';
   switch (type) {
     case 'TASK': return `/dashboard/tasks${idParam}`;
@@ -23,7 +29,6 @@ const getNotificationLink = (n: any) => {
     case 'ANNOUNCEMENT': return '/dashboard/announcements';
     case 'PERFORMANCE': return '/dashboard/performance';
     case 'PAYROLL': return '/dashboard/payroll';
-    case 'ATTENDANCE': return '/dashboard/attendance';
     default: return '/dashboard';
   }
 };
@@ -57,6 +62,32 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
     return 'Good evening';
   };
 
+  const playNotificationSound = (type?: string) => {
+    let filename = 'notification.mp3';
+    switch (type?.toUpperCase()) {
+      case 'ATTENDANCE':
+        filename = 'chime.mp3';
+        break;
+      case 'TASK':
+        filename = 'ding.mp3'; // or bell.mp3
+        break;
+      case 'LEAVE':
+        filename = 'swoosh.mp3';
+        break;
+      case 'ANNOUNCEMENT':
+        filename = 'bell.mp3';
+        break;
+      default:
+        filename = 'notification.mp3';
+        break;
+    }
+
+    const audio = new Audio(`/sounds/${filename}`); 
+    audio.play().catch((error) => {
+      console.warn('Browser autoplay policy blocked the notification sound:', error);
+    });
+  };
+
   const fetchNotifications = async () => {
     try {
       const res = await api.get('/notifications');
@@ -64,8 +95,8 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
       
       if (hasFetchedRef.current) {
         if (newUnreadCount > prevUnreadCount.current) {
-          const audio = new Audio('/notification.mp3');
-          audio.play().catch(err => console.warn("Autoplay prevented by browser:", err));
+          const firstUnread = res.data.find((n: any) => !n.read);
+          playNotificationSound(firstUnread?.type);
         }
       } else {
         hasFetchedRef.current = true;
@@ -94,8 +125,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
           prevUnreadCount.current = prevUnreadCount.current + 1;
           
           // Play sound
-          const audio = new Audio('/notification.mp3');
-          audio.play().catch(err => console.warn("Autoplay prevented by browser:", err));
+          playNotificationSound(newNotification.type);
           
           // Show toast
           const msg = newNotification.messageEn || newNotification.messageBn || newNotification.message || 'New Notification';

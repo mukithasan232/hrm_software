@@ -82,7 +82,9 @@ export const loginUser = async (req: Request, res: Response) => {
       include: {
         customDesignation: true,
         roles: true,
-        userPermission: true
+        userPermission: true,
+        shift: true,
+        customDepartment: true
       }
     });
 
@@ -152,6 +154,8 @@ export const loginUser = async (req: Request, res: Response) => {
       email: user.email,
       designation: designationName,
       department: user.department,
+      customDepartment: user.customDepartment,
+      shift: user.shift,
       profileImage: user.profileImage,
       phone: user.phone,
       roles: roles,
