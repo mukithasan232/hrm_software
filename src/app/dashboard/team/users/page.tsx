@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   UsersRound, Plus, Search, X, Save, Loader2, Trash2, Pencil,
-  Mail, Building2, CalendarDays, Shield, ChevronDown, UserX, UserCheck, KeyRound, UploadCloud, RefreshCw
+  Mail, Building2, CalendarDays, Shield, ChevronDown, UserX, UserCheck, KeyRound, UploadCloud, RefreshCw, Clock
 } from 'lucide-react';
 import api from '@/services/api';
 import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidator';
@@ -40,6 +40,7 @@ const EMPTY_FORM = {
   password: '',
   roleIds: [] as string[],
   designationId: '',
+  shiftId: '',
   department: 'Engineering',
   employeeType: 'IN_HOUSE',
   zktecoId: '',
@@ -68,6 +69,7 @@ export default function TeamUsersPage() {
   const [designations, setDesignations] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterDesignation, setFilterDesignation] = useState('All');
@@ -91,6 +93,11 @@ export default function TeamUsersPage() {
   const [showInlineDesig, setShowInlineDesig] = useState(false);
   const [newDesigName, setNewDesigName] = useState('');
   const [creatingDesig, setCreatingDesig] = useState(false);
+
+  // Inline Shift
+  const [showInlineShift, setShowInlineShift] = useState(false);
+  const [newShift, setNewShift] = useState({ name: '', startTime: '09:00', endTime: '17:00' });
+  const [creatingShift, setCreatingShift] = useState(false);
 
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
@@ -116,18 +123,21 @@ export default function TeamUsersPage() {
   // Fetch logic
   const fetchInitialData = async () => {
     try {
-      const [desRes, deptRes, rolesRes] = await Promise.all([
+      const [desRes, deptRes, rolesRes, shiftsRes] = await Promise.all([
         api.get('/team/designations'),
         api.get('/team/departments'),
-        api.get('/team/roles')
+        api.get('/team/roles'),
+        api.get('/team/shifts')
       ]);
       setDesignations(desRes?.data || []);
       setDepartments(deptRes?.data || []);
       setRoles(rolesRes?.data || []);
+      setShifts(shiftsRes?.data?.data || shiftsRes?.data || []);
     } catch {
       setDesignations([]);
       setDepartments([]);
       setRoles([]);
+      setShifts([]);
     }
   };
 
@@ -207,6 +217,7 @@ export default function TeamUsersPage() {
     setForm({ ...EMPTY_FORM, employeeId: '' });
     generatePassword();
     setShowInlineDesig(false);
+    setShowInlineShift(false);
     setShowModal(true);
   };
 
@@ -219,6 +230,7 @@ export default function TeamUsersPage() {
       password: '',
       roleIds: u.roles?.map((r: any) => r.id) || [],
       designationId: u.designationId || '',
+      shiftId: u.shiftId || '',
       department: u.department || 'Engineering',
       employeeType: u.employeeType || 'IN_HOUSE',
       zktecoId: u.zktecoId?.toString() || '',
@@ -240,6 +252,7 @@ export default function TeamUsersPage() {
         const payload = {
           ...form,
           designationId: form.designationId || null,
+          shiftId: form.shiftId || null,
         };
         const { password, employeeId, sendEmail, roleIds, employeeType, zktecoId, casualLeave, sickLeave, annualLeave, ...updatePayload } = payload as any;
         if (password) updatePayload.password = password;
@@ -268,6 +281,7 @@ export default function TeamUsersPage() {
         formData.append('employeeId', form.employeeId);
         
         if (form.designationId) formData.append('designationId', form.designationId);
+        if (form.shiftId) formData.append('shiftId', form.shiftId);
         formData.append('department', form.department);
         formData.append('employeeType', form.employeeType);
         if (form.zktecoId) formData.append('zktecoId', form.zktecoId);
@@ -314,6 +328,26 @@ export default function TeamUsersPage() {
       toast.error('Failed to create designation');
     } finally {
       setCreatingDesig(false);
+    }
+  };
+
+  const handleCreateShift = async () => {
+    if (!newShift.name.trim() || !newShift.startTime || !newShift.endTime) {
+      return toast.error('Shift name, start time, and end time are required');
+    }
+    setCreatingShift(true);
+    try {
+      const res = await api.post('/team/shifts', newShift);
+      const createdShift = res.data.data;
+      setShifts(prev => [createdShift, ...prev]);
+      setForm({ ...form, shiftId: createdShift.id });
+      setShowInlineShift(false);
+      setNewShift({ name: '', startTime: '09:00', endTime: '17:00' });
+      toast.success('Shift created successfully!');
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to create shift');
+    } finally {
+      setCreatingShift(false);
     }
   };
 
@@ -478,11 +512,15 @@ export default function TeamUsersPage() {
                         <span className="text-sm text-slate-500 dark:text-gray-400 truncate">{u.email}</span>
                       </div>
 
-                      {/* Designation */}
+                      {/* Designation and Shift */}
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/15 text-indigo-500 border border-indigo-500/25 truncate">
                           <Shield className="w-2.5 h-2.5 flex-shrink-0" />
                           <span className="truncate">{u.designation?.name || 'Employee'}</span>
+                        </span>
+                        <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/25 truncate">
+                          <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+                          <span className="truncate">{u.shift?.name || 'Standard Shift'}</span>
                         </span>
                       </div>
 
@@ -707,6 +745,60 @@ export default function TeamUsersPage() {
                           </div>
                         )}
                       </div>
+
+                       {/* Shift */}
+                       <div className="space-y-1 sm:col-span-2">
+                         <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide flex items-center justify-between gap-1.5">
+                           <span className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-indigo-500" /> Shift</span>
+                           {!showInlineShift && (
+                             <button type="button" onClick={() => setShowInlineShift(true)} className="text-[10px] text-indigo-500 hover:underline font-bold">+ Add New</button>
+                           )}
+                         </label>
+                         {showInlineShift ? (
+                           <div className="flex items-center gap-2">
+                             <input
+                               type="text"
+                               value={newShift.name}
+                               onChange={e => setNewShift({...newShift, name: e.target.value})}
+                               placeholder="e.g. Night Shift"
+                               className="flex-1 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                             />
+                             <input
+                               type="time"
+                               value={newShift.startTime}
+                               onChange={e => setNewShift({...newShift, startTime: e.target.value})}
+                               className="w-24 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-2 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                             />
+                             <span className="text-slate-400">-</span>
+                             <input
+                               type="time"
+                               value={newShift.endTime}
+                               onChange={e => setNewShift({...newShift, endTime: e.target.value})}
+                               className="w-24 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-2 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                             />
+                             <button type="button" onClick={handleCreateShift} disabled={creatingShift} className="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+                               {creatingShift ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Save'}
+                             </button>
+                             <button type="button" onClick={() => setShowInlineShift(false)} className="px-3 py-2 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-slate-300 dark:hover:bg-white/20 transition-colors">
+                               Cancel
+                             </button>
+                           </div>
+                         ) : (
+                           <div className="relative">
+                             <select
+                               value={form.shiftId}
+                               onChange={e => setForm({ ...form, shiftId: e.target.value })}
+                               className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
+                             >
+                               <option value="" className="bg-white dark:bg-slate-900">— Standard Shift —</option>
+                               {(shifts || []).map((s, idx) => (
+                                 <option key={s.id || `shift-opt-${idx}`} value={s.id} className="bg-white dark:bg-slate-900">{s.name} ({s.startTime} - {s.endTime})</option>
+                               ))}
+                             </select>
+                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                           </div>
+                         )}
+                       </div>
 
                       {/* Department */}
                       <div className="space-y-1">

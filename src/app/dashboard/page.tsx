@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { calculateWorkingHours } from "@/lib/timeUtils";
 import {
   CalendarRange,
   RefreshCw,
@@ -290,6 +291,22 @@ export default function DashboardOverview() {
     };
   };
 
+  const todayWorkingHours = useMemo(() => {
+    if (isAdmin || !user?.id || recentAttendance.length === 0) return null;
+    const myPunches = recentAttendance.filter((l: any) => l.employeeId === user.id || l.employeeId === user.employeeId);
+    if (myPunches.length === 0) return "0h 0m";
+    
+    const sorted = [...myPunches].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const checkIns = sorted.filter(p => p.punchType?.toLowerCase().includes("in"));
+    const checkOuts = sorted.filter(p => p.punchType?.toLowerCase().includes("out"));
+    
+    if (checkIns.length === 0) return "0h 0m";
+    const earliestCheckIn = checkIns[0].timestamp;
+    const latestCheckOut = checkOuts.length > 0 ? checkOuts[checkOuts.length - 1].timestamp : null;
+    
+    return calculateWorkingHours(earliestCheckIn, latestCheckOut);
+  }, [recentAttendance, user, isAdmin]);
+
   // ── Weekly chart: filter out Sunday ───────────────────────────────────────
   const chartData = weeklyAnalytics.filter(
     (d: any) => d.date?.toLowerCase() !== "sun"
@@ -373,6 +390,20 @@ export default function DashboardOverview() {
                 <span className="text-xs font-semibold text-slate-700 dark:text-gray-300">
                   {formatTimeAMPM(assignedShift.start)} - {formatTimeAMPM(assignedShift.end)}
                 </span>
+              </div>
+            )}
+            
+            {!isAdmin && todayWorkingHours && (
+              <div className="mt-2 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between w-full">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Office Hour</span>
+                  <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
+                    {todayWorkingHours}
+                  </span>
+                </div>
+                <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500 flex-shrink-0 border border-indigo-500/20">
+                  <Clock className="w-5 h-5" />
+                </div>
               </div>
             )}
           </div>

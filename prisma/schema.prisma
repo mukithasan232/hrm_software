@@ -54,6 +54,17 @@ model Department {
   users             User[]
 }
 
+
+model Shift {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  startTime String   
+  endTime   String   
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model AttendanceLog {
   id         String   @id @default(uuid())
   createdAt  DateTime @default(now())
@@ -166,6 +177,10 @@ model User {
   // Department Relation
   departmentId     String?
   customDepartment Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // Shift Relation
+  shiftId          String?
+  shift            Shift?      @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
   // ZKTeco hardware mapping
   zktecoId Int? @unique

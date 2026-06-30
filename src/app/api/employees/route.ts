@@ -51,7 +51,8 @@ export const GET = wrapHandler(async (req: any, res: any) => {
       include: {
         customDesignation: {
           select: { name: true }
-        }
+        },
+        shift: true
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
     const rolesStr = formData.get('roles') as string;
     const roleIds = rolesStr ? JSON.parse(rolesStr) : [];
     const designationId = formData.get('designationId') as string;
+    const shiftId = formData.get('shiftId') as string;
     const employeeType = formData.get('employeeType') as 'REMOTE' | 'IN_HOUSE';
     const department = formData.get('department') as string;
     const zktecoId_str = formData.get('zktecoId') as string;
@@ -188,6 +190,7 @@ export async function POST(req: Request) {
             
             // HR-Specific Fields (Populated for ALL roles now)
             designationId: designationId || null,
+            shiftId: shiftId || null,
             department: department || null,
             employeeType: employeeType || 'IN_HOUSE',
             baseSalary: baseSalary || 0,

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from '@/context/LanguageContext';
 import { useBrand } from '@/context/BrandContext';
 import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X, Loader2 } from 'lucide-react';
@@ -8,6 +8,7 @@ import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateUtils';
+import { calculateWorkingHours } from '@/lib/timeUtils';
 import { exportToExcel, exportToPDF } from '@/lib/exportUtils';
 import { io as socketIO } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
@@ -34,6 +35,57 @@ export default function AttendancePage() {
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const { user } = useAuth();
   
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => 
+      log.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (log.employeeName && log.employeeName.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [logs, searchTerm]);
+
+  const dailySummaries = useMemo(() => {
+    const grouped: Record<string, any> = {};
+    filteredLogs.forEach(log => {
+      const dateStr = toBDDisplay(log.timestamp, 'yyyy-MM-dd');
+      const key = `${log.employeeId}_${dateStr}`;
+      
+      if (!grouped[key]) {
+        grouped[key] = {
+          id: log.id,
+          employeeId: log.employeeId,
+          employeeName: log.employeeName || 'N/A',
+          date: dateStr,
+          checkIn: null,
+          checkOut: null,
+          checkInRaw: null,
+          checkOutRaw: null,
+          deviceId: log.deviceId,
+        };
+      }
+      
+      const timestampTime = new Date(log.timestamp).getTime();
+      
+      if (log.punchType?.toLowerCase() === 'checkin') {
+        if (!grouped[key].checkInRaw || timestampTime < grouped[key].checkInRaw) {
+          grouped[key].checkInRaw = timestampTime;
+          grouped[key].checkIn = toBDDisplay(log.timestamp, 'hh:mm:ss a');
+        }
+      } else if (log.punchType?.toLowerCase() === 'checkout') {
+        if (!grouped[key].checkOutRaw || timestampTime > grouped[key].checkOutRaw) {
+          grouped[key].checkOutRaw = timestampTime;
+          grouped[key].checkOut = toBDDisplay(log.timestamp, 'hh:mm:ss a');
+        }
+      }
+    });
+
+    return Object.values(grouped).map((summary: any) => ({
+      ...summary,
+      totalHours: calculateWorkingHours(summary.checkInRaw, summary.checkOutRaw)
+    })).sort((a: any, b: any) => {
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      return (b.checkInRaw || 0) - (a.checkInRaw || 0);
+    });
+  }, [filteredLogs]);
+
   const isAdminUser = ['admin', 'super admin', 'system administrator', 'hrm manager'].includes(
     (typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation)?.toLowerCase()
   ) || user?.roles?.some((r: any) => ['admin', 'super admin', 'system administrator', 'hrm manager'].includes((r?.name || r)?.toLowerCase()));
@@ -310,10 +362,6 @@ export default function AttendancePage() {
 
   // departments are fetched from /team/departments via fetchDepartments()
 
-  const filteredLogs = logs.filter(log => 
-    log.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (log.employeeName && log.employeeName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   const getFilterPrefixKey = () => {
     if (dateRange === getBDToday()) return 'todays';
@@ -459,46 +507,58 @@ export default function AttendancePage() {
             <thead>
               <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
                 <th className="px-6 py-4 font-bold">{t('employee')}</th>
-                <th className="px-6 py-4 font-bold">{t('timestamp')}</th>
-                <th className="px-6 py-4 font-bold">{t('punchType')}</th>
-                <th className="px-6 py-4 font-bold">{t('device_ip_col')}</th>
+                <th className="px-6 py-4 font-bold">DATE</th>
+                <th className="px-6 py-4 font-bold">CHECK IN</th>
+                <th className="px-6 py-4 font-bold">CHECK OUT</th>
+                <th className="px-6 py-4 font-bold">OFFICE HOUR</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {loading && logs.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('loading_logs')}</td></tr>
-              ) : filteredLogs.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('noRecords')}</td></tr>
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('loading_logs')}</td></tr>
+              ) : dailySummaries.length === 0 ? (
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('noRecords')}</td></tr>
               ) : (
-                filteredLogs.map((row, idx) => (
-                  <tr key={row.id || idx} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
+                dailySummaries.map((row, idx) => (
+                  <tr key={`${row.employeeId}_${row.date}_${idx}`} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-slate-900 dark:text-white font-bold">{row?.employeeName || 'N/A'}</span>
-                        <span className="text-slate-500 dark:text-gray-500 text-xs font-semibold">ID: {row?.employeeId || 'Unknown'}</span>
+                        <span className="text-slate-900 dark:text-white font-bold">{row?.employeeName}</span>
+                        <span className="text-slate-500 dark:text-gray-500 text-xs font-semibold">ID: {row?.employeeId}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-900 dark:text-gray-200">
-                      <div className="flex flex-col text-sm">
-                        <span className="font-semibold">{toBDDisplay(row.timestamp, 'dd MMM yyyy')}</span>
-                        <span className="text-slate-550 dark:text-gray-500 mt-0.5 font-medium">{toBDDisplay(row.timestamp, 'hh:mm:ss a')}</span>
-                      </div>
+                      <span className="font-semibold">{row.date}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                        row.punchType?.toLowerCase() === 'checkout'
-                        ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
-                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                      }`}>
-                        {row.punchType?.toLowerCase() === 'checkout' ? t('checkOut') || 'Check Out' : t('checkIn') || 'Check In'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-slate-500 dark:text-gray-500 text-sm">
-                      {row.deviceId === 'Manual Entry' ? (
-                        <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
-                          <Clock className="w-3 h-3" /> {t('manual') || 'Manual'}
+                      {row.checkIn ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                          {row.checkIn}
                         </span>
-                      ) : row.deviceId}
+                      ) : (
+                        <span className="text-slate-400 text-xs italic">Missing</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {row.checkOut ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">
+                          {row.checkOut}
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-white/10">
+                          Missing / Working
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 font-mono text-slate-700 dark:text-gray-300 font-bold">
+                      {row.checkInRaw ? (
+                        <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                          <Clock className="w-4 h-4" />
+                          {calculateWorkingHours(row.checkInRaw, row.checkOutRaw)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))
