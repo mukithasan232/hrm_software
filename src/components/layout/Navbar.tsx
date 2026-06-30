@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive, Plug, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/services/api';
+import toast from 'react-hot-toast';
 import ThemeToggle from '@/components/ThemeToggle';
 import BDClock from './BDClock';
 import { useBrand } from '@/context/BrandContext';

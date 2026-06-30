@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { checkPermission } from '../utils/checkPermission';
 import bcrypt from 'bcryptjs';
 import { Parser } from 'json2csv';
+import { eventEmitter } from '../lib/eventEmitter';
 
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 
@@ -303,7 +304,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     const { employeeId, timestamp, punchType } = req.body;
     
     // Ensure the date string is correctly parsed into a valid ISO-8601 Date object
-    const parsedDate = new Date(timestamp);
+    let parsedDate = new Date(timestamp);
     
     if (isNaN(parsedDate.getTime())) {
       res.status(400).json({ message: 'Invalid timestamp format.' });
@@ -325,6 +326,11 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       res.status(403).json({ message: 'Forbidden: You do not have permission to create attendance for other employees.' });
       return;
     }
+    
+    // Enforce Server Time for standard employees
+    if (!canCreateAll) {
+      parsedDate = new Date();
+    }
     // ---------------------------
 
     // Resolve the actual User UUID from the given employeeId
@@ -334,7 +340,8 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
           { id: String(employeeId) },
           { employeeId: String(employeeId) }
         ]
-      }
+      },
+      include: { customDepartment: true }
     });
 
     if (!user) {
@@ -359,6 +366,51 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       include: { user: { select: { name: true } } },
     });
     const created = log.createdAt === log.updatedAt;
+
+    // --- Late Detection ---
+    if (punchType === 'CheckIn') {
+      const shiftStartTimeStr = user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
+      const checkInLocalStr = formatInTimeZone(parsedDate, BD_TZ, 'yyyy-MM-dd');
+      const shiftStartLocalStr = `${checkInLocalStr}T${shiftStartTimeStr}:00+06:00`;
+      const shiftStartUTC = new Date(shiftStartLocalStr);
+      
+      const gracePeriodMs = 10 * 60 * 1000; // 10 minutes
+
+      if (parsedDate.getTime() > shiftStartUTC.getTime() + gracePeriodMs) {
+        // Employee is late
+        const admins = await prisma.user.findMany({
+          where: {
+            OR: [
+              { designation: { contains: 'Admin' } },
+              { designation: { contains: 'admin' } },
+              { designation: { contains: 'HR' } },
+              { designation: { contains: 'hr' } },
+              { customDesignation: { name: { contains: 'Admin' } } },
+              { customDesignation: { name: { contains: 'admin' } } },
+              { customDesignation: { name: { contains: 'HR' } } },
+              { roles: { some: { name: { contains: 'Admin' } } } }
+            ]
+          }
+        });
+
+        for (const admin of admins) {
+          const lateNotificationRecord = await prisma.notification.create({
+            data: {
+              userId: admin.id,
+              titleEn: 'Late Check-in',
+              titleBn: 'দেরিতে উপস্থিতি',
+              messageEn: `${user.name} checked in late at ${formatInTimeZone(parsedDate, BD_TZ, 'hh:mm a')}`,
+              messageBn: `${user.name} দেরিতে উপস্থিত হয়েছেন ${formatInTimeZone(parsedDate, BD_TZ, 'hh:mm a')} টায়`,
+              type: 'ATTENDANCE_LATE',
+              referenceId: log.id
+            }
+          });
+          eventEmitter.emit('new-notification', lateNotificationRecord);
+        }
+      }
+    }
+    // ----------------------
+
     res.status(created ? 201 : 200).json({ message: created ? 'Manual entry created' : 'Existing entry updated', log });
   } catch (error: any) {
     if (error.code === 'P2003') {

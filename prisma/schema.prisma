@@ -41,15 +41,17 @@ model Designation {
 }
 
 model Department {
-  id          String   @id @default(uuid())
+  id                String   @id @default(uuid())
   name              String   @unique
   description       String?
   leaveConfig       Json?    @default("{}")
   totalCasualLeaves Int      @default(0)
   totalSickLeaves   Int      @default(0)
+  shiftStartTime    String   @default("09:00")
+  shiftEndTime      String   @default("17:00")
   createdAt         DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  users       User[]
+  updatedAt         DateTime @updatedAt
+  users             User[]
 }
 
 model AttendanceLog {
@@ -147,6 +149,8 @@ model User {
   permissions           Json?    @default("{}")
   department            String?
   designation  String?
+  shiftStartTime String?
+  shiftEndTime   String?
   joiningDate  DateTime @default(now())
   profileImage String?
   createdAt    DateTime @default(now())

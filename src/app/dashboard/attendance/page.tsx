@@ -113,6 +113,31 @@ export default function AttendancePage() {
     fetchLogs();
   }, [dateRange, customStartDate, customEndDate, departmentFilter]);
 
+  // Auto-select PunchType based on last punch
+  useEffect(() => {
+    if (isModalOpen && manualEntry.employeeId) {
+      const empLogs = logs.filter(l => 
+        (l.employeeId === manualEntry.employeeId || l.id === manualEntry.employeeId) && 
+        toBDDisplay(l.timestamp, 'yyyy-MM-dd') === getBDToday()
+      );
+      
+      if (empLogs.length > 0) {
+        // logs are sorted desc
+        const latest = empLogs[0];
+        if (latest.punchType?.toLowerCase().includes('in')) {
+          setManualEntry(prev => ({ ...prev, punchType: 'CheckOut' }));
+        } else {
+          setManualEntry(prev => ({ ...prev, punchType: 'CheckIn' }));
+        }
+      } else {
+        setManualEntry(prev => ({ ...prev, punchType: 'CheckIn' }));
+      }
+      
+      // Update timestamp to now when modal opens or employee changes
+      setManualEntry(prev => ({ ...prev, timestamp: getBDNowLocal() }));
+    }
+  }, [manualEntry.employeeId, isModalOpen, logs]);
+
   useEffect(() => {
     fetchEmployees();
     fetchDepartments();
@@ -156,7 +181,10 @@ export default function AttendancePage() {
     e.preventDefault();
     try {
       setLoading(true);
-      const [datePart, timePart] = manualEntry.timestamp.split('T');
+      
+      // Always use the exact current time at the moment of submission
+      const currentTimestamp = getBDNowLocal();
+      const [datePart, timePart] = currentTimestamp.split('T');
       const utcTimestamp = toUTCFromBD(datePart, timePart);
       
       await api.post('/attendance/manual', { ...manualEntry, timestamp: utcTimestamp });
@@ -529,10 +557,12 @@ export default function AttendancePage() {
                   <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('time') || 'Time'}</label>
                   <input 
                     type="datetime-local" 
-                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-semibold"
+                    disabled
+                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-semibold disabled:opacity-75 disabled:cursor-not-allowed"
                     value={manualEntry.timestamp}
                     onChange={(e) => setManualEntry({...manualEntry, timestamp: e.target.value})}
                   />
+                  <p className="text-[10px] text-slate-500 italic mt-1">Time is automatically recorded and cannot be changed.</p>
                 </div>
               </div>
   

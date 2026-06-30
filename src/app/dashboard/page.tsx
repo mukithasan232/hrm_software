@@ -38,6 +38,16 @@ import { usePermissions } from "@/hooks/usePermissions";
 // ─── Annual leave quota (company policy) ─────────────────────────────────────
 const ANNUAL_LEAVE_QUOTA = 20;
 
+const formatTimeAMPM = (time24: string) => {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':');
+  let h = parseInt(hours, 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  h = h ? h : 12; // the hour '0' should be '12'
+  return `${h.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+};
+
 export default function DashboardOverview() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -62,6 +72,7 @@ export default function DashboardOverview() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [weeklyAnalytics, setWeeklyAnalytics] = useState<any[]>([]);
   const [departmentData, setDepartmentData] = useState<any[]>([]);
+  const [assignedShift, setAssignedShift] = useState<{ start: string; end: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getBDToday());
@@ -86,7 +97,7 @@ export default function DashboardOverview() {
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchDashboardData = async () => {
     try {
-      const [usersRes, leavesRes, presenceRes, announcementsRes, analyticsRes] =
+      const [usersRes, leavesRes, presenceRes, announcementsRes, analyticsRes, deptsRes] =
         await Promise.all([
           api.get("/employees").catch(() => ({ data: [] })),
           api.get("/leaves/all").catch(() => ({ data: [] })),
@@ -97,6 +108,7 @@ export default function DashboardOverview() {
             })),
           api.get("/announcements").catch(() => ({ data: [] })),
           api.get("/dashboard/analytics").catch(() => ({ data: [] })),
+          api.get("/team/departments").catch(() => ({ data: [] })),
         ]);
 
       setAnnouncements(announcementsRes.data || []);
@@ -115,6 +127,25 @@ export default function DashboardOverview() {
           value: deptCounts[key],
         }))
       );
+
+      // Fetch Shift Info
+      if (user?.id && !isAdmin) {
+        const deptsList = deptsRes.data.data || deptsRes.data || [];
+        const currentUserData = allUsers.find((u: any) => u.id === user.id || u.employeeId === user.employeeId);
+        
+        let shift = { start: "09:00", end: "17:00" };
+        if (currentUserData) {
+          if (currentUserData.shiftStartTime) {
+            shift = { start: currentUserData.shiftStartTime, end: currentUserData.shiftEndTime || "17:00" };
+          } else if (currentUserData.department) {
+            const userDept = deptsList.find((d: any) => d.name === currentUserData.department || d.id === currentUserData.departmentId);
+            if (userDept && userDept.shiftStartTime) {
+              shift = { start: userDept.shiftStartTime, end: userDept.shiftEndTime || "17:00" };
+            }
+          }
+        }
+        setAssignedShift(shift);
+      }
 
       const employeeCount = isAdmin
         ? usersRes.data.totalCount ||
@@ -303,36 +334,47 @@ export default function DashboardOverview() {
 
         {/* Card 1: Today's Punch Status (Employee) / Present Now (Admin) */}
         {can("Attendance", "canRead") && (
-          <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex items-center justify-between hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md">
-            <div className="min-w-0">
-              <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
-                {isAdmin ? t("presentNow") : "Today's Punch Status"}
-              </p>
-              {isAdmin ? (
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`h-2 w-2 rounded-full flex-shrink-0 ${stats.activeNow > 0 ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
-                  <p className="text-3xl font-bold text-slate-800 dark:text-white">
-                    {loading ? "-" : stats.activeNow}
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-2">
-                  {loading ? (
-                    <p className="text-lg font-bold text-slate-400">—</p>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full flex-shrink-0 ${latestPunch ? (punchStatus.isIn ? "bg-emerald-500 animate-pulse" : "bg-orange-400") : "bg-slate-300"}`} />
-                      <p className={`text-sm font-bold leading-tight ${punchStatus.isIn ? "text-emerald-600 dark:text-emerald-400" : latestPunch ? "text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-gray-400"}`}>
-                        {punchStatus.label}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+          <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md">
+            <div className="flex items-start justify-between w-full">
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
+                  {isAdmin ? t("presentNow") : "Today's Punch Status"}
+                </p>
+                {isAdmin ? (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`h-2 w-2 rounded-full flex-shrink-0 ${stats.activeNow > 0 ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
+                    <p className="text-3xl font-bold text-slate-800 dark:text-white">
+                      {loading ? "-" : stats.activeNow}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    {loading ? (
+                      <p className="text-lg font-bold text-slate-400">—</p>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full flex-shrink-0 ${latestPunch ? (punchStatus.isIn ? "bg-emerald-500 animate-pulse" : "bg-orange-400") : "bg-slate-300"}`} />
+                        <p className={`text-sm font-bold leading-tight ${punchStatus.isIn ? "text-emerald-600 dark:text-emerald-400" : latestPunch ? "text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-gray-400"}`}>
+                          {punchStatus.label}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className={`p-3 rounded-xl flex-shrink-0 ${punchStatus.isIn || (isAdmin && stats.activeNow > 0) ? "bg-emerald-500/20 text-emerald-500" : "bg-slate-100 dark:bg-white/5 text-slate-400"}`}>
+                {punchStatus.isIn ? <LogIn className="w-5 h-5" /> : latestPunch ? <LogOut className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+              </div>
             </div>
-            <div className={`p-3 rounded-xl flex-shrink-0 ${punchStatus.isIn || (isAdmin && stats.activeNow > 0) ? "bg-emerald-500/20 text-emerald-500" : "bg-slate-100 dark:bg-white/5 text-slate-400"}`}>
-              {punchStatus.isIn ? <LogIn className="w-5 h-5" /> : latestPunch ? <LogOut className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
-            </div>
+
+            {!isAdmin && assignedShift && (
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between w-full">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Assigned Shift</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-gray-300">
+                  {formatTimeAMPM(assignedShift.start)} - {formatTimeAMPM(assignedShift.end)}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

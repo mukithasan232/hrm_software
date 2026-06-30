@@ -21,6 +21,8 @@ export default function DepartmentsPage() {
   const [casualLeave, setCasualLeave] = useState<number>(10);
   const [sickLeave, setSickLeave] = useState<number>(14);
   const [annualLeave, setAnnualLeave] = useState<number>(15);
+  const [shiftStartTime, setShiftStartTime] = useState('09:00');
+  const [shiftEndTime, setShiftEndTime] = useState('17:00');
   const [submitting, setSubmitting] = useState(false);
 
   // Delete confirm
@@ -49,6 +51,8 @@ export default function DepartmentsPage() {
     setCasualLeave(10);
     setSickLeave(14);
     setAnnualLeave(15);
+    setShiftStartTime('09:00');
+    setShiftEndTime('17:00');
     setShowModal(true);
   };
 
@@ -59,6 +63,8 @@ export default function DepartmentsPage() {
     setCasualLeave(department.totalCasualLeaves ?? department.leaveConfig?.casual ?? 10);
     setSickLeave(department.totalSickLeaves ?? department.leaveConfig?.sick ?? 14);
     setAnnualLeave(department.leaveConfig?.annual ?? 15);
+    setShiftStartTime(department.shiftStartTime || '09:00');
+    setShiftEndTime(department.shiftEndTime || '17:00');
     setShowModal(true);
   };
 
@@ -74,6 +80,8 @@ export default function DepartmentsPage() {
       const payload = { 
         name: departmentName.trim(), 
         description: departmentDesc.trim(),
+        shiftStartTime: shiftStartTime,
+        shiftEndTime: shiftEndTime,
         leaveConfig: {
           casual: Number(casualLeave) || 0,
           sick: Number(sickLeave) || 0,
@@ -326,6 +334,30 @@ export default function DepartmentsPage() {
                     placeholder="Optional description…"
                     className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   />
+                </div>
+
+                <div className="pt-2">
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-3">Shift Configuration</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase">Shift Start Time</label>
+                      <input
+                        type="time"
+                        value={shiftStartTime}
+                        onChange={e => setShiftStartTime(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase">Shift End Time</label>
+                      <input
+                        type="time"
+                        value={shiftEndTime}
+                        onChange={e => setShiftEndTime(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-2">

@@ -32,6 +32,8 @@ interface Employee {
   leaveConfig?: any;
   casualLeaveAdjustment?: number;
   sickLeaveAdjustment?: number;
+  shiftStartTime?: string | null;
+  shiftEndTime?: string | null;
 }
 
 interface Designation {
@@ -139,6 +141,8 @@ export default function EmployeesPage() {
   const [annualLeave, setAnnualLeave] = useState<number | ''>('');
   const [casualLeaveAdjustment, setCasualLeaveAdjustment] = useState<number>(0);
   const [sickLeaveAdjustment, setSickLeaveAdjustment] = useState<number>(0);
+  const [shiftStartTime, setShiftStartTime] = useState('');
+  const [shiftEndTime, setShiftEndTime] = useState('');
 
   // ── Data Fetching ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -178,6 +182,8 @@ export default function EmployeesPage() {
     setAnnualLeave(emp.leaveConfig?.annual ?? '');
     setCasualLeaveAdjustment(emp.casualLeaveAdjustment ?? 0);
     setSickLeaveAdjustment(emp.sickLeaveAdjustment ?? 0);
+    setShiftStartTime(emp.shiftStartTime || '');
+    setShiftEndTime(emp.shiftEndTime || '');
     setEditTarget(emp);
   };
 
@@ -199,6 +205,8 @@ export default function EmployeesPage() {
         },
         casualLeaveAdjustment: Number(casualLeaveAdjustment),
         sickLeaveAdjustment: Number(sickLeaveAdjustment),
+        shiftStartTime: shiftStartTime,
+        shiftEndTime: shiftEndTime,
       };
       if (editDesignation) payload.designationId = editDesignation;
       if (editZkEnroll) payload.zktecoId = editZkEnroll;
@@ -465,6 +473,32 @@ export default function EmployeesPage() {
                       ))}
                     </select>
                   )}
+                </div>
+              </div>
+
+              {/* Shift Overrides */}
+              <div className="pt-2">
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Shift Override (Optional)</h3>
+                <p className="text-[10px] text-slate-500 mb-3">Leave blank to use Department shift times.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className={labelCls}>Shift Start Time</label>
+                    <input
+                      type="time"
+                      value={shiftStartTime}
+                      onChange={e => setShiftStartTime(e.target.value)}
+                      className={fieldCls}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className={labelCls}>Shift End Time</label>
+                    <input
+                      type="time"
+                      value={shiftEndTime}
+                      onChange={e => setShiftEndTime(e.target.value)}
+                      className={fieldCls}
+                    />
+                  </div>
                 </div>
               </div>
 
