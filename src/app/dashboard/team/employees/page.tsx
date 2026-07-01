@@ -303,7 +303,7 @@ export default function EmployeesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(emp => (
             <div
               key={emp.id}
@@ -480,7 +480,7 @@ export default function EmployeesPage() {
               <div className="pt-2">
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Shift Override (Optional)</h3>
                 <p className="text-[10px] text-slate-500 mb-3">Leave blank to use Department shift times.</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className={labelCls}>Shift Start Time</label>
                     <input
@@ -506,7 +506,7 @@ export default function EmployeesPage() {
               <div className="pt-2">
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Leave Overrides (Optional)</h3>
                 <p className="text-[10px] text-slate-500 mb-3">Leave blank to use Department defaults.</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <label className={labelCls}>Casual</label>
                     <input
@@ -543,7 +543,7 @@ export default function EmployeesPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-white mt-4 mb-2">Leave Adjustments (+/-)</h3>
                 <p className="text-[10px] text-slate-500 mb-3">Add or subtract leaves (e.g. 2 or -1).</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className={labelCls}>Casual Adjustment</label>
                     <input

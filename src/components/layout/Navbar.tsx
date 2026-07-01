@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive, Plug, Volume2 } from 'lucide-react';
+import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive, Plug, Volume2, Clock } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -9,7 +9,9 @@ import ThemeToggle from '@/components/ThemeToggle';
 import BDClock from './BDClock';
 import { useBrand } from '@/context/BrandContext';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
+import NotificationModal from '@/components/notifications/NotificationModal';
 import { useTranslation } from '@/context/LanguageContext';
+import { useBreakTimer, BreakDepartment } from '@/hooks/useBreakTimer';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -42,6 +44,12 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
+  const [userDept, setUserDept] = useState<BreakDepartment | null>(null);
+  
+  const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const { isBreakActive, activeBreak, timeRemaining } = useBreakTimer(userDept);
   
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -110,6 +118,13 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   useEffect(() => {
     if (user) {
       fetchNotifications();
+      
+      if (user.department || (user as any).departmentId) {
+        api.get('/team/departments').then(res => {
+          const dept = res.data.find((d: any) => d.id === (user as any).departmentId || d.name === user.department);
+          if (dept) setUserDept(dept);
+        }).catch(err => console.error(err));
+      }
       
       // Initialize SSE for real-time notifications
       const eventSource = new EventSource('/api/sse/notifications');
@@ -206,8 +221,20 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
   const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
+  const handleNotificationClick = (notif: any) => {
+    setSelectedNotification(notif);
+    setIsModalOpen(true);
+    
+    if (!notif.read) {
+      api.patch('/notifications', { id: notif.id }).catch(() => {});
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+    }
+    setShowNotifications(false);
+  };
+
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-white/10 bg-white/70 dark:bg-black/30 backdrop-blur-md flex items-center justify-between px-4 md:px-8 z-50 sticky top-0 transition-colors duration-300">
+    <>
+      <header className="h-16 border-b border-slate-200 dark:border-white/10 bg-white/70 dark:bg-black/30 backdrop-blur-md flex items-center justify-between px-4 md:px-8 z-50 sticky top-0 transition-colors duration-300">
       {/* Left */}
       <div className="flex items-center gap-4">
         <button
@@ -218,10 +245,16 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
         </button>
         <div className="flex items-center gap-3">
           <BDClock />
-          <div className="hidden md:block">
+          <div className="hidden md:flex items-center gap-2">
             <span className="text-gray-400 text-sm font-medium">
               {getGreeting()}, {user?.name || 'Admin'}
             </span>
+            {isBreakActive && (
+              <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2 animate-pulse ml-2">
+                <Clock className="w-4 h-4"/>
+                {activeBreak === 'LUNCH' ? 'Lunch Time:' : 'Snacks Time:'} {timeRemaining}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -300,17 +333,10 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                     const dispTitle = language === 'bn' ? (n.titleBn || n.titleEn || n.title) : (n.titleEn || n.titleBn || n.title);
                     const dispMsg = language === 'bn' ? (n.messageBn || n.messageEn || n.message) : (n.messageEn || n.messageBn || n.message);
                     return (
-                    <Link
-                      href={getNotificationLink(n)}
-                      onClick={() => {
-                        if (!n.read) {
-                          api.patch('/notifications', { id: n.id }).catch(() => {});
-                          setNotifications(prev => prev.map(notif => notif.id === n.id ? { ...notif, read: true } : notif));
-                        }
-                        setShowNotifications(false);
-                      }}
+                    <div
+                      onClick={() => handleNotificationClick(n)}
                       key={n.id}
-                      className={`relative p-3 mb-1 rounded-xl transition-colors duration-150 flex gap-3 block ${!n.read ? 'bg-indigo-50/60 dark:bg-indigo-500/10' : 'hover:bg-slate-50 dark:hover:bg-gray-700 dark:hover:text-white'}`}
+                      className={`relative p-3 mb-1 rounded-xl transition-colors duration-150 flex gap-3 block cursor-pointer ${!n.read ? 'bg-indigo-50/60 dark:bg-indigo-500/10' : 'hover:bg-slate-50 dark:hover:bg-gray-700 dark:hover:text-white'}`}
                     >
                       {!n.read && (
                         <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand-primary" />
@@ -326,7 +352,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                           {new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
-                    </Link>
+                    </div>
                     );
                   })
                 )}
@@ -416,6 +442,14 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
           )}
         </div>
       </div>
-    </header>
+
+      </header>
+
+      <NotificationModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        notification={selectedNotification}
+      />
+    </>
   );
 }

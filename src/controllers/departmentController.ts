@@ -16,7 +16,7 @@ export const getDepartments = async (req: MockRequest, res: MockResponse) => {
 
 export const createDepartment = async (req: MockRequest, res: MockResponse) => {
   try {
-    const { name, description, leaveConfig, shiftStartTime, shiftEndTime } = req.body;
+    const { name, description, shiftStartTime, shiftEndTime, lunchStartTime, lunchEndTime, snacksStartTime, snacksEndTime } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
 
     const exists = await prisma.department.findUnique({ where: { name } });
@@ -26,16 +26,18 @@ export const createDepartment = async (req: MockRequest, res: MockResponse) => {
       data: { 
         name, 
         description, 
-        leaveConfig: leaveConfig || {},
-        totalCasualLeaves: leaveConfig?.casual || 0,
-        totalSickLeaves: leaveConfig?.sick || 0,
         shiftStartTime: shiftStartTime || '09:00',
-        shiftEndTime: shiftEndTime || '17:00'
+        shiftEndTime: shiftEndTime || '17:00',
+        lunchStartTime,
+        lunchEndTime,
+        snacksStartTime,
+        snacksEndTime
       },
     });
 
     res.status(201).json(newDept);
   } catch (error: any) {
+    console.error('Error creating department:', error);
     res.status(500).json({ message: 'Failed to create department', error: error.message });
   }
 };
@@ -43,16 +45,15 @@ export const createDepartment = async (req: MockRequest, res: MockResponse) => {
 export const updateDepartment = async (req: MockRequest, res: MockResponse) => {
   try {
     const { id } = req.params;
-    const { name, description, leaveConfig, shiftStartTime, shiftEndTime } = req.body;
+    const { name, description, shiftStartTime, shiftEndTime, lunchStartTime, lunchEndTime, snacksStartTime, snacksEndTime } = req.body;
 
     const dataToUpdate: any = { name, description };
-    if (leaveConfig !== undefined) {
-      dataToUpdate.leaveConfig = leaveConfig;
-      dataToUpdate.totalCasualLeaves = leaveConfig?.casual || 0;
-      dataToUpdate.totalSickLeaves = leaveConfig?.sick || 0;
-    }
     if (shiftStartTime !== undefined) dataToUpdate.shiftStartTime = shiftStartTime;
     if (shiftEndTime !== undefined) dataToUpdate.shiftEndTime = shiftEndTime;
+    if (lunchStartTime !== undefined) dataToUpdate.lunchStartTime = lunchStartTime;
+    if (lunchEndTime !== undefined) dataToUpdate.lunchEndTime = lunchEndTime;
+    if (snacksStartTime !== undefined) dataToUpdate.snacksStartTime = snacksStartTime;
+    if (snacksEndTime !== undefined) dataToUpdate.snacksEndTime = snacksEndTime;
 
     const updated = await prisma.department.update({
       where: { id },
@@ -61,6 +62,7 @@ export const updateDepartment = async (req: MockRequest, res: MockResponse) => {
 
     res.status(200).json(updated);
   } catch (error: any) {
+    console.error('Error updating department:', error);
     res.status(500).json({ message: 'Failed to update department', error: error.message });
   }
 };

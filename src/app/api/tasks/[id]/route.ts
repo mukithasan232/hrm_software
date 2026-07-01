@@ -3,6 +3,9 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseRequest, getCorsHeaders } from '@/lib/adapter';
+import { saveLocalFile } from '@/lib/fileUploader';
+import fs from 'fs/promises';
+import path from 'path';
 
 const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
 
@@ -41,22 +44,32 @@ export async function PATCH(
       return NextResponse.json({ message: 'Task not found' }, { status: 404, headers: getCorsHeaders() });
     }
 
+    let outputImageUrl = (task as any).outputImageUrl;
+    const { outputImage } = mockReq.body;
+    if (outputImage && typeof outputImage === 'object' && outputImage.arrayBuffer) {
+      outputImageUrl = await saveLocalFile(outputImage, 'tasks');
+    }
+
     const admin = isAdmin(mockReq.user);
 
     if (!admin) {
-      // Employee: can only update status, and only if the task is assigned to them
+      // Employee: can only update status/description/outputImage, and only if the task is assigned to them
       if (task.assignedToId !== mockReq.user.id) {
         return NextResponse.json({ message: 'Not authorized to update this task' }, { status: 403, headers: getCorsHeaders() });
       }
 
-      const { status } = mockReq.body;
+      const { status, description } = mockReq.body;
       if (!status) {
-        return NextResponse.json({ message: 'Only status can be updated' }, { status: 400, headers: getCorsHeaders() });
+        return NextResponse.json({ message: 'Status is required' }, { status: 400, headers: getCorsHeaders() });
       }
 
       const updated = await prisma.task.update({
         where: { id },
-        data: { status },
+        data: { 
+          status,
+          ...(description !== undefined && { description: description || null }),
+          ...(outputImageUrl !== (task as any).outputImageUrl && { outputImageUrl }),
+        } as any,
         include: TASK_INCLUDE,
       });
       return NextResponse.json(updated, { headers: getCorsHeaders() });
@@ -76,7 +89,8 @@ export async function PATCH(
         ...(priority !== undefined    && { priority }),
         ...(assignedToId !== undefined && { assignedToId }),
         ...(mockReq.file?.attachment?.path && { attachment: mockReq.file.attachment.path }),
-      },
+        ...(outputImageUrl !== (task as any).outputImageUrl && { outputImageUrl }),
+      } as any,
       include: TASK_INCLUDE,
     });
 

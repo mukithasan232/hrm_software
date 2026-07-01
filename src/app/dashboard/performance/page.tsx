@@ -113,7 +113,7 @@ export default function PerformancePage() {
       </div>
 
       {isManager ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Rate Employee Card */}
           <div className="lg:col-span-1 space-y-6">
@@ -180,7 +180,7 @@ export default function PerformancePage() {
             {performanceData.length > 0 && (
               <div className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-500/20 rounded-2xl p-6 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Latest Evaluation ({performanceData[0].month}/{performanceData[0].year})</h3>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-slate-50 dark:bg-black/20 rounded-xl border border-slate-150 dark:border-white/5">
                     <p className="text-slate-500 dark:text-gray-400 text-sm font-semibold">Overall Score</p>
                     <p className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 mt-1">{performanceData[0].calculatedOverallScore.toFixed(1)}%</p>

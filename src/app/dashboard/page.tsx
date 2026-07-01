@@ -347,7 +347,7 @@ export default function DashboardOverview() {
       </div>
 
       {/* ─── Metric Cards ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
         {/* Card 1: Today's Punch Status (Employee) / Present Now (Admin) */}
         {can("Attendance", "canRead") && (
@@ -468,7 +468,7 @@ export default function DashboardOverview() {
       </div>
 
       {/* ─── Main Content ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 md:grid-cols-3 gap-6">
 
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">

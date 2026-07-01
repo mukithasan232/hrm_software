@@ -373,7 +373,7 @@ export default function AppearancePage() {
           <h2 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-brand-primary" /> Brand Assets
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-3">
               <FileDropZone
                 label="Company Logo" hint="PNG, SVG or WebP · 240×60 px recommended"

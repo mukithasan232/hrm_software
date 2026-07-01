@@ -49,7 +49,8 @@ export const translations = {
 
     // ── Attendance Page ───────────────────────────────────────────────────────
     attendanceLogs:    'Attendance Logs',
-    manualEntry:       'Manual Entry',
+    manualEntry:       'Manual Punch',
+    manual_punch:      'Manual Punch',
     exportCsv:         'Export CSV',
     searchEmployee:    'Search employee...',
     date:              'Date',
@@ -98,6 +99,7 @@ export const translations = {
     select_an_employee:'Select an employee...',
     time:              'Time',
     save_entry:        'Save Entry',
+    punch:             'Punch',
 
     // ── Leaves Page ──────────────────────────────────────────────────────────
     leavesTitle:       'Leave Requests',
@@ -213,7 +215,8 @@ export const translations = {
 
     // ── Attendance Page ───────────────────────────────────────────────────────
     attendanceLogs:    'হাজিরা লগ',
-    manualEntry:       'ম্যানুয়াল এন্ট্রি',
+    manualEntry:       'ম্যানুয়াল পাঞ্চ',
+    manual_punch:      'ম্যানুয়াল পাঞ্চ',
     exportCsv:         'CSV রপ্তানি',
     searchEmployee:    'কর্মচারী খুঁজুন...',
     date:              'তারিখ',
@@ -262,6 +265,7 @@ export const translations = {
     select_an_employee:'একজন কর্মী নির্বাচন করুন...',
     time:              'সময়',
     save_entry:        'এন্ট্রি সেভ করুন',
+    punch:             'পাঞ্চ',
 
     // ── Leaves Page ──────────────────────────────────────────────────────────
     leavesTitle:       'ছুটির আবেদন',

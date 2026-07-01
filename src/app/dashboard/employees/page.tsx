@@ -194,7 +194,7 @@ export default function EmployeesPage() {
 
       {/* Employee Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 animate-pulse shadow-sm">
               <div className="flex items-start justify-between">
@@ -219,7 +219,7 @@ export default function EmployeesPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(emp => (
             <div
               key={emp.id}
@@ -316,7 +316,7 @@ export default function EmployeesPage() {
 
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Employee ID */}
                 <div className="space-y-1">
                   <label className="text-xs text-slate-600 dark:text-gray-400 font-medium">Employee ID *</label>

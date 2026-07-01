@@ -18,11 +18,13 @@ export default function DepartmentsPage() {
   const [editTarget, setEditTarget] = useState<any | null>(null);
   const [departmentName, setDepartmentName] = useState('');
   const [departmentDesc, setDepartmentDesc] = useState('');
-  const [casualLeave, setCasualLeave] = useState<number>(10);
-  const [sickLeave, setSickLeave] = useState<number>(14);
-  const [annualLeave, setAnnualLeave] = useState<number>(15);
+
   const [shiftStartTime, setShiftStartTime] = useState('09:00');
   const [shiftEndTime, setShiftEndTime] = useState('17:00');
+  const [lunchStartTime, setLunchStartTime] = useState('');
+  const [lunchEndTime, setLunchEndTime] = useState('');
+  const [snacksStartTime, setSnacksStartTime] = useState('');
+  const [snacksEndTime, setSnacksEndTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Delete confirm
@@ -48,11 +50,12 @@ export default function DepartmentsPage() {
     setEditTarget(null);
     setDepartmentName('');
     setDepartmentDesc('');
-    setCasualLeave(10);
-    setSickLeave(14);
-    setAnnualLeave(15);
     setShiftStartTime('09:00');
     setShiftEndTime('17:00');
+    setLunchStartTime('');
+    setLunchEndTime('');
+    setSnacksStartTime('');
+    setSnacksEndTime('');
     setShowModal(true);
   };
 
@@ -60,11 +63,12 @@ export default function DepartmentsPage() {
     setEditTarget(department);
     setDepartmentName(department.name);
     setDepartmentDesc(department.description || '');
-    setCasualLeave(department.totalCasualLeaves ?? department.leaveConfig?.casual ?? 10);
-    setSickLeave(department.totalSickLeaves ?? department.leaveConfig?.sick ?? 14);
-    setAnnualLeave(department.leaveConfig?.annual ?? 15);
     setShiftStartTime(department.shiftStartTime || '09:00');
     setShiftEndTime(department.shiftEndTime || '17:00');
+    setLunchStartTime(department.lunchStartTime || '');
+    setLunchEndTime(department.lunchEndTime || '');
+    setSnacksStartTime(department.snacksStartTime || '');
+    setSnacksEndTime(department.snacksEndTime || '');
     setShowModal(true);
   };
 
@@ -82,11 +86,10 @@ export default function DepartmentsPage() {
         description: departmentDesc.trim(),
         shiftStartTime: shiftStartTime,
         shiftEndTime: shiftEndTime,
-        leaveConfig: {
-          casual: Number(casualLeave) || 0,
-          sick: Number(sickLeave) || 0,
-          annual: Number(annualLeave) || 0,
-        }
+        lunchStartTime: lunchStartTime || null,
+        lunchEndTime: lunchEndTime || null,
+        snacksStartTime: snacksStartTime || null,
+        snacksEndTime: snacksEndTime || null,
       };
       if (editTarget) {
         await api.put(`/team/departments/${editTarget.id}`, payload);
@@ -293,7 +296,7 @@ export default function DepartmentsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col z-10">
+          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col z-10 overflow-y-auto max-h-[90vh]">
 
             {/* Modal Header */}
             <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/10 px-4 sm:px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
@@ -338,7 +341,7 @@ export default function DepartmentsPage() {
 
                 <div className="pt-2">
                   <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-3">Shift Configuration</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase">Shift Start Time</label>
                       <input
@@ -361,40 +364,50 @@ export default function DepartmentsPage() {
                 </div>
 
                 <div className="pt-2">
-                  <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-3">Default Leave Allocation (Days)</h3>
-                  <div className="grid grid-cols-3 gap-3">
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-3">Break Configuration</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Casual</label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase">Lunch Start Time</label>
                       <input
-                        type="number"
-                        min="0"
-                        value={casualLeave}
-                        onChange={e => setCasualLeave(Number(e.target.value))}
-                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        type="time"
+                        value={lunchStartTime}
+                        onChange={e => setLunchStartTime(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Sick</label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase">Lunch End Time</label>
                       <input
-                        type="number"
-                        min="0"
-                        value={sickLeave}
-                        onChange={e => setSickLeave(Number(e.target.value))}
-                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        type="time"
+                        value={lunchEndTime}
+                        onChange={e => setLunchEndTime(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase">Snacks Start Time</label>
+                      <input
+                        type="time"
+                        value={snacksStartTime}
+                        onChange={e => setSnacksStartTime(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Annual</label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase">Snacks End Time</label>
                       <input
-                        type="number"
-                        min="0"
-                        value={annualLeave}
-                        onChange={e => setAnnualLeave(Number(e.target.value))}
-                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        type="time"
+                        value={snacksEndTime}
+                        onChange={e => setSnacksEndTime(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                       />
                     </div>
                   </div>
                 </div>
+
+
 
               </div>
 

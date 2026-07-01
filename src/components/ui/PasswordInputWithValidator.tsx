@@ -84,7 +84,7 @@ export default function PasswordInputWithValidator({
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 transition-all duration-300 ${isFocused || value ? 'opacity-100 max-h-40' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-1.5 pt-1 transition-all duration-300 ${isFocused || value ? 'opacity-100 max-h-40' : 'opacity-0 max-h-0 overflow-hidden'}`}>
         <CheckItem met={checks.length} label="At least 6 characters" />
         <CheckItem met={checks.number} label="Includes number" />
         <CheckItem met={checks.lowercase} label="Includes lowercase letter" />

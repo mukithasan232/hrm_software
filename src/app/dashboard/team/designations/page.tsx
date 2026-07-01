@@ -202,6 +202,9 @@ export default function DesignationsPage() {
   const [designationName, setDesignationName] = useState('');
   const [designationDesc, setDesignationDesc] = useState('');
   const [permissions, setPermissions]       = useState<PermissionsMap>(buildEmptyPermissions());
+  const [casualLeave, setCasualLeave]       = useState<number>(10);
+  const [sickLeave, setSickLeave]           = useState<number>(14);
+  const [annualLeave, setAnnualLeave]       = useState<number>(15);
   const [submitting, setSubmitting]         = useState(false);
 
   // Delete confirm
@@ -228,6 +231,9 @@ export default function DesignationsPage() {
     setEditTarget(null);
     setDesignationName('');
     setDesignationDesc('');
+    setCasualLeave(10);
+    setSickLeave(14);
+    setAnnualLeave(15);
     setPermissions(buildEmptyPermissions());
     setShowModal(true);
   };
@@ -236,6 +242,9 @@ export default function DesignationsPage() {
     setEditTarget(designation);
     setDesignationName(designation.name);
     setDesignationDesc(designation.description || '');
+    setCasualLeave(designation.totalCasualLeaves ?? designation.leaveConfig?.casual ?? 10);
+    setSickLeave(designation.totalSickLeaves ?? designation.leaveConfig?.sick ?? 14);
+    setAnnualLeave(designation.leaveConfig?.annual ?? 15);
     setPermissions(mergePermissions(designation.permissions));
     setShowModal(true);
   };
@@ -273,6 +282,11 @@ export default function DesignationsPage() {
         name:        designationName.trim(),
         description: designationDesc.trim(),
         permissions, // nested structure: { Attendance: { Read: 'department', ... }, ... }
+        leaveConfig: {
+          casual: Number(casualLeave) || 0,
+          sick: Number(sickLeave) || 0,
+          annual: Number(annualLeave) || 0,
+        }
       };
       if (editTarget) {
         await api.put(`/team/designations/${editTarget.id}`, payload);
@@ -534,7 +548,7 @@ export default function DesignationsPage() {
               <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
 
                 {/* Name + Description */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">
                       Designation Name <span className="text-red-500">*</span>
@@ -559,6 +573,43 @@ export default function DesignationsPage() {
                       placeholder="Optional short description…"
                       className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     />
+                  </div>
+                </div>
+
+                {/* ── Default Leave Allocation ── */}
+                <div className="pt-2">
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-3">Default Leave Allocation (Days)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Casual</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={casualLeave}
+                        onChange={e => setCasualLeave(Number(e.target.value))}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Sick</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={sickLeave}
+                        onChange={e => setSickLeave(Number(e.target.value))}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Annual</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={annualLeave}
+                        onChange={e => setAnnualLeave(Number(e.target.value))}
+                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -597,7 +648,7 @@ export default function DesignationsPage() {
                   </div>
 
                   <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
-                    <div className="overflow-x-auto">
+                    <div className="w-full overflow-x-auto">
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="bg-slate-50 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/10">

@@ -245,7 +245,7 @@ export default function ProfilePage() {
         <p className="text-slate-550 dark:text-gray-400 mt-1 text-sm font-medium">Manage your personal information and security settings.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 md:grid-cols-3 gap-6">
         {/* Avatar Card */}
         <div className="lg:col-span-1 space-y-6">
           <div className="print-hide bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 text-center space-y-4 shadow-sm dark:shadow-2xl">
@@ -353,7 +353,7 @@ export default function ProfilePage() {
               <User className="w-5 h-5 text-blue-550 dark:text-blue-400" /> {t('personalInfo')}
             </h2>
             <form onSubmit={(e) => handleProfileSave(e, 'personal')} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold">{t('fullName')}</label>
                   <input
@@ -477,7 +477,7 @@ export default function ProfilePage() {
               <p className="text-xs text-slate-500 dark:text-gray-500 mt-1 ml-7">{t('socialMediaSub')}</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
 
               {/* Facebook */}
               <div className="space-y-1">
@@ -591,7 +591,7 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold">New Password</label>
                   <PasswordInputWithValidator

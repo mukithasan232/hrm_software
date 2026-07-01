@@ -525,7 +525,7 @@ export default function RolesPage() {
               <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
 
                 {/* Name + Description */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">
                       Role Name <span className="text-red-500">*</span>
@@ -588,7 +588,7 @@ export default function RolesPage() {
                   </div>
 
                   <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
-                    <div className="overflow-x-auto">
+                    <div className="w-full overflow-x-auto">
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="bg-slate-50 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/10">

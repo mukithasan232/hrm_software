@@ -32,8 +32,11 @@ enum TaskPriority {
 model Designation {
   id          String   @id @default(uuid())
   name        String   @unique
-  description String?
-  permissions Json     @default("{}")
+  description       String?
+  leaveConfig       Json?    @default("{}")
+  totalCasualLeaves Int      @default(0)
+  totalSickLeaves   Int      @default(0)
+  permissions       Json     @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -44,11 +47,12 @@ model Department {
   id                String   @id @default(uuid())
   name              String   @unique
   description       String?
-  leaveConfig       Json?    @default("{}")
-  totalCasualLeaves Int      @default(0)
-  totalSickLeaves   Int      @default(0)
   shiftStartTime    String   @default("09:00")
   shiftEndTime      String   @default("17:00")
+  lunchStartTime    String?
+  lunchEndTime      String?
+  snacksStartTime   String?
+  snacksEndTime     String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   users             User[]
@@ -348,6 +352,7 @@ model Task {
   title        String
   description  String?      @db.Text
   attachment   String?
+  outputImageUrl String?
   startDate    DateTime?
   dueDate      DateTime?
   status       TaskStatus   @default(TODO)

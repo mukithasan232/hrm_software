@@ -93,7 +93,7 @@ export default function AttendancePage() {
   const canCreateAll = isAdminUser || checkPermission(user, 'Attendance', 'create');
 
   const [manualEntry, setManualEntry] = useState({
-    employeeId: canCreateAll ? '' : (user?.employeeId || user?.id || ''),
+    employeeId: user?.employeeId || user?.id || '',
     punchType: 'CheckIn',
     timestamp: getBDNowLocal()
   });
@@ -191,7 +191,7 @@ export default function AttendancePage() {
   };
 
   const handleOpenModal = () => {
-    const defaultEmpId = canCreateAll ? '' : (user?.employeeId || user?.id || '');
+    const defaultEmpId = user?.employeeId || user?.id || '';
     updateManualEntryForEmployee(defaultEmpId);
     setIsModalOpen(true);
   };
@@ -460,7 +460,7 @@ export default function AttendancePage() {
         </div>
       </div>
  
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors shadow-sm dark:shadow-md">
           <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('checkIn')}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
@@ -576,16 +576,17 @@ export default function AttendancePage() {
       {/* Manual Entry Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh]">
             <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('manual_attendance') || 'Manual Attendance'}</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('manual_punch') || 'Manual Punch'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors">
                 <X className="w-6 h-6" />
               </button>
             </div>
             <form onSubmit={handleManualSubmit} className="px-4 sm:px-6 py-4 space-y-4 md:space-y-6">
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('select_employee') || 'Select Employee'}</label>
+              {isAdminUser && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('select_employee') || 'Select Employee'}</label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500" />
                   <select 
@@ -595,24 +596,27 @@ export default function AttendancePage() {
                     value={manualEntry.employeeId}
                     onChange={(e) => updateManualEntryForEmployee(e.target.value)}
                   >
-                    {canCreateAll && <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('select_an_employee') || 'Select an employee...'}</option>}
+                    {isAdminUser && <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('select_an_employee') || 'Select an employee...'}</option>}
                     {employees.map(emp => (
                       <option key={emp.id} value={emp.employeeId} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{emp.name} (ID: {emp.employeeId})</option>
                     ))}
-                    {!canCreateAll && !employees.find(e => e.employeeId === user?.employeeId) && (
+                    {!isAdminUser && !employees.find(e => e.employeeId === user?.employeeId) && (
                       <option value={user?.employeeId} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{user?.name} (ID: {user?.employeeId})</option>
                     )}
                   </select>
                 </div>
               </div>
-  
-              <div className="grid grid-cols-2 gap-4">
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('punchType') || 'Punch Type'}</label>
                   <select 
-                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none font-semibold"
+                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none font-semibold disabled:opacity-75 disabled:cursor-not-allowed"
                     value={manualEntry.punchType}
                     onChange={(e) => setManualEntry({...manualEntry, punchType: e.target.value})}
+                    disabled={!isAdminUser}
+                    readOnly={!isAdminUser}
                   >
                     <option value="CheckIn" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('checkIn') || 'Check In'}</option>
                     <option value="CheckOut" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('checkOut') || 'Check Out'}</option>
@@ -644,7 +648,7 @@ export default function AttendancePage() {
                   disabled={loading}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
                 >
-                  {loading ? (t('saving') || 'Saving...') : (t('save_entry') || 'Save Entry')}
+                  {loading ? (t('saving') || 'Saving...') : 'Punch'}
                 </button>
               </div>
             </form>

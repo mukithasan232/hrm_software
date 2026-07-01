@@ -44,6 +44,7 @@ interface Task {
   createdById: string;
   createdBy: { id: string; name: string };
   attachment?: string | null;
+  outputImageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -188,17 +189,19 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
     assignedToId: task?.assignedToId || '',
   });
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [outputImage, setOutputImage] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const isCreating = !task;
   const isReadOnly = mode === 'view' || (isCreating ? !canCreateTasks : !canEditTasks);
-  const canEditStatus = !isReadOnly || task?.assignedToId === currentUserId;
+  const canUpdateWorkerFields = !isReadOnly || task?.assignedToId === currentUserId;
+  const canEditStatus = canUpdateWorkerFields;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isReadOnly) return;
+    if (!canUpdateWorkerFields) return;
     if (!form.title.trim()) return toast.error('Title is required');
     if (!form.assignedToId) return toast.error('Please assign the task to a user');
     setSaving(true);
@@ -206,6 +209,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => formData.append(k, v as string));
       if (attachment) formData.append('attachment', attachment);
+      if (!isCreating && outputImage) formData.append('outputImage', outputImage);
 
       if (task) {
         await api.patch(`/tasks/${task.id}`, formData, {
@@ -275,12 +279,12 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
               placeholder="Optional task description..."
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
-              disabled={isReadOnly}
+              disabled={!canUpdateWorkerFields}
             />
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={label}>Start Date</label>
               <input 
@@ -306,7 +310,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
           </div>
 
           {/* Priority & Status */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={label}>Priority</label>
               <CustomSelect
@@ -327,15 +331,6 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
                 onChange={async (val) => {
                   const newStatus = val as TaskStatus;
                   setForm({ ...form, status: newStatus });
-                  if (isReadOnly && canEditStatus && task) {
-                    try {
-                      await api.patch(`/tasks/${task.id}`, { status: newStatus });
-                      toast.success('Status updated');
-                      onSaved();
-                    } catch (e: any) {
-                      toast.error('Failed to update status');
-                    }
-                  }
                 }}
                 disabled={!canEditStatus}
                 options={STATUS_COLUMNS.map(c => ({
@@ -403,9 +398,43 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
             )}
           </div>
 
+          {/* Final Output Image */}
+          {!isCreating && (
+            <div>
+              <label className={label}>Final Output Image (Optional)</label>
+              {canUpdateWorkerFields && (
+                <div className="flex items-center gap-2">
+                  <label className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-black/20 border border-dashed border-slate-300 dark:border-white/20 hover:border-emerald-500/50 rounded-xl px-4 py-2.5 text-slate-500 dark:text-gray-400 cursor-pointer transition-all">
+                    <Paperclip className="w-4 h-4 text-emerald-500" />
+                    <span className="text-sm truncate font-medium">{outputImage ? outputImage.name : 'Select final result image'}</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => setOutputImage(e.target.files?.[0] || null)} />
+                  </label>
+                  {outputImage && (
+                    <button type="button" onClick={() => setOutputImage(null)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg">
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              )}
+              {task?.outputImageUrl && task.outputImageUrl !== '' && !outputImage && (
+                <div className="mt-2">
+                  <a href={task.outputImageUrl} target="_blank" rel="noopener noreferrer" className="inline-block cursor-pointer hover:opacity-80 transition-opacity relative group">
+                    <img src={task.outputImageUrl} alt="Final Output" className="max-h-32 rounded-lg object-contain border border-slate-200 dark:border-white/10" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                      <Search className="w-6 h-6 text-white" />
+                    </div>
+                  </a>
+                  <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1">
+                    <Search className="w-3 h-3" /> Final Output
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="pt-2 flex gap-3">
-            {!isReadOnly ? (
+            {canUpdateWorkerFields ? (
               <>
                 <button
                   type="button"
@@ -552,6 +581,7 @@ export default function TasksPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter]     = useState<TaskStatus | 'ALL'>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'ALL'>('ALL');
+  const [dateFilter, setDateFilter]         = useState('all');
   const [modalOpen, setModalOpen]   = useState(false);
   const [modalMode, setModalMode]   = useState<'view' | 'edit'>('view');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -643,12 +673,28 @@ export default function TasksPage() {
   };
 
   // ── Filtering ──
+  const now = new Date();
   const filtered = tasks.filter(t => {
     const matchSearch = !searchTerm || t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.assignedTo.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus   = statusFilter   === 'ALL' || t.status   === statusFilter;
     const matchPriority = priorityFilter === 'ALL' || t.priority === priorityFilter;
-    return matchSearch && matchStatus && matchPriority;
+
+    let matchDate = true;
+    if (dateFilter !== 'all') {
+      const taskDate = new Date(t.createdAt);
+      if (dateFilter === 'today') {
+        matchDate = taskDate.toDateString() === now.toDateString();
+      } else if (dateFilter === 'week') {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        matchDate = taskDate >= sevenDaysAgo;
+      } else if (dateFilter === 'month') {
+        matchDate = taskDate.getMonth() === now.getMonth() && taskDate.getFullYear() === now.getFullYear();
+      }
+    }
+
+    return matchSearch && matchStatus && matchPriority && matchDate;
   });
 
   const tasksByStatus = (status: TaskStatus) => filtered.filter(t => t.status === status);
@@ -701,6 +747,21 @@ export default function TasksPage() {
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
           </div>
 
+          {/* Date filter */}
+          <div className="relative">
+            <select 
+              value={dateFilter} 
+              onChange={e => setDateFilter(e.target.value)} 
+              className={selectCls}
+            >
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="week">Last 7 Days</option>
+              <option value="month">This Month</option>
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          </div>
+
           {/* View toggle */}
           <div className="flex items-center bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-1">
             <button
@@ -749,7 +810,7 @@ export default function TasksPage() {
       {/* ═══════════════ LIST VIEW ═══════════════ */}
       {!loading && view === 'list' && (
         <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm dark:shadow-2xl">
-          <div className="overflow-x-auto">
+          <div className="w-full overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="bg-slate-50 dark:bg-black/40 text-slate-700 dark:text-gray-300 text-xs uppercase tracking-wider border-b border-slate-200 dark:border-white/10">
@@ -786,7 +847,8 @@ export default function TasksPage() {
                     return (
                       <tr
                         key={task.id}
-                        className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors animate-in fade-in duration-200"
+                        onClick={() => { setEditingTask(task); setModalMode('view'); setModalOpen(true); }}
+                        className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors animate-in fade-in duration-200"
                       >
                         <td className="px-5 py-4">
                           <p className="text-sm font-bold text-slate-900 dark:text-white">{task.title}</p>
@@ -808,6 +870,7 @@ export default function TasksPage() {
                           {canEditTasks || task.assignedToId === user?.id ? (
                             <select
                               value={task.status}
+                              onClick={e => e.stopPropagation()}
                               onChange={async e => {
                                 const newStatus = e.target.value as TaskStatus;
                                 setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
@@ -876,7 +939,7 @@ export default function TasksPage() {
       {/* ═══════════════ KANBAN VIEW ═══════════════ */}
       {!loading && view === 'kanban' && (
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {STATUS_COLUMNS.map(col => {
               const colTasks = tasksByStatus(col.key);
               const Icon = col.icon;

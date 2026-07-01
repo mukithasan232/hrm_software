@@ -141,8 +141,8 @@ export default function PayrollPage() {
               .w-40 { width: 10rem; }
               .my-6 { margin-top: 1.5rem; margin-bottom: 1.5rem; }
               .grid { display: grid; }
-              .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-              .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+              .grid-cols-1 md:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+              .grid-cols-1 md:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
               .gap-x-8 { column-gap: 2rem; }
               .gap-y-3 { row-gap: 0.75rem; }
               .gap-4 { gap: 1rem; }
@@ -271,7 +271,7 @@ export default function PayrollPage() {
             <FileText className="w-5 h-5 text-indigo-600 dark:text-blue-400" />
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Salary Summary (Generated)</h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="w-full overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">

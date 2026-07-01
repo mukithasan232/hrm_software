@@ -194,7 +194,7 @@ export default function RolesPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto">
           <table className="w-full min-w-[600px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">

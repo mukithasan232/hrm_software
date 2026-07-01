@@ -43,7 +43,7 @@ export const SalarySlipPDF: React.FC<SalarySlipPDFProps> = ({ payroll, monthName
       </div>
 
       {/* Employee Details */}
-      <div className="my-6 grid grid-cols-2 gap-x-8 gap-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+      <div className="my-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
         <div className="flex justify-between border-b border-slate-200 pb-1.5">
           <span className="text-xs font-semibold text-slate-500">Employee Name:</span>
           <span className="text-xs font-bold text-slate-800">{empName}</span>
@@ -65,7 +65,7 @@ export const SalarySlipPDF: React.FC<SalarySlipPDFProps> = ({ payroll, monthName
       {/* Attendance Summary */}
       <div className="mb-6">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Attendance Summary</h3>
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg">
             <p className="text-[10px] uppercase font-bold text-slate-400">Total Working Days</p>
             <p className="text-lg font-extrabold text-slate-700 mt-0.5">{totalDays}</p>

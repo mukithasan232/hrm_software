@@ -612,8 +612,8 @@ export default function TeamUsersPage() {
 
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="overflow-y-auto flex-1 p-6 space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex-1 p-4 sm:p-6 lg:p-8">
+                <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
 
                   {/* Employee ID - Only show on edit */}
                   {editTarget && (
@@ -688,7 +688,7 @@ export default function TeamUsersPage() {
                   {/* System Roles */}
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">System Roles *</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 sm:grid-cols-1 md:grid-cols-3 gap-2">
                       {roles.length === 0 ? (
                         <span className="text-sm text-gray-500">Loading roles...</span>
                       ) : (
@@ -878,7 +878,7 @@ export default function TeamUsersPage() {
                       <div className="space-y-1 sm:col-span-2 pt-4 border-t border-slate-100 dark:border-white/10">
                         <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Shift Override (Optional)</h3>
                         <p className="text-[10px] text-slate-500 mb-3">Overrides the assigned shift times for this specific user.</p>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Start Time</label>
                             <input
@@ -904,7 +904,7 @@ export default function TeamUsersPage() {
                       <div className="space-y-1 sm:col-span-2 pt-4 border-t border-slate-100 dark:border-white/10">
                         <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Leave Overrides (Optional)</h3>
                         <p className="text-[10px] text-slate-500 mb-3">Leave blank to use Department defaults.</p>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div className="space-y-1">
                             <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Casual</label>
                             <input

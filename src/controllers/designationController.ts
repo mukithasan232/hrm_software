@@ -19,7 +19,7 @@ export const getDesignations = async (req: Request, res: Response): Promise<void
 // ─── POST /api/team/designations ─────────────────────────────────────────────────────
 export const createDesignation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, permissions } = req.body as any;
+    const { name, description, permissions, leaveConfig } = req.body as any;
 
     if (!name || !name.trim()) {
       res.status(400).json({ message: 'Designation name is required.' });
@@ -37,6 +37,9 @@ export const createDesignation = async (req: Request, res: Response): Promise<vo
         name: name.trim(),
         description: description?.trim() || null,
         permissions: permissions || {},
+        leaveConfig: leaveConfig || {},
+        totalCasualLeaves: leaveConfig?.casual || 0,
+        totalSickLeaves: leaveConfig?.sick || 0,
       },
     });
 
@@ -50,7 +53,7 @@ export const createDesignation = async (req: Request, res: Response): Promise<vo
 export const updateDesignation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, description, permissions } = req.body as any;
+    const { name, description, permissions, leaveConfig } = req.body as any;
 
     const designation = await prisma.designation.findUnique({ where: { id } });
     if (!designation) {
@@ -73,6 +76,9 @@ export const updateDesignation = async (req: Request, res: Response): Promise<vo
         name: name?.trim() ?? designation.name,
         description: description !== undefined ? description?.trim() || null : designation.description,
         permissions: permissions ?? designation.permissions,
+        leaveConfig: leaveConfig ?? designation.leaveConfig,
+        totalCasualLeaves: leaveConfig?.casual ?? designation.totalCasualLeaves,
+        totalSickLeaves: leaveConfig?.sick ?? designation.totalSickLeaves,
       },
     });
 
