@@ -6,8 +6,6 @@ import { Prisma } from '@prisma/client';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const ULTRA_EMAIL = process.env.ULTRAADMIN_EMAIL || 'ultraadmin@fixanyphoto.com';
-const ULTRA_PASS  = process.env.ULTRAADMIN_PASSWORD || 'SuperAdmin@2026!';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@fixanyphoto.com';
 const ADMIN_PASS  = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
 
@@ -62,54 +60,30 @@ async function seedAdmins() {
 
     // ── Step 2: Generate fresh bcryptjs hashes ──────────────────────────────────
     const salt           = await bcrypt.genSalt(10);
-    const ultraHash      = await bcrypt.hash(ULTRA_PASS, salt);
     const adminHash      = await bcrypt.hash(ADMIN_PASS, salt);
 
     const emptyDocuments: Prisma.JsonObject = {};
 
     // ── Step 3: Upsert existing users to preserve foreign keys ───────────────────
-    const ultraUser = await prisma.user.upsert({
-      where: { email: ULTRA_EMAIL },
-      update: {
-        password:      ultraHash,
-        designationId: superAdminDesignation.id,
-        userType:      'Super Admin',
-      },
-      create: {
-        email:         ULTRA_EMAIL,
-        employeeId:    'ADM-ULTRA',
-        name:          'Ultra Admin',
-        password:      ultraHash,
-        designationId: superAdminDesignation.id,
-        department:    'Management',
-        baseSalary:    0,
-        isActive:      true,
-        documents:     emptyDocuments,
-        employeeType:  'IN_HOUSE',
-        userType:      'Super Admin',
-      },
-    });
-    console.log(`  ✅ [User]         Upserted: ${ultraUser.email}  (DB ID: ${ultraUser.id})`);
-
     const adminUser = await prisma.user.upsert({
       where: { email: ADMIN_EMAIL },
       update: {
         password:      adminHash,
-        designationId: adminDesignation.id,
-        userType:      'Admin',
+        designationId: superAdminDesignation.id,
+        userType:      'Super Admin',
       },
       create: {
         email:         ADMIN_EMAIL,
         employeeId:    'ADM-STD',
         name:          'Admin User',
         password:      adminHash,
-        designationId: adminDesignation.id,
+        designationId: superAdminDesignation.id,
         department:    'Management',
         baseSalary:    0,
         isActive:      true,
         documents:     emptyDocuments,
         employeeType:  'IN_HOUSE',
-        userType:      'Admin',
+        userType:      'Super Admin',
       },
     });
     console.log(`  ✅ [User]         Upserted: ${adminUser.email}  (DB ID: ${adminUser.id})`);
@@ -117,8 +91,6 @@ async function seedAdmins() {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('  🎉 Seed complete. Login credentials:');
     console.log('  ┌────────────────────────────────────────────────────┐');
-    console.log(`  │  Ultra Email: ${ULTRA_EMAIL.padEnd(36)} │`);
-    console.log(`  │  Ultra Pass:  ${ULTRA_PASS.padEnd(36)} │`);
     console.log(`  │  Admin Email: ${ADMIN_EMAIL.padEnd(36)} │`);
     console.log(`  │  Admin Pass:  ${ADMIN_PASS.padEnd(36)} │`);
     console.log('  └────────────────────────────────────────────────────┘');
