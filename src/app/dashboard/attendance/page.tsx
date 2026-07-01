@@ -530,7 +530,6 @@ export default function AttendancePage() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-slate-900 dark:text-white font-bold">{row?.employeeName}</span>
-                        <span className="text-slate-500 dark:text-gray-500 text-xs font-semibold">ID: {row?.employeeId}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-900 dark:text-gray-200">
@@ -557,7 +556,7 @@ export default function AttendancePage() {
                       )}
                     </td>
                     <td className="px-6 py-4 font-mono text-slate-700 dark:text-gray-300 font-bold">
-                      {row.checkInRaw ? (
+                      {row.checkInRaw && row.checkOutRaw ? (
                         <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
                           <Clock className="w-4 h-4" />
                           {calculateWorkingHours(row.checkInRaw, row.checkOutRaw)}

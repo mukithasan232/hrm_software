@@ -1,6 +1,10 @@
 export const calculateWorkingHours = (checkIn: Date | string, checkOut: Date | string | null): string => {
+  if (!checkOut) {
+    return '—';
+  }
+
   const start = new Date(checkIn).getTime();
-  const end = checkOut ? new Date(checkOut).getTime() : new Date().getTime();
+  const end = new Date(checkOut).getTime();
 
   if (isNaN(start) || isNaN(end) || start > end) {
     return '0h 0m';

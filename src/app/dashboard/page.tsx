@@ -35,6 +35,10 @@ import { useTranslation } from "@/context/LanguageContext";
 import { toBDDisplay, getBDToday } from "@/lib/dateUtils";
 import { io as socketIO } from "socket.io-client";
 import { usePermissions } from "@/hooks/usePermissions";
+import dynamic from 'next/dynamic';
+
+const WeeklyChart = dynamic(() => import('@/components/charts/WeeklyChart'), { ssr: false });
+const DepartmentChart = dynamic(() => import('@/components/charts/DepartmentChart'), { ssr: false });
 
 // ─── Annual leave quota (company policy) ─────────────────────────────────────
 const ANNUAL_LEAVE_QUOTA = 20;
@@ -644,77 +648,17 @@ export default function DashboardOverview() {
                   <p className="text-[10px] text-slate-400 dark:text-gray-500 font-medium">Mon – Sat (Sun excluded)</p>
                 </div>
               </div>
-              <div className="w-full" style={{ minHeight: '300px', height: '100%', width: '100%' }}>
+              <div className="w-full relative">
                 {loading ? (
-                  <div className="h-full flex items-center justify-center">
+                  <div className="h-72 flex items-center justify-center min-h-[300px]">
                     <RefreshCw className="w-6 h-6 text-brand-primary animate-spin" />
                   </div>
                 ) : chartData.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                  <div className="h-72 flex items-center justify-center text-slate-400 text-sm min-h-[300px]">
                     No data available
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={chartData}
-                      margin={{ top: 5, right: 0, left: -20, bottom: 5 }}
-                    >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#cbd5e1"
-                        opacity={0.2}
-                        vertical={false}
-                      />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 11, fontWeight: 600 }}
-                        stroke="#94a3b8"
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 11 }}
-                        stroke="#94a3b8"
-                        axisLine={false}
-                        tickLine={false}
-                        allowDecimals={false}
-                      />
-                      <RechartsTooltip
-                        cursor={{ fill: "rgba(99,102,241,0.06)" }}
-                        contentStyle={{
-                          borderRadius: "12px",
-                          border: "none",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                          fontSize: "12px",
-                        }}
-                        formatter={(value: any, name: any) => [
-                          value,
-                          name === "present" ? "Present ✅" : "Absent ❌",
-                        ]}
-                      />
-                      <Legend
-                        iconType="circle"
-                        wrapperStyle={{ fontSize: "11px" }}
-                        formatter={(value) =>
-                          value === "present" ? "Present" : "Absent"
-                        }
-                      />
-                      <Bar
-                        dataKey="present"
-                        name="present"
-                        fill="#10b981"
-                        radius={[4, 4, 0, 0]}
-                        barSize={18}
-                      />
-                      <Bar
-                        dataKey="absent"
-                        name="absent"
-                        fill="#f43f5e"
-                        radius={[4, 4, 0, 0]}
-                        barSize={18}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <WeeklyChart chartData={chartData} />
                 )}
               </div>
             </div>
@@ -731,59 +675,17 @@ export default function DashboardOverview() {
                   Department Overview
                 </h3>
               </div>
-              <div className="w-full relative" style={{ minHeight: '300px', height: '100%', width: '100%' }}>
+              <div className="w-full relative">
                 {loading ? (
-                  <div className="h-full flex items-center justify-center">
+                  <div className="h-72 flex items-center justify-center min-h-[300px]">
                     <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
                   </div>
                 ) : departmentData.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                  <div className="h-72 flex items-center justify-center text-slate-400 text-sm min-h-[300px]">
                     No data available
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={departmentData}
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {departmentData.map((_, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip
-                        contentStyle={{
-                          borderRadius: "12px",
-                          border: "none",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                        }}
-                        itemStyle={{ color: "#1e293b", fontWeight: "bold" }}
-                      />
-                      <Legend
-                        iconType="circle"
-                        layout="horizontal"
-                        verticalAlign="bottom"
-                        wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-                {!loading && departmentData.length > 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none pb-4">
-                    <span className="text-3xl font-bold text-slate-800 dark:text-white">
-                      {stats.employees}
-                    </span>
-                    <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
-                      Total
-                    </span>
-                  </div>
+                  <DepartmentChart departmentData={departmentData} COLORS={COLORS} totalEmployees={stats.employees} />
                 )}
               </div>
             </div>

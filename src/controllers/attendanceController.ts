@@ -378,6 +378,14 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
 
       if (parsedDate.getTime() > shiftStartUTC.getTime() + gracePeriodMs) {
         // Employee is late
+        
+        // Format to 12-hour AM/PM
+        const [hourStr, minuteStr] = expectedShiftStart.split(':');
+        let hour = parseInt(hourStr, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        hour = hour % 12 || 12;
+        const formattedShiftStart = `${hour.toString().padStart(2, '0')}:${minuteStr} ${ampm}`;
+
         const admins = await prisma.user.findMany({
           where: {
             OR: [
@@ -399,8 +407,8 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
               userId: admin.id,
               titleEn: 'Late Check-in',
               titleBn: 'দেরিতে উপস্থিতি',
-              messageEn: `${user.name} checked in late for the ${expectedShiftStart} shift.`,
-              messageBn: `${user.name} ${expectedShiftStart} শিফটের জন্য দেরিতে উপস্থিত হয়েছেন।`,
+              messageEn: `${user.name} checked in late for the ${formattedShiftStart} shift.`,
+              messageBn: `${user.name} ${formattedShiftStart} শিফটের জন্য দেরিতে উপস্থিত হয়েছেন।`,
               type: 'ATTENDANCE_LATE',
               referenceId: log.id
             }

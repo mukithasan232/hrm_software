@@ -9,7 +9,7 @@ export default function AnnouncementsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'INBOX' | 'BROADCAST'>('INBOX');
   const [inboxNotices, setInboxNotices] = useState<any[]>([]);
@@ -38,6 +38,19 @@ export default function AnnouncementsPage() {
       }
     };
     fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const res = await api.get('/team/departments');
+        const deptList = Array.isArray(res.data) ? res.data : (res.data.data || res.data.departments || []);
+        setDepartments(deptList);
+      } catch (error) {
+        console.error('Failed to fetch departments', error);
+      }
+    };
+    fetchDepartments();
   }, []);
 
   useEffect(() => {
@@ -224,10 +237,11 @@ export default function AnnouncementsPage() {
                   className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 >
                   <option value="">Select a department...</option>
-                  <option value="SOFTWARE_AND_WEB_DEV">Software & Web Dev</option>
-                  <option value="SEO_AND_MARKETING">SEO & Marketing</option>
-                  <option value="GRAPHICS_AND_DESIGN">Graphics & Design</option>
-                  <option value="VIDEO_PRODUCTION">Video Production</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
