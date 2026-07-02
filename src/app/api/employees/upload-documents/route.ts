@@ -63,8 +63,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'No valid files were processed' }, { status: 400, headers: corsHeaders });
     }
 
-    // ── Append to existing docs and set status to PENDING_VERIFICATION ────
-    const existingDocs = Array.isArray(employee.documents) ? (employee.documents as string[]) : [];
+    // ── Append or Replace based on current status ────────────────────────
+    // If already PENDING_VERIFICATION (re-upload flow), REPLACE docs so old ones don't pile up.
+    // On first upload (UNVERIFIED), append to any existing docs.
+    const isReupload = employee.verificationStatus === 'PENDING_VERIFICATION';
+    const existingDocs = (!isReupload && Array.isArray(employee.documents)) ? (employee.documents as string[]) : [];
     const newDocs = [...existingDocs, ...uploadedUrls];
 
     const updatedUser = await prisma.user.update({

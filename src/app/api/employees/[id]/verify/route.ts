@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { toTitleCase } from '@/lib/utils';
 import { revalidatePath } from 'next/cache';
+import { eventEmitter } from '@/lib/eventEmitter';
 
 
 
@@ -446,9 +447,40 @@ export const POST = wrapHandler(async (req: any, res: any) => {
     console.error("[PDF/EMAIL_ERROR] Failed to generate/send letter:", backgroundError);
   }
 
+      // 3. Notify the employee via bell notification
+      try {
+        await prisma.notification.create({
+          data: {
+            userId: employee.id,
+            titleEn: 'Account Activated!',
+            titleBn: 'অ্যাকাউন্ট অ্যাক্টিভ হয়েছে!',
+            messageEn: 'Congratulations! Your documents have been verified and your account is now active.',
+            messageBn: 'অভিনন্দন! আপনার ডকুমেন্ট ভেরিফাই করা হয়েছে এবং আপনার অ্যাকাউন্ট এখন সক্রিয়।',
+            type: 'SYSTEM',
+            referenceId: employee.id,
+          },
+        });
+        eventEmitter.emit('new-notification', {
+          userId: employee.id,
+          titleEn: 'Account Activated!',
+          messageEn: 'Your documents have been verified. You can now log in to your dashboard.',
+          type: 'SYSTEM',
+        });
+      } catch (notifErr) {
+        console.error('[VERIFY] Failed to create activation notification:', notifErr);
+      }
+
       revalidatePath('/dashboard/employees');
-      // 3. Return Success
-      return res.status(200).json({ message: 'User verified successfully' });
+      revalidatePath('/dashboard/team/employees');
+      // 4. Return Success with the updated user data for instant UI update
+      return res.status(200).json({ 
+        message: 'User verified successfully',
+        employee: {
+          id: employee.id,
+          verificationStatus: 'ACTIVE',
+          baseSalary: parseFloat(baseSalary) || 0,
+        }
+      });
 
     } else if (action === 'REJECT') {
       await prisma.user.update({
@@ -474,8 +506,38 @@ export const POST = wrapHandler(async (req: any, res: any) => {
         html: emailHtml
       });
 
+      // Notify the employee their docs were rejected
+      try {
+        await prisma.notification.create({
+          data: {
+            userId: employee.id,
+            titleEn: 'Documents Rejected',
+            titleBn: 'ডকুমেন্ট প্রত্যাখ্যান',
+            messageEn: 'Your submitted documents could not be verified. Please re-upload valid documents.',
+            messageBn: 'আপনার ডকুমেন্ট ভেরিফাই করা সম্ভব হয়নি। অনুগ্রহ করে পুনরায় আপলোড করুন।',
+            type: 'SYSTEM',
+            referenceId: employee.id,
+          },
+        });
+        eventEmitter.emit('new-notification', {
+          userId: employee.id,
+          titleEn: 'Documents Rejected',
+          messageEn: 'Your documents were rejected. Please re-upload valid documents.',
+          type: 'SYSTEM',
+        });
+      } catch (notifErr) {
+        console.error('[VERIFY] Failed to create rejection notification:', notifErr);
+      }
+
       revalidatePath('/dashboard/employees');
-      return res.status(200).json({ message: 'User rejected' });
+      revalidatePath('/dashboard/team/employees');
+      return res.status(200).json({ 
+        message: 'User rejected',
+        employee: {
+          id: employee.id,
+          verificationStatus: 'REJECTED',
+        }
+      });
     }
 
     return res.status(400).json({ message: 'Invalid action' });

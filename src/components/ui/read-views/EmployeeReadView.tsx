@@ -110,14 +110,16 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
               {emp.documents && emp.documents.length > 0 ? (
                 <div className="mt-3 flex flex-col gap-2">
                   {emp.documents.map((doc: any, idx: number) => {
-                    const url = typeof doc === 'string' ? doc : doc.url;
-                    const name = typeof doc === 'string' ? `Document ${idx + 1}` : (doc.name || `Document ${idx+1}`);
+                    const rawUrl = typeof doc === 'string' ? doc : (doc.url || '');
+                    const filenamePart = rawUrl.split('/').pop() || '';
+                    const name = filenamePart.replace(/^\d+-/, '') || `Document ${idx + 1}`;
+                    const url = rawUrl.startsWith('http') ? rawUrl : `${BACKEND}${rawUrl}`;
                     return (
                       <div key={idx} className="flex justify-between items-center p-2 bg-white dark:bg-slate-800 rounded-lg border border-amber-200 dark:border-amber-500/30 w-full max-w-sm">
                         <span className="text-sm font-semibold text-amber-800 dark:text-amber-400 flex items-center gap-2">
                           <FileText className="w-4 h-4" /> {name}
                         </span>
-                        <a href={url.startsWith('http') ? url : `${BACKEND}${url}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline text-sm font-bold">
+                        <a href={url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline text-sm font-bold">
                           View
                         </a>
                       </div>

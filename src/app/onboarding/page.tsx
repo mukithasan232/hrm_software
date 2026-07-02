@@ -58,9 +58,11 @@ export default function OnboardingPage() {
       const res = await api.post('/employees/upload-documents', formData);
 
       const newUrls = res.data?.urls || [];
-      const existingDocs = Array.isArray(user?.documents) ? user.documents : [];
       
       if (updateUser) {
+        // When re-uploading (editing), REPLACE the old docs with new ones.
+        // When uploading for the first time, just set the new docs.
+        const existingDocs = isEditing ? [] : (Array.isArray(user?.documents) ? user.documents : []);
         updateUser({ 
           documents: [...existingDocs, ...newUrls], 
           verificationStatus: 'PENDING_VERIFICATION' 
@@ -164,9 +166,10 @@ export default function OnboardingPage() {
 }
 
 function ApplicationStatusView({ user, logout, onEdit }: { user: any, logout: () => void, onEdit: () => void }) {
+  // Build backend base URL: works in any environment without extra env config
   const BACKEND = process.env.NEXT_PUBLIC_API_URL
     ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
-    : '';
+    : (typeof window !== 'undefined' ? window.location.origin : '');
   return (
     <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-white/10 flex flex-col items-center text-center">
       
