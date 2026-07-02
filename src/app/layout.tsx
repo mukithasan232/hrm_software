@@ -26,6 +26,9 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: faviconUrl,
     },
+    other: {
+      google: 'notranslate',
+    },
   };
 }
 
@@ -61,7 +64,7 @@ export default async function RootLayout({
   } as React.CSSProperties;
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="bn" translate="no" className="notranslate" suppressHydrationWarning>
       <body className="antialiased" style={customStyle} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AuthProvider>

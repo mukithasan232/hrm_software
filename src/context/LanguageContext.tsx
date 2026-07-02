@@ -11,7 +11,7 @@ interface LanguageContextValue {
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 const LanguageContext = createContext<LanguageContextValue>({
-  language: 'en',
+  language: 'bn',
   setLanguage: () => {},
   t: (key) => key,
 });
@@ -20,7 +20,7 @@ const LanguageContext = createContext<LanguageContextValue>({
 const STORAGE_KEY = 'hrm_language';
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>('bn');
   const [mounted, setMounted] = useState(false);
 
   // Hydrate from localStorage after mount (avoids SSR mismatch)
@@ -55,7 +55,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   // Prevent flash of wrong language during SSR hydration
   if (!mounted) {
     return (
-      <LanguageContext.Provider value={{ language: 'en', setLanguage, t: (k) => (translations.en as Record<string, string>)[k] ?? k }}>
+      <LanguageContext.Provider value={{ language: 'bn', setLanguage, t: (k) => (translations.bn as Record<string, string>)[k] ?? k }}>
         {children}
       </LanguageContext.Provider>
     );
