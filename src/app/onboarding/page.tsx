@@ -166,12 +166,27 @@ export default function OnboardingPage() {
 }
 
 function ApplicationStatusView({ user, logout, onEdit, onUpdateUser }: { user: any, logout: () => void, onEdit: () => void, onUpdateUser?: (data: any) => void }) {
-  const [docs, setDocs] = useState<string[]>(() => {
-    // Deduplicate on initial load
-    const raw = Array.isArray(user?.documents) ? user.documents : [];
-    return [...new Set(raw.map((d: any) => typeof d === 'string' ? d : (d.url || '')).filter(Boolean))] as string[];
-  });
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
+
+  // Compute docs directly from user context to avoid stale state.
+  // Deduplicate by clean filename (keep latest upload if duplicates exist).
+  const rawUrls = Array.isArray(user?.documents) 
+    ? user.documents.map((d: any) => typeof d === 'string' ? d : (d.url || '')).filter(Boolean)
+    : [];
+    
+  const docs: string[] = [];
+  const seenNames = new Set<string>();
+  
+  for (let i = rawUrls.length - 1; i >= 0; i--) {
+    const rawUrl = rawUrls[i];
+    const filenamePart = rawUrl.split('/').pop() || '';
+    const cleanName = filenamePart.replace(/^\d+-/, '');
+    
+    if (!seenNames.has(cleanName)) {
+      seenNames.add(cleanName);
+      docs.unshift(rawUrl);
+    }
+  }
 
   // Build backend base URL: works in any environment without extra env config
   const BACKEND = process.env.NEXT_PUBLIC_API_URL
@@ -183,7 +198,6 @@ function ApplicationStatusView({ user, logout, onEdit, onUpdateUser }: { user: a
     try {
       const res = await import('@/services/api').then(m => m.default.delete('/employees/upload-documents', { data: { docUrl: rawUrl } }));
       const updatedDocs = res.data?.documents ?? docs.filter((_, i) => i !== idx);
-      setDocs([...new Set(updatedDocs)]);
       if (onUpdateUser) onUpdateUser({ documents: updatedDocs });
       const { default: toast } = await import('react-hot-toast');
       toast.success('Document removed.');

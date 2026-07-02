@@ -13,6 +13,7 @@ import { exportToExcel, exportToPDF } from '@/lib/exportUtils';
 import { io as socketIO } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
 import { checkPermission } from '@/utils/checkPermission';
+import { useDetailsStore } from '@/store/useDetailsStore';
 
 export default function AttendancePage() {
   const { t } = useTranslation();
@@ -35,6 +36,7 @@ export default function AttendancePage() {
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const { user } = useAuth();
+  const openDetails = useDetailsStore(state => state.openDetails);
   
   const filteredLogs = useMemo(() => {
     return logs.filter(log => 
@@ -503,7 +505,11 @@ export default function AttendancePage() {
                 <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('noRecords')}</td></tr>
               ) : (
                 dailySummaries.map((row, idx) => (
-                  <tr key={`${row.employeeId}_${row.date}_${idx}`} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300">
+                  <tr 
+                    key={`${row.employeeId}_${row.date}_${idx}`} 
+                    onClick={() => openDetails('attendance', `${row.employeeId}_${row.date}`, row)}
+                    className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300 cursor-pointer"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-slate-900 dark:text-white font-bold">{row?.employeeName}</span>

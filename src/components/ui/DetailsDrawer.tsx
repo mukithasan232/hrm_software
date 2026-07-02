@@ -6,6 +6,7 @@ import TaskReadView from './read-views/TaskReadView';
 import EmployeeReadView from './read-views/EmployeeReadView';
 import DepartmentReadView from './read-views/DepartmentReadView';
 import UserReadView from './read-views/UserReadView';
+import AttendanceReadView from './read-views/AttendanceReadView';
 
 export default function GlobalDetailsDrawer() {
   const { isOpen, entityType, entityId, entityData, closeDetails } = useDetailsStore();
@@ -39,9 +40,10 @@ export default function GlobalDetailsDrawer() {
           {entityType === 'employee' && <EmployeeReadView id={entityId} initialData={entityData} />}
           {entityType === 'department' && <DepartmentReadView id={entityId} initialData={entityData} />}
           {entityType === 'user' && <UserReadView id={entityId as string} initialData={entityData} />}
+          {entityType === 'attendance' && <AttendanceReadView id={entityId as string} initialData={entityData} />}
           {/* Add more cases as features grow */}
           
-          {!['task', 'employee', 'department', 'user'].includes(entityType || '') && (
+          {!['task', 'employee', 'department', 'user', 'attendance'].includes(entityType || '') && (
             <div className="flex items-center justify-center h-40 text-slate-500">
               No detailed view implemented yet for {entityType}.
             </div>
