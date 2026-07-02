@@ -117,7 +117,10 @@ export function DateRangePicker({ value, onChange, disabled }: DateRangePickerPr
                 classNames={{
                   selected: "bg-indigo-600 text-white hover:bg-indigo-500",
                   today: "font-bold text-indigo-600 dark:text-indigo-400",
-                  day: "rounded-md hover:bg-slate-100 dark:hover:bg-white/10 p-1 m-1 text-sm transition-all",
+                  day: "rounded-md hover:bg-slate-100 dark:hover:bg-white/10 p-2 text-sm transition-all",
+                  range_start: "day-range-start rounded-r-none",
+                  range_end: "day-range-end rounded-l-none",
+                  range_middle: "aria-selected:bg-slate-100 dark:aria-selected:bg-slate-800 aria-selected:text-slate-900 dark:aria-selected:text-slate-50 rounded-none",
                   month_caption: "font-bold text-sm mb-2 px-1 flex justify-between items-center",
                   button_previous: "hover:bg-slate-100 dark:hover:bg-white/10 rounded-md p-1",
                   button_next: "hover:bg-slate-100 dark:hover:bg-white/10 rounded-md p-1",

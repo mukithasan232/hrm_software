@@ -86,6 +86,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      html2canvas:
+        specifier: ^1.4.1
+        version: 1.4.1
       html2canvas-pro:
         specifier: ^2.0.4
         version: 2.0.4
@@ -176,6 +179,9 @@ importers:
       zkteco-js:
         specifier: ^1.7.1
         version: 1.7.1
+      zustand:
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.15)(immer@11.1.8)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
       '@types/json2csv':
         specifier: ^5.0.7
@@ -958,8 +964,8 @@ packages:
     resolution: {integrity: sha512-U3gxVaDVnuZKhSspW/MzMxE1kq7zOdc072FcSNoqA1I9p8HyKbBFfEHoWckBAMgNMph4MamwS5iTVzFmrnt8TQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@unlayer/types@1.437.0':
-    resolution: {integrity: sha512-0KkUd19NXE/3n/1RC8TF8HvHvNu6k3XXQ6kDCFFdo6HvEyUdrq02ib22B8kIIOW/LObcNXBlbzb5lHrcks5KJg==}
+  '@unlayer/types@1.446.0':
+    resolution: {integrity: sha512-syHaW4Wrz/oPGWAcNSedq8H0atsBiRK8XQJccOARofYg1zqcLrsnoxGdHeOHCiZj7d/OiR/cClokr6MjgaIJXA==}
 
   '@unrs/resolver-binding-android-arm-eabi@1.12.2':
     resolution: {integrity: sha512-g5T90pqg1bo/7mytQx6F4iBNC0Wsh9cu+z9veDbFjc7HjpesJFWD7QMS0NGStXM075+7dJPPVvBbpZlnrdpi/w==}
@@ -3434,6 +3440,24 @@ packages:
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
+  zustand@5.0.14:
+    resolution: {integrity: sha512-/8tAspM5LMPr28b3fwLYrtdj77ECpfZviaP75CMTnwO8ISyaE4GDIG/9rDDYq/cH9D2Xw2A2RXglLInmVBQB/g==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+
 snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
@@ -4202,7 +4226,7 @@ snapshots:
       '@typescript-eslint/types': 8.59.4
       eslint-visitor-keys: 5.0.1
 
-  '@unlayer/types@1.437.0': {}
+  '@unlayer/types@1.446.0': {}
 
   '@unrs/resolver-binding-android-arm-eabi@1.12.2':
     optional: true
@@ -5478,7 +5502,6 @@ snapshots:
     dependencies:
       css-line-break: 2.1.0
       text-segmentation: 1.0.3
-    optional: true
 
   http-errors@2.0.1:
     dependencies:
@@ -6244,7 +6267,7 @@ snapshots:
 
   react-email-editor@1.8.0(react@19.2.4):
     dependencies:
-      '@unlayer/types': 1.437.0
+      '@unlayer/types': 1.446.0
       react: 19.2.4
 
   react-hot-toast@2.6.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
@@ -7005,3 +7028,10 @@ snapshots:
       zod: 4.4.3
 
   zod@4.4.3: {}
+
+  zustand@5.0.14(@types/react@19.2.15)(immer@11.1.8)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4)):
+    optionalDependencies:
+      '@types/react': 19.2.15
+      immer: 11.1.8
+      react: 19.2.4
+      use-sync-external-store: 1.6.0(react@19.2.4)

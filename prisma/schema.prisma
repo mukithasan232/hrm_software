@@ -13,6 +13,12 @@ enum EmployeeType {
   HYBRID
 }
 
+enum EmployeeStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  REJECTED
+}
+
 enum TaskStatus {
   TODO
   IN_PROGRESS
@@ -166,8 +172,12 @@ model User {
   designation  String?
   shiftStartTime String?
   shiftEndTime   String?
+  shift2Start    String?
+  shift2End      String?
   joiningDate  DateTime @default(now())
   profileImage String?
+  salaryAccount String?
+  appointmentLetter String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -190,8 +200,9 @@ model User {
   zktecoId Int? @unique
 
   employeeType     EmployeeType @default(IN_HOUSE)
+  verificationStatus EmployeeStatus @default(PENDING_VERIFICATION)
   userType         String       @default("Employee")
-  documents        Json         @default("{}")
+  documents        Json         @default("[]")
   resetToken       String?
   resetTokenExpiry DateTime?
 
@@ -352,7 +363,7 @@ model Task {
   title        String
   description  String?      @db.Text
   attachment   String?
-  outputImageUrl String?
+  outputImages Json?      @default("[]")
   startDate    DateTime?
   dueDate      DateTime?
   status       TaskStatus   @default(TODO)

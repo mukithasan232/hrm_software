@@ -15,6 +15,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/context/AuthContext';
 import { checkPermission } from '@/utils/checkPermission';
 import PageGuard from '@/components/auth/PageGuard';
+import { useDetailsStore } from '@/store/useDetailsStore';
+import TaskDetailsModal from '@/components/tasks/TaskDetailsModal';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
@@ -44,7 +46,7 @@ interface Task {
   createdById: string;
   createdBy: { id: string; name: string };
   attachment?: string | null;
-  outputImageUrl?: string | null;
+  outputImages?: string[] | any;
   createdAt: string;
   updatedAt: string;
 }
@@ -189,7 +191,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
     assignedToId: task?.assignedToId || '',
   });
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [outputImage, setOutputImage] = useState<File | null>(null);
+  const [outputImages, setOutputImages] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -209,7 +211,11 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => formData.append(k, v as string));
       if (attachment) formData.append('attachment', attachment);
-      if (!isCreating && outputImage) formData.append('outputImage', outputImage);
+      if (!isCreating && outputImages.length > 0) {
+        outputImages.forEach((file) => {
+          formData.append('outputImages', file);
+        });
+      }
 
       if (task) {
         await api.patch(`/tasks/${task.id}`, formData, {
@@ -235,9 +241,9 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
   const label = 'block text-xs font-semibold text-slate-500 dark:text-gray-400 mb-1.5';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex-shrink-0 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             {isReadOnly ? 'Task Details' : task ? 'Edit Task' : 'Create New Task'}
             {isReadOnly && canEditTasks && onModeChange && (
@@ -255,7 +261,8 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           {/* Title */}
           <div>
             <label className={label}>Title *</label>
@@ -401,39 +408,58 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
           {/* Final Output Image */}
           {!isCreating && (
             <div>
-              <label className={label}>Final Output Image (Optional)</label>
+              <label className={label}>Final Output Files / Images (Optional)</label>
               {canUpdateWorkerFields && (
-                <div className="flex items-center gap-2">
-                  <label className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-black/20 border border-dashed border-slate-300 dark:border-white/20 hover:border-emerald-500/50 rounded-xl px-4 py-2.5 text-slate-500 dark:text-gray-400 cursor-pointer transition-all">
-                    <Paperclip className="w-4 h-4 text-emerald-500" />
-                    <span className="text-sm truncate font-medium">{outputImage ? outputImage.name : 'Select final result image'}</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => setOutputImage(e.target.files?.[0] || null)} />
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center justify-center gap-2 bg-slate-50 dark:bg-black/20 border border-dashed border-slate-300 dark:border-white/20 hover:border-emerald-500/50 rounded-xl px-4 py-3 text-slate-500 dark:text-gray-400 cursor-pointer transition-all w-full">
+                    <Paperclip className="w-5 h-5 text-emerald-500" />
+                    <span className="text-sm font-medium">Select output files...</span>
+                    <input type="file" multiple accept="image/*, .pdf, .zip" className="hidden" onChange={(e) => setOutputImages(Array.from(e.target.files || []))} />
                   </label>
-                  {outputImage && (
-                    <button type="button" onClick={() => setOutputImage(null)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg">
-                      <X className="w-5 h-5" />
-                    </button>
+                  
+                  {outputImages.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {outputImages.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-slate-100 dark:bg-white/5 rounded-lg px-3 py-2 text-sm">
+                          <span className="truncate text-slate-700 dark:text-slate-300 mr-2">{file.name}</span>
+                          <button type="button" onClick={() => setOutputImages(prev => prev.filter((_, i) => i !== idx))} className="p-1 text-red-500 hover:bg-red-500/10 rounded">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
-              {task?.outputImageUrl && task.outputImageUrl !== '' && !outputImage && (
-                <div className="mt-2">
-                  <a href={task.outputImageUrl} target="_blank" rel="noopener noreferrer" className="inline-block cursor-pointer hover:opacity-80 transition-opacity relative group">
-                    <img src={task.outputImageUrl} alt="Final Output" className="max-h-32 rounded-lg object-contain border border-slate-200 dark:border-white/10" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                      <Search className="w-6 h-6 text-white" />
+              
+              {task?.outputImages && Array.isArray(task.outputImages) && task.outputImages.length > 0 && outputImages.length === 0 && (
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {task.outputImages.map((url: any, idx: number) => (
+                    <div key={idx} className="relative group">
+                      <a href={url as string} target="_blank" rel="noopener noreferrer" className="inline-block cursor-pointer hover:opacity-80 transition-opacity">
+                        {String(url).match(/\.(jpeg|jpg|gif|png)$/) != null ? (
+                          <img src={url as string} alt={`Final Output ${idx + 1}`} className="h-24 w-auto rounded-lg object-contain border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/50" />
+                        ) : (
+                          <div className="h-24 w-24 flex flex-col items-center justify-center bg-slate-100 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10">
+                            <Paperclip className="w-8 h-8 text-emerald-500 mb-1" />
+                            <span className="text-[10px] text-slate-500 truncate w-20 text-center">File {idx + 1}</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center pointer-events-none">
+                          <Search className="w-6 h-6 text-white" />
+                        </div>
+                      </a>
                     </div>
-                  </a>
-                  <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1">
-                    <Search className="w-3 h-3" /> Final Output
-                  </p>
+                  ))}
                 </div>
               )}
             </div>
           )}
 
+          </div>
+
           {/* Actions */}
-          <div className="pt-2 flex gap-3">
+          <div className="px-6 py-4 border-t border-slate-100 dark:border-white/10 flex-shrink-0 flex gap-3 bg-white dark:bg-slate-900">
             {canUpdateWorkerFields ? (
               <>
                 <button
@@ -565,6 +591,7 @@ function KanbanCard({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
+  const openDetails = useDetailsStore(state => state.openDetails);
   const { user } = useAuth();
   const { scope: getScope } = usePermissions();
 
@@ -582,6 +609,8 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter]     = useState<TaskStatus | 'ALL'>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'ALL'>('ALL');
   const [dateFilter, setDateFilter]         = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [modalOpen, setModalOpen]   = useState(false);
   const [modalMode, setModalMode]   = useState<'view' | 'edit'>('view');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -685,12 +714,21 @@ export default function TasksPage() {
       const taskDate = new Date(t.createdAt);
       if (dateFilter === 'today') {
         matchDate = taskDate.toDateString() === now.toDateString();
+      } else if (dateFilter === 'yesterday') {
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        matchDate = taskDate.toDateString() === yesterday.toDateString();
       } else if (dateFilter === 'week') {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         matchDate = taskDate >= sevenDaysAgo;
       } else if (dateFilter === 'month') {
         matchDate = taskDate.getMonth() === now.getMonth() && taskDate.getFullYear() === now.getFullYear();
+      } else if (dateFilter === 'custom' && customStartDate && customEndDate) {
+        const start = new Date(customStartDate);
+        const end = new Date(customEndDate);
+        end.setHours(23, 59, 59, 999);
+        matchDate = taskDate >= start && taskDate <= end;
       }
     }
 
@@ -748,18 +786,40 @@ export default function TasksPage() {
           </div>
 
           {/* Date filter */}
-          <div className="relative">
-            <select 
-              value={dateFilter} 
-              onChange={e => setDateFilter(e.target.value)} 
-              className={selectCls}
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">Last 7 Days</option>
-              <option value="month">This Month</option>
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <select 
+                value={dateFilter} 
+                onChange={e => setDateFilter(e.target.value)} 
+                className={selectCls}
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            </div>
+
+            {dateFilter === 'custom' && (
+              <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                <input 
+                  type="date" 
+                  value={customStartDate} 
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none"
+                />
+                <span className="text-slate-400 text-sm">to</span>
+                <input 
+                  type="date" 
+                  value={customEndDate} 
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none"
+                />
+              </div>
+            )}
           </div>
 
           {/* View toggle */}
@@ -981,7 +1041,7 @@ export default function TasksPage() {
                             index={index}
                             canEdit={canEditTasks}
                             canDelete={canDeleteTasks}
-                            onView={t => { setEditingTask(t); setModalMode('view'); setModalOpen(true); }}
+                            onView={t => openDetails('task', t.id, t)}
                             onEdit={t => { setEditingTask(t); setModalMode('edit'); setModalOpen(true); }}
                             onDelete={handleDelete}
                           />

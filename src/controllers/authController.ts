@@ -160,6 +160,10 @@ export const loginUser = async (req: Request, res: Response) => {
       phone: user.phone,
       roles: roles,
       permissions: user.permissions,
+      verificationStatus: user.verificationStatus,
+      documents: user.documents,
+      appointmentLetter: user.appointmentLetter,
+      salaryAccount: user.salaryAccount,
       token: generateToken(user.id, designationName, roles, user.permissions),
     });
   } catch (error: any) {

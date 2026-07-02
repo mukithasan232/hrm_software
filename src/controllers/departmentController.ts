@@ -7,8 +7,30 @@ export const getDepartments = async (req: MockRequest, res: MockResponse) => {
   try {
     const departments = await prisma.department.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        users: {
+          select: { id: true, name: true, employeeId: true, customDesignation: { select: { name: true } } }
+        },
+        _count: {
+          select: { users: true }
+        }
+      }
     });
-    res.status(200).json(departments);
+    
+    // Map backend relational naming to frontend expected schema
+    const mappedDepartments = departments.map((dept: any) => ({
+      ...dept,
+      employees: dept.users?.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        employeeId: u.employeeId,
+        designation: u.customDesignation
+      })),
+      _count: { employees: dept._count?.users || 0 },
+      users: undefined
+    }));
+    
+    res.status(200).json(mappedDepartments);
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to fetch departments', error: error.message });
   }

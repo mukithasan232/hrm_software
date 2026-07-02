@@ -263,29 +263,141 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       employeeWhere.department = department as string;
     }
 
-    const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualCount, totalEmployees, uniquePunches] = await Promise.all([
+    const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualCount, activeEmployees, allPunchesInRange] = await Promise.all([
       prisma.attendanceLog.findMany({
         where, skip, take,
         orderBy: { timestamp: 'desc' },
-        include: { user: { select: { name: true, employeeId: true, department: true } } }
+        include: { user: { select: { name: true, employeeId: true, department: true, shiftStartTime: true, shiftEndTime: true } } }
       }),
       prisma.attendanceLog.count({ where }),
       prisma.attendanceLog.findMany({ where: { ...where, punchType: 'CheckIn' }, distinct: ['employeeId'], select: { employeeId: true } }),
       prisma.attendanceLog.findMany({ where: { ...where, punchType: 'CheckOut' }, distinct: ['employeeId'], select: { employeeId: true } }),
       prisma.attendanceLog.count({ where: { ...where, deviceId: 'Manual Entry' } }),
-      prisma.user.count({ where: employeeWhere }),
-      prisma.attendanceLog.findMany({ where, distinct: ['employeeId'], select: { employeeId: true } })
+      prisma.user.findMany({ where: employeeWhere, select: { id: true, createdAt: true } }),
+      prisma.attendanceLog.findMany({ where, select: { employeeId: true, timestamp: true } })
     ]);
 
     const checkInCount = uniqueCheckIns.length;
     const checkOutCount = uniqueCheckOuts.length;
     
-    // Calculate strict server-side absent count based on presence (any valid punch = present)
-    const presentCount = uniquePunches.length;
-    const absentCount = Math.max(0, totalEmployees - presentCount);
+    // Calculate strict server-side absent count per employee dynamically
+    const formatYMD = (d: Date) => {
+      // Shift to BD time approx +06:00 to group by local calendar day
+      const dd = new Date(d.getTime() + (6 * 60 * 60 * 1000));
+      return dd.toISOString().split('T')[0];
+    };
+
+    const daysPresentPerEmployee: Record<string, Set<string>> = {};
+    for (const p of allPunchesInRange) {
+      if (!daysPresentPerEmployee[p.employeeId]) daysPresentPerEmployee[p.employeeId] = new Set();
+      daysPresentPerEmployee[p.employeeId].add(formatYMD(p.timestamp));
+    }
+
+    const globalStart = where.timestamp?.gte || new Date(0); 
+    const globalEnd = where.timestamp?.lte || new Date(); 
+    const msPerDay = 1000 * 60 * 60 * 24;
+
+    let absentCount = 0;
+
+    for (const emp of activeEmployees) {
+      // Compare the global range start with the employee's creation date
+      const effectiveStart = emp.createdAt > globalStart ? emp.createdAt : globalStart;
+      
+      let validDays = 0;
+      if (effectiveStart <= globalEnd) {
+        const sStr = formatYMD(effectiveStart);
+        const eStr = formatYMD(globalEnd);
+        const sDate = new Date(`${sStr}T00:00:00Z`);
+        const eDate = new Date(`${eStr}T00:00:00Z`);
+        validDays = Math.max(0, Math.round((eDate.getTime() - sDate.getTime()) / msPerDay) + 1);
+      }
+      
+      const presentDays = daysPresentPerEmployee[emp.id]?.size || 0;
+      const empAbsent = Math.max(0, validDays - presentDays);
+      absentCount += empAbsent;
+    }
+
+    const presentCount = Object.keys(daysPresentPerEmployee).length; // Will fix unused uniquePunches, using uniqueCheckIns instead
+    
+    // Build Aggregated Summaries Server-Side
+    const summariesMap: Record<string, any> = {};
+    for (const log of logs) {
+      const dateStr = formatYMD(log.timestamp);
+      const key = `${log.employeeId}_${dateStr}`;
+      if (!summariesMap[key]) {
+        summariesMap[key] = {
+          employeeId: log.employeeId,
+          employeeName: (log as any).user?.name || 'Unmapped',
+          date: dateStr,
+          rawLogs: [],
+          shiftStartTime: (log as any).user?.shiftStartTime || '09:00',
+          shiftEndTime: (log as any).user?.shiftEndTime || '17:00'
+        };
+      }
+      summariesMap[key].rawLogs.push(log);
+    }
+
+    const aggregatedSummaries = Object.values(summariesMap).map(summary => {
+      const { rawLogs, shiftStartTime, shiftEndTime } = summary;
+      rawLogs.sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
+      
+      const checkInRaw = rawLogs.find((l: any) => l.punchType?.toLowerCase().includes('in'))?.timestamp || null;
+      let checkOutRaw = null;
+      for (let i = rawLogs.length - 1; i >= 0; i--) {
+        if (rawLogs[i].punchType?.toLowerCase().includes('out')) {
+          checkOutRaw = rawLogs[i].timestamp;
+          break;
+        }
+      }
+
+      const lastPunch = rawLogs[rawLogs.length - 1];
+      const isMissingOut = lastPunch?.punchType?.toLowerCase().includes('in');
+
+      let totalValidMs = 0;
+      let currentIn = null;
+      for (const l of rawLogs) {
+        if (l.punchType?.toLowerCase().includes('in')) {
+          if (!currentIn) currentIn = l.timestamp;
+        } else {
+          if (currentIn) {
+            totalValidMs += (l.timestamp.getTime() - currentIn.getTime());
+            currentIn = null;
+          }
+        }
+      }
+
+      let lateMinutes = 0;
+      if (checkInRaw) {
+        const shiftStartUTC = new Date(`${summary.date}T${shiftStartTime}:00+06:00`);
+        const lateMs = Math.max(0, checkInRaw.getTime() - shiftStartUTC.getTime());
+        lateMinutes = Math.floor(lateMs / 60000);
+      }
+
+      const shiftStartUTC = new Date(`${summary.date}T${shiftStartTime}:00+06:00`);
+      const shiftEndUTC = new Date(`${summary.date}T${shiftEndTime}:00+06:00`);
+      const standardShiftMs = shiftEndUTC.getTime() - shiftStartUTC.getTime();
+      
+      let overtimeMinutes = 0;
+      if (totalValidMs > standardShiftMs && standardShiftMs > 0) {
+        overtimeMinutes = Math.floor((totalValidMs - standardShiftMs) / 60000);
+      }
+
+      return {
+        employeeId: summary.employeeId,
+        employeeName: summary.employeeName,
+        date: summary.date,
+        checkInRaw,
+        checkOutRaw,
+        isMissingOut,
+        totalValidMs,
+        lateMinutes,
+        overtimeMinutes
+      };
+    });
 
     res.status(200).json({ 
-      logs: logs.map(l => ({ ...l, employeeName: l.user?.name || 'Unmapped' })), 
+      logs: logs.map(l => ({ ...l, employeeName: (l as any).user?.name || 'Unmapped' })), 
+      summaries: aggregatedSummaries,
       total, 
       checkInCount, 
       checkOutCount, 

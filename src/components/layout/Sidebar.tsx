@@ -300,6 +300,16 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
           </button>
         )}
+
+        {/* Dynamic Copyright Section */}
+        {!collapsed && (
+          <div className="mt-auto pt-4 pb-1 px-4 text-center">
+            <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 leading-tight">
+              &copy; {new Date().getFullYear()} Fix Any Photo.<br/>
+              All rights reserved.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

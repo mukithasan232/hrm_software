@@ -52,7 +52,7 @@ const getTransporter = async () => {
   };
 };
 
-export const sendMail = async ({ to, subject, html }: { to: string; subject: string; html: string }) => {
+export const sendMail = async ({ to, subject, html, attachments }: { to: string; subject: string; html: string; attachments?: any[] }) => {
   try {
     const { transporter, fromUser } = await getTransporter();
     
@@ -67,6 +67,7 @@ export const sendMail = async ({ to, subject, html }: { to: string; subject: str
       to,
       subject,
       html,
+      attachments,
     });
     console.log(`[EmailService] Email sent to ${to}`);
     return { success: true };

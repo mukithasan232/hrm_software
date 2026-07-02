@@ -20,6 +20,7 @@ export default function AttendancePage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
+  const [serverSummaries, setServerSummaries] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,48 +44,23 @@ export default function AttendancePage() {
   }, [logs, searchTerm]);
 
   const dailySummaries = useMemo(() => {
-    const grouped: Record<string, any> = {};
-    filteredLogs.forEach(log => {
-      const dateStr = toBDDisplay(log.timestamp, 'yyyy-MM-dd');
-      const key = `${log.employeeId}_${dateStr}`;
-      
-      if (!grouped[key]) {
-        grouped[key] = {
-          id: log.id,
-          employeeId: log.employeeId,
-          employeeName: log.employeeName || 'N/A',
-          date: dateStr,
-          checkIn: null,
-          checkOut: null,
-          checkInRaw: null,
-          checkOutRaw: null,
-          deviceId: log.deviceId,
-        };
-      }
-      
-      const timestampTime = new Date(log.timestamp).getTime();
-      
-      if (log.punchType?.toLowerCase() === 'checkin') {
-        if (!grouped[key].checkInRaw || timestampTime < grouped[key].checkInRaw) {
-          grouped[key].checkInRaw = timestampTime;
-          grouped[key].checkIn = toBDDisplay(log.timestamp, 'hh:mm:ss a');
-        }
-      } else if (log.punchType?.toLowerCase() === 'checkout') {
-        if (!grouped[key].checkOutRaw || timestampTime > grouped[key].checkOutRaw) {
-          grouped[key].checkOutRaw = timestampTime;
-          grouped[key].checkOut = toBDDisplay(log.timestamp, 'hh:mm:ss a');
-        }
-      }
-    });
-
-    return Object.values(grouped).map((summary: any) => ({
-      ...summary,
-      totalHours: calculateWorkingHours(summary.checkInRaw, summary.checkOutRaw)
-    })).sort((a: any, b: any) => {
+    return serverSummaries.filter(summary => 
+      summary.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (summary.employeeName && summary.employeeName.toLowerCase().includes(searchTerm.toLowerCase()))
+    ).sort((a: any, b: any) => {
       if (a.date !== b.date) return b.date.localeCompare(a.date);
       return (b.checkInRaw || 0) - (a.checkInRaw || 0);
     });
-  }, [filteredLogs]);
+  }, [serverSummaries, searchTerm]);
+
+  const formatMinutes = (mins: number) => {
+    if (!mins || mins <= 0) return '';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    return `${m}m`;
+  };
 
   const isAdminUser = ['admin', 'super admin', 'system administrator', 'hrm manager'].includes(
     (typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation)?.toLowerCase()
@@ -125,6 +101,7 @@ export default function AttendancePage() {
       const data = res.data;
       const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
       setLogs(logsArray);
+      setServerSummaries(data?.summaries ?? []);
       setTotalLogs(data?.total ?? logsArray.length);
 
       setCheckInCount(data?.checkInCount ?? 0);
@@ -304,7 +281,7 @@ export default function AttendancePage() {
       });
 
       const reportData = Object.values(grouped).map(row => {
-        const emp = employees.find(e => e.employeeId === row.employeeId) || {};
+        const emp = employees.find(e => e.id === row.employeeId) || {};
         const basicSalary = emp.baseSalary || 0;
         const allowances = emp.allowances || 0;
         
@@ -324,7 +301,7 @@ export default function AttendancePage() {
 
         return {
           'Employee Name': row.employeeName,
-          'Employee ID': row.employeeId,
+          'Employee ID': emp.employeeId || row.employeeId,
           'Date': row.date,
           'Check In': row.checkIn || '-',
           'Check Out': row.checkOut || '-',
@@ -536,31 +513,45 @@ export default function AttendancePage() {
                       <span className="font-semibold">{row.date}</span>
                     </td>
                     <td className="px-6 py-4">
-                      {row.checkIn ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                          {row.checkIn}
-                        </span>
+                      {row.checkInRaw ? (
+                        <div>
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                            {toBDDisplay(row.checkInRaw, 'hh:mm:ss a')}
+                          </span>
+                          {row.lateMinutes > 0 && (
+                            <span className="block mt-1 text-xs font-medium text-red-600 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded w-max">
+                              Late: {formatMinutes(row.lateMinutes)}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-slate-400 text-xs italic">Missing</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {row.checkOut ? (
+                      {row.checkOutRaw ? (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">
-                          {row.checkOut}
+                          {toBDDisplay(row.checkOutRaw, 'hh:mm:ss a')}
                         </span>
                       ) : (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-white/10">
-                          Missing / Working
+                          {row.isMissingOut ? 'Missing / Working' : 'Missing'}
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4 font-mono text-slate-700 dark:text-gray-300 font-bold">
-                      {row.checkInRaw && row.checkOutRaw ? (
-                        <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-                          <Clock className="w-4 h-4" />
-                          {calculateWorkingHours(row.checkInRaw, row.checkOutRaw)}
-                        </span>
+                      {row.totalValidMs > 0 ? (
+                        <div>
+                          <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                            <Clock className="w-4 h-4" />
+                            {Math.floor(row.totalValidMs / 3600000)}h {Math.floor((row.totalValidMs % 3600000) / 60000)}m
+                          </span>
+                          {row.overtimeMinutes > 0 && (
+                            <span className="block mt-1 text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded w-max">
+                              OT: {formatMinutes(row.overtimeMinutes)}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
@@ -616,7 +607,6 @@ export default function AttendancePage() {
                     value={manualEntry.punchType}
                     onChange={(e) => setManualEntry({...manualEntry, punchType: e.target.value})}
                     disabled={!isAdminUser}
-                    readOnly={!isAdminUser}
                   >
                     <option value="CheckIn" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('checkIn') || 'Check In'}</option>
                     <option value="CheckOut" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('checkOut') || 'Check Out'}</option>

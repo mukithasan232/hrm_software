@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import { sendWelcomeEmail } from '@/services/emailService';
+import { sendWelcomeEmail, sendMail } from '@/services/emailService';
+import { jsPDF } from 'jspdf';
 import fs from 'fs';
 import path from 'path';
 import { processRawDeviceLogs } from '@/services/zkService';
@@ -184,6 +185,12 @@ export async function POST(req: Request) {
           actualRoleIds.push(role.id);
         }
 
+        let finalDepartmentId = null;
+        if (department) {
+          const dept = await tx.department.findFirst({ where: { name: department } });
+          if (dept) finalDepartmentId = dept.id;
+        }
+
         // Step A2: Create User record (acts as both User & Employee in this unified schema)
         // Admins are also employees, so we save all HR fields for all roles.
         const createdUser = await tx.user.create({
@@ -201,6 +208,7 @@ export async function POST(req: Request) {
             designationId: designationId || null,
             shiftId: shiftId || null,
             department: department || null,
+            departmentId: finalDepartmentId,
             employeeType: employeeType || 'IN_HOUSE',
             baseSalary: baseSalary || 0,
             zktecoId: zktecoId || null,
@@ -242,18 +250,66 @@ export async function POST(req: Request) {
       console.error('[Magic Bridge] Failed to process raw logs:', e);
     }
 
-    // Send Welcome Email
+    // Send Welcome Email with Appointment Letter
+    let emailSent = true;
     try {
-      await sendWelcomeEmail(
-        email,
-        name,
-        password,
-        newUser.customDesignation?.name || 'Employee',
-        undefined,
-        zktecoId
-      );
+      const doc = new jsPDF();
+      doc.setFontSize(22);
+      doc.text("APPOINTMENT LETTER", 105, 20, { align: "center" });
+      doc.setFontSize(12);
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 40);
+      doc.text(`To: ${name}`, 20, 50);
+      doc.text(`Enrollment ID: ${newUser.employeeId}`, 20, 60);
+      const designationName = newUser.customDesignation?.name || 'Employee';
+      doc.text(`Designation: ${designationName}`, 20, 70);
+      
+      const bodyText = `Dear ${name},\n\nWe are pleased to offer you employment at our company in the position of ${designationName}.\nYour joining date is officially recorded as ${new Date().toLocaleDateString()}.\n\nWelcome to the team!\n\nSincerely,\nHR Department`;
+      doc.text(bodyText, 20, 90, { maxWidth: 170 });
+      
+      const pdfBuffer = doc.output('arraybuffer');
+
+      const loginUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+          <div style="background: #4f46e5; padding: 40px 20px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Welcome to the Team!</h1>
+            <p style="color: #e0e7ff; margin-top: 8px;">Your employee account has been created.</p>
+          </div>
+          <div style="padding: 30px;">
+            <p>Hi <strong>${name}</strong>,</p>
+            <p>We are thrilled to welcome you to the team. Your secure HR portal login credentials have been generated:</p>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0 0 10px 0;"><strong>Enrollment ID:</strong> ${newUser.employeeId}</p>
+              <p style="margin: 0 0 10px 0;"><strong>Login Email:</strong> ${email}</p>
+              <p style="margin: 0;"><strong>Temporary Password:</strong> ${password}</p>
+            </div>
+            <p>Please find your Appointment Letter attached to this email.</p>
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${loginUrl}/login" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold;">Log In Now</a>
+            </div>
+          </div>
+        </div>
+      `;
+
+      await sendMail({
+        to: email,
+        subject: "Welcome to the Team - Your Appointment Letter & Login Details",
+        html: emailHtml,
+        attachments: [
+          {
+            filename: `Appointment_Letter_${name.replace(/\s+/g, '_')}.pdf`,
+            content: Buffer.from(pdfBuffer),
+            contentType: 'application/pdf'
+          }
+        ]
+      });
     } catch (emailError) {
-      console.error('Error sending welcome email:', emailError);
+      console.error('Error sending welcome email with PDF:', emailError);
+      emailSent = false;
+    }
+
+    if (!emailSent) {
+      return NextResponse.json({ message: 'Employee created successfully, but email failed to send', user: newUser, warning: true }, { status: 201 });
     }
 
     return NextResponse.json({ message: 'Employee created successfully', user: newUser }, { status: 201 });

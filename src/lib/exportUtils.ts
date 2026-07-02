@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toBDDisplay } from './dateUtils';
+import { format } from 'date-fns';
 
 export const exportToExcel = async (
   data: any[],
@@ -18,7 +19,7 @@ export const exportToExcel = async (
   // Row 1: Title
   worksheet.mergeCells('A1:J1');
   const titleCell = worksheet.getCell('A1');
-  titleCell.value = brand?.companyName || 'Company Name';
+  titleCell.value = brand?.companyName || process.env.NEXT_PUBLIC_COMPANY_NAME || 'Fix Any Photo';
   titleCell.font = { bold: true, size: 16 };
   titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
@@ -38,7 +39,7 @@ export const exportToExcel = async (
   currentHeaderRow++;
   worksheet.mergeCells(`A${currentHeaderRow}:J${currentHeaderRow}`);
   const subtitleCell = worksheet.getCell(`A${currentHeaderRow}`);
-  subtitleCell.value = `Attendance & Payroll Report - ${reportPeriod}`;
+  subtitleCell.value = reportPeriod.includes('Report') ? reportPeriod : `Attendance & Payroll Report - ${reportPeriod === 'All Time' ? 'All Time' : format(new Date(), 'MMM dd, yyyy')}`;
   subtitleCell.font = { bold: true, size: 12, italic: true };
   subtitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
 

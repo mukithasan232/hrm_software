@@ -54,6 +54,12 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
         casualLeaveAdjustment: true,
         sickLeaveAdjustment: true,
         permissions: true,
+        documents: true,
+        // @ts-ignore
+        salaryAccount: true,
+        // @ts-ignore
+        appointmentLetter: true,
+        verificationStatus: true,
         createdAt: true,
         updatedAt: true,
       }
@@ -99,6 +105,12 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         linkedinUrl: true,
         githubUrl: true,
         portfolioUrl: true,
+        verificationStatus: true,
+        documents: true,
+        // @ts-ignore
+        appointmentLetter: true,
+        // @ts-ignore
+        salaryAccount: true,
       }
     });
     if (!user) {
@@ -108,9 +120,13 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
     
     // Fallback: merge customDesignation permissions if user.permissions is not already merged
     let finalPerms = {};
+    // @ts-ignore
     if (user.customDesignation?.permissions) {
+      // @ts-ignore
       const dPerms = typeof user.customDesignation.permissions === 'string' 
+        // @ts-ignore
         ? JSON.parse(user.customDesignation.permissions) 
+        // @ts-ignore
         : user.customDesignation.permissions;
       finalPerms = { ...finalPerms, ...dPerms };
     }
@@ -191,6 +207,11 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
           linkedinUrl: true,
           githubUrl: true,
           portfolioUrl: true,
+          // @ts-ignore
+          salaryAccount: true,
+          // @ts-ignore
+          appointmentLetter: true,
+          verificationStatus: true,
         }
       });
       res.status(200).json({ message: 'Profile updated successfully', user: { ...user, designation: user.designation || (user as any).customDesignation?.name } });
@@ -238,7 +259,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, designationId, shiftId, shiftStartTime, shiftEndTime, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions } = req.body as any;
+    const { name, designationId, shiftId, shiftStartTime, shiftEndTime, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions, salaryAccount } = req.body as any;
     let finalDesignationId = designationId !== undefined ? (designationId || null) : undefined;
     if (finalDesignationId && !finalDesignationId.includes('-')) {
       let desig = await prisma.designation.findFirst({
@@ -260,6 +281,16 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       }
     }
 
+    let finalDepartmentId = undefined;
+    if (department !== undefined) {
+      if (department) {
+        const dept = await prisma.department.findFirst({ where: { name: department } });
+        if (dept) finalDepartmentId = dept.id;
+      } else {
+        finalDepartmentId = null;
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id: id as string },
       data: {
@@ -269,6 +300,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         shiftStartTime: shiftStartTime !== undefined ? shiftStartTime : undefined,
         shiftEndTime: shiftEndTime !== undefined ? shiftEndTime : undefined,
         department,
+        departmentId: finalDepartmentId,
         employeeType: employeeType || undefined,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,
         leaveConfig: leaveConfig !== undefined ? (typeof leaveConfig === 'string' ? JSON.parse(leaveConfig) : leaveConfig) : undefined,
@@ -276,6 +308,8 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         casualLeaveAdjustment: casualLeaveAdjustment !== undefined ? Number(casualLeaveAdjustment) : undefined,
         sickLeaveAdjustment: sickLeaveAdjustment !== undefined ? Number(sickLeaveAdjustment) : undefined,
         permissions: permissions !== undefined ? (typeof permissions === 'string' ? JSON.parse(permissions) : permissions) : undefined,
+        // @ts-ignore
+        salaryAccount: salaryAccount !== undefined ? salaryAccount : undefined,
         isActive,
         ...(rolesToConnect && { roles: rolesToConnect }),
       },
@@ -295,6 +329,12 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         permissions: true,
         isActive: true,
         zktecoId: true,
+        documents: true,
+        // @ts-ignore
+        salaryAccount: true,
+        // @ts-ignore
+        appointmentLetter: true,
+        verificationStatus: true,
       }
     });
 

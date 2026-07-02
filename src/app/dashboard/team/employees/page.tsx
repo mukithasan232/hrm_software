@@ -12,10 +12,11 @@ import { useDeviceSync } from '@/hooks/useDeviceSync';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import PageGuard from '@/components/auth/PageGuard';
+import { useDetailsStore } from '@/store/useDetailsStore';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
-type EmployeeType = 'REMOTE' | 'IN_HOUSE';
+type EmployeeType = 'REMOTE' | 'IN_HOUSE' | 'HYBRID';
 
 interface Employee {
   id: string;
@@ -34,6 +35,8 @@ interface Employee {
   sickLeaveAdjustment?: number;
   shiftStartTime?: string | null;
   shiftEndTime?: string | null;
+  shift2Start?: string | null;
+  shift2End?: string | null;
 }
 
 interface Designation {
@@ -77,13 +80,14 @@ function DesignationSelect({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function EmployeesPage() {
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
   const router = useRouter();
+  const openDetails = useDetailsStore(state => state.openDetails);
   const { can, loading: permsLoading } = usePermissions();
 
   // Legacy fallback if permissions are not set up yet
   const legacyAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(
-    (user as any)?.designation || ''
+    (authUser as any)?.designation || ''
   );
 
   const canCreate = can('Users', 'canCreate') || legacyAdmin;
@@ -143,6 +147,8 @@ export default function EmployeesPage() {
   const [sickLeaveAdjustment, setSickLeaveAdjustment] = useState<number>(0);
   const [shiftStartTime, setShiftStartTime] = useState('');
   const [shiftEndTime, setShiftEndTime] = useState('');
+  const [shift2Start, setShift2Start] = useState('');
+  const [shift2End, setShift2End] = useState('');
 
   // ── Data Fetching ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -184,6 +190,8 @@ export default function EmployeesPage() {
     setSickLeaveAdjustment(emp.sickLeaveAdjustment ?? 0);
     setShiftStartTime(emp.shiftStartTime || '');
     setShiftEndTime(emp.shiftEndTime || '');
+    setShift2Start(emp.shift2Start || '');
+    setShift2End(emp.shift2End || '');
     setEditTarget(emp);
   };
 
@@ -207,6 +215,8 @@ export default function EmployeesPage() {
         sickLeaveAdjustment: Number(sickLeaveAdjustment),
         shiftStartTime: shiftStartTime,
         shiftEndTime: shiftEndTime,
+        shift2Start: editType === 'HYBRID' ? shift2Start : null,
+        shift2End: editType === 'HYBRID' ? shift2End : null,
       };
       if (editDesignation) payload.designationId = editDesignation;
       if (editZkEnroll) payload.zktecoId = editZkEnroll;
@@ -307,7 +317,8 @@ export default function EmployeesPage() {
           {filtered.map(emp => (
             <div
               key={emp.id}
-              className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group flex flex-col"
+              onClick={() => openDetails('employee', emp.id, emp)}
+              className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 cursor-pointer transition-all group flex flex-col"
             >
               {/* Top row: avatar + badge */}
               <div className="flex items-start justify-between">
@@ -322,9 +333,16 @@ export default function EmployeesPage() {
                     {emp.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <span className="px-2.5 py-1 bg-slate-100 dark:bg-black/30 text-[10px] uppercase tracking-wider rounded-lg text-slate-500 dark:text-gray-400 font-bold border border-slate-200 dark:border-white/5">
-                  {emp.employeeId}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="px-2.5 py-1 bg-slate-100 dark:bg-black/30 text-[10px] uppercase tracking-wider rounded-lg text-slate-500 dark:text-gray-400 font-bold border border-slate-200 dark:border-white/5">
+                    {emp.employeeId}
+                  </span>
+                  {emp.verificationStatus === 'PENDING_VERIFICATION' && (
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 text-[9px] uppercase tracking-wider rounded font-bold border border-amber-200 dark:border-amber-500/30">
+                      Pending Verif.
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Name + Designation */}
@@ -354,15 +372,18 @@ export default function EmployeesPage() {
                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                     emp.employeeType === 'REMOTE'
                       ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+                      : emp.employeeType === 'HYBRID'
+                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                       : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                   }`}
                 >
-                  {emp.employeeType === 'REMOTE' ? 'Remote' : 'In-House'}
+                  {emp.employeeType === 'REMOTE' ? 'Remote' : emp.employeeType === 'HYBRID' ? 'Hybrid' : 'In-House'}
                 </span>
 
                 <div className="flex items-center gap-1.5">
                   <a
                     href={`mailto:${emp.email}`}
+                    onClick={(e) => e.stopPropagation()}
                     title={`Email ${emp.name}`}
                     className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-brand-primary transition-colors border border-slate-100 dark:border-white/5"
                   >
@@ -371,7 +392,7 @@ export default function EmployeesPage() {
                   {canEditUser && (
                       <>
                         <button
-                          onClick={() => openEdit(emp)}
+                          onClick={(e) => { e.stopPropagation(); openEdit(emp); }}
                           title="Edit employee"
                           className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors border border-slate-100 dark:border-white/5"
                         >
@@ -381,7 +402,7 @@ export default function EmployeesPage() {
                   )}
                   {canDelete && (
                       <button
-                        onClick={() => setDeleteTarget(emp)}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(emp); }}
                         title="Delete employee"
                         className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors border border-slate-100 dark:border-white/5"
                       >
@@ -399,10 +420,10 @@ export default function EmployeesPage() {
 
       {/* ══════════ EDIT EMPLOYEE MODAL ══════════ */}
       {editTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col relative border border-slate-200 dark:border-white/10 overflow-hidden">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex-shrink-0 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
               <div>
                 <h2 className="text-lg font-bold text-slate-800 dark:text-white">Edit Employee</h2>
                 <p className="text-xs text-slate-500 dark:text-gray-500 mt-0.5">{editTarget.email}</p>
@@ -412,8 +433,9 @@ export default function EmployeesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="p-4 sm:p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleEditSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Name */}
                 <div className="space-y-1.5">
                   <label className={labelCls}>Full Name *</label>
@@ -444,6 +466,7 @@ export default function EmployeesPage() {
                     <option value="">— Select Type —</option>
                     <option value="IN_HOUSE">In-House</option>
                     <option value="REMOTE">Remote</option>
+                    <option value="HYBRID">Hybrid</option>
                   </select>
                 </div>
 
@@ -500,6 +523,28 @@ export default function EmployeesPage() {
                     />
                   </div>
                 </div>
+                {editType === 'HYBRID' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    <div className="space-y-1">
+                      <label className={labelCls}>Shift 2 Start Time</label>
+                      <input
+                        type="time"
+                        value={shift2Start}
+                        onChange={e => setShift2Start(e.target.value)}
+                        className={fieldCls}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className={labelCls}>Shift 2 End Time</label>
+                      <input
+                        type="time"
+                        value={shift2End}
+                        onChange={e => setShift2End(e.target.value)}
+                        className={fieldCls}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Leave Overrides */}
@@ -567,8 +612,9 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
+              </div>
               {/* Actions */}
-              <div className="pt-4 border-t border-slate-100 dark:border-white/10 flex justify-end gap-3">
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-white/10 flex-shrink-0 flex justify-end gap-3 bg-white dark:bg-slate-900">
                 <button type="button" onClick={() => setEditTarget(null)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
                   Cancel
                 </button>

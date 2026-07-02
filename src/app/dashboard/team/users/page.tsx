@@ -8,8 +8,10 @@ import api from '@/services/api';
 import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidator';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
+import QuickAddDialog from '@/components/ui/QuickAddDialog';
 import { useInView } from 'react-intersection-observer';
 import PageGuard from '@/components/auth/PageGuard';
+import { useDetailsStore } from '@/store/useDetailsStore';
 
 
 
@@ -43,6 +45,8 @@ const EMPTY_FORM = {
   shiftId: '',
   shiftStartTime: '',
   shiftEndTime: '',
+  shift2Start: '',
+  shift2End: '',
   department: 'Engineering',
   employeeType: 'IN_HOUSE',
   zktecoId: '',
@@ -80,24 +84,23 @@ export default function TeamUsersPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [isFetchingNext, setIsFetchingNext] = useState(false);
-  const { ref: scrollRef, inView } = useInView({
-    threshold: 0.1,
-  });
+  const { ref, inView } = useInView();
+  const openDetails = useDetailsStore(state => state.openDetails);
 
-  // Modal
+  // Constants
+  const ADMIN_ROLES = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<any | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [submitting, setSubmitting] = useState(false);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
 
-  // Inline Designation
-  const [showInlineDesig, setShowInlineDesig] = useState(false);
+  // Quick-Add Dialogs
+  const [showDesigDialog, setShowDesigDialog] = useState(false);
   const [newDesigName, setNewDesigName] = useState('');
   const [creatingDesig, setCreatingDesig] = useState(false);
 
-  // Inline Shift
-  const [showInlineShift, setShowInlineShift] = useState(false);
+  const [showShiftDialog, setShowShiftDialog] = useState(false);
   const [newShift, setNewShift] = useState({ name: '', startTime: '09:00', endTime: '17:00' });
   const [creatingShift, setCreatingShift] = useState(false);
 
@@ -218,8 +221,8 @@ export default function TeamUsersPage() {
     setEditTarget(null);
     setForm({ ...EMPTY_FORM, employeeId: '' });
     generatePassword();
-    setShowInlineDesig(false);
-    setShowInlineShift(false);
+    setShowDesigDialog(false);
+    setShowShiftDialog(false);
     setShowModal(true);
   };
 
@@ -235,6 +238,8 @@ export default function TeamUsersPage() {
       shiftId: u.shiftId || '',
       shiftStartTime: u.shiftStartTime || '',
       shiftEndTime: u.shiftEndTime || '',
+      shift2Start: u.shift2Start || '',
+      shift2End: u.shift2End || '',
       department: u.department || 'Engineering',
       employeeType: u.employeeType || 'IN_HOUSE',
       zktecoId: u.zktecoId?.toString() || '',
@@ -244,7 +249,7 @@ export default function TeamUsersPage() {
       annualLeave: u.leaveConfig?.annual ?? '',
       permissions: u.permissions ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) : { ...DEFAULT_PERMISSIONS },
     });
-    setShowInlineDesig(false);
+    setShowDesigDialog(false);
     setShowModal(true);
   };
 
@@ -257,6 +262,8 @@ export default function TeamUsersPage() {
           ...form,
           designationId: form.designationId || null,
           shiftId: form.shiftId || null,
+          shift2Start: form.employeeType === 'HYBRID' ? (form.shift2Start || null) : null,
+          shift2End: form.employeeType === 'HYBRID' ? (form.shift2End || null) : null,
         };
         const { password, employeeId, sendEmail, roleIds, employeeType, zktecoId, casualLeave, sickLeave, annualLeave, ...updatePayload } = payload as any;
         if (password) updatePayload.password = password;
@@ -288,6 +295,10 @@ export default function TeamUsersPage() {
         if (form.shiftId) formData.append('shiftId', form.shiftId);
         if (form.shiftStartTime) formData.append('shiftStartTime', form.shiftStartTime);
         if (form.shiftEndTime) formData.append('shiftEndTime', form.shiftEndTime);
+        if (form.employeeType === 'HYBRID') {
+          if (form.shift2Start) formData.append('shift2Start', form.shift2Start);
+          if (form.shift2End) formData.append('shift2End', form.shift2End);
+        }
         formData.append('department', form.department);
         formData.append('employeeType', form.employeeType);
         if (form.zktecoId) formData.append('zktecoId', form.zktecoId);
@@ -315,23 +326,15 @@ export default function TeamUsersPage() {
     if (!newDesigName.trim()) return toast.error('Designation name required');
     setCreatingDesig(true);
     try {
-      const res = await api.post('/team/designations', { name: newDesigName.trim(), description: '' });
-      setDesignations(prev => [...prev, res.data]);
-      
-      // Reset permissions to default and select new designation
-      setForm({ ...form, designationId: res.data.id, permissions: { ...DEFAULT_PERMISSIONS } });
-      
-      setShowInlineDesig(false);
+      const res = await api.post('/team/designations', { name: newDesigName });
+      const created = res.data;
+      setDesignations(prev => [...prev, created]);
+      setForm(prev => ({ ...prev, designationId: created.id }));
       setNewDesigName('');
-      
-      toast.success('Designation saved! Please configure permissions for this new role.');
-      
-      // Scroll to permission matrix
-      setTimeout(() => {
-        document.getElementById('permission-matrix')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 150);
+      setShowDesigDialog(false);
+      toast.success(`"${created.name}" created! Configure permissions in the Designations settings.`, { duration: 5000 });
     } catch (e: any) {
-      toast.error('Failed to create designation');
+      toast.error(e.response?.data?.message || 'Failed to create designation');
     } finally {
       setCreatingDesig(false);
     }
@@ -346,10 +349,10 @@ export default function TeamUsersPage() {
       const res = await api.post('/team/shifts', newShift);
       const createdShift = res.data.data;
       setShifts(prev => [createdShift, ...prev]);
-      setForm({ ...form, shiftId: createdShift.id });
-      setShowInlineShift(false);
+      setForm(prev => ({ ...prev, shiftId: createdShift.id }));
       setNewShift({ name: '', startTime: '09:00', endTime: '17:00' });
-      toast.success('Shift created successfully!');
+      setShowShiftDialog(false);
+      toast.success('Shift created and selected!');
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to create shift');
     } finally {
@@ -410,7 +413,8 @@ export default function TeamUsersPage() {
 
 
   return (
-    <PageGuard moduleName="Users">
+    <>
+      <PageGuard moduleName="Users">
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -499,7 +503,8 @@ export default function TeamUsersPage() {
                   {(users || []).map(u => (
                     <div
                       key={u.id}
-                      className="grid grid-cols-[2fr_2.5fr_1.5fr_1.5fr_1fr_auto] gap-4 items-center px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                      onClick={() => openDetails('user', u.id, u)}
+                      className="grid grid-cols-[2fr_2.5fr_1.5fr_1.5fr_1fr_auto] gap-4 items-center px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                       {/* Name */}
                       <div className="flex items-center gap-3 min-w-0">
@@ -542,14 +547,14 @@ export default function TeamUsersPage() {
                       {/* Actions */}
                       <div className="flex items-center gap-1.5 justify-end w-28">
                         <button
-                          onClick={() => openEdit(u)}
+                          onClick={(e) => { e.stopPropagation(); openEdit(u); }}
                           className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-lg transition-all"
                           title="Edit User"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleToggleStatus(u)}
+                          onClick={(e) => { e.stopPropagation(); handleToggleStatus(u); }}
                           className={`p-1.5 rounded-lg transition-all ${
                             u.isActive
                               ? 'text-slate-400 hover:text-amber-500 hover:bg-amber-500/10'
@@ -560,7 +565,7 @@ export default function TeamUsersPage() {
                           {u.isActive ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
                         </button>
                         <button
-                          onClick={() => setDeleteTarget(u)}
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(u); }}
                           className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
                           title="Delete User"
                           disabled={u.id === authUser?.id}
@@ -576,7 +581,7 @@ export default function TeamUsersPage() {
 
             {/* Infinite Scroll Sentinel */}
             {nextCursor && (
-              <div ref={scrollRef} className="py-6 flex justify-center">
+              <div ref={ref} className="py-6 flex justify-center">
                 <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
               </div>
             )}
@@ -612,7 +617,7 @@ export default function TeamUsersPage() {
 
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="flex-1 p-4 sm:p-6 lg:p-8">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
                 <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
 
                   {/* Employee ID - Only show on edit */}
@@ -714,96 +719,43 @@ export default function TeamUsersPage() {
                       <div className="space-y-1 sm:col-span-2">
                         <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide flex items-center justify-between gap-1.5">
                           <span className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-indigo-500" /> Designation *</span>
-                          {!showInlineDesig && (
-                            <button type="button" onClick={() => setShowInlineDesig(true)} className="text-[10px] text-indigo-500 hover:underline font-bold">+ Add New</button>
-                          )}
+                          <button type="button" onClick={() => setShowDesigDialog(true)} className="text-[10px] text-indigo-500 hover:underline font-bold">+ Add New</button>
                         </label>
-                        {showInlineDesig ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={newDesigName}
-                              onChange={e => setNewDesigName(e.target.value)}
-                              placeholder="New Designation Name"
-                              className="flex-1 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                            />
-                            <button type="button" onClick={handleCreateDesignation} disabled={creatingDesig} className="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-                              {creatingDesig ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Save'}
-                            </button>
-                            <button type="button" onClick={() => setShowInlineDesig(false)} className="px-3 py-2 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-slate-300 dark:hover:bg-white/20 transition-colors">
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="relative">
-                            <select
-                              required
-                              value={form.designationId}
-                              onChange={e => setForm({ ...form, designationId: e.target.value })}
-                              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
-                            >
-                              <option value="" className="bg-white dark:bg-slate-900" disabled>— Select Designation —</option>
-                              {(designations || []).map((r, idx) => (
-                                <option key={r.id || `desig-opt-${idx}`} value={r.id} className="bg-white dark:bg-slate-900">{r.name}</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                          </div>
-                        )}
+                        <div className="relative">
+                          <select
+                            required
+                            value={form.designationId}
+                            onChange={e => setForm({ ...form, designationId: e.target.value })}
+                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
+                          >
+                            <option value="" className="bg-white dark:bg-slate-900" disabled>— Select Designation —</option>
+                            {(designations || []).map((r, idx) => (
+                              <option key={r.id || `desig-opt-${idx}`} value={r.id} className="bg-white dark:bg-slate-900">{r.name}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
                       </div>
 
                        {/* Shift */}
                        <div className="space-y-1 sm:col-span-2">
                          <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide flex items-center justify-between gap-1.5">
                            <span className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-indigo-500" /> Shift</span>
-                           {!showInlineShift && (
-                             <button type="button" onClick={() => setShowInlineShift(true)} className="text-[10px] text-indigo-500 hover:underline font-bold">+ Add New</button>
-                           )}
+                           <button type="button" onClick={() => setShowShiftDialog(true)} className="text-[10px] text-indigo-500 hover:underline font-bold">+ Add New</button>
                          </label>
-                         {showInlineShift ? (
-                           <div className="flex items-center gap-2">
-                             <input
-                               type="text"
-                               value={newShift.name}
-                               onChange={e => setNewShift({...newShift, name: e.target.value})}
-                               placeholder="e.g. Night Shift"
-                               className="flex-1 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                             />
-                             <input
-                               type="time"
-                               value={newShift.startTime}
-                               onChange={e => setNewShift({...newShift, startTime: e.target.value})}
-                               className="w-24 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-2 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                             />
-                             <span className="text-slate-400">-</span>
-                             <input
-                               type="time"
-                               value={newShift.endTime}
-                               onChange={e => setNewShift({...newShift, endTime: e.target.value})}
-                               className="w-24 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-2 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                             />
-                             <button type="button" onClick={handleCreateShift} disabled={creatingShift} className="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-                               {creatingShift ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Save'}
-                             </button>
-                             <button type="button" onClick={() => setShowInlineShift(false)} className="px-3 py-2 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-gray-300 rounded-xl text-sm font-semibold hover:bg-slate-300 dark:hover:bg-white/20 transition-colors">
-                               Cancel
-                             </button>
-                           </div>
-                         ) : (
-                           <div className="relative">
-                             <select
-                               value={form.shiftId}
-                               onChange={e => setForm({ ...form, shiftId: e.target.value })}
-                               className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
-                             >
-                               <option value="" className="bg-white dark:bg-slate-900">— Standard Shift —</option>
-                               {(shifts || []).map((s, idx) => (
-                                 <option key={s.id || `shift-opt-${idx}`} value={s.id} className="bg-white dark:bg-slate-900">{s.name} ({s.startTime} - {s.endTime})</option>
-                               ))}
-                             </select>
-                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                           </div>
-                         )}
+                         <div className="relative">
+                           <select
+                             value={form.shiftId}
+                             onChange={e => setForm({ ...form, shiftId: e.target.value })}
+                             className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
+                           >
+                             <option value="" className="bg-white dark:bg-slate-900">— Standard Shift —</option>
+                             {(shifts || []).map((s, idx) => (
+                               <option key={s.id || `shift-opt-${idx}`} value={s.id} className="bg-white dark:bg-slate-900">{s.name} ({s.startTime} - {s.endTime})</option>
+                             ))}
+                           </select>
+                           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                         </div>
                        </div>
 
                       {/* Department */}
@@ -898,6 +850,28 @@ export default function TeamUsersPage() {
                             />
                           </div>
                         </div>
+                        {form.employeeType === 'HYBRID' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Shift 2 Start</label>
+                              <input
+                                type="time"
+                                value={form.shift2Start}
+                                onChange={e => setForm({ ...form, shift2Start: e.target.value })}
+                                className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Shift 2 End</label>
+                              <input
+                                type="time"
+                                value={form.shift2End}
+                                onChange={e => setForm({ ...form, shift2End: e.target.value })}
+                                className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Leave Overrides */}
@@ -1043,5 +1017,107 @@ export default function TeamUsersPage() {
       )}
     </div>
     </PageGuard>
+
+    {/* ── Quick Add: Designation Dialog ─────────────────────────────────── */}
+    <QuickAddDialog
+      isOpen={showDesigDialog}
+      onClose={() => { setShowDesigDialog(false); setNewDesigName(''); }}
+      title="Add New Designation"
+      description="Create a new role. You can configure its permissions later."
+    >
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Designation Name *</label>
+          <input
+            type="text"
+            autoFocus
+            value={newDesigName}
+            onChange={e => setNewDesigName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateDesignation())}
+            placeholder="e.g. Software Engineer"
+            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+          />
+        </div>
+        <div className="flex gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => { setShowDesigDialog(false); setNewDesigName(''); }}
+            className="flex-1 py-2.5 text-sm font-semibold text-slate-600 dark:text-gray-400 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleCreateDesignation}
+            disabled={creatingDesig || !newDesigName.trim()}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all disabled:opacity-50"
+          >
+            {creatingDesig ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+            {creatingDesig ? 'Creating…' : 'Create Designation'}
+          </button>
+        </div>
+      </div>
+    </QuickAddDialog>
+
+    {/* ── Quick Add: Shift Dialog ────────────────────────────────────────── */}
+    <QuickAddDialog
+      isOpen={showShiftDialog}
+      onClose={() => { setShowShiftDialog(false); setNewShift({ name: '', startTime: '09:00', endTime: '17:00' }); }}
+      title="Add New Shift"
+      description="Define a new work shift that can be assigned to employees."
+    >
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Shift Name *</label>
+          <input
+            type="text"
+            autoFocus
+            value={newShift.name}
+            onChange={e => setNewShift({ ...newShift, name: e.target.value })}
+            placeholder="e.g. Night Shift"
+            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Start Time *</label>
+            <input
+              type="time"
+              value={newShift.startTime}
+              onChange={e => setNewShift({ ...newShift, startTime: e.target.value })}
+              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">End Time *</label>
+            <input
+              type="time"
+              value={newShift.endTime}
+              onChange={e => setNewShift({ ...newShift, endTime: e.target.value })}
+              className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            />
+          </div>
+        </div>
+        <div className="flex gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => { setShowShiftDialog(false); setNewShift({ name: '', startTime: '09:00', endTime: '17:00' }); }}
+            className="flex-1 py-2.5 text-sm font-semibold text-slate-600 dark:text-gray-400 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleCreateShift}
+            disabled={creatingShift || !newShift.name.trim()}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all disabled:opacity-50"
+          >
+            {creatingShift ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+            {creatingShift ? 'Creating…' : 'Create Shift'}
+          </button>
+        </div>
+      </div>
+    </QuickAddDialog>
+    </>
   );
 }

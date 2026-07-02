@@ -19,6 +19,10 @@ interface User {
   linkedinUrl?: string;
   githubUrl?: string;
   portfolioUrl?: string;
+  documents?: string[];
+  verificationStatus?: string;
+  appointmentLetter?: string;
+  salaryAccount?: string;
 }
 
 interface AuthContextType {

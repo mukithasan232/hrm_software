@@ -33,7 +33,20 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+    const reqClone = req.clone();
     const mockReq = await parseRequest(req, { id });
+
+    let uploadedUrls: string[] = [];
+    try {
+      const formData = await reqClone.formData();
+      const files = formData.getAll('outputImages') as File[];
+      if (files && files.length > 0) {
+        const uploadPromises = files.map(file => saveLocalFile(file, 'tasks'));
+        uploadedUrls = await Promise.all(uploadPromises);
+      }
+    } catch (e) {
+      // Ignore if not multipart or parsing fails
+    }
 
     if (!mockReq.user) {
       return NextResponse.json({ message: 'Not authorized' }, { status: 401, headers: getCorsHeaders() });
@@ -44,11 +57,13 @@ export async function PATCH(
       return NextResponse.json({ message: 'Task not found' }, { status: 404, headers: getCorsHeaders() });
     }
 
-    let outputImageUrl = (task as any).outputImageUrl;
-    const { outputImage } = mockReq.body;
-    if (outputImage && typeof outputImage === 'object' && outputImage.arrayBuffer) {
-      outputImageUrl = await saveLocalFile(outputImage, 'tasks');
+    let outputImages = (task as any).outputImages || [];
+    if (typeof outputImages === 'string') {
+      try { outputImages = JSON.parse(outputImages); } catch (e) { outputImages = []; }
     }
+    
+    // Retrieve multiple files using reqClone to avoid consuming the original body stream twice if not already consumed, 
+    // or wait, parseRequest already consumed req. So we must clone before parseRequest!
 
     const admin = isAdmin(mockReq.user);
 
@@ -68,7 +83,7 @@ export async function PATCH(
         data: { 
           status,
           ...(description !== undefined && { description: description || null }),
-          ...(outputImageUrl !== (task as any).outputImageUrl && { outputImageUrl }),
+          ...(uploadedUrls.length > 0 && { outputImages: uploadedUrls }),
         } as any,
         include: TASK_INCLUDE,
       });
@@ -89,7 +104,7 @@ export async function PATCH(
         ...(priority !== undefined    && { priority }),
         ...(assignedToId !== undefined && { assignedToId }),
         ...(mockReq.file?.attachment?.path && { attachment: mockReq.file.attachment.path }),
-        ...(outputImageUrl !== (task as any).outputImageUrl && { outputImageUrl }),
+        ...(uploadedUrls.length > 0 && { outputImages: uploadedUrls }),
       } as any,
       include: TASK_INCLUDE,
     });

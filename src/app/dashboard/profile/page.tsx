@@ -1,14 +1,14 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Camera, Save, Lock, User, Mail, Building, Printer, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { Camera, Save, Lock, User, Mail, Building, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useBrand } from '@/context/BrandContext';
-import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/context/LanguageContext';
 import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidator';
+import VirtualIDCard from '@/components/VirtualIDCard';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -61,7 +61,7 @@ export default function ProfilePage() {
 
   const [form, setForm] = useState({
     name: '', designation: '', department: '', phone: '',
-    facebookUrl: '', linkedinUrl: '', githubUrl: '', portfolioUrl: ''
+    facebookUrl: '', linkedinUrl: '', githubUrl: '', portfolioUrl: '', salaryAccount: ''
   });
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [preview, setPreview] = useState<string | null>(null);
@@ -96,6 +96,7 @@ export default function ProfilePage() {
           linkedinUrl: (user as any).linkedinUrl || '',
           githubUrl: (user as any).githubUrl || '',
           portfolioUrl: (user as any).portfolioUrl || '',
+          salaryAccount: (user as any).salaryAccount || '',
         });
     }
   }, [user]);
@@ -186,6 +187,9 @@ export default function ProfilePage() {
         linkedinUrl: res.data.user.linkedinUrl,
         githubUrl: res.data.user.githubUrl,
         portfolioUrl: res.data.user.portfolioUrl,
+        salaryAccount: res.data.user.salaryAccount,
+        appointmentLetter: res.data.user.appointmentLetter,
+        verificationStatus: res.data.user.verificationStatus,
       });
 
       toast.success(t('saveChanges') + '!');
@@ -295,6 +299,20 @@ export default function ProfilePage() {
                 <span className="truncate">{(user as any)?.department?.name || (user as any)?.department || 'Not set'}</span>
               </div>
             </div>
+            
+            {(user as any)?.appointmentLetter && (
+              <div className="pt-4 border-t border-slate-100 dark:border-white/10">
+                <a 
+                  href={`${BACKEND}${(user as any).appointmentLetter}`} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-sm font-semibold rounded-lg transition-colors border border-indigo-200 dark:border-indigo-500/20"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  View Appointment Letter
+                </a>
+              </div>
+            )}
 
             {preview && (
               <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-lg p-2 font-semibold">
@@ -303,45 +321,15 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Virtual ID Card */}
-          <div className="print-hide bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Virtual ID Card</h2>
-              <button onClick={() => window.print()} className="text-xs px-3 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-lg font-semibold transition-colors flex items-center gap-1.5">
-                <Printer className="w-3.5 h-3.5" /> Print
-              </button>
-            </div>
-
-            <div className="print-only-id-card relative overflow-hidden rounded-2xl border border-white/20 bg-slate-900 shadow-2xl p-6 text-center text-white isolate">
-              {/* Glassmorphism background effects */}
-              <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-indigo-500/30 blur-2xl -z-10" />
-              <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-purple-500/30 blur-2xl -z-10" />
-
-              <div className="mb-4 font-black text-lg tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 uppercase">
-                {brand?.companyName?.replace('Portal', '').trim() || 'HRM SYSTEM'}
-              </div>
-
-              <div className="mb-4">
-                {avatarSrc && !imgError ? (
-                  <img src={avatarSrc} alt="Profile" onError={() => setImgError(true)} className="h-24 w-24 rounded-full object-cover border-4 border-white/20 mx-auto shadow-lg" />
-                ) : (
-                  <div className="h-24 w-24 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-white/20 shadow-lg mx-auto bg-gradient-to-tr from-indigo-500 to-purple-500">
-                    {initials}
-                  </div>
-                )}
-              </div>
-
-              <h3 className="font-bold text-xl mb-1">{user?.name}</h3>
-              <p className="text-blue-300 font-semibold text-xs mb-5">{(user as any)?.designation?.name || (user as any)?.designation || 'Employee'}</p>
-
-              <div className="bg-white rounded-xl p-2.5 shadow-inner inline-block mb-3">
-                <QRCodeSVG value={(user as any)?.employeeId || 'EMP-UNKNOWN'} size={70} />
-              </div>
-
-              <div className="text-xs font-mono text-slate-300 tracking-widest bg-black/20 py-1.5 rounded-lg border border-white/10">
-                {(user as any)?.employeeId || '—'}
-              </div>
-            </div>
+          {/* Virtual ID Card — Premium Flippable */}
+          <div className="print-hide bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm dark:shadow-2xl">
+            <VirtualIDCard
+              user={user}
+              brand={brand}
+              avatarSrc={avatarSrc}
+              imgError={imgError}
+              onImgError={() => setImgError(true)}
+            />
           </div>
         </div>
 
@@ -448,6 +436,36 @@ export default function ProfilePage() {
                     disabled
                     className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25 transition-all font-semibold opacity-70 cursor-not-allowed"
                   />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 mt-4">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold flex items-center gap-1.5"><Building className="w-3.5 h-3.5" /> Salary / Bank Account</label>
+                  {form.salaryAccount ? (
+                    <div className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm font-semibold opacity-80 cursor-not-allowed">
+                      {form.salaryAccount}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl">
+                      <p className="text-xs text-amber-700 dark:text-amber-400 font-medium flex-1">
+                        You do not have a salary account configured.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await api.post('/users/profile/request-salary-account');
+                            toast.success('Request sent to admin successfully!');
+                          } catch (err: any) {
+                            toast.error('Failed to send request');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        Request for a salary account
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

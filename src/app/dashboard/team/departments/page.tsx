@@ -7,6 +7,7 @@ import {
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import PageGuard from '@/components/auth/PageGuard';
+import DepartmentDetailsModal from '@/components/departments/DepartmentDetailsModal';
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<any[]>([]);
@@ -15,6 +16,7 @@ export default function DepartmentsPage() {
 
   // Modal
   const [showModal, setShowModal] = useState(false);
+  const [viewingDepartment, setViewingDepartment] = useState<any | null>(null);
   const [editTarget, setEditTarget] = useState<any | null>(null);
   const [departmentName, setDepartmentName] = useState('');
   const [departmentDesc, setDepartmentDesc] = useState('');
@@ -192,8 +194,9 @@ export default function DepartmentsPage() {
         ) : (
           <>
             {/* Desktop Table Header */}
-            <div className="hidden md:grid grid-cols-[2fr_1fr_auto] gap-4 px-6 py-3 border-b border-slate-100 dark:border-white/10 text-xs uppercase tracking-wider font-semibold text-slate-400 dark:text-gray-600">
+            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-6 py-3 border-b border-slate-100 dark:border-white/10 text-xs uppercase tracking-wider font-semibold text-slate-400 dark:text-gray-600">
               <span>Department</span>
+              <span>Employees</span>
               <span>Created</span>
               <span className="w-20 text-right">Actions</span>
             </div>
@@ -203,11 +206,14 @@ export default function DepartmentsPage() {
               {filtered.map(department => (
                 <div
                   key={department.id}
-                  className="grid grid-cols-[2fr_1fr_auto] gap-4 items-center px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors group"
+                  className="grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors group"
                 >
                   {/* Department name + description */}
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2.5">
+                    <div 
+                      className="flex items-center gap-2.5 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" 
+                      onClick={() => setViewingDepartment(department)}
+                    >
                       <div className="h-8 w-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
                         <Building2 className="w-3.5 h-3.5 text-blue-500" />
                       </div>
@@ -218,6 +224,11 @@ export default function DepartmentsPage() {
                         )}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Employees Count */}
+                  <div className="text-sm font-medium text-slate-700 dark:text-gray-300">
+                    {department._count?.employees || department.employees?.length || 0} Employees
                   </div>
 
                   {/* Created date */}
@@ -251,7 +262,10 @@ export default function DepartmentsPage() {
               {filtered.map(department => (
                 <div key={department.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div 
+                      className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                      onClick={() => setViewingDepartment(department)}
+                    >
                       <div className="h-8 w-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
                         <Building2 className="w-3.5 h-3.5 text-blue-500" />
                       </div>
@@ -281,6 +295,9 @@ export default function DepartmentsPage() {
                   </div>
                   
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-white/5 text-xs">
+                    <span className="font-medium text-slate-600 dark:text-gray-400">
+                      {department._count?.employees || department.employees?.length || 0} Employees
+                    </span>
                     <span className="text-slate-400 dark:text-gray-500">
                       {new Date(department.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
@@ -294,12 +311,12 @@ export default function DepartmentsPage() {
 
       {/* ════════════════════════ CREATE / EDIT MODAL ════════════════════════ */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col z-10 overflow-y-auto max-h-[90vh]">
+          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-xl shadow-2xl w-full max-w-3xl flex flex-col z-10 max-h-[90vh] overflow-hidden">
 
             {/* Modal Header */}
-            <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/10 px-4 sm:px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
+            <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/10 px-4 sm:px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
               <div>
                 <h2 className="text-lg font-bold text-slate-800 dark:text-white">
                   {editTarget ? 'Edit Department' : 'Create New Department'}
@@ -314,8 +331,8 @@ export default function DepartmentsPage() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1">
-              <div className="px-4 sm:px-6 py-4 space-y-4">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="px-4 sm:px-6 py-4 space-y-4 overflow-y-auto flex-1">
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Department Name *</label>
@@ -412,7 +429,7 @@ export default function DepartmentsPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className="px-4 sm:px-6 py-4 border-t border-slate-100 dark:border-white/10 flex gap-3 bg-white dark:bg-slate-900 rounded-b-2xl">
+              <div className="px-4 sm:px-6 py-4 border-t border-slate-100 dark:border-white/10 flex-shrink-0 flex gap-3 bg-white dark:bg-slate-900">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
@@ -469,6 +486,14 @@ export default function DepartmentsPage() {
           </div>
         </div>
       )}
+
+      {viewingDepartment && (
+        <DepartmentDetailsModal 
+          department={viewingDepartment}
+          onClose={() => setViewingDepartment(null)}
+        />
+      )}
+
     </div>
     </PageGuard>
   );

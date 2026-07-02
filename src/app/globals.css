@@ -37,16 +37,23 @@
   .print-hide, .sidebar, .navbar {
     display: none !important;
   }
+  /* Show only the ID card and center it on the printed page */
   .print-only-id-card {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
     margin: 0 !important;
+    /* CR80 standard: 3.375in x 2.125in */
+    width: 3.375in !important;
+    height: 2.125in !important;
+    aspect-ratio: auto !important;
     page-break-inside: avoid;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
-    width: 350px !important;
+    border-radius: 0.25in !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
   }
 }
 
