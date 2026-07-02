@@ -49,7 +49,9 @@ export default function ForgotPasswordPage() {
             </div>
           ) : (!logoUrl || logoError) ? (
             <div className="flex flex-col items-center justify-center gap-3 mb-6">
-              <span className="text-white font-extrabold text-2xl tracking-widest block py-2">HRM</span>
+              <span className="text-white font-extrabold text-2xl tracking-widest block py-2 text-center leading-tight">
+                {brand?.companyName || 'FIX ANY PHOTO'}
+              </span>
             </div>
           ) : (
             <img 

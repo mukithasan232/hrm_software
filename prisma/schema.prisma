@@ -14,6 +14,7 @@ enum EmployeeType {
 }
 
 enum EmployeeStatus {
+  UNVERIFIED
   PENDING_VERIFICATION
   ACTIVE
   REJECTED
@@ -200,7 +201,7 @@ model User {
   zktecoId Int? @unique
 
   employeeType     EmployeeType @default(IN_HOUSE)
-  verificationStatus EmployeeStatus @default(PENDING_VERIFICATION)
+  verificationStatus EmployeeStatus @default(UNVERIFIED)
   userType         String       @default("Employee")
   documents        Json         @default("[]")
   resetToken       String?
@@ -216,6 +217,7 @@ model User {
   linkedinUrl  String?
   githubUrl    String?
   portfolioUrl String?
+  signatureUrl String?
 
   attendanceLogs AttendanceLog[] @relation("UserAttendance")
   leaves         Leave[]         @relation("UserLeaves")
@@ -363,7 +365,7 @@ model Task {
   title        String
   description  String?      @db.Text
   attachment   String?
-  outputImages Json?      @default("[]")
+  outputFiles Json?      @default("[]")
   startDate    DateTime?
   dueDate      DateTime?
   status       TaskStatus   @default(TODO)

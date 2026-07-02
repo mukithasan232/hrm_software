@@ -79,8 +79,13 @@ export async function POST(req: NextRequest) {
     const adminsAndHR = await prisma.user.findMany({
       where: {
         OR: [
-          { designation: { in: ['Admin', 'Super Admin', 'System Administrator', 'HR Manager', 'HR'] } },
-          { roles: { some: { name: { in: ['admin', 'super admin', 'hr'] } } } }
+          { userType: 'Admin' },
+          { designation: { contains: 'Admin' } },
+          { designation: { contains: 'HR' } },
+          { roles: { some: { name: { contains: 'Admin' } } } },
+          { roles: { some: { name: { contains: 'HR' } } } },
+          { customDesignation: { name: { contains: 'Admin' } } },
+          { customDesignation: { name: { contains: 'HR' } } }
         ]
       },
       select: { id: true }
@@ -101,7 +106,7 @@ export async function POST(req: NextRequest) {
         data: notifications,
       });
       notifications.forEach((n) => {
-        eventEmitter.emit('new-notification', { ...n, id: Math.random().toString(36).substring(7), createdAt: new Date(), isRead: false });
+        eventEmitter.emit('new-notification', { ...n, id: Math.random().toString(36).substring(7), createdAt: new Date(), read: false });
       });
     }
 

@@ -2,9 +2,17 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { UploadCloud, CheckCircle, Loader2, LogOut, FileText } from 'lucide-react';
+import { UploadCloud, CheckCircle, Loader2, LogOut, FileText, Trash2, AlertTriangle, Clock, Info } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+
+const formatSize = (bytes: number) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
 
 export default function OnboardingPage() {
   const { user, logout } = useAuth();
@@ -13,17 +21,24 @@ export default function OnboardingPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  // Redirect active users ONLY if they already have documents
-  const hasDocuments = user?.documents && user.documents.length > 0;
-  if (user && user.verificationStatus === 'ACTIVE' && hasDocuments) {
+  // Redirect active users
+  if (user && user.verificationStatus === 'ACTIVE') {
     router.push('/dashboard');
     return null;
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
+      // Append new files to existing ones (or replace? Standard behavior is replace for an input[type=file] without some merge logic, but user says "select or drops files" - let's stick to replacing which is native to onChange, but since they might select multiple we just do Array.from)
+      // Actually appending makes more sense if they want to build a list, but let's stick to Array.from(e.target.files) to replace, or append if better. We'll append to be safe with multiple selections, or just replace.
+      // Wait, native behavior of <input type="file" multiple> onChange is that it gives ALL selected files in that selection event. Replacing is typical. We'll replace for simplicity, unless we do spread.
+      // I'll do append to make it more useful.
       setDocuments(Array.from(e.target.files));
     }
+  };
+
+  const removeDocument = (index: number) => {
+    setDocuments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUpload = async () => {
@@ -65,24 +80,16 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        {uploadSuccess || (user?.documents && user.documents.length > 0) ? (
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Documents Under Review</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 pb-4">
-              Your documents have been submitted and are currently under review by the Admin. You will receive an email once your account is activated.
-            </p>
-            <button
-              onClick={() => logout()}
-              className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-xl font-semibold transition-colors"
-            >
-              <LogOut className="w-4 h-4" /> Sign Out
-            </button>
-          </div>
+        {user?.verificationStatus === 'PENDING_VERIFICATION' || uploadSuccess ? (
+          <ApplicationStatusView user={user} logout={logout} />
         ) : (
           <div className="space-y-6">
+            {user?.verificationStatus === 'REJECTED' && (
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/50 text-red-600 dark:text-red-400 p-4 rounded-xl flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <p className="text-sm font-medium">Your previous documents were rejected. Please re-upload valid documents.</p>
+              </div>
+            )}
             <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors relative">
               <input
                 type="file"
@@ -105,9 +112,19 @@ export default function OnboardingPage() {
                 <h4 className="text-xs font-semibold text-slate-500 uppercase">Selected Files</h4>
                 <ul className="space-y-2">
                   {documents.map((doc, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg">
-                      <FileText className="w-4 h-4 text-brand-primary" />
-                      <span className="truncate flex-1">{doc.name}</span>
+                    <li key={idx} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-100 dark:border-slate-600/50">
+                      <FileText className="w-5 h-5 text-brand-primary" />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate font-medium">{doc.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{formatSize(doc.size)}</p>
+                      </div>
+                      <button
+                        onClick={() => removeDocument(idx)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors"
+                        title="Remove file"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -124,6 +141,47 @@ export default function OnboardingPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ApplicationStatusView({ user, logout }: { user: any, logout: () => void }) {
+  return (
+    <div className="text-center space-y-4">
+      <div className="w-16 h-16 bg-orange-100 dark:bg-orange-500/20 rounded-full flex items-center justify-center mx-auto">
+        <Info className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+      </div>
+      <h3 className="text-lg font-bold text-slate-800 dark:text-white">Application Under Review</h3>
+      
+      <div className="inline-flex items-center gap-2 bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-3 py-1 rounded-full text-sm font-medium">
+        <Clock className="w-4 h-4" />
+        Pending Admin Approval
+      </div>
+
+      <p className="text-sm text-slate-500 dark:text-slate-400 pb-2 mt-4">
+        Your documents have been submitted and are currently under review by the Admin. You will receive an email once your account is activated.
+      </p>
+
+      {user?.documents && user.documents.length > 0 && (
+        <div className="mt-6 p-4 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-left">
+          <h3 className="text-sm font-semibold mb-3 text-slate-800 dark:text-slate-200">Submitted Documents</h3>
+          <ul className="space-y-2">
+            {user.documents.map((doc: any, idx: number) => (
+              <li key={idx} className="flex justify-between items-center bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 p-2 rounded">
+                <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-4">{doc.name || 'Document'}</span>
+                <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 text-sm hover:underline font-medium shrink-0">View</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <button
+        onClick={() => logout()}
+        className="mt-6 flex items-center justify-center gap-2 w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-xl font-semibold transition-colors"
+      >
+        <LogOut className="w-4 h-4" /> Sign Out
+      </button>
     </div>
   );
 }
@@ -147,3 +205,4 @@ function Shield(props: any) {
     </svg>
   );
 }
+

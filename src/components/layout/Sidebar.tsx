@@ -100,7 +100,9 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               onError={() => setLogoError(true)}
             />
           ) : (
-            <span className="text-slate-800 dark:text-white font-extrabold text-2xl tracking-widest block py-2">HRM</span>
+            <span className="text-slate-800 dark:text-white font-extrabold text-2xl tracking-widest block py-2 text-center leading-tight">
+              {brand?.companyName || 'FIX ANY PHOTO'}
+            </span>
           )}
         </div>
 

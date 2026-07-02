@@ -30,6 +30,9 @@ export default function VirtualIDCard({ user, brand, avatarSrc, imgError, onImgE
   const companyWebsite = brand?.website || 'www.fixanyphoto.com';
   const companyAddress = brand?.companyAddress || 'Salban, Rangpur, Bangladesh';
 
+  const primaryColor = brand?.primaryColor || '#3b82f6';
+  const secondaryColor = brand?.secondaryColor || '#e11d48';
+
   const downloadHighResIDCard = async () => {
     if (!printRef.current) return;
     try {
@@ -64,21 +67,21 @@ export default function VirtualIDCard({ user, brand, avatarSrc, imgError, onImgE
 
       {/* Middle Section (Photo) */}
       <div className="flex h-40 w-full relative">
-        <div className="w-1/6 bg-[#007bff]" />
+        <div className="w-1/6 h-full" style={{ backgroundColor: primaryColor }} />
         <div className="w-4/6 h-full relative bg-gray-100 flex items-center justify-center overflow-hidden">
           {avatarSrc && !imgError ? (
-            <img src={avatarSrc} alt="Profile" onError={onImgError} className="object-cover w-full h-full" />
+            <img src={avatarSrc} alt="Profile" onError={onImgError} className="object-cover object-top w-full h-full" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-4xl font-black text-gray-300 bg-gray-100">{initials}</div>
           )}
         </div>
-        <div className="w-1/6 bg-[#e6005c]" />
+        <div className="w-1/6 h-full" style={{ backgroundColor: secondaryColor }} />
       </div>
 
       {/* Footer Section */}
       <div className="flex-1 bg-white flex flex-col items-center pt-3 pb-4">
         <h1 className="text-xl font-extrabold text-gray-900 uppercase tracking-wide mt-2 px-2">{user?.name}</h1>
-        <p className="text-sm font-bold text-[#e6005c] uppercase tracking-widest mt-1 border-b border-[#e6005c] inline-block pb-1 px-4">{designation}</p>
+        <p className="text-sm font-bold uppercase tracking-widest mt-1 border-b inline-block pb-1 px-4" style={{ color: secondaryColor, borderColor: secondaryColor }}>{designation}</p>
         
         <div className="mt-auto">
           <p className="text-xs font-bold text-gray-800 bg-gray-100 px-4 py-1.5 rounded-full uppercase tracking-widest border border-gray-200 shadow-sm">ID NO. {employeeId}</p>
@@ -110,8 +113,8 @@ export default function VirtualIDCard({ user, brand, avatarSrc, imgError, onImgE
 
       {/* Bottom Color Blocks & QR Code */}
       <div className="relative h-36 flex flex-col w-full">
-        <div className="h-8 bg-[#007bff]" />
-        <div className="h-28 bg-[#e6005c] pt-9 px-4 flex flex-col justify-end pb-3">
+        <div className="h-8 w-full" style={{ backgroundColor: primaryColor }} />
+        <div className="h-28 w-full pt-9 px-4 flex flex-col justify-end pb-3" style={{ backgroundColor: secondaryColor }}>
           {/* Contact Info */}
           <div className="space-y-1 mt-auto">
              <div className="flex items-center gap-1.5 text-white text-[8px]">

@@ -153,26 +153,32 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
 
     const statusBn = status === 'Approved' ? 'অনুমোদিত' : status === 'Rejected' ? 'প্রত্যাখ্যাত' : 'মুলতুবি';
 
-    const newNotification = await prisma.notification.create({
-      data: {
-        userId: leave.employeeId,
-        titleEn: `Leave Request ${statusEn}`,
-        titleBn: `ছুটির আবেদন ${statusBn}`,
-        messageEn: `Your ${leave.type} leave request has been ${statusEn}.`,
-        messageBn: `আপনার ${leave.type} ছুটির আবেদনটি ${statusBn} হয়েছে।`,
-        type: 'LEAVE',
-        referenceId: leave.id
-      }
-    });
-    
-    eventEmitter.emit('new-notification', newNotification);
+    try {
+      const newNotification = await prisma.notification.create({
+        data: {
+          userId: leave.employeeId,
+          titleEn: `Leave Request ${statusEn}`,
+          titleBn: `ছুটির আবেদন ${statusBn}`,
+          messageEn: `Your ${leave.type} leave request has been ${statusEn}.`,
+          messageBn: `আপনার ${leave.type} ছুটির আবেদনটি ${statusBn} হয়েছে।`,
+          type: 'LEAVE',
+          referenceId: leave.id
+        }
+      });
+      
+      eventEmitter.emit('new-notification', newNotification);
 
-    if (leave.user?.email && leave.user?.name) {
-      await sendLeaveUpdateEmail((leave.user as any).email, leave.user.name, leave.type, statusEn);
+      if (leave.user?.email && leave.user?.name) {
+        await sendLeaveUpdateEmail((leave.user as any).email, leave.user.name, leave.type, statusEn);
+      }
+    } catch (notificationError) {
+      console.error("[LEAVE_NOTIFICATION_ERROR]:", notificationError);
+      // We don't throw here. The core database update was successful.
     }
 
     return res.status(200).json({ message: `Leave ${status}`, leave });
   } catch (error: any) {
+    console.error("[LEAVE_UPDATE_ERROR]:", error);
     return res.status(500).json({ message: 'Error updating leave', error: error.message });
   }
 };

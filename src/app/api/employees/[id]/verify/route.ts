@@ -9,6 +9,7 @@ import { wrapHandler } from '@/lib/adapter';
 import fs from 'fs';
 import path from 'path';
 import { toTitleCase } from '@/lib/utils';
+import { revalidatePath } from 'next/cache';
 
 
 
@@ -19,19 +20,18 @@ export const POST = wrapHandler(async (req: any, res: any) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Check if the user is an admin
-    const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hr manager', 'hr'];
-    const userDesignationName = (typeof user.designation === 'object' && user.designation !== null)
-      ? (user.designation as any).name
-      : typeof user.designation === 'string' ? user.designation : '';
+    const userRoleStr = (user as any)?.role?.toUpperCase() || '';
+    const hasAdminRoleArray = user?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN'));
+    const isDesignationAdmin = String((user as any)?.designation || '').toUpperCase().includes('ADMIN');
+    const isUserTypeAdmin = String((user as any)?.userType || '').toUpperCase().includes('ADMIN');
 
-    const isAdmin = ADMIN_DESIGNATIONS.some(d => userDesignationName.toLowerCase().includes(d));
+    const isAdmin = userRoleStr.includes('ADMIN') || hasAdminRoleArray || isDesignationAdmin || isUserTypeAdmin;
 
     if (!isAdmin) {
-      return res.status(403).json({ message: 'Forbidden' });
+      console.log(`Forbidden Error: User attempted admin verification action. User data: `, { id: user.id, userType: user.userType });
+      return res.status(403).json({ message: 'Forbidden: Admin access required' });
     }
-
-    const { action, baseSalary } = req.body || {};
+    const { action, baseSalary, salaryAccount } = req.body || {};
     const { id } = req.params;
 
     const employee = await prisma.user.findUnique({
@@ -43,11 +43,33 @@ export const POST = wrapHandler(async (req: any, res: any) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (employee.verificationStatus !== 'PENDING_VERIFICATION') {
-      return res.status(400).json({ message: 'User is not pending verification' });
+    const validStatuses = ['PENDING_VERIFICATION', 'UNVERIFIED'];
+    if (!validStatuses.includes(employee.verificationStatus)) {
+      return res.status(400).json({ message: `Cannot perform action. Current status is ${employee.verificationStatus}` });
     }
 
     if (action === 'APPROVE') {
+      if (!employee.documents || (Array.isArray(employee.documents) && employee.documents.length === 0)) {
+        return res.status(400).json({ message: 'Cannot approve employee without verified documents.' });
+      }
+
+      const baseSalaryNum = parseFloat(baseSalary) || 0;
+      const appointmentLetterFilename = `Appointment_Letter_${id}.pdf`;
+      const appointmentLetterDbPath = `/api/storage/documents/${appointmentLetterFilename}`;
+      
+      // 1. Update Database First
+      await prisma.user.update({
+        where: { id },
+        data: {
+          verificationStatus: 'ACTIVE',
+          baseSalary: baseSalaryNum,
+          appointmentLetter: appointmentLetterDbPath,
+          ...(salaryAccount && { salaryAccount })
+        }
+      });
+
+      // 2. Attempt PDF & Email (Secondary Goal)
+      try {
       // Fetch Tenant Settings for Logo and Colors
       const settings = await prisma.tenantSettings.findFirst();
       const primaryColorHex = settings?.primaryColor || '#4f46e5';
@@ -205,23 +227,82 @@ export const POST = wrapHandler(async (req: any, res: any) => {
       doc.text(splitText4, 20, currentY);
 
       // Signatures Area & Footer
-      currentY += 30; // Push signatures safely below text
-      doc.setFont("helvetica", "bold");
+      // Fetch signatures
+      const adminSignatory = await (prisma.user as any).findFirst({
+        where: {
+          signatureUrl: { not: null },
+          OR: [
+            { userType: 'Admin' },
+            { designation: { contains: 'Admin' } },
+            { designation: { contains: 'CEO' } },
+            { roles: { some: { name: { contains: 'Admin' } } } }
+          ]
+        }
+      });
+      const authorizedSignatureUrl = adminSignatory?.signatureUrl;
+      const hrSignatureUrl = (user as any).signatureUrl;
+      const employeeSignatureUrl = (employee as any).signatureUrl;
+
+      const getBase64Image = (url: string | null | undefined) => {
+        if (!url) return null;
+        try {
+          const filename = url.replace('/api/storage/', '');
+          if (!filename || url === filename) return null;
+          
+          let physicalPath = path.join('/app/public/storage', filename);
+          if (!fs.existsSync(physicalPath)) {
+            physicalPath = path.join(process.cwd(), 'public', 'storage', filename);
+          }
+          
+          if (fs.existsSync(physicalPath)) {
+            const buffer = fs.readFileSync(physicalPath);
+            const ext = filename.toLowerCase().endsWith('.png') ? 'PNG' : 'JPEG';
+            return { base64: buffer.toString('base64'), ext };
+          }
+        } catch (e) {
+          console.error('Error loading signature image:', e);
+        }
+        return null;
+      };
+
+      const authImg = getBase64Image(authorizedSignatureUrl);
+      const hrImg = getBase64Image(hrSignatureUrl);
+      const empImg = getBase64Image(employeeSignatureUrl);
+
+      const pageWidth = doc.internal.pageSize.getWidth ? doc.internal.pageSize.getWidth() : doc.internal.pageSize.width || 210;
+      const pageHeight = doc.internal.pageSize.getHeight ? doc.internal.pageSize.getHeight() : doc.internal.pageSize.height || 297;
+      const signatureY = pageHeight - 35; // Y position for the line
+
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(33, 37, 41);
-      doc.text(`For ${companyName}`, 20, currentY - 15);
-      doc.text("Accepted By:", 140, currentY - 15);
-      
-      doc.setFont("helvetica", "normal");
       doc.setLineWidth(0.5);
       doc.setDrawColor(0, 0, 0);
-      doc.line(20, currentY, 70, currentY); // HR Signature line
-      doc.line(140, currentY, 190, currentY); // Employee Signature line
+
+      // 1. Authorized Signatory (Left)
+      const leftX = 15;
+      if (authImg) {
+          doc.addImage(authImg.base64, authImg.ext, leftX + 7.5, signatureY - 20, 35, 18);
+      }
+      doc.line(leftX, signatureY, leftX + 50, signatureY);
+      doc.text("Authorized Signatory", leftX, signatureY + 6);
+
+      // 2. HR Signature (Center)
+      const centerX = (pageWidth / 2) - 25; 
+      if (hrImg) {
+          doc.addImage(hrImg.base64, hrImg.ext, centerX + 7.5, signatureY - 20, 35, 18);
+      }
+      doc.line(centerX, signatureY, centerX + 50, signatureY);
+      doc.text("HR Signature", centerX, signatureY + 6);
+
+      // 3. Employee Signature (Right)
+      const rightX = pageWidth - 65;
+      if (empImg) {
+          doc.addImage(empImg.base64, empImg.ext, rightX + 7.5, signatureY - 20, 35, 18);
+      }
+      doc.line(rightX, signatureY, rightX + 50, signatureY);
+      doc.text("Employee Signature", rightX, signatureY + 6);
       
-      doc.text("Authorized Signatory", 20, currentY + 5);
-      doc.text("Employee Signature", 140, currentY + 5);
-      
-      const pageHeight = doc.internal.pageSize.height || 297;
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
       doc.text("This is a system generated document and is valid with authorized physical or digital signature.", 105, pageHeight - 12, { align: "center" });
@@ -245,16 +326,8 @@ export const POST = wrapHandler(async (req: any, res: any) => {
       }
       
       const appointmentLetterDbPath = `/api/storage/documents/${appointmentLetterFilename}`;
-
-      await prisma.user.update({
-        where: { id },
-        data: {
-          verificationStatus: 'ACTIVE',
-          // @ts-ignore
-          appointmentLetter: appointmentLetterDbPath,
-          ...(baseSalary !== undefined && !isNaN(Number(baseSalary)) && { baseSalary: Number(baseSalary) })
-        }
-      });
+      
+      // Removed redundant second DB update since it is now in the first update
 
       const attachments: any[] = [
         {
@@ -366,16 +439,23 @@ export const POST = wrapHandler(async (req: any, res: any) => {
         });
       } catch (emailErr) {
         console.error('Email sending failed during verification:', emailErr);
-        return res.status(200).json({ message: 'User approved but email failed to send' });
       }
 
-      return res.status(200).json({ message: 'User approved and email sent' });
+      } catch (backgroundError) {
+    require('fs').writeFileSync('pdf_crash.txt', backgroundError.stack || String(backgroundError));
+    console.error("[PDF/EMAIL_ERROR] Failed to generate/send letter:", backgroundError);
+  }
+
+      revalidatePath('/dashboard/employees');
+      // 3. Return Success
+      return res.status(200).json({ message: 'User verified successfully' });
 
     } else if (action === 'REJECT') {
       await prisma.user.update({
         where: { id },
         data: {
-          verificationStatus: 'REJECTED'
+          verificationStatus: 'REJECTED',
+          documents: []
         }
       });
 
@@ -394,12 +474,13 @@ export const POST = wrapHandler(async (req: any, res: any) => {
         html: emailHtml
       });
 
+      revalidatePath('/dashboard/employees');
       return res.status(200).json({ message: 'User rejected' });
     }
 
     return res.status(400).json({ message: 'Invalid action' });
   } catch (error: any) {
-    console.error('Error verifying employee:', error);
-    return res.status(500).json({ message: 'Verification failed' });
+    console.error("[VERIFY_ROUTE_FATAL_ERROR]:", error);
+    return res.status(500).json({ message: 'Verification failed', error: String(error) });
   }
 });

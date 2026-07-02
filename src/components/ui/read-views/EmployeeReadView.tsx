@@ -2,8 +2,22 @@ import React, { useState } from 'react';
 import { User, Mail, Building2, Briefcase, KeyRound, CalendarDays, Hash, CheckCircle, Loader2, FileText } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
 
 export default function EmployeeReadView({ id, initialData }: { id: string | number | null, initialData: any }) {
+  const { user: currentUser } = useAuth();
+  const isAdmin = (currentUser as any)?.role?.toUpperCase().includes('ADMIN') || 
+                  currentUser?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN')) || 
+                  String((currentUser as any)?.designation || '').toUpperCase().includes('ADMIN');
+  const isSelf = currentUser?.id === String(id);
+  const canEditBankInfo = isAdmin || isSelf;
+
+  const [isApproving, setIsApproving] = useState(false);
+  const [employeeData, setEmployeeData] = useState(initialData);
+  const [baseSalary, setBaseSalary] = useState(initialData?.baseSalary || '');
+  const [salaryAccount, setSalaryAccount] = useState(initialData?.salaryAccount || '');
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
+
   if (!initialData) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -12,16 +26,10 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
     );
   }
 
-  const [isApproving, setIsApproving] = useState(false);
-  const [employeeData, setEmployeeData] = useState(initialData);
-  const [baseSalary, setBaseSalary] = useState(initialData.baseSalary || '');
-  const [salaryAccount, setSalaryAccount] = useState(initialData.salaryAccount || '');
-  const [isSavingAccount, setIsSavingAccount] = useState(false);
-
   const handleVerificationAction = async (action: 'APPROVE' | 'REJECT') => {
     try {
       setIsApproving(true);
-      await api.post(`/employees/${id}/verify`, { action, baseSalary });
+      await api.post(`/employees/${id}/verify`, { action, baseSalary, salaryAccount });
 
       if (action === 'APPROVE') {
         toast.success('Documents approved! Account activated and email sent.');
@@ -87,7 +95,7 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
       </div>
 
       {/* Pending Verification Section */}
-      {emp.verificationStatus === 'PENDING_VERIFICATION' && (
+      {isAdmin && ['PENDING_VERIFICATION', 'UNVERIFIED'].includes(emp.verificationStatus) && (
         <div className="bg-amber-50 dark:bg-amber-500/10 p-6 rounded-2xl shadow-sm border border-amber-200 dark:border-amber-500/20">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
@@ -99,14 +107,25 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
                 This employee has uploaded documents for verification.
               </p>
 
-              {emp.documents && emp.documents.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {emp.documents.map((docUrl: string, idx: number) => (
-                    <a key={idx} href={`${BACKEND}${docUrl}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 rounded-lg text-xs font-semibold hover:shadow-sm transition-all">
-                      <FileText className="w-3.5 h-3.5" /> View Document {idx + 1}
-                    </a>
-                  ))}
+              {emp.documents && emp.documents.length > 0 ? (
+                <div className="mt-3 flex flex-col gap-2">
+                  {emp.documents.map((doc: any, idx: number) => {
+                    const url = typeof doc === 'string' ? doc : doc.url;
+                    const name = typeof doc === 'string' ? `Document ${idx + 1}` : (doc.name || `Document ${idx+1}`);
+                    return (
+                      <div key={idx} className="flex justify-between items-center p-2 bg-white dark:bg-slate-800 rounded-lg border border-amber-200 dark:border-amber-500/30 w-full max-w-sm">
+                        <span className="text-sm font-semibold text-amber-800 dark:text-amber-400 flex items-center gap-2">
+                          <FileText className="w-4 h-4" /> {name}
+                        </span>
+                        <a href={url.startsWith('http') ? url : `${BACKEND}${url}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline text-sm font-bold">
+                          View
+                        </a>
+                      </div>
+                    );
+                  })}
                 </div>
+              ) : (
+                <p className="text-sm text-red-500 mt-3 font-semibold">No documents found. Employee might have bypassed upload.</p>
               )}
 
               <div className="mt-4 flex items-center gap-2">
@@ -131,8 +150,9 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
               </button>
               <button
                 onClick={() => handleVerificationAction('APPROVE')}
-                disabled={isApproving}
-                className="w-full sm:w-auto shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-emerald-500/20 disabled:opacity-70 flex items-center justify-center gap-2"
+                disabled={isApproving || !emp.documents || emp.documents.length === 0}
+                title={(!emp.documents || emp.documents.length === 0) ? "Cannot approve without uploaded documents" : ""}
+                className="w-full sm:w-auto shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-emerald-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isApproving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Activate'}
               </button>
@@ -181,12 +201,13 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
                 value={salaryAccount}
                 onChange={e => setSalaryAccount(e.target.value)}
                 placeholder="Enter Salary/Bank Account details"
-                className="flex-1 w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                disabled={!canEditBankInfo}
+                className="flex-1 w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 onClick={handleSaveSalaryAccount}
-                disabled={isSavingAccount}
-                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+                disabled={!canEditBankInfo || isSavingAccount}
+                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 {isSavingAccount ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save Account'}
               </button>

@@ -73,12 +73,13 @@ export async function parseRequest(
     try {
       const formData = await req.formData();
       for (const [key, val] of Array.from(formData.entries())) {
-        if (['attachment', 'avatar', 'cv', 'nid', 'certDoc'].includes(key)) {
+        if (['attachment', 'avatar', 'cv', 'nid', 'certDoc', 'signature'].includes(key)) {
           if (val && typeof val !== 'string') {
             const fileEntry = val as unknown as File;
             let uploadSubdir = 'documents';
             if (key === 'avatar') uploadSubdir = 'avatars';
             else if (key === 'attachment') uploadSubdir = 'leaves';
+            else if (key === 'signature') uploadSubdir = 'signatures';
             
             const uploadDir = path.join(process.cwd(), 'public', 'storage', uploadSubdir);
             try {

@@ -236,7 +236,7 @@ function ColorPickerPanel({
 export default function AppearancePage() {
   const router = useRouter();
   const [settings, setSettings] = useState<AppearanceSettings>({
-    companyName: 'HRM Portal',
+    companyName: 'FIX ANY PHOTO',
     companyAddress: '',
     logoUrl: null,
     faviconUrl: null,

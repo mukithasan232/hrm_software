@@ -71,6 +71,12 @@ export default function ProfilePage() {
   const [changingPw, setChangingPw] = useState(false);
   const [isNewPasswordValid, setIsNewPasswordValid] = useState(false);
   const [imgError, setImgError] = useState(false);
+
+  // Digital Signature State
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [isSavingSignature, setIsSavingSignature] = useState(false);
+  const sigFileRef = useRef<HTMLInputElement>(null);
   
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -98,6 +104,9 @@ export default function ProfilePage() {
           portfolioUrl: (user as any).portfolioUrl || '',
           salaryAccount: (user as any).salaryAccount || '',
         });
+        if ((user as any).signatureUrl) {
+          setSignaturePreview(`${BACKEND}${(user as any).signatureUrl}`);
+        }
     }
   }, [user]);
 
@@ -124,6 +133,42 @@ export default function ProfilePage() {
     if (!file) return;
     setAvatarFile(file);
     setPreview(URL.createObjectURL(file));
+  };
+
+  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSignatureFile(file);
+    setSignaturePreview(URL.createObjectURL(file));
+  };
+
+  const handleSignatureSave = async () => {
+    if (!signatureFile) return;
+
+    if (!signatureFile.type.includes('png') && !signatureFile.type.includes('jpeg')) {
+       toast.error("Please upload a valid image file (PNG/JPG).");
+       return;
+    }
+
+    setIsSavingSignature(true);
+    try {
+      const formData = new FormData();
+      formData.append('signature', signatureFile);
+      
+      const res = await api.post('/users/profile/signature', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      updateUser({ signatureUrl: res.data.signatureUrl });
+      toast.success('Signature saved successfully!');
+      setSignatureFile(null);
+    } catch (e: any) {
+      console.error(e);
+      const errMsg = e.response?.data?.message || e.message || "An unexpected error occurred during upload.";
+      toast.error(errMsg === 'unusable' ? 'Failed to upload image. Please try a different PNG/JPG file.' : errMsg);
+    } finally {
+      setIsSavingSignature(false);
+    }
   };
 
   const handleProfileSave = async (e: React.FormEvent, source: 'personal' | 'social' = 'personal') => {
@@ -259,7 +304,7 @@ export default function ProfilePage() {
                   src={avatarSrc}
                   alt="Profile"
                   onError={() => setImgError(true)}
-                  className="h-28 w-28 rounded-full object-cover border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto"
+                  className="h-28 w-28 rounded-full object-cover object-top border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto"
                 />
               ) : (
                 <div className="h-28 w-28 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto bg-gradient-to-tr from-brand-primary to-brand-secondary">
@@ -581,6 +626,55 @@ export default function ProfilePage() {
                 <Save className="w-4 h-4" />
                 {isSavingSocial ? t('saving') : t('saveChanges')}
               </button>
+            </div>
+          </div>
+
+          {/* Digital Signature Form */}
+          <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-2">
+              <svg className="w-5 h-5 text-emerald-550 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+              Digital Signature
+            </h2>
+            <p className="text-xs text-slate-500 mb-6">Upload a PNG image with a transparent background. This will be used on official documents like Appointment Letters.</p>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div 
+                className="relative flex items-center justify-center w-full sm:w-64 h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-black/20 cursor-pointer overflow-hidden group hover:border-emerald-500 transition-colors"
+                onClick={() => sigFileRef.current?.click()}
+              >
+                {signaturePreview ? (
+                  <img src={signaturePreview} alt="Signature Preview" className="h-full object-contain p-2" />
+                ) : (
+                  <div className="text-center p-4">
+                    <Camera className="w-6 h-6 mx-auto text-slate-400 mb-1 group-hover:text-emerald-500 transition-colors" />
+                    <span className="text-xs text-slate-500 font-semibold group-hover:text-emerald-500 transition-colors">Click to upload signature</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">Change Signature</span>
+                </div>
+              </div>
+              <input
+                ref={sigFileRef}
+                type="file"
+                accept="image/png, image/jpeg"
+                onChange={handleSignatureChange}
+                className="hidden"
+              />
+              
+              {signatureFile && (
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-500/10 p-2 rounded-lg text-center">New signature selected</p>
+                  <button
+                    onClick={handleSignatureSave}
+                    disabled={isSavingSignature}
+                    className="flex items-center justify-center gap-2 px-6 py-2.5 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/40 cursor-pointer hover:opacity-90 bg-emerald-500 w-full"
+                  >
+                    <Save className="w-4 h-4" />
+                    {isSavingSignature ? 'Saving...' : 'Save Signature'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

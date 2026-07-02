@@ -16,7 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { checkPermission } from '@/utils/checkPermission';
 import PageGuard from '@/components/auth/PageGuard';
 import { useDetailsStore } from '@/store/useDetailsStore';
-import TaskDetailsModal from '@/components/tasks/TaskDetailsModal';
+
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
@@ -46,7 +46,7 @@ interface Task {
   createdById: string;
   createdBy: { id: string; name: string };
   attachment?: string | null;
-  outputImages?: string[] | any;
+  outputFiles?: { name: string; url: string }[] | any;
   createdAt: string;
   updatedAt: string;
 }
@@ -191,7 +191,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
     assignedToId: task?.assignedToId || '',
   });
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [outputImages, setOutputImages] = useState<File[]>([]);
+  const [outputFiles, setOutputFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -211,9 +211,9 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => formData.append(k, v as string));
       if (attachment) formData.append('attachment', attachment);
-      if (!isCreating && outputImages.length > 0) {
-        outputImages.forEach((file) => {
-          formData.append('outputImages', file);
+      if (!isCreating && outputFiles.length > 0) {
+        outputFiles.forEach((file) => {
+          formData.append('outputFiles', file);
         });
       }
 
@@ -414,17 +414,26 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
                   <label className="flex items-center justify-center gap-2 bg-slate-50 dark:bg-black/20 border border-dashed border-slate-300 dark:border-white/20 hover:border-emerald-500/50 rounded-xl px-4 py-3 text-slate-500 dark:text-gray-400 cursor-pointer transition-all w-full">
                     <Paperclip className="w-5 h-5 text-emerald-500" />
                     <span className="text-sm font-medium">Select output files...</span>
-                    <input type="file" multiple accept="image/*, .pdf, .zip" className="hidden" onChange={(e) => setOutputImages(Array.from(e.target.files || []))} />
+                    <input type="file" multiple accept="image/*, .pdf" className="hidden" onChange={(e) => setOutputFiles(Array.from(e.target.files || []))} />
                   </label>
                   
-                  {outputImages.length > 0 && (
-                    <div className="space-y-2 mt-2">
-                      {outputImages.map((file, idx) => (
-                        <div key={idx} className="flex items-center justify-between bg-slate-100 dark:bg-white/5 rounded-lg px-3 py-2 text-sm">
-                          <span className="truncate text-slate-700 dark:text-slate-300 mr-2">{file.name}</span>
-                          <button type="button" onClick={() => setOutputImages(prev => prev.filter((_, i) => i !== idx))} className="p-1 text-red-500 hover:bg-red-500/10 rounded">
-                            <X className="w-4 h-4" />
+                  {outputFiles.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
+                      {outputFiles.map((file, idx) => (
+                        <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 aspect-square">
+                          {file.type.startsWith('image/') ? (
+                            <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+                              <span className="text-xs font-bold text-slate-400">PDF</span>
+                            </div>
+                          )}
+                          <button type="button" onClick={() => setOutputFiles(prev => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shadow-sm z-10">
+                            <X className="w-3 h-3" />
                           </button>
+                          <div className="absolute inset-x-0 bottom-0 bg-black/50 p-1 text-[10px] text-white truncate pointer-events-none">
+                            {file.name}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -432,25 +441,30 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
                 </div>
               )}
               
-              {task?.outputImages && Array.isArray(task.outputImages) && task.outputImages.length > 0 && outputImages.length === 0 && (
+              {task?.outputFiles && Array.isArray(task.outputFiles) && task.outputFiles.length > 0 && outputFiles.length === 0 && (
                 <div className="mt-3 flex flex-wrap gap-3">
-                  {task.outputImages.map((url: any, idx: number) => (
-                    <div key={idx} className="relative group">
-                      <a href={url as string} target="_blank" rel="noopener noreferrer" className="inline-block cursor-pointer hover:opacity-80 transition-opacity">
-                        {String(url).match(/\.(jpeg|jpg|gif|png)$/) != null ? (
-                          <img src={url as string} alt={`Final Output ${idx + 1}`} className="h-24 w-auto rounded-lg object-contain border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/50" />
-                        ) : (
-                          <div className="h-24 w-24 flex flex-col items-center justify-center bg-slate-100 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10">
-                            <Paperclip className="w-8 h-8 text-emerald-500 mb-1" />
-                            <span className="text-[10px] text-slate-500 truncate w-20 text-center">File {idx + 1}</span>
+                  {task.outputFiles.map((fObj: any, idx: number) => {
+                    // Backwards compatibility for string URLs vs { name, url } objects
+                    const url = typeof fObj === 'string' ? fObj : fObj.url;
+                    const name = typeof fObj === 'string' ? `File ${idx + 1}` : fObj.name;
+                    return (
+                      <div key={idx} className="relative group">
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block cursor-pointer hover:opacity-80 transition-opacity">
+                          {String(url).match(/\.(jpeg|jpg|gif|png)$/) != null ? (
+                            <img src={url} alt={`Final Output ${idx + 1}`} className="h-24 w-auto rounded-lg object-contain border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/50" />
+                          ) : (
+                            <div className="h-24 w-24 flex flex-col items-center justify-center bg-slate-100 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10">
+                              <Paperclip className="w-8 h-8 text-emerald-500 mb-1" />
+                              <span className="text-[10px] text-slate-500 truncate w-20 text-center">{name}</span>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center pointer-events-none">
+                            <Search className="w-6 h-6 text-white" />
                           </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center pointer-events-none">
-                          <Search className="w-6 h-6 text-white" />
-                        </div>
-                      </a>
-                    </div>
-                  ))}
+                        </a>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>

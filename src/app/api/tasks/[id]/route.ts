@@ -36,13 +36,14 @@ export async function PATCH(
     const reqClone = req.clone();
     const mockReq = await parseRequest(req, { id });
 
-    let uploadedUrls: string[] = [];
+    let uploadedFiles: { name: string; url: string }[] = [];
     try {
       const formData = await reqClone.formData();
-      const files = formData.getAll('outputImages') as File[];
+      const files = formData.getAll('outputFiles') as File[];
       if (files && files.length > 0) {
         const uploadPromises = files.map(file => saveLocalFile(file, 'tasks'));
-        uploadedUrls = await Promise.all(uploadPromises);
+        const urls = await Promise.all(uploadPromises);
+        uploadedFiles = files.map((f, i) => ({ name: f.name, url: urls[i] }));
       }
     } catch (e) {
       // Ignore if not multipart or parsing fails
@@ -57,18 +58,16 @@ export async function PATCH(
       return NextResponse.json({ message: 'Task not found' }, { status: 404, headers: getCorsHeaders() });
     }
 
-    let outputImages = (task as any).outputImages || [];
-    if (typeof outputImages === 'string') {
-      try { outputImages = JSON.parse(outputImages); } catch (e) { outputImages = []; }
+    let currentOutputFiles = (task as any).outputFiles || [];
+    if (typeof currentOutputFiles === 'string') {
+      try { currentOutputFiles = JSON.parse(currentOutputFiles); } catch (e) { currentOutputFiles = []; }
     }
-    
-    // Retrieve multiple files using reqClone to avoid consuming the original body stream twice if not already consumed, 
-    // or wait, parseRequest already consumed req. So we must clone before parseRequest!
+    const finalOutputFiles = [...currentOutputFiles, ...uploadedFiles];
 
     const admin = isAdmin(mockReq.user);
 
     if (!admin) {
-      // Employee: can only update status/description/outputImage, and only if the task is assigned to them
+      // Employee: can only update status/description/outputFiles, and only if the task is assigned to them
       if (task.assignedToId !== mockReq.user.id) {
         return NextResponse.json({ message: 'Not authorized to update this task' }, { status: 403, headers: getCorsHeaders() });
       }
@@ -83,7 +82,7 @@ export async function PATCH(
         data: { 
           status,
           ...(description !== undefined && { description: description || null }),
-          ...(uploadedUrls.length > 0 && { outputImages: uploadedUrls }),
+          ...(uploadedFiles.length > 0 && { outputFiles: finalOutputFiles }),
         } as any,
         include: TASK_INCLUDE,
       });
@@ -104,7 +103,7 @@ export async function PATCH(
         ...(priority !== undefined    && { priority }),
         ...(assignedToId !== undefined && { assignedToId }),
         ...(mockReq.file?.attachment?.path && { attachment: mockReq.file.attachment.path }),
-        ...(uploadedUrls.length > 0 && { outputImages: uploadedUrls }),
+        ...(uploadedFiles.length > 0 && { outputFiles: finalOutputFiles }),
       } as any,
       include: TASK_INCLUDE,
     });

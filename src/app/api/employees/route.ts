@@ -215,6 +215,7 @@ export async function POST(req: Request) {
             documents: documentPaths,
             leaveConfig: leaveConfig || {},
             permissions: permissions || {},
+            verificationStatus: 'UNVERIFIED',
           },
           include: {
             customDesignation: true,
@@ -250,24 +251,9 @@ export async function POST(req: Request) {
       console.error('[Magic Bridge] Failed to process raw logs:', e);
     }
 
-    // Send Welcome Email with Appointment Letter
+    // Send Welcome Email with Login Details
     let emailSent = true;
     try {
-      const doc = new jsPDF();
-      doc.setFontSize(22);
-      doc.text("APPOINTMENT LETTER", 105, 20, { align: "center" });
-      doc.setFontSize(12);
-      doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 40);
-      doc.text(`To: ${name}`, 20, 50);
-      doc.text(`Enrollment ID: ${newUser.employeeId}`, 20, 60);
-      const designationName = newUser.customDesignation?.name || 'Employee';
-      doc.text(`Designation: ${designationName}`, 20, 70);
-      
-      const bodyText = `Dear ${name},\n\nWe are pleased to offer you employment at our company in the position of ${designationName}.\nYour joining date is officially recorded as ${new Date().toLocaleDateString()}.\n\nWelcome to the team!\n\nSincerely,\nHR Department`;
-      doc.text(bodyText, 20, 90, { maxWidth: 170 });
-      
-      const pdfBuffer = doc.output('arraybuffer');
-
       const loginUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
@@ -283,7 +269,7 @@ export async function POST(req: Request) {
               <p style="margin: 0 0 10px 0;"><strong>Login Email:</strong> ${email}</p>
               <p style="margin: 0;"><strong>Temporary Password:</strong> ${password}</p>
             </div>
-            <p>Please find your Appointment Letter attached to this email.</p>
+            <p>Please log in to the portal to upload your necessary documents for verification. Your Appointment Letter will be issued upon approval.</p>
             <div style="text-align: center; margin-top: 30px;">
               <a href="${loginUrl}/login" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold;">Log In Now</a>
             </div>
@@ -293,15 +279,8 @@ export async function POST(req: Request) {
 
       await sendMail({
         to: email,
-        subject: "Welcome to the Team - Your Appointment Letter & Login Details",
-        html: emailHtml,
-        attachments: [
-          {
-            filename: `Appointment_Letter_${name.replace(/\s+/g, '_')}.pdf`,
-            content: Buffer.from(pdfBuffer),
-            contentType: 'application/pdf'
-          }
-        ]
+        subject: "Welcome to the Team - Your Login Details",
+        html: emailHtml
       });
     } catch (emailError) {
       console.error('Error sending welcome email with PDF:', emailError);

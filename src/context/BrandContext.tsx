@@ -23,7 +23,7 @@ interface BrandContextValue {
 // ── defaults ──────────────────────────────────────────────────────────────────
 
 const DEFAULTS: BrandSettings = {
-  companyName:    'HRM Portal',
+  companyName:    'FIX ANY PHOTO',
   companyAddress: null,
   logoUrl:        null,
   faviconUrl:     null,

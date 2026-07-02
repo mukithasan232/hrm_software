@@ -67,28 +67,56 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
         )}
 
         {/* Attachments Section */}
-        {task.outputImages && Array.isArray(task.outputImages) && task.outputImages.length > 0 && (
+        {task.attachment && typeof task.attachment === 'string' && (
           <div className="pt-4">
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Paperclip className="w-4 h-4 text-slate-400" />
-              Attachments ({task.outputImages.length})
+              Attachment
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {task.outputImages.map((imgUrl: string, idx: number) => {
-                const fullUrl = `${BACKEND}${imgUrl}`;
+              <a
+                href={`${BACKEND}${task.attachment}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block group relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
+              >
+                {task.attachment.match(/\.(jpeg|jpg|gif|png)$/) ? (
+                  <img src={`${BACKEND}${task.attachment}`} alt="Attachment" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800">
+                    <Paperclip className="w-8 h-8 text-slate-400 mb-2" />
+                    <span className="text-xs text-slate-500">View File</span>
+                  </div>
+                )}
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Final Output Files Section */}
+        {task.outputFiles && Array.isArray(task.outputFiles) && task.outputFiles.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-white/10">
+            <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Submitted Output</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {task.outputFiles.map((fileObj: any, idx: number) => {
+                const url = typeof fileObj === 'string' ? fileObj : fileObj.url;
+                const name = typeof fileObj === 'string' ? `Output ${idx + 1}` : fileObj.name;
+                const fullUrl = url.startsWith('http') ? url : `${BACKEND}${url}`;
+                const isImage = String(url).match(/\.(jpeg|jpg|gif|png)$/i);
+                
                 return (
-                  <a
-                    key={idx}
-                    href={fullUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block group relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
-                  >
-                    <img
-                      src={fullUrl}
-                      alt={`Attachment ${idx + 1}`}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
+                  <a key={idx} href={fullUrl} target="_blank" rel="noopener noreferrer" className="group relative block rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700/50 hover:border-indigo-500 transition-colors shadow-sm bg-white dark:bg-slate-800">
+                    {isImage ? (
+                      <img src={fullUrl} alt="Output" className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-300 bg-slate-50 dark:bg-slate-900" />
+                    ) : (
+                      <div className="w-full h-24 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
+                        <Paperclip className="w-6 h-6 text-indigo-400 mb-1" />
+                        <span className="text-[10px] text-slate-500 truncate w-full px-2 text-center">{name}</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <span className="text-xs font-semibold text-white">View Full</span>
+                    </div>
                   </a>
                 );
               })}

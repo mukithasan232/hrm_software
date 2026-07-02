@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function generateMetadata(): Promise<Metadata> {
   let faviconUrl = '/favicon.ico';
-  let companyName = 'HRM & Payroll Portal';
+  let companyName = 'FIX ANY PHOTO';
   try {
     const settings = await prisma.tenantSettings.findFirst();
     if (settings) {

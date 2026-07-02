@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useDetailsStore } from '@/store/useDetailsStore';
 import { useAuth } from '@/context/AuthContext';
 import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive, Plug, Volume2, Clock } from 'lucide-react';
 import Link from 'next/link';
@@ -223,6 +225,17 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
 
   const handleNotificationClick = (notif: any) => {
     setSelectedNotification(notif);
+    
+    if (notif.type === 'USER_VERIFICATION' && notif.referenceId) {
+      useDetailsStore.getState().openDetails('employee', notif.referenceId);
+      setShowNotifications(false);
+      if (!notif.read) {
+        api.patch('/notifications', { id: notif.id }).catch(() => {});
+        setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+      }
+      return;
+    }
+
     setIsModalOpen(true);
     
     if (!notif.read) {

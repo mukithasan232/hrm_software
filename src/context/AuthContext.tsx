@@ -23,6 +23,7 @@ interface User {
   verificationStatus?: string;
   appointmentLetter?: string;
   salaryAccount?: string;
+  signatureUrl?: string;
 }
 
 interface AuthContextType {
