@@ -53,10 +53,16 @@ export async function GET(
       contentType = mimeTypes[ext];
     }
 
-    return new NextResponse(fileBuffer, {
+    const uint8 = new Uint8Array(fileBuffer.buffer, fileBuffer.byteOffset, fileBuffer.byteLength);
+    const fileName = path.basename(filename);
+
+    return new NextResponse(uint8, {
+      status: 200,
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=0, must-revalidate',
+        'Content-Disposition': `inline; filename="${fileName}"`,
+        'Content-Length': String(uint8.byteLength),
+        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=43200',
       },
     });
 
