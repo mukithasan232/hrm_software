@@ -20,6 +20,7 @@ export default function OnboardingPage() {
   const [documents, setDocuments] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Redirect active users
   if (user && user.verificationStatus === 'ACTIVE') {
@@ -58,6 +59,7 @@ export default function OnboardingPage() {
 
       toast.success('Documents uploaded successfully!');
       setUploadSuccess(true);
+      setIsEditing(false);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to upload documents');
     } finally {
@@ -78,10 +80,18 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        {user?.verificationStatus === 'PENDING_VERIFICATION' || uploadSuccess ? (
-          <ApplicationStatusView user={user} logout={logout} />
+        {(user?.verificationStatus === 'PENDING_VERIFICATION' || uploadSuccess) && !isEditing ? (
+          <ApplicationStatusView user={user} logout={logout} onEdit={() => setIsEditing(true)} />
         ) : (
           <div className="space-y-6">
+            {isEditing && (
+              <button 
+                onClick={() => setIsEditing(false)} 
+                className="mb-4 text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 font-medium transition-colors"
+              >
+                &larr; Back to Status View
+              </button>
+            )}
             {user?.verificationStatus === 'REJECTED' && (
               <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/50 text-red-600 dark:text-red-400 p-4 rounded-xl flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -143,7 +153,7 @@ export default function OnboardingPage() {
   );
 }
 
-function ApplicationStatusView({ user, logout }: { user: any, logout: () => void }) {
+function ApplicationStatusView({ user, logout, onEdit }: { user: any, logout: () => void, onEdit: () => void }) {
   return (
     <div className="text-center space-y-4">
       <div className="w-16 h-16 bg-orange-100 dark:bg-orange-500/20 rounded-full flex items-center justify-center mx-auto">
@@ -174,12 +184,20 @@ function ApplicationStatusView({ user, logout }: { user: any, logout: () => void
         </div>
       )}
 
-      <button
-        onClick={() => logout()}
-        className="mt-6 flex items-center justify-center gap-2 w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-white rounded-xl font-semibold transition-colors"
-      >
-        <LogOut className="w-4 h-4" /> Sign Out
-      </button>
+      <div className="flex flex-col gap-3 mt-6">
+        <button 
+          onClick={onEdit}
+          className="w-full py-2.5 px-4 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-indigo-500/20"
+        >
+          Edit / Re-upload Documents
+        </button>
+        <button
+          onClick={() => logout()}
+          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-semibold transition-colors"
+        >
+          <LogOut className="w-4 h-4" /> Sign Out
+        </button>
+      </div>
     </div>
   );
 }
