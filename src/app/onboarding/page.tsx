@@ -15,7 +15,7 @@ const formatSize = (bytes: number) => {
 };
 
 export default function OnboardingPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const router = useRouter();
   const [documents, setDocuments] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -55,7 +55,17 @@ export default function OnboardingPage() {
         formData.append('documents', doc);
       });
 
-      await api.post('/employees/upload-documents', formData);
+      const res = await api.post('/employees/upload-documents', formData);
+
+      const newUrls = res.data?.urls || [];
+      const existingDocs = Array.isArray(user?.documents) ? user.documents : [];
+      
+      if (updateUser) {
+        updateUser({ 
+          documents: [...existingDocs, ...newUrls], 
+          verificationStatus: 'PENDING_VERIFICATION' 
+        });
+      }
 
       toast.success('Documents uploaded successfully!');
       setUploadSuccess(true);
@@ -154,6 +164,9 @@ export default function OnboardingPage() {
 }
 
 function ApplicationStatusView({ user, logout, onEdit }: { user: any, logout: () => void, onEdit: () => void }) {
+  const BACKEND = process.env.NEXT_PUBLIC_API_URL
+    ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
+    : '';
   return (
     <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-white/10 flex flex-col items-center text-center">
       
@@ -183,8 +196,13 @@ function ApplicationStatusView({ user, logout, onEdit }: { user: any, logout: ()
         {user?.documents && user.documents.length > 0 ? (
           <ul className="space-y-2">
             {user.documents.map((doc: any, idx: number) => {
-              const docName = typeof doc === 'string' ? `Document_${idx + 1}` : (doc.name || `Document_${idx + 1}`);
-              const docUrl = typeof doc === 'string' ? doc : doc.url;
+              const rawUrl = typeof doc === 'string' ? doc : (doc.url || '');
+              // Extract filename from URL path, e.g. /uploads/documents/1234-nid.pdf → nid.pdf
+              const filenamePart = rawUrl.split('/').pop() || '';
+              // Strip the timestamp prefix (e.g. "1782964929763-filename.pdf" → "filename.pdf")
+              const docName = filenamePart.replace(/^\d+-/, '') || `Document_${idx + 1}`;
+              // Build the full absolute URL so "View" opens correctly
+              const docUrl = rawUrl.startsWith('http') ? rawUrl : `${BACKEND}${rawUrl}`;
               return (
                 <li key={idx} className="flex justify-between items-center bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-2.5 rounded-lg shadow-sm">
                   <span className="text-sm text-slate-600 dark:text-slate-400 truncate max-w-[200px] font-medium">
