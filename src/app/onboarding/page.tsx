@@ -93,7 +93,7 @@ export default function OnboardingPage() {
         </div>
 
         {(user?.verificationStatus === 'PENDING_VERIFICATION' || uploadSuccess) && !isEditing ? (
-          <ApplicationStatusView user={user} logout={logout} onEdit={() => setIsEditing(true)} />
+          <ApplicationStatusView user={user} logout={logout} onEdit={() => setIsEditing(true)} onUpdateUser={updateUser} />
         ) : (
           <div className="space-y-6">
             {isEditing && (
@@ -165,11 +165,36 @@ export default function OnboardingPage() {
   );
 }
 
-function ApplicationStatusView({ user, logout, onEdit }: { user: any, logout: () => void, onEdit: () => void }) {
+function ApplicationStatusView({ user, logout, onEdit, onUpdateUser }: { user: any, logout: () => void, onEdit: () => void, onUpdateUser?: (data: any) => void }) {
+  const [docs, setDocs] = useState<string[]>(() => {
+    // Deduplicate on initial load
+    const raw = Array.isArray(user?.documents) ? user.documents : [];
+    return [...new Set(raw.map((d: any) => typeof d === 'string' ? d : (d.url || '')).filter(Boolean))] as string[];
+  });
+  const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
+
   // Build backend base URL: works in any environment without extra env config
   const BACKEND = process.env.NEXT_PUBLIC_API_URL
     ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
     : (typeof window !== 'undefined' ? window.location.origin : '');
+
+  const handleDelete = async (rawUrl: string, idx: number) => {
+    setDeletingIdx(idx);
+    try {
+      const res = await import('@/services/api').then(m => m.default.delete('/employees/upload-documents', { data: { docUrl: rawUrl } }));
+      const updatedDocs = res.data?.documents ?? docs.filter((_, i) => i !== idx);
+      setDocs([...new Set(updatedDocs)]);
+      if (onUpdateUser) onUpdateUser({ documents: updatedDocs });
+      const { default: toast } = await import('react-hot-toast');
+      toast.success('Document removed.');
+    } catch {
+      const { default: toast } = await import('react-hot-toast');
+      toast.error('Failed to remove document.');
+    } finally {
+      setDeletingIdx(null);
+    }
+  };
+
   return (
     <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-white/10 flex flex-col items-center text-center">
       
@@ -196,19 +221,16 @@ function ApplicationStatusView({ user, logout, onEdit }: { user: any, logout: ()
       {/* Dynamic Document Viewer Section */}
       <div className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl p-4 mb-6 text-left">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Submitted Documents</h3>
-        {user?.documents && user.documents.length > 0 ? (
+        {docs.length > 0 ? (
           <ul className="space-y-2">
-            {user.documents.map((doc: any, idx: number) => {
-              const rawUrl = typeof doc === 'string' ? doc : (doc.url || '');
-              // Extract filename from URL path, e.g. /uploads/documents/1234-nid.pdf → nid.pdf
+            {docs.map((rawUrl: string, idx: number) => {
               const filenamePart = rawUrl.split('/').pop() || '';
-              // Strip the timestamp prefix (e.g. "1782964929763-filename.pdf" → "filename.pdf")
               const docName = filenamePart.replace(/^\d+-/, '') || `Document_${idx + 1}`;
-              // Build the full absolute URL so "View" opens correctly
               const docUrl = rawUrl.startsWith('http') ? rawUrl : `${BACKEND}${rawUrl}`;
+              const isDeleting = deletingIdx === idx;
               return (
-                <li key={idx} className="flex justify-between items-center bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-2.5 rounded-lg shadow-sm">
-                  <span className="text-sm text-slate-600 dark:text-slate-400 truncate max-w-[200px] font-medium">
+                <li key={idx} className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-2.5 rounded-lg shadow-sm">
+                  <span className="text-sm text-slate-600 dark:text-slate-400 truncate flex-1 font-medium text-left">
                     {docName}
                   </span>
                   <a 
@@ -219,6 +241,20 @@ function ApplicationStatusView({ user, logout, onEdit }: { user: any, logout: ()
                   >
                     View
                   </a>
+                  <button
+                    onClick={() => handleDelete(rawUrl, idx)}
+                    disabled={isDeleting}
+                    className="ml-1 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors disabled:opacity-50 shrink-0"
+                    title="Remove this document"
+                  >
+                    {isDeleting ? (
+                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    )}
+                  </button>
                 </li>
               );
             })}

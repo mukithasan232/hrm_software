@@ -11,31 +11,33 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: getCorsHeaders() });
 }
 
+// ── Helper: verify JWT and return userId ──────────────────────────────────────
+function extractUserId(req: NextRequest): string | null {
+  const authHeader = req.headers.get('authorization') || '';
+  if (!authHeader.startsWith('Bearer ')) return null;
+  try {
+    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'fallback_secret') as any;
+    return decoded.id;
+  } catch {
+    return null;
+  }
+}
+
+// ── POST: Upload new documents ────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const corsHeaders = getCorsHeaders();
 
   try {
-    // ── Auth: extract JWT from Authorization header ──────────────────────
-    const authHeader = req.headers.get('authorization') || '';
-    if (!authHeader.startsWith('Bearer ')) {
+    const userId = extractUserId(req);
+    if (!userId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
-    const token = authHeader.split(' ')[1];
-    let userId: string;
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
-      userId = decoded.id;
-    } catch {
-      return NextResponse.json({ message: 'Invalid or expired token' }, { status: 401, headers: corsHeaders });
-    }
 
-    // ── Verify employee exists ────────────────────────────────────────────
     const employee = await prisma.user.findUnique({ where: { id: userId } });
     if (!employee) {
       return NextResponse.json({ message: 'User not found' }, { status: 404, headers: corsHeaders });
     }
 
-    // ── Parse multipart/form-data directly from NextRequest ───────────────
     let formData: FormData;
     try {
       formData = await req.formData();
@@ -45,12 +47,10 @@ export async function POST(req: NextRequest) {
     }
 
     const files = formData.getAll('documents');
-
     if (!files || files.length === 0) {
       return NextResponse.json({ message: 'No documents provided' }, { status: 400, headers: corsHeaders });
     }
 
-    // ── Save each file ────────────────────────────────────────────────────
     const uploadedUrls: string[] = [];
     for (const file of files) {
       if (file && typeof file !== 'string') {
@@ -63,14 +63,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'No valid files were processed' }, { status: 400, headers: corsHeaders });
     }
 
-    // ── Append or Replace based on current status ────────────────────────
-    // If already PENDING_VERIFICATION (re-upload flow), REPLACE docs so old ones don't pile up.
-    // On first upload (UNVERIFIED), append to any existing docs.
+    // If already PENDING_VERIFICATION (re-upload), REPLACE. Otherwise append.
     const isReupload = employee.verificationStatus === 'PENDING_VERIFICATION';
     const existingDocs = (!isReupload && Array.isArray(employee.documents)) ? (employee.documents as string[]) : [];
-    const newDocs = [...existingDocs, ...uploadedUrls];
+    const newDocs = [...new Set([...existingDocs, ...uploadedUrls])]; // deduplicate
 
-    const updatedUser = await prisma.user.update({
+    await prisma.user.update({
       where: { id: userId },
       data: {
         documents: newDocs,
@@ -78,7 +76,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // --- Create notifications for Admins/HR ---
+    // Notify Admins/HR
     const adminsAndHR = await prisma.user.findMany({
       where: {
         OR: [
@@ -88,13 +86,13 @@ export async function POST(req: NextRequest) {
           { roles: { some: { name: { contains: 'Admin' } } } },
           { roles: { some: { name: { contains: 'HR' } } } },
           { customDesignation: { name: { contains: 'Admin' } } },
-          { customDesignation: { name: { contains: 'HR' } } }
-        ]
+          { customDesignation: { name: { contains: 'HR' } } },
+        ],
       },
-      select: { id: true }
+      select: { id: true },
     });
 
-    const notifications = adminsAndHR.map(admin => ({
+    const notifications = adminsAndHR.map((admin) => ({
       userId: admin.id,
       titleEn: 'Document Verification Pending',
       titleBn: 'ডকুমেন্ট ভেরিফিকেশন বাকি',
@@ -105,11 +103,14 @@ export async function POST(req: NextRequest) {
     }));
 
     if (notifications.length > 0) {
-      await prisma.notification.createMany({
-        data: notifications,
-      });
+      await prisma.notification.createMany({ data: notifications });
       notifications.forEach((n) => {
-        eventEmitter.emit('new-notification', { ...n, id: Math.random().toString(36).substring(7), createdAt: new Date(), read: false });
+        eventEmitter.emit('new-notification', {
+          ...n,
+          id: Math.random().toString(36).substring(7),
+          createdAt: new Date(),
+          read: false,
+        });
       });
     }
 
@@ -120,5 +121,44 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('[Upload Documents] Unexpected error:', error);
     return NextResponse.json({ message: 'Failed to upload documents' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ── DELETE: Remove a single document from user's list ────────────────────────
+export async function DELETE(req: NextRequest) {
+  const corsHeaders = getCorsHeaders();
+
+  try {
+    const userId = extractUserId(req);
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    }
+
+    const { docUrl } = await req.json();
+    if (!docUrl) {
+      return NextResponse.json({ message: 'docUrl is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    const employee = await prisma.user.findUnique({ where: { id: userId } });
+    if (!employee) {
+      return NextResponse.json({ message: 'User not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    const existingDocs = Array.isArray(employee.documents) ? (employee.documents as string[]) : [];
+    // Remove the specified URL and deduplicate remaining
+    const updatedDocs = [...new Set(existingDocs.filter((d: string) => d !== docUrl))];
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { documents: updatedDocs },
+    });
+
+    return NextResponse.json(
+      { message: 'Document removed successfully', documents: updatedDocs },
+      { status: 200, headers: corsHeaders }
+    );
+  } catch (error) {
+    console.error('[Delete Document] Unexpected error:', error);
+    return NextResponse.json({ message: 'Failed to delete document' }, { status: 500, headers: corsHeaders });
   }
 }
