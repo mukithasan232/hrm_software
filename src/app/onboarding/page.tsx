@@ -155,49 +155,78 @@ export default function OnboardingPage() {
 
 function ApplicationStatusView({ user, logout, onEdit }: { user: any, logout: () => void, onEdit: () => void }) {
   return (
-    <div className="text-center space-y-4">
-      <div className="w-16 h-16 bg-orange-100 dark:bg-orange-500/20 rounded-full flex items-center justify-center mx-auto">
-        <Info className="w-8 h-8 text-orange-600 dark:text-orange-400" />
-      </div>
-      <h3 className="text-lg font-bold text-slate-800 dark:text-white">Application Under Review</h3>
+    <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-white/10 flex flex-col items-center text-center">
       
-      <div className="inline-flex items-center gap-2 bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-3 py-1 rounded-full text-sm font-medium">
-        <Clock className="w-4 h-4" />
+      {/* Info Icon */}
+      <div className="w-16 h-16 bg-orange-50 dark:bg-orange-500/10 text-orange-500 rounded-full flex items-center justify-center mb-6">
+        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+
+      <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-3">Application Under Review</h2>
+      
+      <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-500 text-sm font-semibold rounded-full mb-6">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
         Pending Admin Approval
       </div>
 
-      <p className="text-sm text-slate-500 dark:text-slate-400 pb-2 mt-4">
+      <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 leading-relaxed">
         Your documents have been submitted and are currently under review by the Admin. You will receive an email once your account is activated.
       </p>
 
-      {user?.documents && user.documents.length > 0 && (
-        <div className="mt-6 p-4 border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-left">
-          <h3 className="text-sm font-semibold mb-3 text-slate-800 dark:text-slate-200">Submitted Documents</h3>
+      {/* Dynamic Document Viewer Section */}
+      <div className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl p-4 mb-6 text-left">
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Submitted Documents</h3>
+        {user?.documents && user.documents.length > 0 ? (
           <ul className="space-y-2">
-            {user.documents.map((doc: any, idx: number) => (
-              <li key={idx} className="flex justify-between items-center bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 p-2 rounded">
-                <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-4">{doc.name || 'Document'}</span>
-                <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 dark:text-blue-400 text-sm hover:underline font-medium shrink-0">View</a>
-              </li>
-            ))}
+            {user.documents.map((doc: any, idx: number) => {
+              const docName = typeof doc === 'string' ? `Document_${idx + 1}` : (doc.name || `Document_${idx + 1}`);
+              const docUrl = typeof doc === 'string' ? doc : doc.url;
+              return (
+                <li key={idx} className="flex justify-between items-center bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-2.5 rounded-lg shadow-sm">
+                  <span className="text-sm text-slate-600 dark:text-slate-400 truncate max-w-[200px] font-medium">
+                    {docName}
+                  </span>
+                  <a 
+                    href={docUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-blue-600 dark:text-blue-400 text-sm font-semibold hover:text-blue-700 dark:hover:text-blue-300 hover:underline shrink-0"
+                  >
+                    View
+                  </a>
+                </li>
+              );
+            })}
           </ul>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-red-500 bg-red-50 dark:bg-red-500/10 p-2 rounded font-medium">No documents found. Please re-upload.</p>
+        )}
+      </div>
 
-      <div className="flex flex-col gap-3 mt-6">
+      {/* Action Buttons */}
+      <div className="w-full flex flex-col gap-3">
         <button 
           onClick={onEdit}
-          className="w-full py-2.5 px-4 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-indigo-500/20"
+          className="w-full py-2.5 px-4 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 text-sm font-semibold rounded-xl transition-colors"
         >
           Edit / Re-upload Documents
         </button>
-        <button
-          onClick={() => logout()}
-          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-semibold transition-colors"
+        
+        <button 
+          onClick={() => logout()} 
+          className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl transition-colors flex justify-center items-center gap-2"
         >
-          <LogOut className="w-4 h-4" /> Sign Out
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Sign Out
         </button>
       </div>
+
     </div>
   );
 }
