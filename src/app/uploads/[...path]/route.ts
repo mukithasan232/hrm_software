@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
   const resolvedParams = await params;
   // Prevent directory traversal
   const safePathSegments = resolvedParams.path.map((segment: string) =>
-    segment.replace(/(\.\.|\\/|\\)/g, '')
+    segment.replace(/(\.\.|\/|\\)/g, '')
   );
 
   const relPath = safePathSegments.join('/');
