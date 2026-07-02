@@ -77,6 +77,7 @@ export default function DashboardOverview() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [weeklyAnalytics, setWeeklyAnalytics] = useState<any[]>([]);
   const [departmentData, setDepartmentData] = useState<any[]>([]);
+  const [assignedShift, setAssignedShift] = useState<{ start: string; end: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getBDToday());
@@ -132,7 +133,31 @@ export default function DashboardOverview() {
         }))
       );
 
-      // Shift Info is now derived directly from the currentUser in the render logic
+      // Fetch Shift Info
+      if (user?.id && !isAdmin) {
+        const currentUserData = allUsers.find((u: any) => u.id === user.id || u.employeeId === user.employeeId);
+        
+        if (currentUserData) {
+          const rawStartTime = 
+            currentUserData?.shift?.startTime || 
+            currentUserData?.customDepartment?.shiftStartTime || 
+            currentUserData?.shiftStartTime || 
+            '09:00';
+          
+          const rawEndTime = 
+            currentUserData?.shift?.endTime || 
+            currentUserData?.customDepartment?.shiftEndTime || 
+            currentUserData?.shiftEndTime || 
+            '17:00';
+
+          const shiftStartTime = rawStartTime.includes('AM') || rawStartTime.includes('PM') ? rawStartTime : (formatTimeAMPM(rawStartTime) || '09:00 AM');
+          const shiftEndTime = rawEndTime.includes('AM') || rawEndTime.includes('PM') ? rawEndTime : (formatTimeAMPM(rawEndTime) || '05:00 PM');
+          
+          setAssignedShift({ start: shiftStartTime, end: shiftEndTime });
+        } else {
+          setAssignedShift({ start: "09:00 AM", end: "05:00 PM" });
+        }
+      }
 
 
       const employeeCount = isAdmin
@@ -310,24 +335,6 @@ export default function DashboardOverview() {
 
   const punchStatus = getPunchStatus();
 
-  const currentUser: any = user;
-  const rawStartTime = 
-    currentUser?.shift?.startTime || 
-    currentUser?.customDepartment?.shiftStartTime || 
-    currentUser?.shiftStartTime || 
-    '09:00';
-
-  const rawEndTime = 
-    currentUser?.shift?.endTime || 
-    currentUser?.customDepartment?.shiftEndTime || 
-    currentUser?.shiftEndTime || 
-    '17:00';
-
-  // DB times are 24-hr format like "09:00", format them to "09:00 AM" etc.
-  // Fallbacks applied after in case of invalid db formats.
-  const shiftStartTime = rawStartTime.includes('AM') || rawStartTime.includes('PM') ? rawStartTime : (formatTimeAMPM(rawStartTime) || '09:00 AM');
-  const shiftEndTime = rawEndTime.includes('AM') || rawEndTime.includes('PM') ? rawEndTime : (formatTimeAMPM(rawEndTime) || '05:00 PM');
-
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-6">
@@ -390,11 +397,11 @@ export default function DashboardOverview() {
               </div>
             </div>
 
-            {!isAdmin && (
+            {!isAdmin && assignedShift && (
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between w-full">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Assigned Shift</span>
                 <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                  {shiftStartTime} - {shiftEndTime}
+                  {assignedShift.start} - {assignedShift.end}
                 </span>
               </div>
             )}
