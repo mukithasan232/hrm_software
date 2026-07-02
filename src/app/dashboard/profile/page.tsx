@@ -155,9 +155,7 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append('signature', signatureFile);
       
-      const res = await api.post('/users/profile/signature', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const res = await api.post('/users/profile/signature', formData);
       
       updateUser({ signatureUrl: res.data.signatureUrl });
       toast.success('Signature saved successfully!');

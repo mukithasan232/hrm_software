@@ -54,9 +54,7 @@ export default function OnboardingPage() {
         formData.append('documents', doc);
       });
 
-      await api.post('/employees/upload-documents', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await api.post('/employees/upload-documents', formData);
 
       toast.success('Documents uploaded successfully!');
       setUploadSuccess(true);

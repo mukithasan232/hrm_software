@@ -110,9 +110,7 @@ export default function LeavesPage() {
       }
       if (attachment) formData.append('attachment', attachment);
 
-      await api.post('/leaves/apply', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await api.post('/leaves/apply', formData);
       toast.success('Leave applied successfully');
       fetchLeaves();
       router.refresh();

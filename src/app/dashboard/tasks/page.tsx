@@ -218,14 +218,10 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
       }
 
       if (task) {
-        await api.patch(`/tasks/${task.id}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await api.patch(`/tasks/${task.id}`, formData);
         toast.success('Task updated!');
       } else {
-        await api.post('/tasks', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await api.post('/tasks', formData);
         toast.success('Task Assigned & Notification Sent');
       }
       onSaved();
