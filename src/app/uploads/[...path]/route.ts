@@ -63,7 +63,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `inline; filename="${fileName}"`,
-        'Content-Length': String(uint8.byteLength),
         'Cache-Control': 'public, max-age=86400, stale-while-revalidate=43200',
       },
     });
