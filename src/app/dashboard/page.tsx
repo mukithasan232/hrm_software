@@ -140,14 +140,14 @@ export default function DashboardOverview() {
         if (currentUserData) {
           const rawStartTime = 
             (currentUserData as any)?.shift?.startTime || 
-            (currentUserData as any)?.customDepartment?.shiftStartTime || 
             (currentUserData as any)?.shiftStartTime || 
+            (currentUserData as any)?.customDepartment?.shiftStartTime || 
             '09:00';
           
           const rawEndTime = 
             (currentUserData as any)?.shift?.endTime || 
-            (currentUserData as any)?.customDepartment?.shiftEndTime || 
             (currentUserData as any)?.shiftEndTime || 
+            (currentUserData as any)?.customDepartment?.shiftEndTime || 
             '17:00';
 
           const shiftStartTime = rawStartTime.includes('AM') || rawStartTime.includes('PM') ? rawStartTime : (formatTimeAMPM(rawStartTime) || '09:00 AM');

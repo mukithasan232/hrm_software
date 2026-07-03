@@ -386,7 +386,10 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       }
 
       const shiftStartUTC = new Date(`${summary.date}T${shiftStartTime}:00+06:00`);
-      const shiftEndUTC = new Date(`${summary.date}T${shiftEndTime}:00+06:00`);
+      let shiftEndUTC = new Date(`${summary.date}T${shiftEndTime}:00+06:00`);
+      if (shiftEndUTC.getTime() < shiftStartUTC.getTime()) {
+        shiftEndUTC.setDate(shiftEndUTC.getDate() + 1);
+      }
       const standardShiftMs = shiftEndUTC.getTime() - shiftStartUTC.getTime();
       
       let overtimeMinutes = 0;
