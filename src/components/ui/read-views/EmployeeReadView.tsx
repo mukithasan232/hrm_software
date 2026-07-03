@@ -13,6 +13,7 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
   const canEditBankInfo = isAdmin || isSelf;
 
   const [isApproving, setIsApproving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [employeeData, setEmployeeData] = useState(initialData);
   const [baseSalary, setBaseSalary] = useState(initialData?.baseSalary || '');
   const [salaryAccount, setSalaryAccount] = useState(initialData?.salaryAccount || '');
@@ -42,6 +43,20 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
       toast.error(err.response?.data?.message || `Failed to ${action.toLowerCase()} documents`);
     } finally {
       setIsApproving(false);
+    }
+  };
+
+  const handleResetVerification = async () => {
+    if (!window.confirm("Reset this employee's verification? They will need to re-submit their documents.")) return;
+    setIsResetting(true);
+    try {
+      const res = await api.patch(`/employees/${employeeData.id}/reset-verification`);
+      setEmployeeData((prev: any) => ({ ...prev, ...res.data.user }));
+      toast.success("Verification reset successfully");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to reset verification");
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -218,9 +233,21 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
           <div>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Appointment Letter</p>
             {emp.appointmentLetter ? (
-              <a href={`${BACKEND}${emp.appointmentLetter}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-                View Letter
-              </a>
+              <div className="flex items-center gap-4 mt-2">
+                <a href={`${BACKEND}${emp.appointmentLetter}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                  View Letter
+                </a>
+                
+                {isAdmin && (
+                  <button 
+                    onClick={handleResetVerification}
+                    disabled={isResetting}
+                    className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 bg-red-50 dark:bg-red-500/10 rounded transition-colors disabled:opacity-50"
+                  >
+                    {isResetting ? 'Resetting...' : 'Reset Verification'}
+                  </button>
+                )}
+              </div>
             ) : (
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">—</p>
             )}
