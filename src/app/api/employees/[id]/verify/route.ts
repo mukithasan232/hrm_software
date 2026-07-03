@@ -442,7 +442,7 @@ export const POST = wrapHandler(async (req: any, res: any) => {
         console.error('Email sending failed during verification:', emailErr);
       }
 
-      } catch (backgroundError) {
+      } catch (backgroundError: any) {
     require('fs').writeFileSync('pdf_crash.txt', backgroundError.stack || String(backgroundError));
     console.error("[PDF/EMAIL_ERROR] Failed to generate/send letter:", backgroundError);
   }

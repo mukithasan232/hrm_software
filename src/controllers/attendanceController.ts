@@ -267,7 +267,19 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       prisma.attendanceLog.findMany({
         where, skip, take,
         orderBy: { timestamp: 'desc' },
-        include: { user: { select: { name: true, employeeId: true, department: true, shiftStartTime: true, shiftEndTime: true } } }
+        include: { 
+          user: { 
+            select: { 
+              name: true, 
+              employeeId: true, 
+              department: true, 
+              shiftStartTime: true, 
+              shiftEndTime: true,
+              shift: { select: { startTime: true, endTime: true } },
+              customDepartment: { select: { shiftStartTime: true, shiftEndTime: true } }
+            } 
+          } 
+        }
       }),
       prisma.attendanceLog.count({ where }),
       prisma.attendanceLog.findMany({ where: { ...where, punchType: 'CheckIn' }, distinct: ['employeeId'], select: { employeeId: true } }),
@@ -330,8 +342,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
           employeeName: (log as any).user?.name || 'Unmapped',
           date: dateStr,
           rawLogs: [],
-          shiftStartTime: (log as any).user?.shiftStartTime || '09:00',
-          shiftEndTime: (log as any).user?.shiftEndTime || '17:00'
+          shiftStartTime: (log as any).user?.shift?.startTime || (log as any).user?.shiftStartTime || (log as any).user?.customDepartment?.shiftStartTime || '09:00',
+          shiftEndTime: (log as any).user?.shift?.endTime || (log as any).user?.shiftEndTime || (log as any).user?.customDepartment?.shiftEndTime || '17:00'
         };
       }
       summariesMap[key].rawLogs.push(log);
@@ -453,7 +465,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
           { employeeId: String(employeeId) }
         ]
       },
-      include: { customDepartment: true }
+      include: { customDepartment: true, shift: true }
     });
 
     if (!user) {
@@ -481,7 +493,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
 
     // --- Late Detection ---
     if (punchType === 'CheckIn') {
-      const expectedShiftStart = user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
+      const expectedShiftStart = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
       const checkInLocalStr = formatInTimeZone(parsedDate, BD_TZ, 'yyyy-MM-dd');
       const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;
       const shiftStartUTC = new Date(shiftStartLocalStr);

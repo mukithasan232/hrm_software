@@ -37,6 +37,7 @@ interface Employee {
   shiftEndTime?: string | null;
   shift2Start?: string | null;
   shift2End?: string | null;
+  verificationStatus?: string;
 }
 
 interface Designation {
