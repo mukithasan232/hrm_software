@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Clock, Users, User, Coffee, Utensils } from 'lucide-react';
+import { formatTimeStr12Hour } from '@/lib/timeUtils';
 
 interface Employee {
   id: string;
@@ -71,7 +72,7 @@ export default function DepartmentDetailsModal({ department, onClose }: Departme
                   <Clock className="w-4 h-4" /> Regular Shift
                 </div>
                 <p className="text-slate-700 dark:text-slate-300 font-medium">
-                  {department.shiftStartTime || 'N/A'} - {department.shiftEndTime || 'N/A'}
+                  {formatTimeStr12Hour(department.shiftStartTime)} - {formatTimeStr12Hour(department.shiftEndTime)}
                 </p>
               </div>
 
@@ -80,7 +81,7 @@ export default function DepartmentDetailsModal({ department, onClose }: Departme
                   <Utensils className="w-4 h-4" /> Lunch Break
                 </div>
                 <p className="text-slate-700 dark:text-slate-300 font-medium">
-                  {department.lunchStartTime || 'N/A'} - {department.lunchEndTime || 'N/A'}
+                  {formatTimeStr12Hour(department.lunchStartTime)} - {formatTimeStr12Hour(department.lunchEndTime)}
                 </p>
               </div>
 
@@ -89,7 +90,7 @@ export default function DepartmentDetailsModal({ department, onClose }: Departme
                   <Coffee className="w-4 h-4" /> Snacks Break
                 </div>
                 <p className="text-slate-700 dark:text-slate-300 font-medium">
-                  {department.snacksStartTime || 'N/A'} - {department.snacksEndTime || 'N/A'}
+                  {formatTimeStr12Hour(department.snacksStartTime)} - {formatTimeStr12Hour(department.snacksEndTime)}
                 </p>
               </div>
             </div>
@@ -125,7 +126,7 @@ export default function DepartmentDetailsModal({ department, onClose }: Departme
                           {emp.shiftStartTime && emp.shiftEndTime && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200" title="This employee ignores the department shift">
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                              Custom: {emp.shiftStartTime} - {emp.shiftEndTime}
+                              Custom: {formatTimeStr12Hour(emp.shiftStartTime)} - {formatTimeStr12Hour(emp.shiftEndTime)}
                             </span>
                           )}
                         </h4>

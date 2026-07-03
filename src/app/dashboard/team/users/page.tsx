@@ -7,6 +7,7 @@ import {
 import api from '@/services/api';
 import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidator';
 import toast from 'react-hot-toast';
+import { formatTimeStr12Hour } from '@/lib/timeUtils';
 import { useAuth } from '@/context/AuthContext';
 import QuickAddDialog from '@/components/ui/QuickAddDialog';
 import { useInView } from 'react-intersection-observer';
@@ -836,7 +837,7 @@ export default function TeamUsersPage() {
                             if (selectedDept && selectedDept.shiftStartTime && selectedDept.shiftEndTime) {
                               return (
                                 <span className="inline-block mt-0.5 text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded ml-1">
-                                  Currently inheriting: {selectedDept.shiftStartTime} - {selectedDept.shiftEndTime}
+                                  Currently inheriting: {formatTimeStr12Hour(selectedDept.shiftStartTime)} - {formatTimeStr12Hour(selectedDept.shiftEndTime)}
                                 </span>
                               );
                             }

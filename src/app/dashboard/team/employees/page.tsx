@@ -12,6 +12,7 @@ import { useDeviceSync } from '@/hooks/useDeviceSync';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import PageGuard from '@/components/auth/PageGuard';
+import { formatTimeStr12Hour } from '@/lib/timeUtils';
 import { useDetailsStore } from '@/store/useDetailsStore';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
@@ -510,7 +511,7 @@ export default function EmployeesPage() {
                     if (selectedDept && selectedDept.shiftStartTime && selectedDept.shiftEndTime) {
                       return (
                         <span className="inline-block mt-0.5 text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded ml-1">
-                          Currently inheriting: {selectedDept.shiftStartTime} - {selectedDept.shiftEndTime}
+                          Currently inheriting: {formatTimeStr12Hour(selectedDept.shiftStartTime)} - {formatTimeStr12Hour(selectedDept.shiftEndTime)}
                         </span>
                       );
                     }
