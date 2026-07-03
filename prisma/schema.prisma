@@ -365,7 +365,8 @@ model Task {
   title        String
   description  String?      @db.Text
   attachment   String?
-  outputFiles Json?      @default("[]")
+  outputFiles  Json?        @default("[]")
+  comments     Json?        @default("[]")
   startDate    DateTime?
   dueDate      DateTime?
   status       TaskStatus   @default(TODO)

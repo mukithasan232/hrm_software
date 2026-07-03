@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, User, Clock, Paperclip, CheckCircle2, AlertCircle, MessageSquare, Send, Activity, Info, MoreHorizontal } from 'lucide-react';
 import { format } from 'date-fns';
@@ -12,7 +12,12 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
     );
   }
 
-  const task = initialData;
+  const [task, setTask] = useState<any>(initialData);
+
+  useEffect(() => {
+    setTask(initialData);
+  }, [initialData]);
+
   const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
   const [imageError, setImageError] = useState(false);
   const [comment, setComment] = useState("");
@@ -31,6 +36,8 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
       });
       
       if (res.ok) {
+        const updatedTask = await res.json();
+        setTask(updatedTask);
         setComment("");
         router.refresh();
       } else {
