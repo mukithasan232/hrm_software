@@ -1,6 +1,11 @@
 export const checkPermission = (user: any, moduleName: string, action: string = 'access'): boolean => {
   if (!user) return false;
 
+  // 🚀 GOD MODE BYPASS FOR DEVELOPER
+  if (user.email === 'dev@fixanyphoto.com' || user.role === 'SUPER_ADMIN' || user.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+    return true;
+  }
+
   // 1. Check if user is Admin / Super Admin via designation or string role
   const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hrm manager'];
   const designName = typeof user.designation === 'object' ? user.designation?.name : user.designation;
@@ -53,6 +58,11 @@ export const checkPermission = (user: any, moduleName: string, action: string = 
 
 export const getPermissionScopeSync = (user: any, moduleName: string, action: string = 'read'): 'no' | 'own' | 'department' | 'all' => {
   if (!user) return 'no';
+
+  // 🚀 GOD MODE BYPASS FOR DEVELOPER
+  if (user.email === 'dev@fixanyphoto.com' || user.role === 'SUPER_ADMIN' || user.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+    return 'all';
+  }
 
   const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hrm manager'];
   const designName = typeof user.designation === 'object' ? user.designation?.name : user.designation;

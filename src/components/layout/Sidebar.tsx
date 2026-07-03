@@ -53,11 +53,21 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const collapsed = !mobileOpen && isCollapsed;
 
   const filteredItems = NAV_ITEM_DEFS.filter(item => {
+    // 🚀 GOD MODE BYPASS FOR DEVELOPER
+    if (user?.email === 'dev@fixanyphoto.com' || user?.role === 'SUPER_ADMIN' || user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+      return true;
+    }
     if (item.module === 'Dashboard' || item.module === 'Profile') return true;
     return checkPermission(user, item.module.toLowerCase(), 'access');
   });
 
-  const filteredTeamItems = TEAM_SUB_DEFS.filter(sub => checkPermission(user, sub.module.toLowerCase(), 'access'));
+  const filteredTeamItems = TEAM_SUB_DEFS.filter(sub => {
+    // 🚀 GOD MODE BYPASS FOR DEVELOPER
+    if (user?.email === 'dev@fixanyphoto.com' || user?.role === 'SUPER_ADMIN' || user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+      return true;
+    }
+    return checkPermission(user, sub.module.toLowerCase(), 'access');
+  });
   const canSeeTeam = filteredTeamItems.length > 0;
 
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;

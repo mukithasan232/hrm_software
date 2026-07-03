@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Calendar, User, Clock, Paperclip, CheckCircle2, AlertCircle, MessageSquare, Send, Activity, Info, MoreHorizontal } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -14,6 +15,33 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
   const task = initialData;
   const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
   const [imageError, setImageError] = useState(false);
+  const [comment, setComment] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const router = useRouter();
+
+  const handleSendMessage = async () => {
+    if (!comment.trim() || isSending) return;
+    setIsSending(true);
+    
+    try {
+      const res = await fetch(`/api/tasks/${task?.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: comment })
+      });
+      
+      if (res.ok) {
+        setComment("");
+        router.refresh();
+      } else {
+        console.error("Failed to send message");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   // Helpers for Badges
   const getStatusColor = (status: string) => {
@@ -139,57 +167,75 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
 
         <hr className="border-slate-200 dark:border-white/10" />
 
-        {/* Stream / Comments Section */}
-        <div>
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-slate-400" />
-            Stream
-          </h3>
-
-          <div className="flex gap-4 mb-6">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold flex-shrink-0">
-              ME
-            </div>
-            <div className="flex-1 relative">
-              <textarea
-                rows={3}
-                placeholder="Write your comment here..."
-                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-              />
-              <button className="absolute bottom-3 right-3 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg transition-colors">
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
+        <div className="mt-8 border-t border-slate-200 pt-6">
+          <div className="flex items-center gap-2 mb-6">
+            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            <h3 className="text-sm font-bold text-slate-700 tracking-wider uppercase">Stream</h3>
           </div>
 
-          <div className="space-y-6">
-            {/* Dummy Activity Item 1 */}
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-slate-700">
-                <Info className="w-4 h-4 text-slate-500" />
-              </div>
-              <div className="flex-1 pt-1.5">
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  <span className="font-semibold text-slate-900 dark:text-white">Admin</span> created this task
-                </p>
-                <span className="text-xs text-slate-400">Oct 2, 2023, 10:45 AM</span>
-              </div>
-            </div>
+          {/* Display Existing Messages */}
+          <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2">
+            {task?.comments && task.comments.length > 0 ? (
+              task.comments.map((msg: any, idx: number) => (
+                <div key={idx} className="flex gap-3">
+                  <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-sm font-bold text-slate-600">
+                    {msg.user?.name ? msg.user.name.substring(0, 2).toUpperCase() : 'U'}
+                  </div>
+                  <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl rounded-tl-none w-full shadow-sm">
+                    <p className="text-sm text-slate-700">{msg.text}</p>
+                    <span className="text-[10px] text-slate-400 mt-2 block">
+                      {new Date(msg.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-400 italic">No messages yet. Start the conversation!</p>
+            )}
+          </div>
 
-            {/* Dummy Activity Item 2 */}
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-slate-700">
-                <MessageSquare className="w-4 h-4 text-slate-500" />
-              </div>
-              <div className="flex-1 pt-1">
-                <div className="flex items-baseline justify-between mb-1">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">System Administrator</p>
-                  <span className="text-xs text-slate-400">Oct 2, 2023, 11:30 AM</span>
-                </div>
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg text-sm text-slate-700 dark:text-slate-300">
-                  Updated status to <span className="font-bold">In Progress</span>. We will start working on this immediately.
-                </div>
-              </div>
+          {/* Chat Input Box */}
+          <div className="flex gap-3 items-end">
+            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-sm font-bold text-blue-700">
+              ME
+            </div>
+            <div className="relative flex-1 border border-slate-300 rounded-xl bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Write your comment here..."
+                className="w-full bg-transparent p-3 pr-12 outline-none text-sm text-slate-700 min-h-[50px] resize-none rounded-xl"
+                rows={2}
+                disabled={isSending}
+              />
+              <button 
+                onClick={handleSendMessage}
+                disabled={isSending || !comment.trim()}
+                className={`absolute right-2 bottom-2 p-2 rounded-lg transition-colors ${
+                  comment.trim() && !isSending 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer' 
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                {isSending ? (
+                   <svg className="animate-spin h-4 w-4 text-slate-400" viewBox="0 0 24 24">
+                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                   </svg>
+                ) : (
+                  <svg className="w-4 h-4 transform rotate-45 -mt-1 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
         </div>
