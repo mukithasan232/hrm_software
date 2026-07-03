@@ -209,12 +209,27 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     const mapLog = (log: any) => ({ ...log, employeeName: log.user?.name || 'Unmapped' });
 
+    // Task 2: Accurate Absenteeism Calculation
+    const totalActiveEmployees = await prisma.user.count({
+      where: { isActive: true }
+    });
+    
+    const employeesOnLeaveCount = await prisma.leave.count({
+      where: {
+        status: 'Approved',
+        startDate: { lte: end },
+        endDate: { gte: start }
+      }
+    });
+
+    let calculatedAbsent = totalActiveEmployees - totalUniqueEmployeesToday - employeesOnLeaveCount;
+    calculatedAbsent = calculatedAbsent < 0 ? 0 : calculatedAbsent;
+
     res.status(200).json({
       totalToday: totalUniqueEmployeesToday,
       activeNow: currentlyPresentLogs.length,
-      // Only currently-present (last punch = CheckIn) — used by stat card
+      totalAbsent: calculatedAbsent,
       recent: currentlyPresentLogs.map(mapLog),
-      // All employees who punched today (any type) — used by Live Activity feed
       recentAll: allLatestPunchLogs.map(mapLog),
     });
   } catch (error: any) {
@@ -496,6 +511,30 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     if (!user) {
       res.status(404).json({ message: "Employee not found in database." });
       return;
+    }
+
+    // Task 1: 🚀 LAZY AUTO-CHECKOUT (Forgot to checkout)
+    const lastRecord = await prisma.attendanceLog.findFirst({
+      where: { employeeId: user.id },
+      orderBy: { timestamp: 'desc' }
+    });
+
+    const now = new Date();
+    if (lastRecord && lastRecord.punchType?.toLowerCase().includes('in')) {
+      const checkInTime = lastRecord.timestamp.getTime();
+      const hoursSinceCheckIn = (now.getTime() - checkInTime) / (1000 * 60 * 60);
+
+      if (hoursSinceCheckIn > 14) {
+        const autoCheckOutTime = new Date(checkInTime + 8 * 60 * 60 * 1000); // Add 8 standard hours
+        await prisma.attendanceLog.create({
+          data: {
+            employeeId: user.id,
+            timestamp: autoCheckOutTime,
+            punchType: 'CheckOut',
+            deviceId: 'System Auto-Checkout'
+          }
+        });
+      }
     }
 
     const log = await prisma.attendanceLog.upsert({

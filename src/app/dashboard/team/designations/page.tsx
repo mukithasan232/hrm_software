@@ -198,6 +198,7 @@ export default function DesignationsPage() {
 
   // Modal state
   const [showModal, setShowModal]           = useState(false);
+  const [viewPermissionsTarget, setViewPermissionsTarget] = useState<any | null>(null);
   const [editTarget, setEditTarget]         = useState<any | null>(null);
   const [designationName, setDesignationName] = useState('');
   const [designationDesc, setDesignationDesc] = useState('');
@@ -426,7 +427,15 @@ export default function DesignationsPage() {
                           </div>
                         </div>
                       </div>
-                      <div><PermPill count={permCount} /></div>
+                      <div>
+                        <button 
+                          onClick={() => setViewPermissionsTarget(designation)} 
+                          className="hover:scale-105 transition-transform"
+                          title="View detailed permissions"
+                        >
+                          <PermPill count={permCount} />
+                        </button>
+                      </div>
                       <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-gray-400">
                         <Users className="w-3.5 h-3.5 text-slate-400 dark:text-gray-600" />
                         <span className="font-medium">{designation._count?.users ?? 0}</span>
@@ -799,6 +808,65 @@ export default function DesignationsPage() {
                 {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 {deleting ? 'Deleting…' : 'Delete'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── View Permissions Modal ─── */}
+      {viewPermissionsTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setViewPermissionsTarget(null)} />
+          <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-xl flex flex-col max-h-[90vh]">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10 rounded-t-2xl">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <Shield className="w-5 h-5 text-indigo-500" />
+                Permissions for {viewPermissionsTarget.name}
+              </h2>
+              <button
+                onClick={() => setViewPermissionsTarget(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {SCOPE_MODULES.map(mod => {
+                  const perms = mergePermissions(viewPermissionsTarget.permissions)[mod.key];
+                  if (perms.Access !== 'Enabled' && perms.Create === 'No' && perms.Read === 'No' && perms.Edit === 'No' && perms.Delete === 'No') {
+                    return null; // Skip empty
+                  }
+                  return (
+                    <div key={mod.key} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-white/10">
+                      <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-3 text-sm">{mod.label}</h3>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 dark:text-gray-400">Access</span>
+                          <span className={`font-medium ${valueBadgeClass(perms.Access)}`}>{perms.Access}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 dark:text-gray-400">Create</span>
+                          <span className={`font-medium ${valueBadgeClass(perms.Create)}`}>{perms.Create}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 dark:text-gray-400">Read</span>
+                          <span className={`font-medium ${valueBadgeClass(perms.Read)}`}>{perms.Read}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 dark:text-gray-400">Edit</span>
+                          <span className={`font-medium ${valueBadgeClass(perms.Edit)}`}>{perms.Edit}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 dark:text-gray-400">Delete</span>
+                          <span className={`font-medium ${valueBadgeClass(perms.Delete)}`}>{perms.Delete}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

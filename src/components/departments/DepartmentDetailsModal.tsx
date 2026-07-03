@@ -8,6 +8,8 @@ interface Employee {
   designation: {
     name: string;
   } | null;
+  shiftStartTime?: string | null;
+  shiftEndTime?: string | null;
 }
 
 interface Department {
@@ -105,23 +107,33 @@ export default function DepartmentDetailsModal({ department, onClose }: Departme
                 <p className="text-slate-500 dark:text-slate-400 font-medium">No employees assigned yet.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-3">
                 {department.employees.map(emp => (
-                  <div key={emp.id} className="flex items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center flex-shrink-0">
-                      {getInitials(emp.name)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-slate-900 dark:text-white font-semibold truncate" title={emp.name}>
-                        {emp.name}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        <span className="font-mono bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-[10px]">
-                          {emp.employeeId}
-                        </span>
-                        <span className="truncate" title={emp.designation?.name || 'No designation'}>
-                          {emp.designation?.name || 'No designation'}
-                        </span>
+                  <div key={emp.id} className="flex items-center justify-between p-3 mb-2 border border-slate-100 rounded-xl bg-slate-50/50">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                        {getInitials(emp.name)}
+                      </div>
+                      
+                      {/* Info */}
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800 flex flex-wrap items-center gap-2">
+                          {emp.name}
+                          
+                          {/* 🚀 CUSTOM SHIFT OVERRIDE BADGE */}
+                          {emp.shiftStartTime && emp.shiftEndTime && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200" title="This employee ignores the department shift">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              Custom: {emp.shiftStartTime} - {emp.shiftEndTime}
+                            </span>
+                          )}
+                        </h4>
+                        
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
+                          <span className="bg-slate-200 px-1.5 py-0.5 rounded text-[10px] font-mono">{emp.employeeId}</span>
+                          <span className="truncate" title={emp.designation?.name || 'No designation'}>{emp.designation?.name || 'No designation'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>

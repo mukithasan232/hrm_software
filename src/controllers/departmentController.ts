@@ -16,6 +16,8 @@ export const getDepartments = async (req: MockRequest, res: MockResponse) => {
         employeeId: true, 
         department: true, 
         departmentId: true, 
+        shiftStartTime: true,
+        shiftEndTime: true,
         customDesignation: { select: { name: true } } 
       } 
     });
@@ -36,7 +38,9 @@ export const getDepartments = async (req: MockRequest, res: MockResponse) => {
           id: u.id,
           name: u.name,
           employeeId: u.employeeId,
-          designation: u.customDesignation
+          designation: u.customDesignation,
+          shiftStartTime: u.shiftStartTime,
+          shiftEndTime: u.shiftEndTime
         })),
         _count: { employees: uniqueEmployees.length }
       };

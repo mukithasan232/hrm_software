@@ -190,7 +190,7 @@ export default function DashboardOverview() {
         remainingLeaves,
         activeNow: presentCount,
         totalToday: presenceRes.data.totalToday || 0,
-        totalAbsent: Math.max(0, employeeCount - presentCount),
+        totalAbsent: presenceRes.data.totalAbsent ?? Math.max(0, employeeCount - presentCount),
       });
 
       const allLogs = presenceRes.data.recentAll || presenceRes.data.recent || [];
@@ -216,7 +216,7 @@ export default function DashboardOverview() {
         ...prev,
         activeNow: res.data.activeNow || 0,
         totalToday: res.data.totalToday || 0,
-        totalAbsent: Math.max(0, prev.employees - (res.data.activeNow || 0)),
+        totalAbsent: res.data.totalAbsent ?? Math.max(0, prev.employees - (res.data.activeNow || 0)),
       }));
       const allLogs = res.data.recentAll || res.data.recent || [];
       setRecentAttendance(allLogs);
