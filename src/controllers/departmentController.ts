@@ -6,29 +6,41 @@ const prisma = new PrismaClient();
 export const getDepartments = async (req: MockRequest, res: MockResponse) => {
   try {
     const departments = await prisma.department.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        users: {
-          select: { id: true, name: true, employeeId: true, customDesignation: { select: { name: true } } }
-        },
-        _count: {
-          select: { users: true }
-        }
-      }
+      orderBy: { createdAt: 'desc' }
     });
-    
-    // Map backend relational naming to frontend expected schema
-    const mappedDepartments = departments.map((dept: any) => ({
-      ...dept,
-      employees: dept.users?.map((u: any) => ({
-        id: u.id,
-        name: u.name,
-        employeeId: u.employeeId,
-        designation: u.customDesignation
-      })),
-      _count: { employees: dept._count?.users || 0 },
-      users: undefined
-    }));
+
+    const allEmployees = await prisma.user.findMany({ 
+      select: { 
+        id: true, 
+        name: true, 
+        employeeId: true, 
+        department: true, 
+        departmentId: true, 
+        customDesignation: { select: { name: true } } 
+      } 
+    });
+
+    const mappedDepartments = departments.map((dept: any) => {
+      // 🚀 PROPER RELATIONAL & STRING MATCHING
+      const deptEmployees = allEmployees.filter(emp => 
+        emp.departmentId === dept.id || 
+        (emp.department && emp.department.trim().toLowerCase() === dept.name.trim().toLowerCase())
+      );
+      
+      // Deduplicate
+      const uniqueEmployees = Array.from(new Map(deptEmployees.map(emp => [emp.id, emp])).values());
+
+      return {
+        ...dept,
+        employees: uniqueEmployees.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          employeeId: u.employeeId,
+          designation: u.customDesignation
+        })),
+        _count: { employees: uniqueEmployees.length }
+      };
+    });
     
     res.status(200).json(mappedDepartments);
   } catch (error: any) {
