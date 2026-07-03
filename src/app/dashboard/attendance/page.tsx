@@ -272,12 +272,12 @@ export default function AttendancePage() {
         if (log.punchType === 'CheckIn') {
           if (!grouped[key].checkInRaw || timestampTime < grouped[key].checkInRaw) {
             grouped[key].checkInRaw = timestampTime;
-            grouped[key].checkIn = toBDDisplay(log.timestamp, 'hh:mm:ss a');
+            grouped[key].checkIn = toBDDisplay(log.timestamp, 'hh:mm a');
           }
         } else if (log.punchType === 'CheckOut' || log.punchType === 'Checkout') {
           if (!grouped[key].checkOutRaw || timestampTime > grouped[key].checkOutRaw) {
             grouped[key].checkOutRaw = timestampTime;
-            grouped[key].checkOut = toBDDisplay(log.timestamp, 'hh:mm:ss a');
+            grouped[key].checkOut = toBDDisplay(log.timestamp, 'hh:mm a');
           }
         }
       });
@@ -522,7 +522,7 @@ export default function AttendancePage() {
                       {row.checkInRaw ? (
                         <div>
                           <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                            {toBDDisplay(row.checkInRaw, 'hh:mm:ss a')}
+                            {toBDDisplay(row.checkInRaw, 'hh:mm a')}
                           </span>
                           {row.lateMinutes > 0 && (
                             <span className="block mt-1 text-xs font-medium text-red-600 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded w-max">
@@ -537,7 +537,7 @@ export default function AttendancePage() {
                     <td className="px-6 py-4">
                       {row.checkOutRaw ? (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">
-                          {toBDDisplay(row.checkOutRaw, 'hh:mm:ss a')}
+                          {toBDDisplay(row.checkOutRaw, 'hh:mm a')}
                         </span>
                       ) : (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-white/10">

@@ -61,7 +61,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <span className="text-xl font-bold text-slate-900 dark:text-white">
-                {toBDDisplay(checkInRaw, 'hh:mm:ss a')}
+                {toBDDisplay(checkInRaw, 'hh:mm a')}
               </span>
             </div>
           ) : (
@@ -77,7 +77,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <span className="text-xl font-bold text-slate-900 dark:text-white">
-                {toBDDisplay(checkOutRaw, 'hh:mm:ss a')}
+                {toBDDisplay(checkOutRaw, 'hh:mm a')}
               </span>
             </div>
           ) : (

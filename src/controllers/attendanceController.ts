@@ -374,8 +374,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
           employeeName: (log as any).user?.name || 'Unmapped',
           date: dateStr,
           rawLogs: [],
-          shiftStartTime: (log as any).user?.shift?.startTime || (log as any).user?.shiftStartTime || (log as any).user?.customDepartment?.shiftStartTime || '09:00',
-          shiftEndTime: (log as any).user?.shift?.endTime || (log as any).user?.shiftEndTime || (log as any).user?.customDepartment?.shiftEndTime || '17:00'
+          shiftStartTime: (log as any).user?.shiftStartTime || (log as any).user?.customDepartment?.shiftStartTime || '09:00',
+          shiftEndTime: (log as any).user?.shiftEndTime || (log as any).user?.customDepartment?.shiftEndTime || '17:00'
         };
       }
       summariesMap[key].rawLogs.push(log);
@@ -428,6 +428,11 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       if (totalValidMs > standardShiftMs && standardShiftMs > 0) {
         overtimeMinutes = Math.floor((totalValidMs - standardShiftMs) / 60000);
       }
+      
+      let status = 'Absent';
+      if (checkInRaw) {
+        status = lateMinutes > 0 ? 'Late' : 'Present';
+      }
 
       return {
         employeeId: summary.employeeId,
@@ -438,7 +443,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         isMissingOut,
         totalValidMs,
         lateMinutes,
-        overtimeMinutes
+        overtimeMinutes,
+        status
       };
     });
 
