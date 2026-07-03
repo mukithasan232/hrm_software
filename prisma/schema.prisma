@@ -86,6 +86,9 @@ model AttendanceLog {
   timestamp  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  otStatus          String @default("PENDING")
+  approvedOtMinutes Int    @default(0)
+
   @@unique([employeeId, timestamp])
   @@index([timestamp(sort: Desc)])
   @@index([timestamp, punchType])

@@ -417,17 +417,39 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         lateMinutes = Math.floor(lateMs / 60000);
       }
 
-      const shiftStartUTC = new Date(`${summary.date}T${shiftStartTime}:00+06:00`);
-      let shiftEndUTC = new Date(`${summary.date}T${shiftEndTime}:00+06:00`);
-      if (shiftEndUTC.getTime() < shiftStartUTC.getTime()) {
-        shiftEndUTC.setDate(shiftEndUTC.getDate() + 1);
-      }
-      const standardShiftMs = shiftEndUTC.getTime() - shiftStartUTC.getTime();
+      const standardShiftMs = 8 * 60 * 60 * 1000; // Strict 8-Hour Limit
       
-      let overtimeMinutes = 0;
-      if (totalValidMs > standardShiftMs && standardShiftMs > 0) {
-        overtimeMinutes = Math.floor((totalValidMs - standardShiftMs) / 60000);
+      const totalWorkedMs = totalValidMs;
+      const validWorkedMs = Math.min(totalWorkedMs, standardShiftMs);
+      const systemOvertimeMs = Math.max(0, totalWorkedMs - standardShiftMs);
+
+      // 🚀 OT APPROVAL WORKFLOW
+      const firstPunch = rawLogs[0];
+      const otStatus = firstPunch?.otStatus || 'PENDING';
+      const approvedOtMinutes = firstPunch?.approvedOtMinutes || 0;
+
+      let displayOvertimeMs = 0;
+      let otBadge = 'Pending';
+      if (systemOvertimeMs > 0) {
+        if (otStatus === 'APPROVED') {
+          displayOvertimeMs = approvedOtMinutes * 60 * 1000;
+          otBadge = 'Approved';
+        } else if (otStatus === 'REJECTED') {
+          displayOvertimeMs = 0;
+          otBadge = 'Rejected';
+        } else {
+          displayOvertimeMs = 0;
+          otBadge = 'Pending';
+        }
+      } else {
+        otBadge = 'None';
       }
+
+      const overtimeMinutes = Math.floor(displayOvertimeMs / 60000);
+      const systemCalculatedOtMinutes = Math.floor(systemOvertimeMs / 60000);
+      
+      // Override the old un-capped valid Ms with the capped valid Ms
+      totalValidMs = validWorkedMs;
       
       let status = 'Absent';
       if (checkInRaw) {
@@ -444,6 +466,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         totalValidMs,
         lateMinutes,
         overtimeMinutes,
+        systemCalculatedOtMinutes,
+        otBadge,
         status
       };
     });

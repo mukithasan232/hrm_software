@@ -24,6 +24,8 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
     totalValidMs,
     lateMinutes,
     overtimeMinutes,
+    systemCalculatedOtMinutes,
+    otBadge,
     isMissingOut,
     status
   } = initialData;
@@ -113,10 +115,29 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
             </p>
           </div>
           
-          <div className="p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
-            <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-1">Overtime</p>
-            <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-              {formatMinutes(overtimeMinutes)}
+          <div className={`p-4 rounded-xl border ${
+            otBadge === 'Approved' ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-700/50' : 
+            otBadge === 'Rejected' ? 'bg-red-50 border-red-100 dark:bg-red-900/20 dark:border-red-700/50' :
+            systemCalculatedOtMinutes > 0 ? 'bg-amber-50 border-amber-100 dark:bg-amber-900/20 dark:border-amber-700/50' :
+            'bg-slate-50 border-slate-100 dark:bg-slate-900/50 dark:border-slate-700/50'
+          }`}>
+            <div className="flex items-center justify-between mb-1">
+              <p className={`text-sm font-medium ${
+                otBadge === 'Approved' ? 'text-emerald-600 dark:text-emerald-400' :
+                otBadge === 'Rejected' ? 'text-red-500' :
+                systemCalculatedOtMinutes > 0 ? 'text-amber-600 dark:text-amber-400' :
+                'text-slate-500'
+              }`}>
+                Overtime {otBadge !== 'None' && `(${otBadge})`}
+              </p>
+            </div>
+            <p className={`text-2xl font-bold ${
+              otBadge === 'Approved' ? 'text-emerald-700 dark:text-emerald-300' :
+              otBadge === 'Rejected' ? 'text-red-600 dark:text-red-400' :
+              systemCalculatedOtMinutes > 0 ? 'text-amber-700 dark:text-amber-300' :
+              'text-slate-900 dark:text-white'
+            }`}>
+              {otBadge === 'Approved' ? formatMinutes(overtimeMinutes) : formatMinutes(systemCalculatedOtMinutes || 0)}
             </p>
           </div>
         </div>

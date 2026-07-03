@@ -552,10 +552,17 @@ export default function AttendancePage() {
                             <Clock className="w-4 h-4" />
                             {Math.floor(row.totalValidMs / 3600000)}h {Math.floor((row.totalValidMs % 3600000) / 60000)}m
                           </span>
-                          {row.overtimeMinutes > 0 && (
-                            <span className="block mt-1 text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded w-max">
-                              OT: {formatMinutes(row.overtimeMinutes)}
-                            </span>
+                          {row.systemCalculatedOtMinutes > 0 && (
+                            <div className={`mt-1.5 flex items-center gap-1.5 px-2 py-0.5 rounded w-max border ${
+                              row.otBadge === 'Approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-400' :
+                              row.otBadge === 'Rejected' ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-700 dark:text-red-400' :
+                              'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-400'
+                            }`}>
+                              <span className="text-[10px] font-bold uppercase tracking-wider">{row.otBadge}:</span>
+                              <span className="text-xs font-semibold">
+                                {row.otBadge === 'Approved' ? formatMinutes(row.overtimeMinutes) : formatMinutes(row.systemCalculatedOtMinutes)}
+                              </span>
+                            </div>
                           )}
                         </div>
                       ) : (
