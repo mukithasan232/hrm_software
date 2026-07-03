@@ -358,14 +358,6 @@ export default function EmployeesPage() {
                     <Building2 className="w-3 h-3 flex-shrink-0" /> {emp.department}
                   </p>
                 )}
-                <div className="flex gap-2 mt-2">
-                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 rounded">
-                    CL Adj: {emp.casualLeaveAdjustment ?? 0 > 0 ? '+' : ''}{emp.casualLeaveAdjustment ?? 0}
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.5 bg-orange-50 dark:bg-orange-500/10 text-orange-600 rounded">
-                    SL Adj: {emp.sickLeaveAdjustment ?? 0 > 0 ? '+' : ''}{emp.sickLeaveAdjustment ?? 0}
-                  </span>
-                </div>
               </div>
 
               {/* Footer: type badge + action buttons */}

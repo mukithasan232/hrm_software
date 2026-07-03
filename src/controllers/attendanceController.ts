@@ -209,21 +209,49 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     const mapLog = (log: any) => ({ ...log, employeeName: log.user?.name || 'Unmapped' });
 
-    // Task 2: Accurate Absenteeism Calculation
-    const totalActiveEmployees = await prisma.user.count({
-      where: { isActive: true }
+    // Task 2: Smart Absenteeism Calculation (Time-Aware)
+    const activeEmployees = await prisma.user.findMany({
+      where: { isActive: true },
+      include: { customDepartment: true, shift: true }
     });
+
+    const regularEmployees = activeEmployees.filter(u => {
+      const desig = (u.designation || '').toLowerCase();
+      return !['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'].includes(desig) && u.email !== 'dev@fixanyphoto.com' && u.userType !== 'SUPER_ADMIN';
+    });
+
+    const presentUserIds = new Set(allLatestPunchLogs.map(l => l.employeeId));
     
-    const employeesOnLeaveCount = await prisma.leave.count({
+    // Also exclude users who are on approved leave today
+    const leavesToday = await prisma.leave.findMany({
       where: {
         status: 'Approved',
         startDate: { lte: end },
         endDate: { gte: start }
+      },
+      select: { employeeId: true }
+    });
+    const leaveUserIds = new Set(leavesToday.map(l => l.employeeId));
+
+    let trueAbsentCount = 0;
+    const currentTime = new Date();
+
+    regularEmployees.forEach(user => {
+      if (presentUserIds.has(user.id) || leaveUserIds.has(user.id)) return; // Skip if present or on leave
+
+      const shiftStr = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
+      const [hours, minutes] = shiftStr.split(':').map(Number);
+      
+      const userShiftStartTime = new Date();
+      userShiftStartTime.setHours(hours, minutes, 0, 0);
+
+      // Core Logic: Only count as absent if current time has passed their shift start time
+      if (currentTime > userShiftStartTime) {
+        trueAbsentCount++;
       }
     });
 
-    let calculatedAbsent = totalActiveEmployees - totalUniqueEmployeesToday - employeesOnLeaveCount;
-    calculatedAbsent = calculatedAbsent < 0 ? 0 : calculatedAbsent;
+    const calculatedAbsent = trueAbsentCount;
 
     // 3. Absolute Latest for Current User (Cross-Midnight Bug Fix)
     let myAbsoluteLatest = null;
