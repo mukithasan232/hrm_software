@@ -503,7 +503,20 @@ export default function EmployeesPage() {
               {/* Shift Overrides */}
               <div className="pt-2">
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Shift Override (Optional)</h3>
-                <p className="text-[10px] text-slate-500 mb-3">Leave blank to use Department shift times.</p>
+                <p className="text-[10px] text-slate-500 mb-3 mt-1">
+                  Leave blank to use Department shift times.
+                  {(() => {
+                    const selectedDept = departments.find(d => d.name === editDepartment);
+                    if (selectedDept && selectedDept.shiftStartTime && selectedDept.shiftEndTime) {
+                      return (
+                        <span className="inline-block mt-0.5 text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded ml-1">
+                          Currently inheriting: {selectedDept.shiftStartTime} - {selectedDept.shiftEndTime}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className={labelCls}>Shift Start Time</label>

@@ -829,7 +829,20 @@ export default function TeamUsersPage() {
                       {/* Shift Override */}
                       <div className="space-y-1 sm:col-span-2 pt-4 border-t border-slate-100 dark:border-white/10">
                         <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Shift Override (Optional)</h3>
-                        <p className="text-[10px] text-slate-500 mb-3">Overrides the assigned shift times for this specific user.</p>
+                        <p className="text-[10px] text-slate-500 mb-3 mt-1">
+                          Leave blank to use Department shift times.
+                          {(() => {
+                            const selectedDept = departments?.find((d: any) => d.name === form.department);
+                            if (selectedDept && selectedDept.shiftStartTime && selectedDept.shiftEndTime) {
+                              return (
+                                <span className="inline-block mt-0.5 text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded ml-1">
+                                  Currently inheriting: {selectedDept.shiftStartTime} - {selectedDept.shiftEndTime}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Start Time</label>
