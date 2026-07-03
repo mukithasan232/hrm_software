@@ -519,80 +519,65 @@ function KanbanCard({
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-            className={`group relative bg-white dark:bg-slate-800/80 border rounded-2xl p-4 shadow-sm transition-all select-none cursor-grab active:cursor-grabbing
-            ${snapshot.isDragging
-              ? 'shadow-2xl border-indigo-500/50 ring-2 ring-indigo-500/30 rotate-1'
-              : 'border-slate-200 dark:border-white/10 hover:border-indigo-400/40 dark:hover:border-white/20 hover:shadow-md'
-            }`}
+          className={`group bg-white dark:bg-slate-800 p-4 rounded-xl border shadow-sm transition-all cursor-grab active:cursor-grabbing flex flex-col gap-3 relative select-none ${
+            snapshot.isDragging
+              ? 'shadow-2xl border-blue-500 ring-2 ring-blue-500/30 rotate-1'
+              : 'border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-500'
+          }`}
           onClick={() => onView(task)}
         >
-          {/* Priority dot */}
-          <div className={`absolute top-3 right-3 w-2 h-2 rounded-full ${
-            task.priority === 'URGENT' ? 'bg-red-500 animate-pulse' :
-            task.priority === 'HIGH'   ? 'bg-orange-500' :
-            task.priority === 'NORMAL' ? 'bg-blue-500' : 'bg-slate-400'
-          }`} />
-
-          <p className="text-sm font-bold text-slate-900 dark:text-white pr-4 leading-snug mb-2">
-            {task.title}
-          </p>
-
-          {task.description && (
-            <p className="text-xs text-slate-500 dark:text-gray-400 line-clamp-2 mb-3">
-              {task.description}
-            </p>
-          )}
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Avatar user={task.assignedTo} />
-              <span className="text-xs font-semibold text-slate-600 dark:text-gray-300 truncate max-w-[90px]">
-                {task.assignedTo.name.split(' ')[0]}
-              </span>
-            </div>
-
-            {task.dueDate && (
-              <div className={`flex items-center gap-1 text-xs font-semibold ${
-                overdue ? 'text-red-500' : 'text-slate-500 dark:text-gray-400'
-              }`}>
-                {overdue && <AlertTriangle className="w-3 h-3" />}
-                <CalendarDays className="w-3 h-3" />
-                {fmtDate(task.dueDate)}
-              </div>
-            )}
-          </div>
-
-          {task.attachment && (
-            <div className="mt-2.5 flex items-center gap-1 text-[10px] text-blue-500 bg-blue-50 dark:bg-blue-500/10 w-fit px-2 py-0.5 rounded-md font-semibold">
-              <Paperclip className="w-3 h-3" /> Attachment
-            </div>
-          )}
-
-          <div className="mt-2.5">
-            <PriorityBadge priority={task.priority} />
-          </div>
-
-          {/* Action buttons */}
+          {/* Action buttons (hidden by default, shown on group hover) */}
           {(canEdit || canDelete) && (
-            <div className="absolute top-2 right-7 hidden group-hover:flex items-center gap-1">
+            <div className="absolute top-2 right-2 hidden group-hover:flex items-center gap-1 z-10 bg-white/90 dark:bg-slate-800/90 rounded-md p-1 backdrop-blur-sm">
               {canEdit && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-                  className="p-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-white/10 text-slate-500 hover:text-indigo-500 transition-colors shadow-sm"
+                  className="p-1 rounded text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+                  title="Edit"
                 >
-                  <Pencil className="w-3 h-3" />
+                  <Pencil className="w-3.5 h-3.5" />
                 </button>
               )}
               {canDelete && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-                  className="p-1 bg-white dark:bg-slate-700 rounded-md border border-slate-200 dark:border-white/10 text-slate-500 hover:text-red-500 transition-colors shadow-sm"
+                  className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
+                  title="Delete"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
           )}
+
+          {/* Task Title with Line Clamp */}
+          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 leading-snug pr-8">
+            {task.title}
+          </h4>
+          
+          {/* Task Meta Data (Bottom Row) */}
+          <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center gap-2">
+              {/* Priority Badge */}
+              <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 uppercase">
+                {task.priority || 'NORMAL'}
+              </span>
+              
+              {/* Attachment Icon (If exists) */}
+              {task.attachment && (
+                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+              )}
+            </div>
+            
+            {/* Assignee Avatar */}
+            {task.assignedTo && (
+              <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300 border-2 border-white dark:border-slate-800 shadow-sm" title={task.assignedTo?.name}>
+                {task.assignedTo?.name ? task.assignedTo.name.substring(0, 2).toUpperCase() : 'U'}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </Draggable>
@@ -833,26 +818,24 @@ export default function TasksPage() {
           </div>
 
           {/* View toggle */}
-          <div className="flex items-center bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-1">
-            <button
+          <div className="flex items-center bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-1">
+            <button 
               onClick={() => setView('list')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                view === 'list'
-                  ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-white'
-              }`}
+              title="List View"
+              className={`p-2 rounded-md transition-all ${view === 'list' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-white'}`}
             >
-              <LayoutList className="w-4 h-4" /> List
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             </button>
-            <button
+            <button 
               onClick={() => setView('kanban')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                view === 'kanban'
-                  ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-white'
-              }`}
+              title="Kanban View"
+              className={`p-2 rounded-md transition-all ${view === 'kanban' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-white'}`}
             >
-              <Columns3 className="w-4 h-4" /> Kanban
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
             </button>
           </div>
 
@@ -1009,19 +992,18 @@ export default function TasksPage() {
       {/* ═══════════════ KANBAN VIEW ═══════════════ */}
       {!loading && view === 'kanban' && (
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="flex gap-6 overflow-x-auto pb-8 h-[calc(100vh-220px)] hide-scrollbar mt-6">
             {STATUS_COLUMNS.map(col => {
               const colTasks = tasksByStatus(col.key);
               const Icon = col.icon;
               return (
-                <div key={col.key} className="flex flex-col min-h-[400px]">
+                <div key={col.key} className="flex-none w-[340px] flex flex-col bg-slate-50/70 dark:bg-slate-900/50 rounded-2xl p-3 border border-slate-100 dark:border-white/5">
                   {/* Column header */}
-                  <div className={`flex items-center justify-between px-4 py-3 rounded-2xl mb-3 border ${col.bg} ${col.border}`}>
-                    <div className={`flex items-center gap-2 ${col.color} font-bold text-sm`}>
-                      <Icon className="w-4 h-4" />
-                      {col.label}
-                    </div>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${col.bg} ${col.color} border ${col.border}`}>
+                  <div className="flex justify-between items-center mb-4 px-1">
+                    <h3 className={`font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ${col.color}`}>
+                      <Icon className="w-4 h-4" /> {col.label}
+                    </h3>
+                    <span className={`bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold px-2.5 py-1 rounded-full ${col.color}`}>
                       {colTasks.length}
                     </span>
                   </div>
@@ -1032,10 +1014,10 @@ export default function TasksPage() {
                       <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`flex-1 space-y-3 p-3 rounded-2xl min-h-[300px] transition-all border-2 border-dashed ${
+                        className={`flex flex-col gap-3 overflow-y-auto pr-1 flex-1 min-h-[300px] transition-all rounded-xl ${
                           snapshot.isDraggingOver
                             ? `${col.border} ${col.bg}`
-                            : 'border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]'
+                            : ''
                         }`}
                       >
                         {colTasks.length === 0 && !snapshot.isDraggingOver && (
