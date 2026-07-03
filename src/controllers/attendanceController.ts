@@ -225,12 +225,22 @@ export const getActivePresence = async (req: Request, res: Response) => {
     let calculatedAbsent = totalActiveEmployees - totalUniqueEmployeesToday - employeesOnLeaveCount;
     calculatedAbsent = calculatedAbsent < 0 ? 0 : calculatedAbsent;
 
+    // 3. Absolute Latest for Current User (Cross-Midnight Bug Fix)
+    let myAbsoluteLatest = null;
+    if (user?.id) {
+      myAbsoluteLatest = await prisma.attendanceLog.findFirst({
+        where: { employeeId: user.id },
+        orderBy: { timestamp: 'desc' }
+      });
+    }
+
     res.status(200).json({
       totalToday: totalUniqueEmployeesToday,
       activeNow: currentlyPresentLogs.length,
       totalAbsent: calculatedAbsent,
       recent: currentlyPresentLogs.map(mapLog),
       recentAll: allLatestPunchLogs.map(mapLog),
+      myAbsoluteLatest
     });
   } catch (error: any) {
     res.status(500).json({ message: 'Error fetching stats', error: error.message });
@@ -386,22 +396,31 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       rawLogs.sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
       
       const checkInRaw = rawLogs.find((l: any) => l.punchType?.toLowerCase().includes('in'))?.timestamp || null;
+      
       let checkOutRaw = null;
       for (let i = rawLogs.length - 1; i >= 0; i--) {
-        if (rawLogs[i].punchType?.toLowerCase().includes('out')) {
+        if (rawLogs[i].checkOut) {
+          checkOutRaw = rawLogs[i].checkOut;
+          break;
+        } else if (rawLogs[i].punchType?.toLowerCase().includes('out')) {
           checkOutRaw = rawLogs[i].timestamp;
           break;
         }
       }
 
       const lastPunch = rawLogs[rawLogs.length - 1];
-      const isMissingOut = lastPunch?.punchType?.toLowerCase().includes('in');
+      const isMissingOut = lastPunch?.punchType?.toLowerCase().includes('in') && !lastPunch.checkOut;
 
       let totalValidMs = 0;
       let currentIn = null;
       for (const l of rawLogs) {
         if (l.punchType?.toLowerCase().includes('in')) {
-          if (!currentIn) currentIn = l.timestamp;
+          if (l.checkOut) {
+            // New Single-Row Format (Cross-Midnight update)
+            totalValidMs += (l.checkOut.getTime() - l.timestamp.getTime());
+          } else {
+            if (!currentIn) currentIn = l.timestamp;
+          }
         } else {
           if (currentIn) {
             totalValidMs += (l.timestamp.getTime() - currentIn.getTime());
@@ -567,23 +586,37 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       }
     }
 
-    const log = await prisma.attendanceLog.upsert({
-      where: {
-        employeeId_timestamp: {
+    const isActiveShift = lastRecord && lastRecord.punchType?.toLowerCase().includes('in') && !lastRecord.checkOut;
+    let log: any;
+    let created = false;
+
+    if (punchType.toLowerCase().includes('out') && isActiveShift) {
+      // 🚀 CROSS-MIDNIGHT CHECKOUT: Update the existing open record from yesterday!
+      log = await prisma.attendanceLog.update({
+        where: { id: lastRecord.id },
+        data: { checkOut: parsedDate },
+        include: { user: { select: { name: true } } },
+      });
+    } else {
+      // FRESH CHECK IN OR NORMAL PUNCH
+      log = await prisma.attendanceLog.upsert({
+        where: {
+          employeeId_timestamp: {
+            employeeId: user.id,
+            timestamp: parsedDate,
+          },
+        },
+        update: { punchType },
+        create: {
           employeeId: user.id,
           timestamp: parsedDate,
+          punchType,
+          deviceId: 'Manual Entry',
         },
-      },
-      update: { punchType },
-      create: {
-        employeeId: user.id,
-        timestamp: parsedDate,
-        punchType,
-        deviceId: 'Manual Entry',
-      },
-      include: { user: { select: { name: true } } },
-    });
-    const created = log.createdAt === log.updatedAt;
+        include: { user: { select: { name: true } } },
+      });
+      created = log.createdAt.getTime() === log.updatedAt.getTime();
+    }
 
     // --- Late Detection ---
     if (punchType === 'CheckIn') {

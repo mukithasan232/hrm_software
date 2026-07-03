@@ -84,6 +84,7 @@ model AttendanceLog {
   user       User     @relation("UserAttendance", fields: [employeeId], references: [id], onDelete: Cascade)
   punchType  String
   timestamp  DateTime @default(now())
+  checkOut   DateTime?
   updatedAt  DateTime @updatedAt
 
   otStatus          String @default("PENDING")

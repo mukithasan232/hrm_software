@@ -91,12 +91,16 @@ export default function DashboardOverview() {
   ].includes((user as any)?.designation || "");
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  const deriveLatestPunch = (logs: any[], currentUserId?: string) => {
+  const deriveLatestPunch = (absoluteLatestRecord: any, logs: any[], currentUserId?: string) => {
+    if (absoluteLatestRecord) {
+      return { punchType: absoluteLatestRecord.punchType, timestamp: absoluteLatestRecord.timestamp, id: absoluteLatestRecord.id, checkOut: absoluteLatestRecord.checkOut };
+    }
+    
     if (!currentUserId) return null;
     const myLogs = logs.filter((l) => l.employeeId === currentUserId || l.id === currentUserId);
     if (myLogs.length === 0) return null;
     // logs are sorted desc by timestamp from the API
-    return { punchType: myLogs[0].punchType, timestamp: myLogs[0].timestamp };
+    return { punchType: myLogs[0].punchType, timestamp: myLogs[0].timestamp, id: myLogs[0].id, checkOut: myLogs[0].checkOut };
   };
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -196,9 +200,9 @@ export default function DashboardOverview() {
       const allLogs = presenceRes.data.recentAll || presenceRes.data.recent || [];
       setRecentAttendance(allLogs);
 
-      // Derive the current user's latest punch from today's logs
+      // Derive the current user's latest punch globally (Cross-Midnight bug fix)
       if (!isAdmin && user?.id) {
-        setLatestPunch(deriveLatestPunch(allLogs, user.id));
+        setLatestPunch(deriveLatestPunch(presenceRes.data.myAbsoluteLatest, allLogs, user.id));
       }
     } catch (e) {
       console.error("Failed to fetch dashboard data:", e);
@@ -221,7 +225,7 @@ export default function DashboardOverview() {
       const allLogs = res.data.recentAll || res.data.recent || [];
       setRecentAttendance(allLogs);
       if (!isAdmin && user?.id) {
-        setLatestPunch(deriveLatestPunch(allLogs, user.id));
+        setLatestPunch(deriveLatestPunch(presenceRes.data.myAbsoluteLatest, allLogs, user.id));
       }
     } catch (e) {
       console.error("Live polling failed:", e);
@@ -291,14 +295,20 @@ export default function DashboardOverview() {
 
   // ── Punch status card helpers ──────────────────────────────────────────────
   const getPunchStatus = () => {
-    if (!latestPunch) return { label: "Not Checked In", isIn: false, time: null };
-    const isIn = latestPunch.punchType?.toLowerCase().includes("in");
-    const time = toBDDisplay(latestPunch.timestamp, "hh:mm a");
-    return {
-      label: isIn ? `Checked In at ${time}` : `Checked Out at ${time}`,
-      isIn,
-      time,
-    };
+    if (!latestPunch) return { label: "Not Punched In", isIn: false, isYesterday: false };
+    const isIn = latestPunch.punchType?.toLowerCase().includes("in") && !latestPunch.checkOut;
+    
+    // Check if the ongoing shift is from yesterday
+    const isYesterday = isIn && new Date(latestPunch.timestamp).toDateString() !== new Date().toDateString();
+
+    if (isIn) {
+      return { 
+        label: isYesterday ? "Ongoing (Yesterday)" : "Punched In", 
+        isIn: true,
+        isYesterday
+      };
+    }
+    return { label: "Punched Out", isIn: false, isYesterday: false };
   };
 
   const todayWorkingHours = useMemo(() => {
