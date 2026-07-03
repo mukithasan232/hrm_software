@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Calendar, User, Clock, Paperclip, CheckCircle2, AlertCircle, MessageSquare, Send, Activity, Info, MoreHorizontal } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -13,6 +13,7 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
 
   const task = initialData;
   const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
+  const [imageError, setImageError] = useState(false);
 
   // Helpers for Badges
   const getStatusColor = (status: string) => {
@@ -67,30 +68,42 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
         )}
 
         {/* Attachments Section */}
-        {task.attachment && typeof task.attachment === 'string' && (
-          <div className="pt-4">
+        {task?.attachment ? (
+          <div className="mt-4 animate-in fade-in duration-300">
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Paperclip className="w-4 h-4 text-slate-400" />
               Attachment
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <a
-                href={`${BACKEND}${task.attachment}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block group relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
-              >
-                {task.attachment.match(/\.(jpeg|jpg|gif|png)$/) ? (
-                  <img src={`${BACKEND}${task.attachment}`} alt="Attachment" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800">
-                    <Paperclip className="w-8 h-8 text-slate-400 mb-2" />
-                    <span className="text-xs text-slate-500">View File</span>
-                  </div>
-                )}
-              </a>
+            <div className="relative border border-slate-200 rounded-xl p-2 bg-slate-50 w-full max-w-md shadow-sm">
+              {!imageError ? (
+                <img
+                  src={`${BACKEND}${task.attachment}`}
+                  alt="Task Attachment"
+                  className="w-full max-h-[300px] rounded-lg object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                  onError={() => setImageError(true)}
+                  onClick={() => window.open(`${BACKEND}${task.attachment}`, '_blank')}
+                  title="Click to view full image"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center p-6 bg-white border border-dashed border-slate-300 rounded-lg">
+                  <p className="text-sm text-slate-500 mb-3 text-center">Attachment file</p>
+                  <a
+                    href={`${BACKEND}${task.attachment}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 hover:text-blue-700 hover:bg-blue-100 transition-colors rounded-lg font-semibold text-sm w-full"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Open Attachment
+                  </a>
+                </div>
+              )}
             </div>
           </div>
+        ) : (
+          <p className="text-sm text-slate-400 italic mt-2">No attachment provided.</p>
         )}
 
         {/* Final Output Files Section */}
