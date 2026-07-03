@@ -2,6 +2,9 @@
 import { useTranslation } from '@/context/LanguageContext';
 import { Clock, Calendar, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toBDDisplay } from '@/lib/dateUtils';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
+import axios from 'axios';
 
 interface AttendanceReadViewProps {
   id: string | number;
@@ -10,6 +13,7 @@ interface AttendanceReadViewProps {
 
 export default function AttendanceReadView({ id, initialData }: AttendanceReadViewProps) {
   const { t } = useTranslation();
+  const router = useRouter();
   
   if (!initialData) {
     return <div className="text-center p-6 text-slate-500">No attendance data provided.</div>;
@@ -40,6 +44,22 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
   };
 
   const totalHours = totalValidMs > 0 ? (totalValidMs / 3600000).toFixed(2) : '0';
+
+  const handleOtAction = async (actionStatus: 'APPROVED' | 'REJECTED') => {
+    try {
+      // Assuming 'rawLogs[0].id' is the ID of the current attendance log record
+      const recordId = initialData.rawLogs?.[0]?.id;
+      if (!recordId) {
+         toast.error("Could not locate underlying record ID.");
+         return;
+      }
+      await axios.patch(`/api/attendance/${recordId}/ot`, { otStatus: actionStatus });
+      toast.success(`Overtime ${actionStatus.toLowerCase()} successfully`);
+      router.refresh();
+    } catch (error) {
+      toast.error("Failed to update Overtime");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -139,6 +159,20 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
             }`}>
               {otBadge === 'Approved' ? formatMinutes(overtimeMinutes) : formatMinutes(systemCalculatedOtMinutes || 0)}
             </p>
+            
+            {/* Dynamic Badges and Action Buttons */}
+            {otBadge === 'Pending' && systemCalculatedOtMinutes > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                 <button onClick={() => handleOtAction('APPROVED')} className="text-[11px] font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md hover:bg-emerald-200 transition">
+                   ✅ Approve
+                 </button>
+                 <button onClick={() => handleOtAction('REJECTED')} className="text-[11px] font-semibold bg-red-100 text-red-700 px-2.5 py-1 rounded-md hover:bg-red-200 transition">
+                   ❌ Reject
+                 </button>
+              </div>
+            )}
+            {otBadge === 'Approved' && <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded inline-block w-max mt-2 border border-emerald-100">✓ Approved</span>}
+            {otBadge === 'Rejected' && <span className="text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded inline-block w-max mt-2 border border-red-100">✗ Rejected</span>}
           </div>
         </div>
       </div>

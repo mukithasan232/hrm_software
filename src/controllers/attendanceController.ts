@@ -537,7 +537,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
 export const createManualLog = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId, timestamp, punchType } = req.body;
+    let { employeeId, timestamp, punchType } = req.body;
     
     // Ensure the date string is correctly parsed into a valid ISO-8601 Date object
     let parsedDate = new Date(timestamp);
@@ -618,13 +618,15 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     let log: any;
     let created = false;
 
-    if (punchType.toLowerCase().includes('out') && isActiveShift) {
-      // 🚀 CROSS-MIDNIGHT CHECKOUT: Update the existing open record from yesterday!
+    if (isActiveShift) {
+      // 🚀 FORCE CHECKOUT ON PREVIOUS RECORD (Even if it's from yesterday, preventing consecutive Check Ins)
       log = await prisma.attendanceLog.update({
         where: { id: lastRecord.id },
         data: { checkOut: parsedDate },
         include: { user: { select: { name: true } } },
       });
+      // Override punchType so late notifications or responses know it was a checkout
+      punchType = 'CheckOut';
     } else {
       // FRESH CHECK IN OR NORMAL PUNCH
       log = await prisma.attendanceLog.upsert({
