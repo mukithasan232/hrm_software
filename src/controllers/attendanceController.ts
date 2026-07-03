@@ -291,13 +291,27 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
     const { page, limit, employeeId, filter, department, startDate, endDate } = req.query;
 
+    let targetDeptName: string | null = null;
+    if (department && department !== 'all') {
+      const deptRecord = await prisma.department.findUnique({ where: { id: String(department) } });
+      if (deptRecord) targetDeptName = deptRecord.name;
+    }
+
     const where: any = {};
     if (!isAdmin && user?.id) {
       where.employeeId = user.id;
     } else if (employeeId) {
       where.employeeId = employeeId as string;
     }
-    if (department && department !== 'all') where.user = { department: department as string };
+    
+    if (department && department !== 'all') {
+      where.user = {
+        OR: [
+          { departmentId: department as string },
+          ...(targetDeptName ? [{ department: targetDeptName }] : [])
+        ]
+      };
+    }
 
     const nowUTC = new Date(); // For Ghost Record Mitigation
 
@@ -330,7 +344,10 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
     const employeeWhere: any = { isActive: true };
     if (department && department !== 'all') {
-      employeeWhere.department = department as string;
+      employeeWhere.OR = [
+        { departmentId: department as string },
+        ...(targetDeptName ? [{ department: targetDeptName }] : [])
+      ];
     }
 
     const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualCount, activeEmployees, allPunchesInRange] = await Promise.all([
