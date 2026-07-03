@@ -35,6 +35,15 @@ export async function getPermissionScope(
 
   if (!dbUser) return 'No';
 
+  // 🚀 GLOBAL GOD MODE BYPASS FOR API ROUTES
+  if (
+    dbUser.email === 'dev@fixanyphoto.com' || 
+    dbUser.userType === 'SUPER_ADMIN' || 
+    dbUser.designation === 'Super Admin'
+  ) {
+    return 'All'; // Immediately authorize any action for any module
+  }
+
   // --- ADMIN BYPASS ---
   const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
   const designName = typeof (dbUser as any).customDesignation?.name === 'string' ? (dbUser as any).customDesignation.name : '';
