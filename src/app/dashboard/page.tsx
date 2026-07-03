@@ -134,20 +134,20 @@ export default function DashboardOverview() {
       );
 
       // Fetch Shift Info
-      if (user?.id && !isAdmin) {
-        const currentUserData = allUsers.find((u: any) => u.id === user.id || u.employeeId === user.employeeId);
+      if (user?.id) {
+        const currentUserData = allUsers.find((u: any) => u.id === user.id || u.employeeId === user.employeeId) || user;
         
         if (currentUserData) {
           const rawStartTime = 
-            currentUserData?.shift?.startTime || 
-            currentUserData?.customDepartment?.shiftStartTime || 
-            currentUserData?.shiftStartTime || 
+            (currentUserData as any)?.shift?.startTime || 
+            (currentUserData as any)?.customDepartment?.shiftStartTime || 
+            (currentUserData as any)?.shiftStartTime || 
             '09:00';
           
           const rawEndTime = 
-            currentUserData?.shift?.endTime || 
-            currentUserData?.customDepartment?.shiftEndTime || 
-            currentUserData?.shiftEndTime || 
+            (currentUserData as any)?.shift?.endTime || 
+            (currentUserData as any)?.customDepartment?.shiftEndTime || 
+            (currentUserData as any)?.shiftEndTime || 
             '17:00';
 
           const shiftStartTime = rawStartTime.includes('AM') || rawStartTime.includes('PM') ? rawStartTime : (formatTimeAMPM(rawStartTime) || '09:00 AM');

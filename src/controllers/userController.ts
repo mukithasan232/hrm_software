@@ -303,9 +303,9 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       data: {
         name,
         designationId: finalDesignationId,
-        shiftId: shiftId || undefined,
-        shiftStartTime: shiftStartTime !== undefined ? shiftStartTime : undefined,
-        shiftEndTime: shiftEndTime !== undefined ? shiftEndTime : undefined,
+        shiftId: shiftId === '' || shiftId === 'null' ? null : (shiftId !== undefined ? shiftId : undefined),
+        shiftStartTime: shiftStartTime === '' || shiftStartTime === 'null' ? null : (shiftStartTime !== undefined ? shiftStartTime : undefined),
+        shiftEndTime: shiftEndTime === '' || shiftEndTime === 'null' ? null : (shiftEndTime !== undefined ? shiftEndTime : undefined),
         department,
         departmentId: finalDepartmentId,
         employeeType: employeeType || undefined,
