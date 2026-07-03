@@ -138,24 +138,22 @@ export default function DashboardOverview() {
         const currentUserData = allUsers.find((u: any) => u.id === user.id || u.employeeId === user.employeeId) || user;
         
         if (currentUserData) {
-          const rawStartTime = 
+          const shiftStart = 
             (currentUserData as any)?.shift?.startTime || 
             (currentUserData as any)?.shiftStartTime || 
-            (currentUserData as any)?.customDepartment?.shiftStartTime || 
-            '09:00';
+            (currentUserData as any)?.customDepartment?.shiftStartTime;
           
-          const rawEndTime = 
+          const shiftEnd = 
             (currentUserData as any)?.shift?.endTime || 
             (currentUserData as any)?.shiftEndTime || 
-            (currentUserData as any)?.customDepartment?.shiftEndTime || 
-            '17:00';
+            (currentUserData as any)?.customDepartment?.shiftEndTime;
 
-          const shiftStartTime = rawStartTime.includes('AM') || rawStartTime.includes('PM') ? rawStartTime : (formatTimeAMPM(rawStartTime) || '09:00 AM');
-          const shiftEndTime = rawEndTime.includes('AM') || rawEndTime.includes('PM') ? rawEndTime : (formatTimeAMPM(rawEndTime) || '05:00 PM');
+          const formattedStart = shiftStart ? (shiftStart.includes('AM') || shiftStart.includes('PM') ? shiftStart : formatTimeAMPM(shiftStart)) : null;
+          const formattedEnd = shiftEnd ? (shiftEnd.includes('AM') || shiftEnd.includes('PM') ? shiftEnd : formatTimeAMPM(shiftEnd)) : null;
           
-          setAssignedShift({ start: shiftStartTime, end: shiftEndTime });
+          setAssignedShift(formattedStart && formattedEnd ? { start: formattedStart, end: formattedEnd } : null);
         } else {
-          setAssignedShift({ start: "09:00 AM", end: "05:00 PM" });
+          setAssignedShift(null);
         }
       }
 
@@ -397,11 +395,15 @@ export default function DashboardOverview() {
               </div>
             </div>
 
-            {!isAdmin && assignedShift && (
+            {!isAdmin && (
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between w-full">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Assigned Shift</span>
                 <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                  {assignedShift.start} - {assignedShift.end}
+                  {assignedShift ? (
+                    `${assignedShift.start} - ${assignedShift.end}`
+                  ) : (
+                    <span className="text-slate-400 font-normal italic">Not Assigned</span>
+                  )}
                 </span>
               </div>
             )}
