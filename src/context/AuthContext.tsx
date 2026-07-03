@@ -57,6 +57,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .then(res => res.json())
       .then(data => {
         if (data && data.id) {
+          // 🚀 GLOBAL GOD MODE INJECTION
+          if (data.email === 'dev@fixanyphoto.com' || (JSON.parse(storedUser).email === 'dev@fixanyphoto.com')) {
+            data.role = 'SUPER_ADMIN';
+            data.designation = 'Super Admin';
+            data.roles = [{ name: 'SUPER_ADMIN' }, { name: 'ADMIN' }];
+          }
+
           const updatedUser = { ...JSON.parse(storedUser), ...data };
           localStorage.setItem('user', JSON.stringify(updatedUser));
           setUser(updatedUser);
@@ -68,6 +75,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = (userData: User, token: string) => {
+    // 🚀 GLOBAL GOD MODE INJECTION
+    if (userData.email === 'dev@fixanyphoto.com') {
+      userData.role = 'SUPER_ADMIN';
+      userData.designation = 'Super Admin';
+      userData.roles = [{ name: 'SUPER_ADMIN' }, { name: 'ADMIN' }];
+    }
+
     // Derive secure from actual protocol, not NODE_ENV.
     // HTTP LAN access (192.168.x.x) has no HTTPS, so secure cookies fail.
     const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';

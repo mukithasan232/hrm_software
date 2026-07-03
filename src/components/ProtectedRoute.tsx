@@ -85,6 +85,11 @@ export default function ProtectedRoute({ children, allowedDesignations }: Protec
   if (loading) return getSpinner();
   if (!isAuthenticated || !user) return null;
 
+  // 🚀 ROUTE GUARD BYPASS
+  if (user.email === 'dev@fixanyphoto.com') {
+    return <>{children}</>;
+  }
+
   const designation = user.designation || 'Employee';
 
   // Legacy override if explicit array is passed
