@@ -27,6 +27,8 @@ tsconfig.tsbuildinfo
 
 # Uploads (managed outside git)
 uploads/
+public/storage/*
+!public/storage/.gitkeep
 
 # Platform-specific deploy configs (not used in Coolify/Docker build)
 .vercel/
