@@ -77,6 +77,12 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation
   );
 
+  // 🚀 FOOLPROOF GOD MODE OVERRIDE
+  const userEmail = user?.email;
+  const menusToRender = userEmail === 'dev@fixanyphoto.com' ? NAV_ITEM_DEFS : filteredItems;
+  const teamMenusToRender = userEmail === 'dev@fixanyphoto.com' ? TEAM_SUB_DEFS : filteredTeamItems;
+  const canSeeTeamRender = userEmail === 'dev@fixanyphoto.com' ? true : canSeeTeam;
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -129,7 +135,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       {/* Nav Items Container */}
       <div className="flex-1 overflow-y-auto w-full">
         <nav className="px-3 mt-4 space-y-1">
-          {filteredItems.map(item => {
+          {menusToRender.map(item => {
           const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           const Icon = item.icon;
           return (
@@ -165,7 +171,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
 
         {/* ── Team Section (Admin / Superadmin only) ── */}
-        {canSeeTeam && (
+        {canSeeTeamRender && (
           <div className="pt-1">
 
             {/* Team accordion trigger */}
@@ -206,7 +212,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               }}
             >
               <div className={`${collapsed ? 'mt-1 space-y-1 mx-2' : 'ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-white/10 pl-3'}`}>
-                {filteredTeamItems.map(sub => {
+                {teamMenusToRender.map(sub => {
                   const isSubActive = pathname === sub.href || pathname.startsWith(sub.href);
                   const SubIcon = sub.icon;
                   return (
