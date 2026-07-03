@@ -631,7 +631,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       }
     }
 
-    const isActiveShift = lastRecord && lastRecord.punchType?.toLowerCase().includes('in') && !lastRecord.checkOut;
+    const isActiveShift = lastRecord && lastRecord.punchType?.toLowerCase().includes('in') && !(lastRecord as any).checkOut;
     let log: any;
     let created = false;
 
@@ -639,7 +639,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       // 🚀 FORCE CHECKOUT ON PREVIOUS RECORD (Even if it's from yesterday, preventing consecutive Check Ins)
       log = await prisma.attendanceLog.update({
         where: { id: lastRecord.id },
-        data: { checkOut: parsedDate },
+        data: { checkOut: parsedDate } as any,
         include: { user: { select: { name: true } } },
       });
       // Override punchType so late notifications or responses know it was a checkout
