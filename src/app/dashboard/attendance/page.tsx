@@ -32,6 +32,7 @@ export default function AttendancePage() {
   const [manualCount, setManualCount] = useState(0);
   const [absentCount, setAbsentCount] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
   const [employees, setEmployees] = useState<any[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
@@ -345,9 +346,6 @@ export default function AttendancePage() {
     }
   };
 
-  // departments are fetched from /team/departments via fetchDepartments()
-
-
   const getFilterPrefixKey = () => {
     if (dateRange === getBDToday()) return 'todays';
     if (dateRange === 'all-time') return 'total';
@@ -496,13 +494,14 @@ export default function AttendancePage() {
                 <th className="px-6 py-4 font-bold">CHECK IN</th>
                 <th className="px-6 py-4 font-bold">CHECK OUT</th>
                 <th className="px-6 py-4 font-bold">OFFICE HOUR</th>
+                {isAdminUser && <th className="px-6 py-4 font-bold">ACTIONS</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {loading && logs.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('loading_logs')}</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('loading_logs')}</td></tr>
               ) : dailySummaries.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('noRecords')}</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('noRecords')}</td></tr>
               ) : (
                 dailySummaries.map((row, idx) => (
                   <tr 
@@ -569,6 +568,39 @@ export default function AttendancePage() {
                         <span className="text-slate-400">—</span>
                       )}
                     </td>
+                    {isAdminUser && (
+                      <td className="px-6 py-4 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          onClick={() => {
+                            if (row.rawLogs?.[0]) {
+                              setEditingRecord(row.rawLogs[0]);
+                            } else {
+                              toast.error("No underlying record found.");
+                            }
+                          }} 
+                          className="text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 px-2.5 py-1.5 rounded text-xs hover:bg-blue-100 transition"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button 
+                          onClick={async () => {
+                            if (!window.confirm("Are you sure you want to delete this attendance record?")) return;
+                            try {
+                              const recordId = row.rawLogs?.[0]?.id;
+                              if (!recordId) throw new Error("No ID");
+                              await api.delete(`/attendance/${recordId}`);
+                              toast.success("Record deleted");
+                              fetchLogs();
+                            } catch (error) {
+                              toast.error("Failed to delete record");
+                            }
+                          }} 
+                          className="text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400 px-2.5 py-1.5 rounded text-xs hover:bg-red-100 transition"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -652,6 +684,64 @@ export default function AttendancePage() {
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
                 >
                   {loading ? (t('saving') || 'Saving...') : 'Punch'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Attendance Modal */}
+      {editingRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Edit Attendance</h2>
+              <button onClick={() => setEditingRecord(null)} className="text-slate-400 hover:text-slate-800 dark:text-gray-400 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const formData = new FormData(e.currentTarget);
+                const checkInDate = formData.get('checkIn') as string;
+                const checkOutDate = formData.get('checkOut') as string;
+                await api.patch(`/attendance/${editingRecord.id}`, {
+                  checkIn: checkInDate || null,
+                  checkOut: checkOutDate || null
+                });
+                toast.success("Updated Successfully");
+                setEditingRecord(null);
+                fetchLogs();
+              } catch (err) {
+                toast.error("Failed to update");
+              }
+            }} className="px-4 sm:px-6 py-4 space-y-4 md:space-y-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">Check In Time</label>
+                <input 
+                  type="datetime-local" 
+                  name="checkIn"
+                  defaultValue={editingRecord.timestamp ? new Date(new Date(editingRecord.timestamp).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                  className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">Check Out Time</label>
+                <input 
+                  type="datetime-local" 
+                  name="checkOut"
+                  defaultValue={editingRecord.checkOut ? new Date(new Date(editingRecord.checkOut).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                  className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+              <div className="pt-2 flex gap-3">
+                <button type="button" onClick={() => setEditingRecord(null)} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 font-semibold hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-colors">
+                  Save Changes
                 </button>
               </div>
             </form>
