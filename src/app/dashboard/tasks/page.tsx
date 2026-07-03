@@ -237,9 +237,9 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
   const label = 'block text-xs font-semibold text-slate-500 dark:text-gray-400 mb-1.5';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex-shrink-0 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col relative overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex-shrink-0 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             {isReadOnly ? 'Task Details' : task ? 'Edit Task' : 'Create New Task'}
             {isReadOnly && canEditTasks && onModeChange && (
@@ -287,7 +287,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={label}>Start Date</label>
               <input 
@@ -313,7 +313,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
           </div>
 
           {/* Priority & Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={label}>Priority</label>
               <CustomSelect
@@ -862,65 +862,67 @@ export default function TasksPage() {
 
       {/* ═══════════════ LIST VIEW ═══════════════ */}
       {!loading && view === 'list' && (
-        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm dark:shadow-2xl">
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-black/40 text-slate-700 dark:text-gray-300 text-xs uppercase tracking-wider border-b border-slate-200 dark:border-white/10">
-                  <th className="px-5 py-4 font-bold">Task</th>
-                  <th className="px-5 py-4 font-bold">Assigned To</th>
-                  <th className="px-5 py-4 font-bold">Priority</th>
-                  <th className="px-5 py-4 font-bold">Status</th>
-                  <th className="px-5 py-4 font-bold">Start Date</th>
-                  <th className="px-5 py-4 font-bold">Due Date</th>
-                  <th className="px-5 py-4 font-bold">Created</th>
-                  {(canEditTasks || canDeleteTasks) && <th className="px-5 py-4 font-bold text-right">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={(canEditTasks || canDeleteTasks) ? 8 : 7} className="px-5 py-16 text-center text-slate-400 dark:text-gray-500">
-                      <div className="flex flex-col items-center justify-center space-y-3">
-                        <div className="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-full">
-                          <CheckSquare className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-                        </div>
-                        <div>
-                          <p className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-1">No tasks found</p>
-                          <p className="text-sm">
-                            {canCreateTasks ? 'Create your first task using the button above.' : taskScope === 'Department' ? 'No tasks found in your department.' : 'No tasks have been assigned to you yet.'}
-                          </p>
-                        </div>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-sm overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[900px]">
+            <thead className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold tracking-wider">
+              <tr>
+                <th className="p-4 rounded-tl-xl">Task Name</th>
+                <th className="p-4">Assigned To</th>
+                <th className="p-4">Priority</th>
+                <th className="p-4">Status</th>
+                <th className="p-4">Start Date</th>
+                <th className="p-4">Due Date</th>
+                <th className="p-4">Created</th>
+                {(canEditTasks || canDeleteTasks) && <th className="p-4 text-right">Actions</th>}
+              </tr>
+            </thead>
+            <tbody className="text-sm text-slate-600 dark:text-slate-300 divide-y divide-slate-100 dark:divide-white/5">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={(canEditTasks || canDeleteTasks) ? 8 : 7} className="px-5 py-16 text-center text-slate-400 dark:text-gray-500">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-full">
+                        <CheckSquare className="w-8 h-8 text-slate-300 dark:text-slate-600" />
                       </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map(task => {
-                    const overdue = isOverdue(task.dueDate, task.status);
-                    return (
-                      <tr
-                        key={task.id}
-                        onClick={() => { setEditingTask(task); setModalMode('view'); setModalOpen(true); }}
-                        className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors animate-in fade-in duration-200"
-                      >
-                        <td className="px-5 py-4">
-                          <p className="text-sm font-bold text-slate-900 dark:text-white">{task.title}</p>
-                          {task.description && (
-                            <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5 max-w-[200px] truncate">{task.description}</p>
-                          )}
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <Avatar user={task.assignedTo} />
-                            <div>
-                              <p className="text-sm font-semibold text-slate-800 dark:text-white leading-tight">{task.assignedTo.name}</p>
-                              <p className="text-xs text-slate-400 dark:text-gray-500">{task.assignedTo.employeeId}</p>
-                            </div>
+                      <div>
+                        <p className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-1">No tasks found</p>
+                        <p className="text-sm">
+                          {canCreateTasks ? 'Create your first task using the button above.' : taskScope === 'Department' ? 'No tasks found in your department.' : 'No tasks have been assigned to you yet.'}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map(task => {
+                  const overdue = isOverdue(task.dueDate, task.status);
+                  return (
+                    <tr
+                      key={task.id}
+                      onClick={() => { setEditingTask(task); setModalMode('view'); setModalOpen(true); }}
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
+                    >
+                      <td className="p-4 font-medium text-slate-800 dark:text-slate-200 w-1/3">
+                        <p className="line-clamp-2 leading-snug">{task.title}</p>
+                        {task.description && (
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 max-w-[250px] truncate font-normal">{task.description}</p>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 flex items-center justify-center font-bold text-[10px]">
+                            {task.assignedTo?.name ? task.assignedTo.name.substring(0, 2).toUpperCase() : 'U'}
                           </div>
-                        </td>
-                        <td className="px-5 py-4"><PriorityBadge priority={task.priority} /></td>
-                        <td className="px-5 py-4">
-                          {canEditTasks || task.assignedToId === user?.id ? (
+                          <div className="flex flex-col">
+                            <span className="truncate max-w-[120px] font-medium text-slate-700 dark:text-slate-300">{task.assignedTo?.name || 'Unassigned'}</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">{task.assignedTo?.employeeId}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4"><PriorityBadge priority={task.priority} /></td>
+                      <td className="p-4">
+                        {canEditTasks || task.assignedToId === user?.id ? (
+                          <span className="inline-flex items-center justify-between min-w-[110px] px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 shadow-sm group-hover:border-blue-300 dark:group-hover:border-blue-500/50 transition-colors relative overflow-hidden">
                             <select
                               value={task.status}
                               onClick={e => e.stopPropagation()}
@@ -935,57 +937,59 @@ export default function TasksPage() {
                                   fetchTasks();
                                 }
                               }}
-                              className="text-xs font-semibold bg-transparent border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-slate-700 dark:text-gray-300 focus:outline-none cursor-pointer"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             >
                               {STATUS_COLUMNS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                             </select>
-                          ) : (
-                            <StatusBadge status={task.status} />
-                          )}
-                        </td>
-                        <td className="px-5 py-4 text-sm text-slate-600 dark:text-gray-300 font-medium">{fmtDate(task.startDate)}</td>
-                        <td className="px-5 py-4">
-                          <span className={`text-sm font-semibold flex items-center gap-1 ${overdue ? 'text-red-500' : 'text-slate-600 dark:text-gray-300'}`}>
-                            {overdue && <AlertTriangle className="w-3.5 h-3.5" />}
-                            {fmtDate(task.dueDate)}
+                            <span className="pointer-events-none text-slate-700 dark:text-slate-300">{task.status || 'To Do'}</span>
+                            <svg className="w-3 h-3 text-slate-400 ml-2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                           </span>
-                        </td>
-                        <td className="px-5 py-4 text-sm text-slate-400 dark:text-gray-500 font-medium">{fmtDate(task.createdAt)}</td>
-                        {(canEditTasks || canDeleteTasks) && (
-                          <td className="px-5 py-4">
-                            <div className="flex items-center justify-end gap-2">
-                              {canEditTasks && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setEditingTask(task); setModalMode('edit'); setModalOpen(true); }}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-all"
-                                  title="Edit"
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </button>
-                              )}
-                              {canDeleteTasks && (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
-                                  disabled={deletingId === task.id}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-50"
-                                  title="Delete"
-                                >
-                                  {deletingId === task.id
-                                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                                    : <Trash2 className="w-4 h-4" />
-                                  }
-                                </button>
-                              )}
-                            </div>
-                          </td>
+                        ) : (
+                          <StatusBadge status={task.status} />
                         )}
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                      <td className="p-4 text-xs font-medium text-slate-500 dark:text-slate-400">{fmtDate(task.startDate)}</td>
+                      <td className="p-4 text-xs font-medium">
+                        <span className={`flex items-center gap-1 ${overdue ? 'text-red-500 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
+                          {overdue && <AlertTriangle className="w-3.5 h-3.5" />}
+                          {fmtDate(task.dueDate)}
+                        </span>
+                      </td>
+                      <td className="p-4 text-xs text-slate-400 dark:text-slate-500">{fmtDate(task.createdAt)}</td>
+                      {(canEditTasks || canDeleteTasks) && (
+                        <td className="p-4">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {canEditTasks && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditingTask(task); setModalMode('edit'); setModalOpen(true); }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+                                title="Edit"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            )}
+                            {canDeleteTasks && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
+                                disabled={deletingId === task.id}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all disabled:opacity-50"
+                                title="Delete"
+                              >
+                                {deletingId === task.id
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <Trash2 className="w-4 h-4" />
+                                }
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
