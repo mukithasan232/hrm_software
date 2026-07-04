@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useDetailsStore } from '@/store/useDetailsStore';
 import { useAuth } from '@/context/AuthContext';
-import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive, Plug, Volume2, Clock } from 'lucide-react';
+import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive, Plug, Volume2, Clock, LayoutGrid, Plus, ExternalLink, X } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -55,7 +55,15 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const appsRef = useRef<HTMLDivElement>(null);
   const prevUnreadRef = useRef<number>(0);
+
+  const [showApps, setShowApps] = useState(false);
+  const [connectedApps, setConnectedApps] = useState<any[]>([]);
+  const [isAddAppModalOpen, setIsAddAppModalOpen] = useState(false);
+  const [newAppName, setNewAppName] = useState('');
+  const [newAppUrl, setNewAppUrl] = useState('');
+  const [newAppIconUrl, setNewAppIconUrl] = useState('');
 
   const p = brand.primaryColor;
   const s = brand.secondaryColor;
@@ -128,6 +136,8 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
         }).catch(err => console.error(err));
       }
       
+      api.get('/connected-apps').then(res => setConnectedApps(res.data)).catch(console.warn);
+      
       // Initialize SSE for real-time notifications
       const eventSource = new EventSource('/api/sse/notifications');
       
@@ -196,6 +206,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
     const handler = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifications(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setShowProfile(false);
+      if (appsRef.current && !appsRef.current.contains(e.target as Node)) setShowApps(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -276,6 +287,51 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
       <div className="flex items-center gap-2">
         <LanguageSwitcher />
         <ThemeToggle />
+
+        {/* App Launcher */}
+        <div className="relative" ref={appsRef}>
+          <button 
+            onClick={() => setShowApps(!showApps)}
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+          >
+            <LayoutGrid className="w-5 h-5" />
+          </button>
+
+          {showApps && (
+            <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-4 z-50">
+              <div className="grid grid-cols-3 gap-2">
+                {connectedApps.map((app) => (
+                  <a 
+                    key={app.id} 
+                    href={app.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center justify-center p-3 gap-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition group"
+                  >
+                    <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center group-hover:scale-110 transition">
+                       {app.iconUrl ? <img src={app.iconUrl} alt={app.name} className="w-6 h-6 rounded" /> : <ExternalLink className="w-5 h-5" />}
+                    </div>
+                    <span className="text-xs text-slate-600 dark:text-slate-300 font-medium text-center truncate w-full">
+                      {app.name}
+                    </span>
+                  </a>
+                ))}
+
+                {user && ['Admin', 'Super Admin', 'System Administrator', 'SUPER_ADMIN'].includes(typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation) && (
+                  <button 
+                    onClick={() => setIsAddAppModalOpen(true)}
+                    className="flex flex-col items-center justify-center p-3 gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                  >
+                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-full flex items-center justify-center">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs text-slate-500 font-medium">Add App</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Notification Center */}
         <div className="relative" ref={notifRef}>
@@ -463,6 +519,51 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
         onClose={() => setIsModalOpen(false)}
         notification={selectedNotification}
       />
+
+      {/* Add App Modal */}
+      {isAddAppModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl w-full max-w-sm flex flex-col relative overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Add Connected App</h2>
+              <button onClick={() => setIsAddAppModalOpen(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const res = await api.post('/connected-apps', { name: newAppName, url: newAppUrl, iconUrl: newAppIconUrl });
+                setConnectedApps(prev => [...prev, res.data]);
+                setIsAddAppModalOpen(false);
+                setNewAppName('');
+                setNewAppUrl('');
+                setNewAppIconUrl('');
+                toast.success('App added successfully');
+              } catch (error: any) {
+                const errorMsg = error.response?.data?.error || error.message || 'Failed to add app';
+                toast.error(errorMsg);
+              }
+            }} className="p-6 flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">App Name *</label>
+                <input required type="text" value={newAppName} onChange={e => setNewAppName(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary" placeholder="e.g. CRM" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">URL *</label>
+                <input required type="url" value={newAppUrl} onChange={e => setNewAppUrl(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary" placeholder="https://..." />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Icon URL (Optional)</label>
+                <input type="url" value={newAppIconUrl} onChange={e => setNewAppIconUrl(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary" placeholder="https://..." />
+              </div>
+              <button type="submit" className="w-full bg-brand-primary hover:bg-brand-secondary text-white py-2 rounded-lg font-bold text-sm transition-colors mt-2">
+                Save App
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

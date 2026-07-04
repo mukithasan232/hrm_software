@@ -418,79 +418,48 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
     const presentCount = Object.keys(daysPresentPerEmployee).length; // Will fix unused uniquePunches, using uniqueCheckIns instead
     
-    // Build Aggregated Summaries Server-Side
-    const summariesMap: Record<string, any> = {};
-    for (const log of logs) {
-      const dateStr = formatYMD(log.timestamp);
-      const key = `${log.employeeId}_${dateStr}`;
-      if (!summariesMap[key]) {
-        summariesMap[key] = {
-          employeeId: log.employeeId,
-          employeeName: (log as any).user?.name || 'Unmapped',
-          date: dateStr,
-          rawLogs: [],
-          shiftStartTime: (log as any).user?.shiftStartTime || (log as any).user?.customDepartment?.shiftStartTime || '09:00',
-          shiftEndTime: (log as any).user?.shiftEndTime || (log as any).user?.customDepartment?.shiftEndTime || '17:00'
-        };
-      }
-      summariesMap[key].rawLogs.push(log);
+    // Group logs by employee and date to build the punchTimeline
+    const logsByEmpAndDate: Record<string, any[]> = {};
+    for (const l of logs) {
+      const dStr = formatYMD(l.timestamp);
+      const k = `${l.employeeId}_${dStr}`;
+      if (!logsByEmpAndDate[k]) logsByEmpAndDate[k] = [];
+      logsByEmpAndDate[k].push(l);
     }
 
-    const aggregatedSummaries = Object.values(summariesMap).map(summary => {
-      const { rawLogs, shiftStartTime, shiftEndTime } = summary;
-      rawLogs.sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
+    // Do NOT aggregate by date. Map each individual log to its summary.
+    const aggregatedSummaries = logs.map((log: any) => {
+      const dateStr = formatYMD(log.timestamp);
+      const k = `${log.employeeId}_${dateStr}`;
       
-      const checkInRaw = rawLogs.find((l: any) => l.punchType?.toLowerCase().includes('in'))?.timestamp || null;
-      
-      let checkOutRaw = null;
-      for (let i = rawLogs.length - 1; i >= 0; i--) {
-        if (rawLogs[i].checkOut) {
-          checkOutRaw = rawLogs[i].checkOut;
-          break;
-        } else if (rawLogs[i].punchType?.toLowerCase().includes('out')) {
-          checkOutRaw = rawLogs[i].timestamp;
-          break;
-        }
-      }
+      const punchTimeline = (logsByEmpAndDate[k] || []).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
-      const lastPunch = rawLogs[rawLogs.length - 1];
-      const isMissingOut = lastPunch?.punchType?.toLowerCase().includes('in') && !lastPunch.checkOut;
+      const shiftStartTime = log.user?.shiftStartTime || log.user?.customDepartment?.shiftStartTime || '09:00';
+      const shiftEndTime = log.user?.shiftEndTime || log.user?.customDepartment?.shiftEndTime || '17:00';
+      
+      const checkInRaw = log.timestamp;
+      const checkOutRaw = log.checkOut || null;
+      const isMissingOut = !checkOutRaw;
 
       let totalValidMs = 0;
-      let currentIn = null;
-      for (const l of rawLogs) {
-        if (l.punchType?.toLowerCase().includes('in')) {
-          if (l.checkOut) {
-            // New Single-Row Format (Cross-Midnight update)
-            totalValidMs += (l.checkOut.getTime() - l.timestamp.getTime());
-          } else {
-            if (!currentIn) currentIn = l.timestamp;
-          }
-        } else {
-          if (currentIn) {
-            totalValidMs += (l.timestamp.getTime() - currentIn.getTime());
-            currentIn = null;
-          }
-        }
+      if (checkInRaw && checkOutRaw) {
+        totalValidMs = checkOutRaw.getTime() - checkInRaw.getTime();
       }
 
       let lateMinutes = 0;
       if (checkInRaw) {
-        const shiftStartUTC = new Date(`${summary.date}T${shiftStartTime}:00+06:00`);
+        const shiftStartUTC = new Date(`${dateStr}T${shiftStartTime}:00+06:00`);
         const lateMs = Math.max(0, checkInRaw.getTime() - shiftStartUTC.getTime());
         lateMinutes = Math.floor(lateMs / 60000);
       }
 
-      const standardShiftMs = 8 * 60 * 60 * 1000; // Strict 8-Hour Limit
-      
+      const standardShiftMs = 8 * 60 * 60 * 1000;
       const totalWorkedMs = totalValidMs;
       const validWorkedMs = Math.min(totalWorkedMs, standardShiftMs);
       const systemOvertimeMs = Math.max(0, totalWorkedMs - standardShiftMs);
 
-      // 🚀 OT APPROVAL WORKFLOW
-      const firstPunch = rawLogs[0];
-      const otStatus = firstPunch?.otStatus || 'PENDING';
-      const approvedOtMinutes = firstPunch?.approvedOtMinutes || 0;
+      const otStatus = log.otStatus || 'PENDING';
+      const approvedOtMinutes = log.approvedOtMinutes || 0;
 
       let displayOvertimeMs = 0;
       let otBadge = 'Pending';
@@ -512,27 +481,28 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       const overtimeMinutes = Math.floor(displayOvertimeMs / 60000);
       const systemCalculatedOtMinutes = Math.floor(systemOvertimeMs / 60000);
       
-      // Override the old un-capped valid Ms with the capped valid Ms
-      totalValidMs = validWorkedMs;
-      
       let status = 'Absent';
       if (checkInRaw) {
         status = lateMinutes > 0 ? 'Late' : 'Present';
       }
 
       return {
-        employeeId: summary.employeeId,
-        employeeName: summary.employeeName,
-        date: summary.date,
+        id: log.id,
+        employeeId: log.employeeId,
+        employeeName: log.user?.name || 'Unmapped',
+        date: dateStr,
         checkInRaw,
         checkOutRaw,
         isMissingOut,
-        totalValidMs,
+        totalValidMs: validWorkedMs,
         lateMinutes,
         overtimeMinutes,
         systemCalculatedOtMinutes,
         otBadge,
-        status
+        status,
+        otStatus: log.otStatus,
+        approvedOtMinutes: log.approvedOtMinutes,
+        punchTimeline
       };
     });
 

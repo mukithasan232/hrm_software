@@ -6,6 +6,15 @@ export const revalidate = 0;
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
+    if (!params?.id || params.id === 'undefined' || params.id === 'null') {
+      return NextResponse.json({ error: "Invalid Record ID provided." }, { status: 400 });
+    }
+
+    const existingRecord = await prisma.attendanceLog.findUnique({ where: { id: params.id } });
+    if (!existingRecord) {
+       return NextResponse.json({ error: "Record does not exist in the database." }, { status: 404 });
+    }
+
     const { checkIn, checkOut } = await req.json();
     
     // Convert to null if empty, otherwise parse to Date
@@ -29,6 +38,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
+    if (!params?.id || params.id === 'undefined' || params.id === 'null') {
+      return NextResponse.json({ error: "Invalid Record ID provided." }, { status: 400 });
+    }
+
+    const existingRecord = await prisma.attendanceLog.findUnique({ where: { id: params.id } });
+    if (!existingRecord) {
+       return NextResponse.json({ error: "Record does not exist in the database." }, { status: 404 });
+    }
+
     await prisma.attendanceLog.delete({ where: { id: params.id } });
     return NextResponse.json({ message: "Deleted" });
   } catch (error) {

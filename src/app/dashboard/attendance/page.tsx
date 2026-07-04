@@ -503,10 +503,10 @@ export default function AttendancePage() {
               ) : dailySummaries.length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('noRecords')}</td></tr>
               ) : (
-                dailySummaries.map((row, idx) => (
+                dailySummaries.map((row: any) => (
                   <tr 
-                    key={`${row.employeeId}_${row.date}_${idx}`} 
-                    onClick={() => openDetails('attendance', `${row.employeeId}_${row.date}`, row)}
+                    key={row.id} 
+                    onClick={() => openDetails('attendance', row.id, row)}
                     className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors animate-in fade-in slide-in-from-left-2 duration-300 cursor-pointer"
                   >
                     <td className="px-6 py-4">
@@ -703,6 +703,10 @@ export default function AttendancePage() {
             </div>
             <form onSubmit={async (e) => {
               e.preventDefault();
+              if (!editingRecord?.id) {
+                toast.error("Error: Missing Record ID");
+                return;
+              }
               try {
                 const formData = new FormData(e.currentTarget);
                 const checkInDate = formData.get('checkIn') as string;

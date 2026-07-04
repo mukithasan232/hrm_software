@@ -250,6 +250,14 @@ model TenantSettings {
   smtpSettings SmtpSettings?
 }
 
+model ConnectedApp {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  iconUrl   String?
+  createdAt DateTime @default(now())
+}
+
 model Device {
   id        String   @id @default(cuid())
   name      String // e.g., "Main Gate"

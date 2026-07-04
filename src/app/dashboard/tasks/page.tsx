@@ -626,8 +626,9 @@ export default function TasksPage() {
       }
       const res = await api.get(url);
       setAnalyticsData(res.data);
-    } catch (e) {
-      console.error('Failed to load task analytics', e);
+    } catch (e: any) {
+      // Avoid raw console.error(e) as it triggers Next.js dev overlay on Axios 401s
+      console.warn('Failed to load task analytics:', e?.response?.data?.message || e.message);
     } finally {
       setAnalyticsLoading(false);
     }

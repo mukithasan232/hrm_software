@@ -1,10 +1,11 @@
 'use client';
 import { useTranslation } from '@/context/LanguageContext';
-import { Clock, Calendar, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Clock, Calendar, AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { toBDDisplay } from '@/lib/dateUtils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
+import { useState } from 'react';
 
 interface AttendanceReadViewProps {
   id: string | number;
@@ -14,6 +15,7 @@ interface AttendanceReadViewProps {
 export default function AttendanceReadView({ id, initialData }: AttendanceReadViewProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const [showDetails, setShowDetails] = useState(false);
   
   if (!initialData) {
     return <div className="text-center p-6 text-slate-500">No attendance data provided.</div>;
@@ -31,7 +33,8 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
     systemCalculatedOtMinutes,
     otBadge,
     isMissingOut,
-    status
+    status,
+    punchTimeline
   } = initialData;
 
   const formatMinutes = (mins: number) => {
@@ -175,6 +178,42 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
             {otBadge === 'Rejected' && <span className="text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded inline-block w-max mt-2 border border-red-100">✗ Rejected</span>}
           </div>
         </div>
+
+        {/* Place this BELOW the Time Summary Cards */}
+        {punchTimeline && punchTimeline.length > 1 && (
+          <div className="mt-6 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <button 
+              onClick={() => setShowDetails(!showDetails)}
+              className="w-full flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            >
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-indigo-500" />
+                View Shift Details ({punchTimeline.length} Sessions)
+              </span>
+              {showDetails ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+            </button>
+            
+            {showDetails && (
+              <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex flex-col gap-3">
+                {punchTimeline.map((session: any, index: number) => (
+                  <div key={session.id} className="flex justify-between items-center text-sm p-3 rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-slate-500 font-medium mb-1">Session {index + 1}</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {toBDDisplay(new Date(session.timestamp), 'hh:mm a')} 
+                        {' - '} 
+                        {session.checkOut ? toBDDisplay(new Date(session.checkOut), 'hh:mm a') : 'Working...'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                <div className="text-xs text-center text-slate-400 mt-2 italic">
+                  * Break times between sessions are automatically excluded from valid hours.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
