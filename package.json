@@ -4,8 +4,9 @@
   "scripts": {
     "dev": "npx prisma generate && node server.cjs",
     "postinstall": "prisma generate",
-    "build": "prisma generate && next build",
+    "build": "npx prisma generate && next build",
     "build:next": "next build",
+    "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "start": "concurrently --kill-others-on-fail -c \"blue,green\" \"node worker.js\" \"next start\"",
     "start:custom": "concurrently --kill-others-on-fail -c \"blue,green\" \"node worker.js\" \"sh ./entrypoint.sh\"",
     "fetch-zk": "npx tsx scripts/fetch-zk-users.ts",

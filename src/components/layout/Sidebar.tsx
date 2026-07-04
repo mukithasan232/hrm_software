@@ -27,7 +27,7 @@ const NAV_ITEM_DEFS = [
 
 const TEAM_SUB_DEFS = [
   { key: 'designations', href: '/dashboard/team/designations', icon: Shield, module: 'Designations' },
-  { key: 'departments',  href: '/dashboard/team/departments',  icon: Building2, module: 'Departments' },
+  { key: 'sidebar.departments',  href: '/dashboard/team/departments',  icon: Building2, module: 'Departments' },
   { key: 'users',        href: '/dashboard/team/users',        icon: UsersRound, module: 'Users' },
   { key: 'employees',    href: '/dashboard/team/employees',    icon: Users, module: 'Employees' },
 ];
@@ -260,13 +260,13 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                    pathname.startsWith('/dashboard/settings') ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
                  }`}
                />
-               {!collapsed && <span className="capitalize">Admin Settings</span>}
+               {!collapsed && <span className="capitalize">{t('adminSettings.title' as any)}</span>}
                {!collapsed && pathname.startsWith('/dashboard/settings') && (
                  <span className="ml-auto h-1.5 w-1.5 rounded-full flex-shrink-0 bg-brand-primary" />
                )}
                {collapsed && (
                  <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700 capitalize">
-                   Admin Settings
+                   {t('adminSettings.title' as any)}
                  </span>
                )}
              </Link>

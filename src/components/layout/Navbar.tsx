@@ -75,9 +75,9 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return t('header.goodMorning' as any);
+    if (hour < 18) return t('header.goodAfternoon' as any);
+    return t('header.goodEvening' as any);
   };
 
   const playNotificationSound = (type?: string) => {
@@ -458,30 +458,6 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
               </div>
 
               <div className="p-2">
-                {/* Appearance & Integrations — Admin/Superadmin only */}
-                {user && ['Admin', 'Super Admin', 'System Administrator'].includes(typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation) && (
-                  <>
-                    <Link
-                      href="/dashboard/settings/appearance"
-                      onClick={() => setShowProfile(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150 group text-brand-primary hover:bg-slate-100 dark:hover:bg-gray-700 dark:hover:text-white"
-                    >
-                      <Paintbrush className="w-4 h-4 flex-shrink-0" />
-                      <span className="font-medium">{t('appearance')}</span>
-                    </Link>
-                    <Link
-                      href="/dashboard/settings/integrations"
-                      onClick={() => setShowProfile(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150 group text-brand-primary hover:bg-slate-100 dark:hover:bg-gray-700 dark:hover:text-white"
-                    >
-                      <Plug className="w-4 h-4 flex-shrink-0" />
-                      <span className="font-medium">{language === 'bn' ? 'ইন্টিগ্রেশন' : 'Integrations'}</span>
-                    </Link>
-                  </>
-                )}
-
-
-
                 <Link
                   href="/dashboard/profile"
                   onClick={() => setShowProfile(false)}

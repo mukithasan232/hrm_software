@@ -457,7 +457,7 @@ export default function AttendancePage() {
           </p>
         </div>
         <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-red-500/30 transition-colors shadow-sm dark:shadow-md">
-          <p className="text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider">{t('total_absent' as any) || 'Total Absent'}</p>
+          <p className="text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider">{t('attendance.totalAbsent' as any)}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
             {absentCount}
           </p>
@@ -490,11 +490,11 @@ export default function AttendancePage() {
             <thead>
               <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
                 <th className="px-6 py-4 font-bold">{t('employee')}</th>
-                <th className="px-6 py-4 font-bold">DATE</th>
-                <th className="px-6 py-4 font-bold">CHECK IN</th>
-                <th className="px-6 py-4 font-bold">CHECK OUT</th>
-                <th className="px-6 py-4 font-bold">OFFICE HOUR</th>
-                {isAdminUser && <th className="px-6 py-4 font-bold">ACTIONS</th>}
+                <th className="px-6 py-4 font-bold">{t('attendance.date' as any)}</th>
+                <th className="px-6 py-4 font-bold">{t('attendance.checkIn' as any)}</th>
+                <th className="px-6 py-4 font-bold">{t('attendance.checkOut' as any)}</th>
+                <th className="px-6 py-4 font-bold">{t('attendance.officeHour' as any)}</th>
+                {isAdminUser && <th className="px-6 py-4 font-bold">{t('attendance.actions' as any)}</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -540,7 +540,7 @@ export default function AttendancePage() {
                         </span>
                       ) : (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-white/10">
-                          {row.isMissingOut ? 'Missing / Working' : 'Missing'}
+                          {row.isMissingOut ? t('attendance.missingWorking' as any) : 'Missing'}
                         </span>
                       )}
                     </td>
@@ -580,7 +580,7 @@ export default function AttendancePage() {
                           }} 
                           className="text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 px-2.5 py-1.5 rounded text-xs hover:bg-blue-100 transition"
                         >
-                          ✏️ Edit
+                          ✏️ {t('attendance.edit' as any)}
                         </button>
                         <button 
                           onClick={async () => {
@@ -597,7 +597,7 @@ export default function AttendancePage() {
                           }} 
                           className="text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400 px-2.5 py-1.5 rounded text-xs hover:bg-red-100 transition"
                         >
-                          🗑️ Delete
+                          🗑️ {t('attendance.delete' as any)}
                         </button>
                       </td>
                     )}
