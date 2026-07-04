@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Paintbrush, Save, RefreshCw, Image as ImageIcon,
-  Globe, Palette, CheckCircle2, AlertCircle, Sparkles, Eye,
+  Globe, Palette, CheckCircle2, AlertCircle, Sparkles, Eye, ArrowLeft
 } from 'lucide-react';
+import Link from 'next/link';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useBrand } from '@/context/BrandContext';
@@ -310,6 +311,9 @@ export default function AppearancePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <Link href="/dashboard/settings" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors">
+        <ArrowLeft className="w-4 h-4" /> Back to Settings
+      </Link>
 
       {/* ── Page header ──────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">

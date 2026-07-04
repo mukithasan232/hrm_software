@@ -19,7 +19,7 @@ export const getDesignations = async (req: Request, res: Response): Promise<void
 // ─── POST /api/team/designations ─────────────────────────────────────────────────────
 export const createDesignation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, permissions, leaveConfig } = req.body as any;
+    const { name, description, permissions, leaveConfig, weekendDays } = req.body as any;
 
     if (!name || !name.trim()) {
       res.status(400).json({ message: 'Designation name is required.' });
@@ -32,6 +32,8 @@ export const createDesignation = async (req: Request, res: Response): Promise<vo
       return;
     }
 
+    const finalWeekendDays = Array.isArray(weekendDays) ? weekendDays : ["Sunday"];
+
     const designation = await prisma.designation.create({
       data: {
         name: name.trim(),
@@ -40,6 +42,7 @@ export const createDesignation = async (req: Request, res: Response): Promise<vo
         leaveConfig: leaveConfig || {},
         totalCasualLeaves: leaveConfig?.casual || 0,
         totalSickLeaves: leaveConfig?.sick || 0,
+        weekendDays: finalWeekendDays,
       },
     });
 
@@ -53,7 +56,7 @@ export const createDesignation = async (req: Request, res: Response): Promise<vo
 export const updateDesignation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, description, permissions, leaveConfig } = req.body as any;
+    const { name, description, permissions, leaveConfig, weekendDays } = req.body as any;
 
     const designation = await prisma.designation.findUnique({ where: { id } });
     if (!designation) {
@@ -70,6 +73,8 @@ export const updateDesignation = async (req: Request, res: Response): Promise<vo
       }
     }
 
+    const finalWeekendDays = Array.isArray(weekendDays) ? weekendDays : designation.weekendDays;
+
     const updated = await prisma.designation.update({
       where: { id },
       data: {
@@ -79,6 +84,7 @@ export const updateDesignation = async (req: Request, res: Response): Promise<vo
         leaveConfig: leaveConfig ?? designation.leaveConfig,
         totalCasualLeaves: leaveConfig?.casual ?? designation.totalCasualLeaves,
         totalSickLeaves: leaveConfig?.sick ?? designation.totalSickLeaves,
+        weekendDays: finalWeekendDays,
       },
     });
 

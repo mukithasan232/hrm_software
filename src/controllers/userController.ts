@@ -392,6 +392,8 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
     const hashed = await bcrypt.hash(plainPassword, 10);
 
     let finalDesignationId = designationId || null;
+    let designationPermissions: any = {};
+
     if (finalDesignationId && !finalDesignationId.includes('-')) {
       let desig = await prisma.designation.findFirst({
         where: { name: { equals: finalDesignationId } }
@@ -400,6 +402,12 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         desig = await prisma.designation.create({ data: { name: finalDesignationId } });
       }
       finalDesignationId = desig.id;
+      designationPermissions = desig.permissions || {};
+    } else if (finalDesignationId) {
+      const desig = await prisma.designation.findUnique({ where: { id: finalDesignationId } });
+      if (desig) {
+        designationPermissions = desig.permissions || {};
+      }
     }
 
     let actualRoleIds: string[] = [];
@@ -423,6 +431,7 @@ export const createEmployee = async (req: Request, res: Response): Promise<void>
         employeeType: employeeType || 'IN_HOUSE',
         baseSalary: Number(baseSalary) || 0,
         leaveConfig: leaveConfig ? (typeof leaveConfig === 'string' ? JSON.parse(leaveConfig) : leaveConfig) : {},
+        permissions: designationPermissions,
         joiningDate: new Date(),
         ...(roles && {
           roles: {

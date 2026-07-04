@@ -247,7 +247,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         {isAdminUser && (
           <div className="pt-1">
              <Link
-               href="/dashboard/settings/notifications"
+               href="/dashboard/settings"
                onClick={onClose}
                className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
                  pathname.startsWith('/dashboard/settings')

@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   Mail, Save, Loader2, Send,
-  Server, User, Lock, Globe, CheckCircle2, AlertCircle, Shield, Network, Plug
+  Server, User, Lock, Globe, CheckCircle2, AlertCircle, Shield, Network, Plug, ArrowLeft
 } from 'lucide-react';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
 import { useTranslation } from '@/context/LanguageContext';
@@ -671,6 +672,9 @@ export default function IntegrationsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl">
+      <Link href="/dashboard/settings" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors mb-2">
+        <ArrowLeft className="w-4 h-4" /> Back to Settings
+      </Link>
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
           <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20">

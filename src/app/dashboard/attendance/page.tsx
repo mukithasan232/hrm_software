@@ -572,8 +572,8 @@ export default function AttendancePage() {
                       <td className="px-6 py-4 flex gap-2" onClick={(e) => e.stopPropagation()}>
                         <button 
                           onClick={() => {
-                            if (row.rawLogs?.[0]) {
-                              setEditingRecord(row.rawLogs[0]);
+                            if (row.id) {
+                              setEditingRecord(row);
                             } else {
                               toast.error("No underlying record found.");
                             }
@@ -586,7 +586,7 @@ export default function AttendancePage() {
                           onClick={async () => {
                             if (!window.confirm("Are you sure you want to delete this attendance record?")) return;
                             try {
-                              const recordId = row.rawLogs?.[0]?.id;
+                              const recordId = row.id;
                               if (!recordId) throw new Error("No ID");
                               await api.delete(`/attendance/${recordId}`);
                               toast.success("Record deleted");
@@ -727,7 +727,7 @@ export default function AttendancePage() {
                 <input 
                   type="datetime-local" 
                   name="checkIn"
-                  defaultValue={editingRecord.timestamp ? new Date(new Date(editingRecord.timestamp).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                  defaultValue={editingRecord.checkInRaw ? new Date(new Date(editingRecord.checkInRaw).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
                   className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
@@ -736,7 +736,7 @@ export default function AttendancePage() {
                 <input 
                   type="datetime-local" 
                   name="checkOut"
-                  defaultValue={editingRecord.checkOut ? new Date(new Date(editingRecord.checkOut).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                  defaultValue={editingRecord.checkOutRaw ? new Date(new Date(editingRecord.checkOutRaw).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
                   className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>

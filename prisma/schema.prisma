@@ -44,6 +44,7 @@ model Designation {
   totalCasualLeaves Int      @default(0)
   totalSickLeaves   Int      @default(0)
   permissions       Json     @default("{}")
+  weekendDays       Json     @default("[\"Sunday\"]")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -348,6 +349,7 @@ model Role {
   name        String   @unique
   description String?
   permissions Json     @default("{}")
+  weekendDays Json     @default("[\"Sunday\"]")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -393,4 +395,14 @@ model Task {
 
   @@index([assignedToId])
   @@index([status])
+}
+
+model Shortcut {
+  id        String   @id @default(uuid())
+  label     String
+  url       String
+  icon      String   @default("Link")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

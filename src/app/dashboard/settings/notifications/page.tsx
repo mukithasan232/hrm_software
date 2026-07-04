@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
-import { Volume2, Play, Save, Menu, Lightbulb } from 'lucide-react';
+import { useTranslation } from '@/context/LanguageContext';
+import Link from 'next/link';
+import { Volume2, Play, Save, Menu, Lightbulb, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type NotificationType = 'info' | 'success' | 'warning' | 'error';
@@ -56,19 +58,9 @@ export default function NotificationSettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
-      {/* ── Top Navigation Tabs ──────────────────────────────────────────────── */}
-      <div className="flex border-b border-slate-200 dark:border-white/10 mb-6 overflow-x-auto hide-scrollbar">
-        <button className="flex items-center gap-2 px-6 py-3 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors border-b-2 border-transparent">
-          <Lightbulb className="w-4 h-4" /> Feature Requests
-        </button>
-        <button className="flex items-center gap-2 px-6 py-3 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors border-b-2 border-transparent">
-          <Menu className="w-4 h-4" /> Navbar Menu
-        </button>
-        <button className="flex items-center gap-2 px-6 py-3 text-sm font-medium text-brand-primary border-b-2 border-brand-primary bg-brand-primary/5">
-          <Volume2 className="w-4 h-4" /> Notification Sounds
-        </button>
-      </div>
+      <Link href="/dashboard/settings" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors">
+        <ArrowLeft className="w-4 h-4" /> Back to Settings
+      </Link>
 
       {/* ── Header Section ───────────────────────────────────────────────────── */}
       <div>

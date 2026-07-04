@@ -225,7 +225,7 @@ export default function DashboardOverview() {
       const allLogs = res.data.recentAll || res.data.recent || [];
       setRecentAttendance(allLogs);
       if (!isAdmin && user?.id) {
-        setLatestPunch(deriveLatestPunch(presenceRes.data.myAbsoluteLatest, allLogs, user.id));
+        setLatestPunch(deriveLatestPunch(null, allLogs, user.id));
       }
     } catch (e) {
       console.error("Live polling failed:", e);
@@ -296,7 +296,7 @@ export default function DashboardOverview() {
   // ── Punch status card helpers ──────────────────────────────────────────────
   const getPunchStatus = () => {
     if (!latestPunch) return { label: "Not Punched In", isIn: false, isYesterday: false };
-    const isIn = latestPunch.punchType?.toLowerCase().includes("in") && !latestPunch.checkOut;
+    const isIn = latestPunch.punchType?.toLowerCase().includes("in") && !(latestPunch as any).checkOut;
     
     // Check if the ongoing shift is from yesterday
     const isYesterday = isIn && new Date(latestPunch.timestamp).toDateString() !== new Date().toDateString();

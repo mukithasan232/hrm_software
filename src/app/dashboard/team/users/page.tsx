@@ -4,6 +4,8 @@ import {
   UsersRound, Plus, Search, X, Save, Loader2, Trash2, Pencil,
   Mail, Building2, CalendarDays, Shield, ChevronDown, UserX, UserCheck, KeyRound, UploadCloud, RefreshCw, Clock
 } from 'lucide-react';
+import DesignationSelect from '@/components/ui/selects/DesignationSelect';
+import DesignationModal from '@/components/designation/DesignationModal';
 import api from '@/services/api';
 import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidator';
 import toast from 'react-hot-toast';
@@ -100,6 +102,8 @@ export default function TeamUsersPage() {
   const [showDesigDialog, setShowDesigDialog] = useState(false);
   const [newDesigName, setNewDesigName] = useState('');
   const [creatingDesig, setCreatingDesig] = useState(false);
+  const [permissionDesigTarget, setPermissionDesigTarget] = useState<any>(null);
+  const [desigPermissions, setDesigPermissions] = useState<any>({});
 
   const [showShiftDialog, setShowShiftDialog] = useState(false);
   const [newShift, setNewShift] = useState({ name: '', startTime: '09:00', endTime: '17:00' });
@@ -186,8 +190,21 @@ export default function TeamUsersPage() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchUsers(true);
+    const timer = setTimeout(async () => {
+      await fetchUsers(true);
+      
+      // Post-Creation Permission Trigger
+      if (form.designationId && !editTarget) {
+        const selectedDesig = designations?.find(d => d.id === form.designationId);
+        const hasPermissions = selectedDesig?.permissions && Object.keys(selectedDesig.permissions).length > 0;
+        if (!hasPermissions) {
+          toast('Designation permissions not set. Would you like to configure them now?', {
+            icon: '⚠️',
+            duration: 6000,
+            style: { cursor: 'pointer' },
+          });
+        }
+      }
     }, 400); // 400ms debounce
     return () => clearTimeout(timer);
   }, [search, filterDesignation]); // Ignore fetchUsers to avoid cycle on nextCursor
@@ -313,6 +330,19 @@ export default function TeamUsersPage() {
 
         const res = await api.post('/employees', formData);
         toast.success(form.sendEmail ? 'User created & email sent!' : 'User created successfully!');
+
+        // Post-Creation Permission Trigger
+        if (form.designationId) {
+          const selectedDesig = designations?.find(d => d.id === form.designationId);
+          const hasPermissions = selectedDesig?.permissions && Object.keys(selectedDesig.permissions).length > 0;
+          if (!hasPermissions) {
+            toast('Designation permissions not set. Would you like to configure them now?', {
+              icon: '⚠️',
+              duration: 6000,
+              style: { cursor: 'pointer' },
+            });
+          }
+        }
       }
       setShowModal(false);
       fetchUsers(true);
@@ -323,21 +353,35 @@ export default function TeamUsersPage() {
     }
   };
 
-  const handleCreateDesignation = async () => {
-    if (!newDesigName.trim()) return toast.error('Designation name required');
+  const handleCreateDesignation = async (data: { name: string; weekendDays: string[] }) => {
+    if (!data.name.trim()) return toast.error('Designation name required');
     setCreatingDesig(true);
     try {
-      const res = await api.post('/team/designations', { name: newDesigName });
-      const created = res.data;
+      const res = await api.post('/team/designations', data);
+      const created = res.data.designation || res.data;
       setDesignations(prev => [...prev, created]);
       setForm(prev => ({ ...prev, designationId: created.id }));
-      setNewDesigName('');
       setShowDesigDialog(false);
-      toast.success(`"${created.name}" created! Configure permissions in the Designations settings.`, { duration: 5000 });
+      setDesigPermissions(created.permissions || {});
+      setPermissionDesigTarget(created);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to create designation');
     } finally {
       setCreatingDesig(false);
+    }
+  };
+
+  const handleSaveDesigPermissions = async () => {
+    try {
+      await api.put(`/team/designations/${permissionDesigTarget.id}`, { permissions: desigPermissions });
+      
+      // Update local state
+      setDesignations(prev => prev.map(d => d.id === permissionDesigTarget.id ? { ...d, permissions: desigPermissions } : d));
+      
+      toast.success("Designation permissions configured!");
+      setPermissionDesigTarget(null);
+    } catch(err: any) {
+      toast.error(err.response?.data?.message || "Failed to update permissions");
     }
   };
 
@@ -929,45 +973,7 @@ export default function TeamUsersPage() {
                         </div>
                       </div>
 
-                      {/* Permission Matrix */}
-                      <div id="permission-matrix" className="space-y-1 sm:col-span-2 pt-4 border-t border-slate-100 dark:border-white/10">
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2">Permission Matrix</h3>
-                        <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden bg-slate-50 dark:bg-black/30">
-                          <div className="grid grid-cols-5 bg-slate-100 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 p-3 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wider">
-                            <div className="col-span-1">Module</div>
-                            <div className="text-center">View</div>
-                            <div className="text-center">Create</div>
-                            <div className="text-center">Edit</div>
-                            <div className="text-center">Delete</div>
-                          </div>
-                          {Object.keys(DEFAULT_PERMISSIONS).map((moduleKey) => {
-                            const perms = (form.permissions as any)[moduleKey] || { view: false, create: false, edit: false, delete: false };
-                            return (
-                              <div key={moduleKey} className="grid grid-cols-5 items-center p-3 border-b last:border-0 border-slate-100 dark:border-white/5 hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-                                <div className="col-span-1 text-sm font-medium text-slate-700 dark:text-gray-300 capitalize">{moduleKey}</div>
-                                {['view', 'create', 'edit', 'delete'].map((action) => (
-                                  <div key={`${moduleKey}-${action}`} className="text-center">
-                                    <input
-                                      type="checkbox"
-                                      checked={perms[action] || false}
-                                      onChange={e => {
-                                        setForm({
-                                          ...form,
-                                          permissions: {
-                                            ...form.permissions,
-                                            [moduleKey]: { ...perms, [action]: e.target.checked }
-                                          }
-                                        });
-                                      }}
-                                      className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+
 
                 </div>
               </div>
@@ -1029,49 +1035,78 @@ export default function TeamUsersPage() {
           </div>
         </div>
       )}
+      {/* ── Quick Add: Designation Permission Modal ────────────────────────────── */}
+      {permissionDesigTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setPermissionDesigTarget(null)} />
+          <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Configure Permissions</h2>
+                <p className="text-sm text-slate-500 mt-1">Set role-based permissions for "{permissionDesigTarget.name}"</p>
+              </div>
+              <button onClick={() => setPermissionDesigTarget(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden bg-slate-50 dark:bg-black/30">
+                <div className="grid grid-cols-5 bg-slate-100 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 p-3 text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wider">
+                  <div className="col-span-1">Module</div>
+                  <div className="text-center">View</div>
+                  <div className="text-center">Create</div>
+                  <div className="text-center">Edit</div>
+                  <div className="text-center">Delete</div>
+                </div>
+                {Object.keys(DEFAULT_PERMISSIONS).map((moduleKey) => {
+                  const perms = desigPermissions[moduleKey] || { view: false, create: false, edit: false, delete: false };
+                  return (
+                    <div key={moduleKey} className="grid grid-cols-5 items-center p-3 border-b last:border-0 border-slate-100 dark:border-white/5 hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                      <div className="col-span-1 text-sm font-medium text-slate-700 dark:text-gray-300 capitalize">{moduleKey}</div>
+                      {['view', 'create', 'edit', 'delete'].map((action) => (
+                        <div key={`${moduleKey}-${action}`} className="text-center">
+                          <input
+                            type="checkbox"
+                            checked={perms[action] || false}
+                            onChange={e => {
+                              setDesigPermissions({
+                                ...desigPermissions,
+                                [moduleKey]: { ...perms, [action]: e.target.checked }
+                              });
+                            }}
+                            className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-2xl">
+              <button onClick={() => setPermissionDesigTarget(null)} className="px-5 py-2 text-sm font-semibold text-slate-600 dark:text-gray-400 bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl transition-all">
+                Skip for Now
+              </button>
+              <button onClick={handleSaveDesigPermissions} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-md shadow-indigo-500/20">
+                Save Matrix
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
     </PageGuard>
 
     {/* ── Quick Add: Designation Dialog ─────────────────────────────────── */}
-    <QuickAddDialog
+    <DesignationModal
       isOpen={showDesigDialog}
-      onClose={() => { setShowDesigDialog(false); setNewDesigName(''); }}
-      title="Add New Designation"
-      description="Create a new role. You can configure its permissions later."
-    >
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Designation Name *</label>
-          <input
-            type="text"
-            autoFocus
-            value={newDesigName}
-            onChange={e => setNewDesigName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateDesignation())}
-            placeholder="e.g. Software Engineer"
-            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-          />
-        </div>
-        <div className="flex gap-3 pt-1">
-          <button
-            type="button"
-            onClick={() => { setShowDesigDialog(false); setNewDesigName(''); }}
-            className="flex-1 py-2.5 text-sm font-semibold text-slate-600 dark:text-gray-400 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleCreateDesignation}
-            disabled={creatingDesig || !newDesigName.trim()}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all disabled:opacity-50"
-          >
-            {creatingDesig ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-            {creatingDesig ? 'Creating…' : 'Create Designation'}
-          </button>
-        </div>
-      </div>
-    </QuickAddDialog>
+      onClose={() => setShowDesigDialog(false)}
+      onSubmit={handleCreateDesignation}
+      isLoading={creatingDesig}
+    />
 
     {/* ── Quick Add: Shift Dialog ────────────────────────────────────────── */}
     <QuickAddDialog

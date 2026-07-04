@@ -206,6 +206,9 @@ export default function DesignationsPage() {
   const [casualLeave, setCasualLeave]       = useState<number>(10);
   const [sickLeave, setSickLeave]           = useState<number>(14);
   const [annualLeave, setAnnualLeave]       = useState<number>(15);
+  const [weekendDays, setWeekendDays]       = useState<string[]>(['Sunday']);
+  const [showWeekendModal, setShowWeekendModal] = useState(false);
+  const DAYS_OF_WEEK = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const [submitting, setSubmitting]         = useState(false);
 
   // Delete confirm
@@ -235,6 +238,7 @@ export default function DesignationsPage() {
     setCasualLeave(10);
     setSickLeave(14);
     setAnnualLeave(15);
+    setWeekendDays(['Sunday']);
     setPermissions(buildEmptyPermissions());
     setShowModal(true);
   };
@@ -246,6 +250,13 @@ export default function DesignationsPage() {
     setCasualLeave(designation.totalCasualLeaves ?? designation.leaveConfig?.casual ?? 10);
     setSickLeave(designation.totalSickLeaves ?? designation.leaveConfig?.sick ?? 14);
     setAnnualLeave(designation.leaveConfig?.annual ?? 15);
+    
+    let parsedWeekends = designation.weekendDays;
+    if (typeof parsedWeekends === 'string') {
+      try { parsedWeekends = JSON.parse(parsedWeekends); } catch (e) {}
+    }
+    setWeekendDays(Array.isArray(parsedWeekends) ? parsedWeekends : ['Sunday']);
+    
     setPermissions(mergePermissions(designation.permissions));
     setShowModal(true);
   };
@@ -287,7 +298,8 @@ export default function DesignationsPage() {
           casual: Number(casualLeave) || 0,
           sick: Number(sickLeave) || 0,
           annual: Number(annualLeave) || 0,
-        }
+        },
+        weekendDays
       };
       if (editTarget) {
         await api.put(`/team/designations/${editTarget.id}`, payload);
@@ -622,6 +634,19 @@ export default function DesignationsPage() {
                   </div>
                 </div>
 
+                {/* ── Weekend Configuration ── */}
+                <div className="pt-2">
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-3">Weekend Configuration</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowWeekendModal(true)}
+                    className="w-full px-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-semibold text-slate-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-all flex items-center justify-between"
+                  >
+                    <span>{weekendDays.length > 0 ? weekendDays.join(', ') : 'No weekends selected'}</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-wide">+ Add Weekend</span>
+                  </button>
+                </div>
+
                 {/* ── Scope Level Matrix ── */}
                 <div>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
@@ -871,6 +896,50 @@ export default function DesignationsPage() {
           </div>
         </div>
       )}
+
+      {/* ── Weekend Selection Modal ── */}
+      {showWeekendModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowWeekendModal(false)} />
+          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col p-6 animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Select Weekend Days</h3>
+            <div className="flex flex-col gap-2 mb-6">
+              {DAYS_OF_WEEK.map((day) => (
+                <label
+                  key={day}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer border transition-all ${
+                    weekendDays.includes(day)
+                      ? 'bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                      : 'bg-slate-50 border-slate-200 dark:bg-white/5 dark:text-gray-300 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                    checked={weekendDays.includes(day)}
+                    onChange={() => {
+                      setWeekendDays((prev) =>
+                        prev.includes(day)
+                          ? prev.filter((d) => d !== day)
+                          : [...prev, day]
+                      );
+                    }}
+                  />
+                  <span className="text-sm font-semibold">{day}</span>
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowWeekendModal(false)}
+              className="w-full px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 transition-all"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
