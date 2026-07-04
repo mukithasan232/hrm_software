@@ -50,17 +50,25 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
 
   const handleOtAction = async (actionStatus: 'APPROVED' | 'REJECTED') => {
     try {
-      // Assuming 'rawLogs[0].id' is the ID of the current attendance log record
-      const recordId = initialData.rawLogs?.[0]?.id;
-      if (!recordId) {
-         toast.error("Could not locate underlying record ID.");
-         return;
+      const targetUserId = employeeId; 
+      const targetDate = date;
+
+      if (!targetUserId || !targetDate) {
+        toast.error("Error: Missing User ID or Date.");
+        return;
       }
-      await axios.patch(`/api/attendance/${recordId}/ot`, { otStatus: actionStatus });
-      toast.success(`Overtime ${actionStatus.toLowerCase()} successfully`);
+
+      // 🚀 NEW: Point to the new bulk update route
+      await axios.patch('/api/attendance/ot-status', {
+        userId: targetUserId,
+        date: targetDate,
+        otStatus: actionStatus
+      });
+      
+      toast.success(`Overtime ${actionStatus.toLowerCase()} successfully!`);
       router.refresh();
-    } catch (error) {
-      toast.error("Failed to update Overtime");
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Failed to update Overtime");
     }
   };
 

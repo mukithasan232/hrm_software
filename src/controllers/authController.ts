@@ -103,8 +103,8 @@ export const loginUser = async (req: Request, res: Response) => {
       }
     });
 
-    if (!user) {
-      console.log(`[Auth] ❌ User not found for identifier: "${email}"`);
+    if (!user || !user.password) {
+      console.log(`[Auth] ❌ User not found or missing password for identifier: "${email}"`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
