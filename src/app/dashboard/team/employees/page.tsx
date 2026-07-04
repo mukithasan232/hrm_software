@@ -102,6 +102,8 @@ export default function EmployeesPage() {
 
   const [departments, setDepartments] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('All');
+  const [designationFilter, setDesignationFilter] = useState('All');
 
   const [deviceUsers, setDeviceUsers] = useState<any[]>([]);
   const [isFetchingZk, setIsFetchingZk] = useState(false);
@@ -156,8 +158,12 @@ export default function EmployeesPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const params: any = {};
+      if (departmentFilter !== 'All') params.departmentId = departmentFilter;
+      if (designationFilter !== 'All') params.designationId = designationFilter;
+      
       const [empRes, desRes, deptRes] = await Promise.all([
-        api.get('/employees').then(r => r.data).catch(() => []),
+        api.get('/employees', { params }).then(r => r.data).catch(() => []),
         api.get('/team/designations').then(r => r.data).catch(() => []),
         api.get('/team/departments').then(r => r.data).catch(() => []),
       ]);
@@ -169,7 +175,7 @@ export default function EmployeesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [departmentFilter, designationFilter]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -285,6 +291,26 @@ export default function EmployeesPage() {
               className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-brand-primary/50 text-slate-800 dark:text-white transition-all font-medium"
             />
           </div>
+          <select 
+            value={departmentFilter} 
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="hidden md:block w-40 px-3 py-2.5 bg-white dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-brand-primary/50 text-slate-800 dark:text-white transition-all font-medium cursor-pointer"
+          >
+            <option value="All">All Departments</option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>{dept.name}</option>
+            ))}
+          </select>
+          <select 
+            value={designationFilter} 
+            onChange={(e) => setDesignationFilter(e.target.value)}
+            className="hidden md:block w-40 px-3 py-2.5 bg-white dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-brand-primary/50 text-slate-800 dark:text-white transition-all font-medium cursor-pointer"
+          >
+            <option value="All">All Designations</option>
+            {designations.map((desig) => (
+              <option key={desig.id} value={desig.id}>{desig.name}</option>
+            ))}
+          </select>
           {canCreate && (
             <button
               onClick={() => {

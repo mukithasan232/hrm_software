@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma';
 
 const generateToken = (id: string, designationName: string, roles: any[] = [], permissions: any = {}) => {
   return jwt.sign({ id, designation: designationName, roles, permissions }, process.env.JWT_SECRET || 'fallback_secret', {
-    expiresIn: '1d',
+    expiresIn: '30d',
   });
 };
 

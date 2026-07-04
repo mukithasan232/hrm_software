@@ -7,7 +7,7 @@ import { eventEmitter } from '../lib/eventEmitter';
 
 export const getEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { cursor, limit = '20', search = '', designation = 'All' } = req.query;
+    const { cursor, limit = '20', search = '', departmentId, designationId } = req.query;
     
     const take = parseInt(limit as string, 10);
     
@@ -24,11 +24,11 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
         { department: { contains: q, mode: 'insensitive' } },
       ];
     }
-    if (designation !== 'All') {
-      where.OR = [
-        ...(where.OR || []),
-        { customDesignation: { name: designation as string } }
-      ];
+    if (departmentId && departmentId !== 'All') {
+      where.departmentId = departmentId as string;
+    }
+    if (designationId && designationId !== 'All') {
+      where.designationId = designationId as string;
     }
 
     const users = await prisma.user.findMany({

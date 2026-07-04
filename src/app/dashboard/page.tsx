@@ -39,6 +39,7 @@ import dynamic from 'next/dynamic';
 
 const WeeklyChart = dynamic(() => import('@/components/charts/WeeklyChart'), { ssr: false });
 const DepartmentChart = dynamic(() => import('@/components/charts/DepartmentChart'), { ssr: false });
+const LateTodayWidget = dynamic(() => import('@/components/dashboard/LateTodayWidget'), { ssr: false });
 
 // ─── Annual leave quota (company policy) ─────────────────────────────────────
 const ANNUAL_LEAVE_QUOTA = 20;
@@ -713,6 +714,13 @@ export default function DashboardOverview() {
                   <DepartmentChart departmentData={departmentData} COLORS={COLORS} totalEmployees={stats.employees} />
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Late Today Widget — admin only */}
+          {isAdmin && (
+            <div className="h-96 w-full">
+              <LateTodayWidget />
             </div>
           )}
         </div>

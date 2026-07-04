@@ -249,7 +249,7 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
                 )}
               </div>
             ) : (
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">—</p>
+              <p className="text-slate-400 text-sm italic mt-2">No document submitted yet.</p>
             )}
           </div>
         </div>
