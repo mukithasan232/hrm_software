@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { checkPermission } from '@/utils/checkPermission';
 import PageGuard from '@/components/auth/PageGuard';
 import { useDetailsStore } from '@/store/useDetailsStore';
+import Cookies from 'js-cookie';
 
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL
@@ -587,7 +588,7 @@ function KanbanCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
   const openDetails = useDetailsStore(state => state.openDetails);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { scope: getScope } = usePermissions();
 
   const taskScope = getScope('Tasks', 'canRead');
@@ -618,6 +619,7 @@ export default function TasksPage() {
   const [analyticsEnd, setAnalyticsEnd] = useState(new Date().toISOString().slice(0, 10));
 
   const fetchAnalytics = useCallback(async () => {
+    if (typeof window !== 'undefined' && !Cookies.get('token')) return;
     try {
       setAnalyticsLoading(true);
       let url = '/tasks/analytics';
@@ -635,10 +637,12 @@ export default function TasksPage() {
   }, [isAdminUser, analyticsStart, analyticsEnd]);
 
   useEffect(() => {
+    if (authLoading || !user) return;
     fetchAnalytics();
-  }, [fetchAnalytics]);
+  }, [fetchAnalytics, authLoading, user]);
 
   const fetchTasks = useCallback(async () => {
+    if (typeof window !== 'undefined' && !Cookies.get('token')) return [];
     try {
       setLoading(true);
       const res = await api.get('/tasks');
@@ -654,6 +658,7 @@ export default function TasksPage() {
   }, []);
 
   const fetchEmployees = useCallback(async () => {
+    if (typeof window !== 'undefined' && !Cookies.get('token')) return;
     try {
       const res = await api.get('/employees?purpose=task_assignment');
       setEmployees(Array.isArray(res.data) ? res.data : res.data.data || []);
@@ -663,6 +668,8 @@ export default function TasksPage() {
   }, []);
 
   useEffect(() => {
+    if (authLoading || !user) return;
+
     fetchTasks().then((loadedTasks) => {
       // Check URL for ID parameter (e.g. from notifications)
       if (typeof window !== 'undefined') {
@@ -684,7 +691,7 @@ export default function TasksPage() {
       }
     });
     if (canCreateTasks || canEditTasks) fetchEmployees();
-  }, [fetchTasks, fetchEmployees, canCreateTasks, canEditTasks]);
+  }, [fetchTasks, fetchEmployees, canCreateTasks, canEditTasks, authLoading, user]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this task permanently?')) return;

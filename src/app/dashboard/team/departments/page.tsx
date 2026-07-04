@@ -8,8 +8,10 @@ import api from '@/services/api';
 import toast from 'react-hot-toast';
 import PageGuard from '@/components/auth/PageGuard';
 import DepartmentDetailsModal from '@/components/departments/DepartmentDetailsModal';
+import { useAuth } from '@/context/AuthContext';
 
 export default function DepartmentsPage() {
+  const { user, loading: authLoading } = useAuth();
   const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -45,7 +47,10 @@ export default function DepartmentsPage() {
     }
   }, []);
 
-  useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
+  useEffect(() => {
+    if (authLoading || !user) return;
+    fetchDepartments();
+  }, [fetchDepartments, authLoading, user]);
 
   // ── Open modal ──
   const openCreate = () => {
