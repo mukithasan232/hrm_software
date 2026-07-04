@@ -61,6 +61,13 @@ export const registerUser = async (req: Request, res: Response) => {
 // @route   POST /api/auth/login
 export const loginUser = async (req: Request, res: Response) => {
   try {
+    // 🚀 ENV CHECKS
+    if (!process.env.DATABASE_URL) {
+      console.error("CRITICAL: DATABASE_URL is not set in environment variables!");
+    }
+    if (!process.env.JWT_SECRET) {
+      console.error("CRITICAL: JWT_SECRET is not set in environment variables!");
+    }
     let email: string | undefined;
     let password: string | undefined;
 
@@ -178,9 +185,15 @@ export const loginUser = async (req: Request, res: Response) => {
       token: generateToken(user.id, designationName, roles, user.permissions),
     });
   } catch (error: any) {
+    console.error("========================================");
+    console.error("🚨 LOGIN API CRASH 🚨");
+    console.error("MESSAGE:", error.message);
+    console.error("STACK:", error.stack);
+    console.error("FULL ERROR:", error);
+    console.error("========================================");
+    
     // 🚀 CATCH ALL: Always return valid JSON — never a blank response
-    console.error(`[Auth] 🔥 Unhandled server error during login:`, error);
-    return res.status(500).json({ message: 'Internal server error. Please try again.' });
+    return res.status(500).json({ message: 'Internal server error. Please contact support.' });
   }
 };
 
