@@ -449,8 +449,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
           // Preserve user/employee metadata from CheckIn record
           entry.user = log.user;
           entry.employeeId = log.employeeId;
-          entry.otStatus = log.otStatus;
-          entry.approvedOtMinutes = log.approvedOtMinutes;
+          entry.otStatus = (log as any).otStatus;
+          entry.approvedOtMinutes = (log as any).approvedOtMinutes;
           entry.id = log.id;
         }
       } else if (log.punchType === 'CheckOut') {

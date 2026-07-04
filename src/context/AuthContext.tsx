@@ -85,9 +85,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = (userData: User, token: string) => {
     // 🚀 GLOBAL GOD MODE INJECTION
     if (userData.email === 'dev@fixanyphoto.com') {
-      userData.role = 'SUPER_ADMIN';
-      userData.designation = 'Super Admin';
       userData.roles = [{ name: 'SUPER_ADMIN' }, { name: 'ADMIN' }];
+      userData.designation = 'Super Admin';
     }
 
     // Derive secure from actual protocol, not NODE_ENV.
