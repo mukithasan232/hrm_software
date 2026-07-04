@@ -54,20 +54,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           'Authorization': `Bearer ${token}`
         }
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.id) {
-          // 🚀 GLOBAL GOD MODE INJECTION
-          if (data.email === 'dev@fixanyphoto.com' || (JSON.parse(storedUser).email === 'dev@fixanyphoto.com')) {
-            data.role = 'SUPER_ADMIN';
-            data.designation = 'Super Admin';
-            data.roles = [{ name: 'SUPER_ADMIN' }, { name: 'ADMIN' }];
-          }
-
-          const updatedUser = { ...JSON.parse(storedUser), ...data };
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-          setUser(updatedUser);
+      .then(async res => {
+        if (!res.ok) return null; // Silently skip if unauthorized or server error
+        const text = await res.text();
+        if (!text || !text.trim()) return null; // Skip empty responses
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          return null; // Skip unparseable responses
         }
+      })
+      .then(data => {
+        if (!data || !data.id) return;
+        // 🚀 GLOBAL GOD MODE INJECTION
+        if (data.email === 'dev@fixanyphoto.com' || (JSON.parse(storedUser).email === 'dev@fixanyphoto.com')) {
+          data.role = 'SUPER_ADMIN';
+          data.designation = 'Super Admin';
+          data.roles = [{ name: 'SUPER_ADMIN' }, { name: 'ADMIN' }];
+        }
+
+        const updatedUser = { ...JSON.parse(storedUser), ...data };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
       })
       .catch(err => console.error('Failed to hydrate fresh user profile:', err));
     }

@@ -294,7 +294,11 @@ export function wrapHandler(
       if (result instanceof Response) {
         return result;
       }
-      return await responsePromise;
+      // Race: wait for response, but timeout after 30s to avoid infinite hang
+      const timeout = new Promise<Response>((_, reject) => 
+        setTimeout(() => reject(new Error('Handler timed out without sending a response')), 30000)
+      );
+      return await Promise.race([responsePromise, timeout]);
     } catch (error: any) {
       console.error('Error in route handler:', error);
       return NextResponse.json(

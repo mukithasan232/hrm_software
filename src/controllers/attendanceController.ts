@@ -427,29 +427,63 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       logsByEmpAndDate[k].push(l);
     }
 
-    // Do NOT aggregate by date. Map each individual log to its summary.
-    const aggregatedSummaries = logs.map((log: any) => {
+    // Group logs by employee+date: track first CheckIn & last CheckOut per day
+    const shiftMap: Record<string, any> = {};
+    for (const log of logs) {
       const dateStr = formatYMD(log.timestamp);
       const k = `${log.employeeId}_${dateStr}`;
+      if (!shiftMap[k]) {
+        // Initialize with employee metadata (reuse whatever log we have first)
+        shiftMap[k] = {
+          ...log,
+          _date: dateStr,
+          _checkInTimestamp: null,
+          _checkOutTimestamp: null,
+        };
+      }
+      const entry = shiftMap[k];
+      if (log.punchType === 'CheckIn') {
+        // Keep the EARLIEST CheckIn
+        if (!entry._checkInTimestamp || log.timestamp < entry._checkInTimestamp) {
+          entry._checkInTimestamp = log.timestamp;
+          // Preserve user/employee metadata from CheckIn record
+          entry.user = log.user;
+          entry.employeeId = log.employeeId;
+          entry.otStatus = log.otStatus;
+          entry.approvedOtMinutes = log.approvedOtMinutes;
+          entry.id = log.id;
+        }
+      } else if (log.punchType === 'CheckOut') {
+        // Keep the LATEST CheckOut
+        if (!entry._checkOutTimestamp || log.timestamp > entry._checkOutTimestamp) {
+          entry._checkOutTimestamp = log.timestamp;
+        }
+      }
+    }
+
+    // Map each daily shift summary
+    const aggregatedSummaries = Object.values(shiftMap).map((log: any) => {
+      const dateStr = log._date || formatYMD(log.timestamp);
+      const k = `${log.employeeId}_${dateStr}`;
       
-      const punchTimeline = (logsByEmpAndDate[k] || []).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      const punchTimeline = (logsByEmpAndDate[k] || []).sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
 
       const shiftStartTime = log.user?.shiftStartTime || log.user?.customDepartment?.shiftStartTime || '09:00';
       const shiftEndTime = log.user?.shiftEndTime || log.user?.customDepartment?.shiftEndTime || '17:00';
       
-      const checkInRaw = log.timestamp;
-      const checkOutRaw = log.checkOut || null;
+      const checkInRaw = log._checkInTimestamp || log.timestamp;
+      const checkOutRaw = log._checkOutTimestamp || log.checkOut || null;
       const isMissingOut = !checkOutRaw;
 
       let totalValidMs = 0;
       if (checkInRaw && checkOutRaw) {
-        totalValidMs = checkOutRaw.getTime() - checkInRaw.getTime();
+        totalValidMs = new Date(checkOutRaw).getTime() - new Date(checkInRaw).getTime();
       }
 
       let lateMinutes = 0;
       if (checkInRaw) {
         const shiftStartUTC = new Date(`${dateStr}T${shiftStartTime}:00+06:00`);
-        const lateMs = Math.max(0, checkInRaw.getTime() - shiftStartUTC.getTime());
+        const lateMs = Math.max(0, new Date(checkInRaw).getTime() - shiftStartUTC.getTime());
         lateMinutes = Math.floor(lateMs / 60000);
       }
 
