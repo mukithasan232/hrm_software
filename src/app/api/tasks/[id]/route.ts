@@ -81,6 +81,7 @@ export async function PATCH(
         where: { id },
         data: { 
           status,
+          ...(status === 'COMPLETED' ? { completedAt: new Date() } : { completedAt: null }),
           ...(description !== undefined && { description: description || null }),
           ...(uploadedFiles.length > 0 && { outputFiles: finalOutputFiles }),
         } as any,
@@ -100,6 +101,7 @@ export async function PATCH(
         ...(startDate !== undefined   && { startDate: startDate ? new Date(startDate) : null }),
         ...(dueDate !== undefined     && { dueDate: dueDate ? new Date(dueDate) : null }),
         ...(status !== undefined      && { status }),
+        ...(status !== undefined      && { completedAt: status === 'COMPLETED' ? new Date() : null }),
         ...(priority !== undefined    && { priority }),
         ...(assignedToId !== undefined && { assignedToId }),
         ...(mockReq.file?.attachment?.path && { attachment: mockReq.file.attachment.path }),

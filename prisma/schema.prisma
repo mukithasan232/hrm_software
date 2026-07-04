@@ -373,6 +373,7 @@ model Task {
   comments     Json?        @default("[]")
   startDate    DateTime?
   dueDate      DateTime?
+  completedAt  DateTime?
   status       TaskStatus   @default(TODO)
   priority     TaskPriority @default(NORMAL)
   assignedToId String

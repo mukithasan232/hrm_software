@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -15,7 +18,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       data: {
         timestamp: checkInDate || undefined, 
         checkOut: checkOutDate
-      }
+      } as any
     });
     return NextResponse.json({ message: "Updated", data: updated });
   } catch (error) {

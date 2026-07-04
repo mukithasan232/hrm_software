@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "npx prisma generate && node server.cjs",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && next build",
     "build:next": "next build",
     "start": "concurrently --kill-others-on-fail -c \"blue,green\" \"node worker.js\" \"next start\"",
     "start:custom": "concurrently --kill-others-on-fail -c \"blue,green\" \"node worker.js\" \"sh ./entrypoint.sh\"",
