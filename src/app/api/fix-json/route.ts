@@ -22,10 +22,7 @@ export async function GET() {
       prisma.$executeRawUnsafe(`UPDATE UserPermission SET matrix = '{}' WHERE matrix = '' OR matrix IS NULL;`),
       
       // Fix Task table
-      prisma.$executeRawUnsafe(`UPDATE Task SET comments = '[]' WHERE comments = '' OR comments IS NULL;`),
-      
-      // Fix TenantSettings table
-      prisma.$executeRawUnsafe(`UPDATE TenantSettings SET localization = '{}' WHERE localization = '' OR localization IS NULL;`)
+      prisma.$executeRawUnsafe(`UPDATE Task SET comments = '[]' WHERE comments = '' OR comments IS NULL;`)
     ];
 
     await Promise.all(queries);
