@@ -29,8 +29,32 @@ export default function LoginPage() {
     ev.preventDefault();
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const { token, ...userData } = response.data;
+      // Use raw fetch with safe JSON parsing as per bulletproof login spec
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      // 🚀 Safe JSON parsing — never blindly call .json()
+      const textData = await res.text();
+      let data: any;
+      try {
+        data = textData ? JSON.parse(textData) : {};
+      } catch (parseError) {
+        console.error('[Login] Non-JSON response from server:', textData);
+        throw new Error('Server returned an invalid response. Please try again.');
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || 'Authentication failed. Please check your credentials.');
+      }
+
+      const { token, ...userData } = data;
+      if (!token) {
+        throw new Error('Authentication failed: no token received.');
+      }
+
       const normalizedUser = { ...userData, id: userData.id || userData._id };
       login(normalizedUser, token);
 
@@ -39,7 +63,9 @@ export default function LoginPage() {
       const destination = DESIGNATION_HOME[userData.designation as string] || '/dashboard';
       setTimeout(() => router.replace(destination), 600);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      // Handle both axios-style and fetch-style errors
+      const message = error?.response?.data?.message || error?.message || 'Login failed. Please try again.';
+      toast.error(message);
     } finally {
       setLoading(false);
     }

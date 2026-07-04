@@ -61,15 +61,23 @@ export const registerUser = async (req: Request, res: Response) => {
 // @route   POST /api/auth/login
 export const loginUser = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    let email: string | undefined;
+    let password: string | undefined;
+
+    try {
+      email = req.body?.email;
+      password = req.body?.password;
+    } catch (bodyErr) {
+      console.error('[Auth] ❌ Failed to read request body');
+      return res.status(400).json({ message: 'Invalid request body' });
+    }
+
     console.log(`[Auth] 🔑 Login attempt for: "${email}"`);
 
     if (!email || !password) {
       console.log('[Auth] ❌ Missing email or password');
       return res.status(400).json({ message: 'Please provide email and password' });
     }
-
-    // Ensure standard authentication flow through the database only
 
     // Support both email and employeeId
     const user = await prisma.user.findFirst({
@@ -95,16 +103,14 @@ export const loginUser = async (req: Request, res: Response) => {
 
     console.log(`[Auth] 👤 User found: ${user.email} (ID: ${user.id})`);
 
-    // ── TEMPORARY DEBUG — remove after confirming login works on production ──
-    console.log('[Auth] LOGIN_DEBUG:', {
-      inputPassword:  password,
-      databaseHash:   user.password,
-      hashPrefix:     user.password?.substring(0, 20),
-      hashLength:     user.password?.length,
-    });
-    // ────────────────────────────────────────────────────────────────────────
+    let isMatch = false;
+    try {
+      isMatch = await bcrypt.compare(password, user.password);
+    } catch (bcryptErr) {
+      console.error('[Auth] ❌ bcrypt error:', bcryptErr);
+      return res.status(500).json({ message: 'Authentication error. Please try again.' });
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       console.log(`[Auth] ❌ Password mismatch for: "${email}"`);
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -114,40 +120,45 @@ export const loginUser = async (req: Request, res: Response) => {
     const roles = user.roles || [];
     
     // Merge all permission sources: Designation -> Roles -> UserOverrides
-    let permissions = {};
-    if (user.customDesignation?.permissions) {
-      const dPerms = typeof user.customDesignation.permissions === 'string' 
-        ? JSON.parse(user.customDesignation.permissions) 
-        : user.customDesignation.permissions;
-      permissions = { ...permissions, ...dPerms };
-    }
-    
-    roles.forEach((r: any) => {
-      if (r.permissions) {
-        const rPerms = typeof r.permissions === 'string' ? JSON.parse(r.permissions) : r.permissions;
-        permissions = { ...permissions, ...rPerms };
+    let permissions: any = {};
+    try {
+      if (user.customDesignation?.permissions) {
+        const dPerms = typeof user.customDesignation.permissions === 'string' 
+          ? JSON.parse(user.customDesignation.permissions) 
+          : user.customDesignation.permissions;
+        permissions = { ...permissions, ...dPerms };
       }
-    });
+      
+      roles.forEach((r: any) => {
+        if (r.permissions) {
+          const rPerms = typeof r.permissions === 'string' ? JSON.parse(r.permissions) : r.permissions;
+          permissions = { ...permissions, ...rPerms };
+        }
+      });
 
-    if (user.permissions) {
-      const dbPerms = typeof user.permissions === 'string'
-        ? JSON.parse(user.permissions)
-        : user.permissions;
-      permissions = { ...permissions, ...dbPerms };
-    }
+      if (user.permissions) {
+        const dbPerms = typeof user.permissions === 'string'
+          ? JSON.parse(user.permissions)
+          : user.permissions;
+        permissions = { ...permissions, ...dbPerms };
+      }
 
-    if (user.userPermission?.matrix) {
-      const uPerms = typeof user.userPermission.matrix === 'string'
-        ? JSON.parse(user.userPermission.matrix)
-        : user.userPermission.matrix;
-      permissions = { ...permissions, ...uPerms };
+      if (user.userPermission?.matrix) {
+        const uPerms = typeof user.userPermission.matrix === 'string'
+          ? JSON.parse(user.userPermission.matrix)
+          : user.userPermission.matrix;
+        permissions = { ...permissions, ...uPerms };
+      }
+    } catch (permErr) {
+      console.warn('[Auth] ⚠️ Permission merge error (non-fatal):', permErr);
+      // Continue with whatever permissions were built so far
     }
 
     user.permissions = permissions;
 
     console.log(`[Auth] ✅ Login success: ${user.email} (Designation: ${designationName})`);
 
-    res.json({
+    return res.json({
       id: user.id,
       employeeId: user.employeeId,
       name: user.name,
@@ -167,8 +178,9 @@ export const loginUser = async (req: Request, res: Response) => {
       token: generateToken(user.id, designationName, roles, user.permissions),
     });
   } catch (error: any) {
-    console.error(`[Auth] 🔥 Server Error during login: ${error.message}`);
-    res.status(500).json({ message: error.message });
+    // 🚀 CATCH ALL: Always return valid JSON — never a blank response
+    console.error(`[Auth] 🔥 Unhandled server error during login:`, error);
+    return res.status(500).json({ message: 'Internal server error. Please try again.' });
   }
 };
 
