@@ -235,6 +235,7 @@ model User {
   userPermission UserPermission?
   assignedTasks  Task[]          @relation("AssignedTasks")
   createdTasks   Task[]          @relation("CreatedTasks")
+  taskComments   TaskComment[]
 }
 
 // Single-row tenant branding config (white-label SaaS)
@@ -390,6 +391,7 @@ model Task {
   assignedTo   User         @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
   createdById  String
   createdBy    User         @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Cascade)
+  taskComments TaskComment[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -406,3 +408,18 @@ model Shortcut {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  text      String   @db.Text
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+  @@index([userId])
+}
+

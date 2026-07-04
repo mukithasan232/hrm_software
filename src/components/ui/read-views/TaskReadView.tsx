@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, User, Clock, Paperclip, CheckCircle2, AlertCircle, MessageSquare, Send, Activity, Info, MoreHorizontal } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '@/context/AuthContext';
 
 export default function TaskReadView({ id, initialData }: { id: string | number | null, initialData: any }) {
   if (!initialData) {
@@ -21,8 +22,25 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
   const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
   const [imageError, setImageError] = useState(false);
   const [comment, setComment] = useState("");
+  const [comments, setComments] = useState<any[]>(initialData?.taskComments || []);
   const [isSending, setIsSending] = useState(false);
   const router = useRouter();
+  const { user: currentUser } = useAuth();
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        const res = await fetch(`/api/tasks/${task?.id}/comments`);
+        if (res.ok) {
+          const data = await res.json();
+          setComments(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch comments", error);
+      }
+    };
+    if (task?.id) fetchComments();
+  }, [task?.id]);
 
   const handleSendMessage = async () => {
     if (!comment.trim() || isSending) return;
@@ -32,14 +50,13 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
       const res = await fetch(`/api/tasks/${task?.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: comment })
+        body: JSON.stringify({ text: comment, userId: (currentUser as any)?.id })
       });
       
       if (res.ok) {
-        const updatedTask = await res.json();
-        setTask(updatedTask);
+        const newComment = await res.json();
+        setComments((prev) => [...prev, newComment]);
         setComment("");
-        router.refresh();
       } else {
         console.error("Failed to send message");
       }
@@ -184,11 +201,15 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
 
           {/* Display Existing Messages */}
           <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2">
-            {task?.comments && task.comments.length > 0 ? (
-              task.comments.map((msg: any, idx: number) => (
+            {comments && comments.length > 0 ? (
+              comments.map((msg: any, idx: number) => (
                 <div key={idx} className="flex gap-3">
-                  <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-sm font-bold text-slate-600">
-                    {msg.user?.name ? msg.user.name.substring(0, 2).toUpperCase() : 'U'}
+                  <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-sm font-bold text-slate-600 overflow-hidden">
+                    {msg.user?.profileImage ? (
+                      <img src={`${BACKEND}${msg.user.profileImage}`} alt={msg.user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      msg.user?.name ? msg.user.name.substring(0, 2).toUpperCase() : 'U'
+                    )}
                   </div>
                   <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl rounded-tl-none w-full shadow-sm">
                     <p className="text-sm text-slate-700">{msg.text}</p>
