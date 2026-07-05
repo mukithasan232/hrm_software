@@ -31,12 +31,14 @@ export async function POST(
       try { currentComments = JSON.parse(currentComments); } catch (e) { currentComments = []; }
     }
 
+    const currentUser = await prisma.user.findUnique({ where: { id: mockReq.user.id } });
+    
     const newComment = {
       text: text.trim(),
       user: {
         id: mockReq.user.id,
-        name: mockReq.user.name,
-        email: mockReq.user.email
+        name: currentUser?.name || 'Unknown User',
+        email: currentUser?.email || 'Unknown Email'
       },
       createdAt: new Date().toISOString()
     };

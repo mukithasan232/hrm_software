@@ -80,11 +80,11 @@ export const updateDesignation = async (req: Request, res: Response): Promise<vo
       data: {
         name: name?.trim() ?? designation.name,
         description: description !== undefined ? description?.trim() || null : designation.description,
-        permissions: permissions ?? designation.permissions,
-        leaveConfig: leaveConfig ?? designation.leaveConfig,
+        permissions: (permissions ?? designation.permissions) as any,
+        leaveConfig: (leaveConfig ?? designation.leaveConfig) as any,
         totalCasualLeaves: leaveConfig?.casual ?? designation.totalCasualLeaves,
         totalSickLeaves: leaveConfig?.sick ?? designation.totalSickLeaves,
-        weekendDays: finalWeekendDays,
+        weekendDays: finalWeekendDays as any,
       },
     });
 
