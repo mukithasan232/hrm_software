@@ -37,56 +37,55 @@ enum TaskPriority {
 // Dynamic Designation model for the RBAC Team module
 // permissions is stored as JSON: { "attendance.view": true, "leaves.approve": true, ... }
 model Designation {
-  id          String   @id @default(uuid())
-  name        String   @unique
+  id                String   @id @default(uuid())
+  name              String   @unique
   description       String?
   leaveConfig       Json?    @default("{}")
   totalCasualLeaves Int      @default(0)
   totalSickLeaves   Int      @default(0)
   permissions       Json     @default("{}")
   weekendDays       Json     @default("[\"Sunday\"]")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   users User[]
 }
 
 model Department {
-  id                String   @id @default(uuid())
-  name              String   @unique
-  description       String?
-  shiftStartTime    String   @default("09:00")
-  shiftEndTime      String   @default("17:00")
-  lunchStartTime    String?
-  lunchEndTime      String?
-  snacksStartTime   String?
-  snacksEndTime     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  users             User[]
+  id              String   @id @default(uuid())
+  name            String   @unique
+  description     String?
+  shiftStartTime  String   @default("09:00")
+  shiftEndTime    String   @default("17:00")
+  lunchStartTime  String?
+  lunchEndTime    String?
+  snacksStartTime String?
+  snacksEndTime   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  users           User[]
 }
-
 
 model Shift {
   id        String   @id @default(cuid())
   name      String   @unique
-  startTime String   
-  endTime   String   
+  startTime String
+  endTime   String
   users     User[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model AttendanceLog {
-  id         String   @id @default(uuid())
-  createdAt  DateTime @default(now())
+  id         String    @id @default(uuid())
+  createdAt  DateTime  @default(now())
   deviceId   String
   employeeId String
-  user       User     @relation("UserAttendance", fields: [employeeId], references: [id], onDelete: Cascade)
+  user       User      @relation("UserAttendance", fields: [employeeId], references: [id], onDelete: Cascade)
   punchType  String
-  timestamp  DateTime @default(now())
+  timestamp  DateTime  @default(now())
   checkOut   DateTime?
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime  @updatedAt
 
   otStatus          String @default("PENDING")
   approvedOtMinutes Int    @default(0)
@@ -112,18 +111,18 @@ model Leave {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  titleEn   String?
-  titleBn   String?
-  messageEn String
-  messageBn String?
-  read      Boolean  @default(false)
-  type      String
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  titleEn     String?
+  titleBn     String?
+  messageEn   String
+  messageBn   String?
+  read        Boolean  @default(false)
+  type        String
   referenceId String?
-  updatedAt DateTime @updatedAt
-  userId    String
-  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Payroll {
@@ -163,29 +162,29 @@ model Performance {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  employeeId   String   @unique
-  name         String
-  password     String
-  isActive     Boolean  @default(true)
+  id                    String   @id @default(uuid())
+  email                 String   @unique
+  employeeId            String   @unique
+  name                  String
+  password              String
+  isActive              Boolean  @default(true)
   baseSalary            Float    @default(0)
   leaveConfig           Json?    @default("{}")
   casualLeaveAdjustment Int      @default(0)
   sickLeaveAdjustment   Int      @default(0)
   permissions           Json?    @default("{}")
   department            String?
-  designation  String?
-  shiftStartTime String?
-  shiftEndTime   String?
-  shift2Start    String?
-  shift2End      String?
-  joiningDate  DateTime @default(now())
-  profileImage String?
-  salaryAccount String?
-  appointmentLetter String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  designation           String?
+  shiftStartTime        String?
+  shiftEndTime          String?
+  shift2Start           String?
+  shift2End             String?
+  joiningDate           DateTime @default(now())
+  profileImage          String?
+  salaryAccount         String?
+  appointmentLetter     String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   // Dynamic RBAC — relational link to a Designation entity
   designationId     String?
@@ -199,18 +198,18 @@ model User {
   customDepartment Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
   // Shift Relation
-  shiftId          String?
-  shift            Shift?      @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  shiftId String?
+  shift   Shift?  @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
   // ZKTeco hardware mapping
   zktecoId Int? @unique
 
-  employeeType     EmployeeType @default(IN_HOUSE)
+  employeeType       EmployeeType   @default(IN_HOUSE)
   verificationStatus EmployeeStatus @default(UNVERIFIED)
-  userType         String       @default("Employee")
-  documents        Json         @default("[]")
-  resetToken       String?
-  resetTokenExpiry DateTime?
+  userType           String         @default("Employee")
+  documents          Json           @default("[]")
+  resetToken         String?
+  resetTokenExpiry   DateTime?
 
   // Contact & Social Media
   phone        String?
@@ -376,24 +375,24 @@ model PasswordResetToken {
 }
 
 model Task {
-  id           String       @id @default(uuid())
-  title        String
-  description  String?      @db.Text
+  id           String        @id @default(uuid())
+  title        String        @db.Text
+  description  String?       @db.Text
   attachment   String?
-  outputFiles  Json?        @default("[]")
-  comments     Json?        @default("[]")
+  outputFiles  Json?         @default("[]")
+  comments     Json?         @default("[]")
   startDate    DateTime?
   dueDate      DateTime?
   completedAt  DateTime?
-  status       TaskStatus   @default(TODO)
-  priority     TaskPriority @default(NORMAL)
+  status       TaskStatus    @default(TODO)
+  priority     TaskPriority  @default(NORMAL)
   assignedToId String
-  assignedTo   User         @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
+  assignedTo   User          @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Cascade)
   createdById  String
-  createdBy    User         @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy    User          @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Cascade)
   taskComments TaskComment[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([assignedToId])
   @@index([status])
@@ -422,4 +421,3 @@ model TaskComment {
   @@index([taskId])
   @@index([userId])
 }
-

@@ -34,9 +34,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   productionBrowserSourceMaps: false,
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any;

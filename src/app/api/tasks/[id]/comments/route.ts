@@ -1,63 +1,47 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getCorsHeaders } from '@/lib/adapter';
+
 export const dynamic = 'force-dynamic';
 
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { parseRequest, getCorsHeaders } from '@/lib/adapter';
-
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const mockReq = await parseRequest(req, { id });
+    const comments = await prisma.taskComment.findMany({
+      where: { taskId: id },
+      include: { user: { select: { id: true, name: true, profileImage: true } } },
+      orderBy: { createdAt: 'asc' }
+    });
+    return NextResponse.json(comments, { headers: getCorsHeaders() });
+  } catch (error) {
+    console.error("Failed to fetch comments:", error);
+    return NextResponse.json({ error: "Failed to fetch comments" }, { status: 500, headers: getCorsHeaders() });
+  }
+}
 
-    if (!mockReq.user) {
-      return NextResponse.json({ message: 'Not authorized' }, { status: 401, headers: getCorsHeaders() });
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+    const { text, userId } = body;
+
+    if (!text || !userId) {
+      return NextResponse.json({ error: "Missing data" }, { status: 400, headers: getCorsHeaders() });
     }
 
-    const { text } = mockReq.body;
-    if (!text || !text.trim()) {
-      return NextResponse.json({ message: 'Message text is required' }, { status: 400, headers: getCorsHeaders() });
-    }
-
-    const task = await prisma.task.findUnique({ where: { id } });
-    if (!task) {
-      return NextResponse.json({ message: 'Task not found' }, { status: 404, headers: getCorsHeaders() });
-    }
-
-    let currentComments = (task as any).comments || [];
-    if (typeof currentComments === 'string') {
-      try { currentComments = JSON.parse(currentComments); } catch (e) { currentComments = []; }
-    }
-
-    const currentUser = await prisma.user.findUnique({ where: { id: mockReq.user.id } });
-    
-    const newComment = {
-      text: text.trim(),
-      user: {
-        id: mockReq.user.id,
-        name: currentUser?.name || 'Unknown User',
-        email: currentUser?.email || 'Unknown Email'
+    const newComment = await prisma.taskComment.create({
+      data: {
+        text,
+        taskId: id,
+        userId: userId,
       },
-      createdAt: new Date().toISOString()
-    };
-
-    const updatedComments = [...currentComments, newComment];
-
-    const updated = await prisma.task.update({
-      where: { id },
-      data: { comments: updatedComments },
-      include: {
-        assignedTo: { select: { id: true, name: true, profileImage: true, employeeId: true } },
-        createdBy:  { select: { id: true, name: true } },
-      }
+      include: { user: { select: { id: true, name: true, profileImage: true } } }
     });
 
-    return NextResponse.json(updated, { headers: getCorsHeaders() });
-  } catch (error: any) {
-    console.error('[Task Comments POST]', error);
-    return NextResponse.json({ message: error.message }, { status: 500, headers: getCorsHeaders() });
+    return NextResponse.json(newComment, { status: 201, headers: getCorsHeaders() });
+  } catch (error) {
+    console.error("Failed to post comment:", error);
+    return NextResponse.json({ error: "Failed to post comment" }, { status: 500, headers: getCorsHeaders() });
   }
 }
 
