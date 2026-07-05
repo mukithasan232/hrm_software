@@ -294,7 +294,7 @@ export default function AttendancePage() {
           toast.error("Location request timed out or failed.");
         }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
     );
   };
 
