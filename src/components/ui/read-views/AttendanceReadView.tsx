@@ -81,7 +81,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{employeeName}</h2>
         <p className="text-slate-500 dark:text-slate-400 font-medium">ID: {employeeId} • Date: {date}</p>
         <div className="mt-4 px-4 py-1.5 bg-slate-100 dark:bg-slate-700/50 rounded-full text-sm font-semibold text-slate-700 dark:text-slate-300">
-          Status: {status === 'Present' ? <span className="text-emerald-600 dark:text-emerald-400">Present</span> : <span className="text-red-500">Absent</span>}
+          Status: {status === 'Present' ? <span className="text-emerald-600 dark:text-emerald-400">Present</span> : status === 'Late' ? <span className="text-amber-500 dark:text-amber-400">Late</span> : status === 'Half-Day' ? <span className="text-orange-500">Half-Day</span> : status === 'Off Day' ? <span className="text-slate-500 dark:text-slate-400 font-semibold">Off Day</span> : status === 'WEEKEND_WORK' ? <span className="text-xs font-medium px-2 py-1 rounded bg-purple-100 text-purple-700">⭐ Weekend Work</span> : <span className="text-red-500">Absent</span>}
         </div>
       </div>
 
@@ -188,7 +188,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
         </div>
 
         {/* Place this BELOW the Time Summary Cards */}
-        {punchTimeline && punchTimeline.length > 1 && (
+        {punchTimeline && punchTimeline.length > 0 && (
           <div className="mt-6 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <button 
               onClick={() => setShowDetails(!showDetails)}
@@ -204,15 +204,54 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
             {showDetails && (
               <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex flex-col gap-3">
                 {punchTimeline.map((session: any, index: number) => (
-                  <div key={session.id} className="flex justify-between items-center text-sm p-3 rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                  <div key={session.id || index} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-md mb-2">
                     <div className="flex flex-col">
-                      <span className="text-xs text-slate-500 font-medium mb-1">Session {index + 1}</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">
-                        {toBDDisplay(new Date(session.timestamp), 'hh:mm a')} 
-                        {' - '} 
-                        {session.checkOut ? toBDDisplay(new Date(session.checkOut), 'hh:mm a') : 'Working...'}
-                      </span>
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Session {index + 1}</span>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">IN:</span> 
+                          {toBDDisplay(new Date(session.inTime), 'hh:mm a')} 
+                          <span className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-[10px] ml-1">🌐 {session.inSource}</span>
+                          {session.inLatitude && session.inLongitude && (
+                            <a 
+                              href={`https://www.google.com/maps/search/?api=1&query=${session.inLatitude},${session.inLongitude}`} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="text-[10px] text-blue-600 underline ml-1 flex items-center"
+                            >
+                              📍 {session.inAddress ? `${session.inAddress.substring(0, 20)}...` : "View Map"}
+                            </a>
+                          )}
+                        </div>
+                        {'➔'}
+                        {session.isMissingOut ? (
+                          <span className="text-red-500 font-medium bg-red-100 dark:bg-red-900/30 px-1 rounded">⚠️ Missing Punch-Out</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-amber-600 dark:text-amber-400 font-medium">OUT:</span> 
+                            {toBDDisplay(new Date(session.outTime), 'hh:mm a')} 
+                            {(() => {
+                              const checkInDate = new Date(session.inTime);
+                              const checkOutDate = new Date(session.outTime);
+                              const isNextDay = checkOutDate.getDate() !== checkInDate.getDate() || checkOutDate.getMonth() !== checkInDate.getMonth() || checkOutDate.getFullYear() !== checkInDate.getFullYear();
+                              return isNextDay ? <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold ml-0.5">(+1 Day)</span> : null;
+                            })()}
+                            <span className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-[10px] ml-1">📱 {session.outSource}</span>
+                            {session.outLatitude && session.outLongitude && (
+                              <a 
+                                href={`https://www.google.com/maps/search/?api=1&query=${session.outLatitude},${session.outLongitude}`} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="text-[10px] text-blue-600 underline ml-1 flex items-center"
+                              >
+                                📍 {session.outAddress ? `${session.outAddress.substring(0, 20)}...` : "View Map"}
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    <div className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">{session.duration || '--'}</div>
                   </div>
                 ))}
                 <div className="text-xs text-center text-slate-400 mt-2 italic">

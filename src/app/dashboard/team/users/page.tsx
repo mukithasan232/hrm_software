@@ -4,7 +4,7 @@ import {
   UsersRound, Plus, Search, X, Save, Loader2, Trash2, Pencil,
   Mail, Building2, CalendarDays, Shield, ChevronDown, UserX, UserCheck, KeyRound, UploadCloud, RefreshCw, Clock
 } from 'lucide-react';
-import DesignationSelect from '@/components/ui/selects/DesignationSelect';
+
 import DesignationModal from '@/components/designation/DesignationModal';
 import api from '@/services/api';
 import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidator';

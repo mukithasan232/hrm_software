@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { id: params.id },
-          { employeeId: params.id }
+          { id },
+          { employeeId: id }
         ]
       }
     });

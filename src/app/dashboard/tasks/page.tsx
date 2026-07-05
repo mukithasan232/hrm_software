@@ -271,6 +271,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
               value={form.title}
               onChange={e => setForm({ ...form, title: e.target.value })}
               required
+              maxLength={100}
               disabled={isReadOnly}
             />
           </div>

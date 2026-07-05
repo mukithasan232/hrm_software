@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/config/db';
+import { formatInTimeZone } from 'date-fns-tz';
 
+const BD_TZ = 'Asia/Dhaka';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
@@ -11,16 +13,13 @@ export async function GET() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const lateLogs = await prisma.attendanceLog.findMany({
+    const checkIns = await prisma.attendanceLog.findMany({
       where: {
         timestamp: {
           gte: today,
           lt: tomorrow
         },
-        type: 'IN',
-        lateMinutes: {
-          gt: 0
-        }
+        punchType: { contains: 'In' }
       },
       include: {
         user: {
@@ -28,22 +27,42 @@ export async function GET() {
             name: true,
             profileImage: true,
             designation: true,
-            customDesignation: { select: { name: true } }
+            customDesignation: { select: { name: true } },
+            shiftStartTime: true,
+            shift: { select: { startTime: true } },
+            customDepartment: { select: { shiftStartTime: true } }
           }
         }
-      },
-      orderBy: {
-        lateMinutes: 'desc'
       }
     });
 
-    const lateEmployees = lateLogs.map(log => ({
-      id: log.id,
-      name: log.user?.name || 'Unknown',
-      avatar: log.user?.profileImage || null,
-      designation: log.user?.customDesignation?.name || log.user?.designation || 'Employee',
-      lateMinutes: log.lateMinutes
-    }));
+    const lateEmployees = [];
+    const gracePeriodMs = 10 * 60 * 1000; // 10 minutes
+
+    for (const log of checkIns) {
+      if (!log.user) continue;
+      const expectedShiftStart = log.user.shift?.startTime || log.user.shiftStartTime || log.user.customDepartment?.shiftStartTime || '09:00';
+      const checkInLocalStr = formatInTimeZone(log.timestamp, BD_TZ, 'yyyy-MM-dd');
+      const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;
+      const shiftStartUTC = new Date(shiftStartLocalStr);
+      
+      let lateMins = 0;
+      if (log.timestamp.getTime() > shiftStartUTC.getTime() + gracePeriodMs) {
+        lateMins = Math.floor((log.timestamp.getTime() - shiftStartUTC.getTime()) / 60000);
+      }
+
+      if (lateMins > 0) {
+        lateEmployees.push({
+          id: log.id,
+          name: log.user.name || 'Unknown',
+          avatar: log.user.profileImage || null,
+          designation: log.user.customDesignation?.name || log.user.designation || 'Employee',
+          lateMinutes: lateMins
+        });
+      }
+    }
+
+    lateEmployees.sort((a, b) => b.lateMinutes - a.lateMinutes);
 
     return NextResponse.json({ success: true, data: lateEmployees });
   } catch (error: any) {

@@ -4,12 +4,13 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; 
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const { otStatus } = await req.json();
     
     // Fetch the raw record to calculate exact minutes safely
-    const record = await prisma.attendanceLog.findUnique({ where: { id: params.id } });
+    const record = await prisma.attendanceLog.findUnique({ where: { id } });
     if (!record || !record.timestamp || !(record as any).checkOut) {
         return NextResponse.json({ error: "Invalid punch record or shift not completed" }, { status: 400 });
     }
@@ -24,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const updated = await prisma.attendanceLog.update({
-      where: { id: params.id },
+      where: { id },
       data: { otStatus, approvedOtMinutes: approvedMinutes } as any
     });
 

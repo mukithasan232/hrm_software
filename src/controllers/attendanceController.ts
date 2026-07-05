@@ -20,14 +20,24 @@ function getTodayBoundaries(): { start: Date; end: Date } {
 
 function getDayBoundaries(filter: string): { start: Date; end: Date } {
   let dateStr = filter;
-  if (filter === 'today' || filter === 'yesterday' || filter === 'week' || filter === 'month') {
+  if (filter === 'month') {
+    const now = new Date();
+    const year = formatInTimeZone(now, BD_TZ, 'yyyy');
+    const month = formatInTimeZone(now, BD_TZ, 'MM');
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    
+    return {
+      start: new Date(`${year}-${month}-01T00:00:00+06:00`),
+      end: new Date(`${year}-${month}-${lastDay}T23:59:59.999+06:00`)
+    };
+  }
+
+  if (filter === 'today' || filter === 'yesterday' || filter === 'week') {
     const targetDate = new Date();
     if (filter === 'yesterday') {
       targetDate.setDate(targetDate.getDate() - 1);
     } else if (filter === 'week') {
       targetDate.setDate(targetDate.getDate() - 7);
-    } else if (filter === 'month') {
-      targetDate.setMonth(targetDate.getMonth() - 1);
     }
     dateStr = formatInTimeZone(targetDate, BD_TZ, 'yyyy-MM-dd');
     
@@ -235,21 +245,24 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     let trueAbsentCount = 0;
     const currentTime = new Date();
+    const isSunday = currentTime.getDay() === 0;
 
-    regularEmployees.forEach(user => {
-      if (presentUserIds.has(user.id) || leaveUserIds.has(user.id)) return; // Skip if present or on leave
+    if (!isSunday) {
+      regularEmployees.forEach(user => {
+        if (presentUserIds.has(user.id) || leaveUserIds.has(user.id)) return; // Skip if present or on leave
 
-      const shiftStr = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
-      const [hours, minutes] = shiftStr.split(':').map(Number);
-      
-      const userShiftStartTime = new Date();
-      userShiftStartTime.setHours(hours, minutes, 0, 0);
+        const shiftStr = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
+        const [hours, minutes] = shiftStr.split(':').map(Number);
+        
+        const userShiftStartTime = new Date();
+        userShiftStartTime.setHours(hours, minutes, 0, 0);
 
-      // Core Logic: Only count as absent if current time has passed their shift start time
-      if (currentTime > userShiftStartTime) {
-        trueAbsentCount++;
-      }
-    });
+        // Core Logic: Only count as absent if current time has passed their shift start time
+        if (currentTime > userShiftStartTime) {
+          trueAbsentCount++;
+        }
+      });
+    }
 
     const calculatedAbsent = trueAbsentCount;
 
@@ -297,11 +310,14 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       if (deptRecord) targetDeptName = deptRecord.name;
     }
 
+    const employeeWhere: any = { isActive: true };
     const where: any = {};
     if (!isAdmin && user?.id) {
       where.employeeId = user.id;
+      employeeWhere.id = user.id;
     } else if (employeeId) {
       where.employeeId = employeeId as string;
+      employeeWhere.id = employeeId as string;
     }
     
     if (department && department !== 'all') {
@@ -315,14 +331,21 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
     const nowUTC = new Date(); // For Ghost Record Mitigation
 
+    let strictEndUTC = nowUTC;
     if (startDate && endDate) {
       const startUTC = new Date(`${startDate as string}T00:00:00+06:00`);
       const endUTC = new Date(`${endDate as string}T23:59:59.999+06:00`);
-      const effectiveEndUTC = endUTC > nowUTC ? nowUTC : endUTC;
+      strictEndUTC = endUTC;
+      
+      const extendedEndUTC = new Date(endUTC.getTime() + 14 * 60 * 60 * 1000); // Next day 14:00
+      const effectiveEndUTC = extendedEndUTC > nowUTC ? nowUTC : extendedEndUTC;
       where.timestamp = { gte: startUTC, lte: effectiveEndUTC };
     } else if (filter && filter !== 'all') {
       const { start, end } = getDayBoundaries(filter as any);
-      const effectiveEnd = end > nowUTC ? nowUTC : end;
+      strictEndUTC = end;
+      
+      const extendedEnd = new Date(end.getTime() + 14 * 60 * 60 * 1000); // Next day 14:00
+      const effectiveEnd = extendedEnd > nowUTC ? nowUTC : extendedEnd;
       where.timestamp = { gte: start, lte: effectiveEnd };
     } else {
       where.timestamp = { lte: nowUTC }; // Ignore future ghost records
@@ -342,7 +365,6 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       skip = page ? (parseInt(page as string) - 1) * take : 0;
     }
 
-    const employeeWhere: any = { isActive: true };
     if (department && department !== 'all') {
       employeeWhere.OR = [
         { departmentId: department as string },
@@ -350,7 +372,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       ];
     }
 
-    const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualCount, activeEmployees, allPunchesInRange] = await Promise.all([
+    const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualPunches, activeEmployees, allPunchesInRange] = await Promise.all([
       prisma.attendanceLog.findMany({
         where, skip, take,
         orderBy: { timestamp: 'desc' },
@@ -371,8 +393,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       prisma.attendanceLog.count({ where }),
       prisma.attendanceLog.findMany({ where: { ...where, punchType: 'CheckIn' }, distinct: ['employeeId'], select: { employeeId: true } }),
       prisma.attendanceLog.findMany({ where: { ...where, punchType: 'CheckOut' }, distinct: ['employeeId'], select: { employeeId: true } }),
-      prisma.attendanceLog.count({ where: { ...where, deviceId: 'Manual Entry' } }),
-      prisma.user.findMany({ where: employeeWhere, select: { id: true, createdAt: true } }),
+      prisma.attendanceLog.findMany({ where: { ...where, deviceId: 'Manual Entry' }, select: { timestamp: true, user: { select: { name: true } } } }),
+      prisma.user.findMany({ where: employeeWhere, select: { id: true, createdAt: true, name: true } }),
       prisma.attendanceLog.findMany({ where, select: { employeeId: true, timestamp: true } })
     ]);
 
@@ -393,13 +415,17 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     }
 
     const globalStart = where.timestamp?.gte || new Date(0); 
-    const globalEnd = where.timestamp?.lte || new Date(); 
-    const msPerDay = 1000 * 60 * 60 * 24;
+    // 🚀 CRITICAL: Stop counting at yesterday to avoid false absences for today/future
+    const now = new Date();
+    // Get yesterday at 23:59:59.999
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+    const globalEnd = strictEndUTC > yesterday ? yesterday : strictEndUTC; 
 
     let absentCount = 0;
+    const absentDetails: any[] = [];
 
     for (const emp of activeEmployees) {
-      // Compare the global range start with the employee's creation date
+      // 🚀 CRITICAL: Start counting from Join Date OR filter start (whichever is later)
       const effectiveStart = emp.createdAt > globalStart ? emp.createdAt : globalStart;
       
       let validDays = 0;
@@ -408,77 +434,118 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         const eStr = formatYMD(globalEnd);
         const sDate = new Date(`${sStr}T00:00:00Z`);
         const eDate = new Date(`${eStr}T00:00:00Z`);
-        validDays = Math.max(0, Math.round((eDate.getTime() - sDate.getTime()) / msPerDay) + 1);
+        let currentDate = new Date(sDate);
+        while (currentDate <= eDate) {
+          if (currentDate.getUTCDay() !== 0) {
+            validDays++;
+            const currentDateStr = formatYMD(currentDate);
+            if (!daysPresentPerEmployee[emp.id] || !daysPresentPerEmployee[emp.id].has(currentDateStr)) {
+               absentDetails.push({ userName: emp.name || 'Unknown', date: currentDateStr });
+            }
+          }
+          currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+        }
       }
       
       const presentDays = daysPresentPerEmployee[emp.id]?.size || 0;
       const empAbsent = Math.max(0, validDays - presentDays);
       absentCount += empAbsent;
     }
+    
+    // Sort absent details by date (newest first)
+    absentDetails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    const manualCount = manualPunches.length;
+    const manualDetails = manualPunches.map((p: any) => ({
+      userName: p.user?.name || 'Unknown',
+      date: p.timestamp.toISOString()
+    })).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const presentCount = Object.keys(daysPresentPerEmployee).length; // Will fix unused uniquePunches, using uniqueCheckIns instead
     
-    // Group logs by employee and date to build the punchTimeline
-    const logsByEmpAndDate: Record<string, any[]> = {};
+    // Group logs strictly by employee to do cross-midnight pairing globally
+    const logsByEmp: Record<string, any[]> = {};
     for (const l of logs) {
-      const dStr = formatYMD(l.timestamp);
-      const k = `${l.employeeId}_${dStr}`;
-      if (!logsByEmpAndDate[k]) logsByEmpAndDate[k] = [];
-      logsByEmpAndDate[k].push(l);
+      if (!logsByEmp[l.employeeId]) logsByEmp[l.employeeId] = [];
+      logsByEmp[l.employeeId].push(l);
     }
 
-    // Group logs by employee+date: track first CheckIn & last CheckOut per day
-    const shiftMap: Record<string, any> = {};
-    for (const log of logs) {
-      const dateStr = formatYMD(log.timestamp);
-      const k = `${log.employeeId}_${dateStr}`;
-      if (!shiftMap[k]) {
-        // Initialize with employee metadata (reuse whatever log we have first)
-        shiftMap[k] = {
-          ...log,
-          _date: dateStr,
-          _checkInTimestamp: null,
-          _checkOutTimestamp: null,
-        };
-      }
-      const entry = shiftMap[k];
-      if (log.punchType === 'CheckIn') {
-        // Keep the EARLIEST CheckIn
-        if (!entry._checkInTimestamp || log.timestamp < entry._checkInTimestamp) {
-          entry._checkInTimestamp = log.timestamp;
-          // Preserve user/employee metadata from CheckIn record
-          entry.user = log.user;
-          entry.employeeId = log.employeeId;
-          entry.otStatus = (log as any).otStatus;
-          entry.approvedOtMinutes = (log as any).approvedOtMinutes;
-          entry.id = log.id;
+    const sessionsByEmpAndDate: Record<string, { sessions: any[], dateStr: string, firstLog: any }> = {};
+
+    for (const empId in logsByEmp) {
+      const empLogs = logsByEmp[empId].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      
+      for (let i = 0; i < empLogs.length; i += 2) {
+        const checkIn = empLogs[i];
+        const checkOut = empLogs[i + 1] || null;
+        
+        const inTime = checkIn.timestamp;
+        const outTime = checkOut ? checkOut.timestamp : null;
+        const dateStr = formatYMD(inTime); // The session logically belongs to the Check-In date
+        
+        // Filter out sessions that belong to the extended boundary limit (the next day)
+        // If the dateStr is strictly greater than the requested strictEndUTC date string, ignore it.
+        const sessionDateObj = new Date(`${dateStr}T00:00:00Z`);
+        const strictEndDateObj = new Date(`${formatYMD(strictEndUTC)}T00:00:00Z`);
+        if (sessionDateObj > strictEndDateObj) {
+           continue; 
         }
-      } else if (log.punchType === 'CheckOut') {
-        // Keep the LATEST CheckOut
-        if (!entry._checkOutTimestamp || log.timestamp > entry._checkOutTimestamp) {
-          entry._checkOutTimestamp = log.timestamp;
+
+        const k = `${empId}_${dateStr}`;
+        if (!sessionsByEmpAndDate[k]) {
+          sessionsByEmpAndDate[k] = { sessions: [], dateStr, firstLog: checkIn };
         }
+        
+        let durationMs = 0;
+        if (outTime) {
+          durationMs = outTime.getTime() - inTime.getTime();
+        }
+        
+        let durationStr = '--';
+        if (durationMs > 0) {
+          const mins = Math.floor(durationMs / 60000);
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          durationStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+        }
+        
+        sessionsByEmpAndDate[k].sessions.push({
+          id: `session_${i / 2 + 1}`,
+          inTime: inTime,
+          inSource: checkIn.deviceId || 'Manual',
+          inLatitude: checkIn.latitude,
+          inLongitude: checkIn.longitude,
+          inAddress: checkIn.locationAddress,
+          outTime: outTime,
+          outSource: checkOut ? (checkOut.deviceId || 'Manual') : null,
+          outLatitude: checkOut?.latitude,
+          outLongitude: checkOut?.longitude,
+          outAddress: checkOut?.locationAddress,
+          duration: durationStr,
+          durationMs,
+          isMissingOut: !checkOut
+        });
       }
     }
 
     // Map each daily shift summary
-    const aggregatedSummaries = Object.values(shiftMap).map((log: any) => {
-      const dateStr = log._date || formatYMD(log.timestamp);
-      const k = `${log.employeeId}_${dateStr}`;
+    const aggregatedSummaries = Object.values(sessionsByEmpAndDate).map((entry: any) => {
+      const { sessions, dateStr, firstLog } = entry;
+      const log = firstLog;
+      const punchTimeline = sessions;
       
-      const punchTimeline = (logsByEmpAndDate[k] || []).sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
+      let totalValidMs = 0;
+      let isMissingOut = false;
+      for (const s of sessions) {
+         totalValidMs += s.durationMs;
+         if (s.isMissingOut) isMissingOut = true;
+      }
 
       const shiftStartTime = log.user?.shiftStartTime || log.user?.customDepartment?.shiftStartTime || '09:00';
       const shiftEndTime = log.user?.shiftEndTime || log.user?.customDepartment?.shiftEndTime || '17:00';
       
-      const checkInRaw = log._checkInTimestamp || log.timestamp;
-      const checkOutRaw = log._checkOutTimestamp || log.checkOut || null;
-      const isMissingOut = !checkOutRaw;
-
-      let totalValidMs = 0;
-      if (checkInRaw && checkOutRaw) {
-        totalValidMs = new Date(checkOutRaw).getTime() - new Date(checkInRaw).getTime();
-      }
+      const checkInRaw = sessions.length > 0 ? sessions[0].inTime : null;
+      const checkOutRaw = sessions.length > 0 && sessions[sessions.length - 1].outTime ? sessions[sessions.length - 1].outTime : null;
 
       let lateMinutes = 0;
       if (checkInRaw) {
@@ -488,9 +555,16 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       }
 
       const standardShiftMs = 8 * 60 * 60 * 1000;
-      const totalWorkedMs = totalValidMs;
-      const validWorkedMs = Math.min(totalWorkedMs, standardShiftMs);
-      const systemOvertimeMs = Math.max(0, totalWorkedMs - standardShiftMs);
+      let systemOvertimeMs = Math.max(0, totalValidMs - standardShiftMs);
+      let validWorkedMs = Math.min(totalValidMs, standardShiftMs);
+
+      // Check if session falls on a Sunday (0)
+      const isSundaySession = new Date(`${dateStr}T00:00:00+06:00`).getDay() === 0;
+
+      if (isSundaySession) {
+        systemOvertimeMs = totalValidMs; // All hours on Sunday count as Overtime
+        validWorkedMs = 0; // Standard shift hours are 0
+      }
 
       const otStatus = log.otStatus || 'PENDING';
       const approvedOtMinutes = log.approvedOtMinutes || 0;
@@ -516,8 +590,15 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       const systemCalculatedOtMinutes = Math.floor(systemOvertimeMs / 60000);
       
       let status = 'Absent';
-      if (checkInRaw) {
-        status = lateMinutes > 0 ? 'Late' : 'Present';
+      if (isSundaySession) {
+        if (totalValidMs > 0 || checkInRaw) {
+          status = 'WEEKEND_WORK';
+        } else {
+          status = 'Off Day';
+        }
+      } else if (totalValidMs > 0 || checkInRaw) {
+        // Smart Status Override: If valid hours > 0, NEVER return Absent.
+        status = lateMinutes > 15 ? 'Late' : 'Present';
       }
 
       return {
@@ -548,6 +629,10 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       checkOutCount, 
       manualCount,
       absentCount, 
+      metrics: {
+        absent: { count: absentCount, details: absentDetails },
+        manualPunch: { count: manualCount, details: manualDetails }
+      },
       page: parseInt(page as string), 
       limit: take 
     });
@@ -558,7 +643,18 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
 export const createManualLog = async (req: Request, res: Response): Promise<void> => {
   try {
-    let { employeeId, timestamp, punchType } = req.body;
+    let { employeeId, timestamp, punchType, latitude, longitude } = req.body;
+    
+    let locationAddress: string | null = null;
+    if (latitude && longitude) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+        const data = await res.json();
+        locationAddress = data.display_name || "Address not found";
+      } catch (err) {
+        console.error("Geocoding failed", err);
+      }
+    }
     
     // Ensure the date string is correctly parsed into a valid ISO-8601 Date object
     let parsedDate = new Date(timestamp);
@@ -611,29 +707,10 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    // Task 1: 🚀 LAZY AUTO-CHECKOUT (Forgot to checkout)
     const lastRecord = await prisma.attendanceLog.findFirst({
       where: { employeeId: user.id },
       orderBy: { timestamp: 'desc' }
     });
-
-    const now = new Date();
-    if (lastRecord && lastRecord.punchType?.toLowerCase().includes('in')) {
-      const checkInTime = lastRecord.timestamp.getTime();
-      const hoursSinceCheckIn = (now.getTime() - checkInTime) / (1000 * 60 * 60);
-
-      if (hoursSinceCheckIn > 14) {
-        const autoCheckOutTime = new Date(checkInTime + 8 * 60 * 60 * 1000); // Add 8 standard hours
-        await prisma.attendanceLog.create({
-          data: {
-            employeeId: user.id,
-            timestamp: autoCheckOutTime,
-            punchType: 'CheckOut',
-            deviceId: 'System Auto-Checkout'
-          }
-        });
-      }
-    }
 
     const isActiveShift = lastRecord && lastRecord.punchType?.toLowerCase().includes('in') && !(lastRecord as any).checkOut;
     let log: any;
@@ -643,7 +720,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       // 🚀 FORCE CHECKOUT ON PREVIOUS RECORD (Even if it's from yesterday, preventing consecutive Check Ins)
       log = await prisma.attendanceLog.update({
         where: { id: lastRecord.id },
-        data: { checkOut: parsedDate } as any,
+        data: { checkOut: parsedDate, latitude, longitude, locationAddress } as any,
         include: { user: { select: { name: true } } },
       });
       // Override punchType so late notifications or responses know it was a checkout
@@ -657,13 +734,16 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
             timestamp: parsedDate,
           },
         },
-        update: { punchType },
+        update: { punchType, latitude, longitude, locationAddress } as any,
         create: {
           employeeId: user.id,
           timestamp: parsedDate,
           punchType,
           deviceId: 'Manual Entry',
-        },
+          latitude,
+          longitude,
+          locationAddress
+        } as any,
         include: { user: { select: { name: true } } },
       });
       created = log.createdAt.getTime() === log.updatedAt.getTime();

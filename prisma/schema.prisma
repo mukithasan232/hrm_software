@@ -90,6 +90,10 @@ model AttendanceLog {
   otStatus          String @default("PENDING")
   approvedOtMinutes Int    @default(0)
 
+  latitude          Float?
+  longitude         Float?
+  locationAddress   String?
+
   @@unique([employeeId, timestamp])
   @@index([timestamp(sort: Desc)])
   @@index([timestamp, punchType])

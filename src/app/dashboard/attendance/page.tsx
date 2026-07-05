@@ -14,6 +14,7 @@ import { io as socketIO } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
 import { checkPermission } from '@/utils/checkPermission';
 import { useDetailsStore } from '@/store/useDetailsStore';
+import MetricDetailsModal from '@/components/attendance/MetricDetailsModal';
 
 export default function AttendancePage() {
   const { t } = useTranslation();
@@ -30,7 +31,12 @@ export default function AttendancePage() {
   const [checkInCount, setCheckInCount] = useState(0);
   const [checkOutCount, setCheckOutCount] = useState(0);
   const [manualCount, setManualCount] = useState(0);
+  const [manualDetails, setManualDetails] = useState<any[]>([]);
   const [absentCount, setAbsentCount] = useState(0);
+  const [absentDetails, setAbsentDetails] = useState<any[]>([]);
+  const [metricModalOpen, setMetricModalOpen] = useState(false);
+  const [metricModalTitle, setMetricModalTitle] = useState('');
+  const [metricModalData, setMetricModalData] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -109,8 +115,10 @@ export default function AttendancePage() {
 
       setCheckInCount(data?.checkInCount ?? 0);
       setCheckOutCount(data?.checkOutCount ?? 0);
-      setManualCount(data?.manualCount ?? 0);
-      setAbsentCount(data?.absentCount ?? 0);
+      setManualCount(data?.metrics?.manualPunch?.count ?? data?.manualCount ?? 0);
+      setManualDetails(data?.metrics?.manualPunch?.details ?? []);
+      setAbsentCount(data?.metrics?.absent?.count ?? data?.absentCount ?? 0);
+      setAbsentDetails(data?.metrics?.absent?.details ?? []);
     } catch (error: any) {
       toast.error(error.response?.data?.message || error.message || 'Failed to load attendance logs');
     } finally {
@@ -217,23 +225,77 @@ export default function AttendancePage() {
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
+    
+    // Admin Proxy Check: if current logged-in user is NOT the one selected in the modal
+    const isAdminProxy = user?.id !== manualEntry.employeeId && user?.employeeId !== manualEntry.employeeId;
+
+    if (isAdminProxy) {
       setLoading(true);
-      
-      // Always use the exact current time at the moment of submission
-      const currentTimestamp = getBDNowLocal();
-      const [datePart, timePart] = currentTimestamp.split('T');
-      const utcTimestamp = toUTCFromBD(datePart, timePart);
-      
-      await api.post('/attendance/manual', { ...manualEntry, timestamp: utcTimestamp });
-      toast.success(t('manual_entry_success') || 'Manual entry added successfully');
-      setIsModalOpen(false);
-      fetchLogs();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || t('manual_entry_failed') || 'Failed to add manual entry');
-    } finally {
-      setLoading(false);
+      try {
+        const currentTimestamp = getBDNowLocal();
+        const [datePart, timePart] = currentTimestamp.split('T');
+        const utcTimestamp = toUTCFromBD(datePart, timePart);
+        
+        await api.post('/attendance/manual', { ...manualEntry, timestamp: utcTimestamp, locationAddress: 'Admin Manual Entry' });
+        toast.success(t('manual_entry_success') || 'Manual entry added successfully');
+        setIsModalOpen(false);
+        fetchLogs();
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || t('manual_entry_failed') || 'Failed to add manual entry');
+      } finally {
+        setLoading(false);
+      }
+      return;
     }
+
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+    
+    if (window.isSecureContext === false) {
+      toast.error("GPS requires a secure connection (HTTPS or localhost). Cannot fetch location.");
+      return;
+    }
+
+    setLoading(true);
+    toast("Fetching location...", { id: 'geo-fetch', icon: '📍' });
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          
+          // Always use the exact current time at the moment of submission
+          const currentTimestamp = getBDNowLocal();
+          const [datePart, timePart] = currentTimestamp.split('T');
+          const utcTimestamp = toUTCFromBD(datePart, timePart);
+          
+          await api.post('/attendance/manual', { ...manualEntry, timestamp: utcTimestamp, latitude, longitude });
+          toast.dismiss('geo-fetch');
+          toast.success(t('manual_entry_success') || 'Manual entry added successfully');
+          setIsModalOpen(false);
+          fetchLogs();
+        } catch (error: any) {
+          toast.dismiss('geo-fetch');
+          toast.error(error.response?.data?.message || t('manual_entry_failed') || 'Failed to add manual entry');
+        } finally {
+          setLoading(false);
+        }
+      },
+      (error) => {
+        toast.dismiss('geo-fetch');
+        setLoading(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          toast.error("You denied location access. Please allow it in browser settings.");
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          toast.error("Location information is unavailable.");
+        } else {
+          toast.error("Location request timed out or failed.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const handleExportExcel = async () => {
@@ -450,13 +512,19 @@ export default function AttendancePage() {
             {checkOutCount}
           </p>
         </div>
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-blue-500/30 transition-colors shadow-sm dark:shadow-md">
+        <div 
+          onClick={() => { setMetricModalTitle(t(getFilterPrefixKey() as any) + ' ' + t('manualEntry')); setMetricModalData(manualDetails); setMetricModalOpen(true); }}
+          className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-blue-500/30 transition-all shadow-sm dark:shadow-md cursor-pointer hover:shadow-lg"
+        >
           <p className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('manualEntry')}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
             {manualCount}
           </p>
         </div>
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-red-500/30 transition-colors shadow-sm dark:shadow-md">
+        <div 
+          onClick={() => { setMetricModalTitle(t('attendance.totalAbsent' as any)); setMetricModalData(absentDetails); setMetricModalOpen(true); }}
+          className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-red-500/30 transition-all shadow-sm dark:shadow-md cursor-pointer hover:shadow-lg"
+        >
           <p className="text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider">{t('attendance.totalAbsent' as any)}</p>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
             {absentCount}
@@ -751,6 +819,15 @@ export default function AttendancePage() {
             </form>
           </div>
         </div>
+      )}
+      
+      {metricModalOpen && (
+        <MetricDetailsModal 
+          isOpen={metricModalOpen} 
+          onClose={() => setMetricModalOpen(false)} 
+          title={metricModalTitle} 
+          data={metricModalData} 
+        />
       )}
     </div>
   );

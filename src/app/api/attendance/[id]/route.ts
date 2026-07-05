@@ -4,13 +4,14 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!params?.id || params.id === 'undefined' || params.id === 'null') {
+    const { id } = await params;
+    if (!id || id === 'undefined' || id === 'null') {
       return NextResponse.json({ error: "Invalid Record ID provided." }, { status: 400 });
     }
 
-    const existingRecord = await prisma.attendanceLog.findUnique({ where: { id: params.id } });
+    const existingRecord = await prisma.attendanceLog.findUnique({ where: { id } });
     if (!existingRecord) {
        return NextResponse.json({ error: "Record does not exist in the database." }, { status: 404 });
     }
@@ -23,7 +24,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     // Use prisma.attendanceLog based on our actual schema
     const updated = await prisma.attendanceLog.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         timestamp: checkInDate || undefined, 
         checkOut: checkOutDate
@@ -35,19 +36,19 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
 }
-
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!params?.id || params.id === 'undefined' || params.id === 'null') {
+    const { id } = await params;
+    if (!id || id === 'undefined' || id === 'null') {
       return NextResponse.json({ error: "Invalid Record ID provided." }, { status: 400 });
     }
 
-    const existingRecord = await prisma.attendanceLog.findUnique({ where: { id: params.id } });
+    const existingRecord = await prisma.attendanceLog.findUnique({ where: { id } });
     if (!existingRecord) {
        return NextResponse.json({ error: "Record does not exist in the database." }, { status: 404 });
     }
 
-    await prisma.attendanceLog.delete({ where: { id: params.id } });
+    await prisma.attendanceLog.delete({ where: { id } });
     return NextResponse.json({ message: "Deleted" });
   } catch (error) {
     console.error("Failed to delete attendance log:", error);

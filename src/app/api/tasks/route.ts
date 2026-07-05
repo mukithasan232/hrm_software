@@ -139,13 +139,14 @@ export async function POST(req: NextRequest) {
     });
 
     // Inject notification for the assigned user
+    const safeTitle = task.title.length > 50 ? task.title.substring(0, 47) + '...' : task.title;
     const newNotification = await prisma.notification.create({
       data: {
         userId: assignedToId,
         titleEn: 'New Task Assigned',
         titleBn: 'নতুন টাস্ক দেওয়া হয়েছে',
-        messageEn: `You have been assigned a new task: "${task.title}"`,
-        messageBn: `আপনাকে একটি নতুন টাস্ক দেওয়া হয়েছে: "${task.title}"`,
+        messageEn: `You have been assigned a new task: "${safeTitle}"`,
+        messageBn: `আপনাকে একটি নতুন টাস্ক দেওয়া হয়েছে: "${safeTitle}"`,
         type: 'TASK',
         referenceId: task.id
       }
