@@ -296,20 +296,26 @@ export default function DashboardOverview() {
 
   // ── Punch status card helpers ──────────────────────────────────────────────
   const getPunchStatus = () => {
-    if (!latestPunch) return { label: "Not Punched In", isIn: false, isYesterday: false };
-    const isIn = latestPunch.punchType?.toLowerCase().includes("in") && !(latestPunch as any).checkOut;
+    if (!recentAttendance || recentAttendance.length === 0) return { label: "Not Punched In", isIn: false, isYesterday: false };
     
-    // Check if the ongoing shift is from yesterday
-    const isYesterday = isIn && new Date(latestPunch.timestamp).toDateString() !== new Date().toDateString();
+    const myPunches = recentAttendance.filter((l: any) => l.employeeId === user?.id || l.employeeId === user?.employeeId);
+    if (myPunches.length === 0) return { label: "Not Punched In", isIn: false, isYesterday: false };
 
-    if (isIn) {
+    // API returns logs sorted desc by timestamp
+    const absoluteLatest = myPunches[0];
+    const isYesterday = new Date(absoluteLatest.timestamp).toDateString() !== new Date().toDateString();
+
+    // If ODD number of punches today, the last punch was a Check In
+    if (myPunches.length % 2 !== 0) {
       return { 
-        label: isYesterday ? "Ongoing (Yesterday)" : "Punched In", 
+        label: isYesterday ? "Ongoing (Yesterday)" : "🟢 Punched In", 
         isIn: true,
         isYesterday
       };
     }
-    return { label: "Punched Out", isIn: false, isYesterday: false };
+    
+    // If EVEN (and > 0), the last punch was a Check Out
+    return { label: "🟠 Punched Out", isIn: false, isYesterday: false };
   };
 
   const todayWorkingHours = useMemo(() => {

@@ -285,13 +285,25 @@ export default function AttendancePage() {
       },
       (error) => {
         toast.dismiss('geo-fetch');
-        setLoading(false);
         if (error.code === error.PERMISSION_DENIED) {
           toast.error("You denied location access. Please allow it in browser settings.");
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          toast.error("Location information is unavailable.");
+          setLoading(false);
         } else {
-          toast.error("Location request timed out or failed.");
+          toast.error("Location unavailable. Proceeding with fallback mode.");
+          const currentTimestamp = getBDNowLocal();
+          const [datePart, timePart] = currentTimestamp.split('T');
+          const utcTimestamp = toUTCFromBD(datePart, timePart);
+          
+          api.post('/attendance/manual', { ...manualEntry, timestamp: utcTimestamp, locationAddress: 'Location Unavailable' })
+            .then(() => {
+               toast.success(t('manual_entry_success') || 'Manual entry added successfully (Fallback)');
+               setIsModalOpen(false);
+               fetchLogs();
+            })
+            .catch((err: any) => {
+               toast.error(err.response?.data?.message || t('manual_entry_failed') || 'Failed to add manual entry');
+            })
+            .finally(() => setLoading(false));
         }
       },
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }

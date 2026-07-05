@@ -801,6 +801,10 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     }
     // ----------------------
 
+    // Trigger instant global state update for connected Dashboards
+    eventEmitter.emit('attendanceUpdate', log);
+    eventEmitter.emit('new-attendance', log);
+
     res.status(created ? 201 : 200).json({ message: created ? 'Manual entry created' : 'Existing entry updated', log });
   } catch (error: any) {
     if (error.code === 'P2003') {
