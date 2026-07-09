@@ -795,10 +795,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       punchType = 'CheckOut';
     } else {
       // FRESH CHECK IN OR NORMAL PUNCH
-      let sessionWorkMode = 'IN_HOUSE';
-      if (user.employeeType === 'HYBRID' || user.employeeType === 'REMOTE') {
-        sessionWorkMode = 'REMOTE';
-      }
+      let sessionWorkMode = 'REMOTE'; // Any manual punch via web portal is inherently remote
 
       log = await prisma.attendanceLog.upsert({
         where: {

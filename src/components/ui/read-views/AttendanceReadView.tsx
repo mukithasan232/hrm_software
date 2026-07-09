@@ -64,7 +64,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
 
   const totalHours = totalValidMs > 0 ? (totalValidMs / 3600000).toFixed(2) : '0';
 
-  const handleOtAction = async (actionStatus: 'APPROVED' | 'REJECTED') => {
+  const handleOtAction = async (actionStatus: 'APPROVED' | 'REJECTED' | 'PENDING') => {
     try {
       const targetUserId = employeeId; 
       const targetDate = date;
@@ -201,8 +201,18 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                  </button>
               </div>
             )}
-            {otBadge === 'Approved' && <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded inline-block w-max mt-2 border border-emerald-100">✓ Approved</span>}
-            {otBadge === 'Rejected' && <span className="text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded inline-block w-max mt-2 border border-red-100">✗ Rejected</span>}
+            {otBadge === 'Approved' && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded inline-block w-max border border-emerald-100">✓ Approved</span>
+                <button onClick={() => handleOtAction('PENDING')} className="text-[10px] text-slate-500 hover:text-slate-700 underline font-medium cursor-pointer">Undo</button>
+              </div>
+            )}
+            {otBadge === 'Rejected' && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded inline-block w-max border border-red-100">✗ Rejected</span>
+                <button onClick={() => handleOtAction('PENDING')} className="text-[10px] text-slate-500 hover:text-slate-700 underline font-medium cursor-pointer">Undo</button>
+              </div>
+            )}
           </div>
         </div>
 
