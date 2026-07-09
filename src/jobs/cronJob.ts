@@ -8,8 +8,8 @@ export function initCronJobs() {
   cron.schedule('*/10 * * * *', async () => {
     try {
       console.log("🔄 Running scheduled ZKTeco Background Sync...");
-      // Fetch only the last 3 days for lightweight continuous syncing
-      await syncZkTecoData(3); 
+      // Fetch only the last 3 days for lightweight continuous syncing (false = not deep sync)
+      await syncZkTecoData(false); 
       console.log("✅ Scheduled Sync Completed.");
     } catch (error) {
       console.error("❌ Cron Sync Error:", error);

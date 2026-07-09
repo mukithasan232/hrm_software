@@ -504,7 +504,7 @@ let hasSanitizedManualLogs = false;
 /**
  * Fetch attendance logs from device → upsert into MongoDB.
  */
-export const syncZkTecoData = async (daysToFetch: number | boolean = 1): Promise<{ synced: number; skipped: number; total: number }> => {
+export const syncZkTecoData = async (isDeepSync: boolean = false): Promise<{ synced: number; skipped: number; total: number }> => {
   const zk = await createZK();
   const currentZkIp = (zk as any).deviceIp || 'Unknown IP';
   try {
@@ -525,23 +525,23 @@ export const syncZkTecoData = async (daysToFetch: number | boolean = 1): Promise
 
     const rawLogs = await getAttendanceAsync(zk);
 
-    // Calculate time window for deep sync
-    const windowStart = new Date();
+    // Deep Sync vs 3-Days Logic exactly as requested
     let recentLogs = rawLogs;
+    const windowStart = new Date();
 
-    if (daysToFetch !== true) {
-      windowStart.setDate(windowStart.getDate() - (daysToFetch as number));
-      windowStart.setHours(0, 0, 0, 0);
+    if (!isDeepSync) {
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      threeDaysAgo.setHours(0, 0, 0, 0);
+      windowStart.setTime(threeDaysAgo.getTime());
       
       recentLogs = rawLogs.filter((log: any) => {
         const deviceTime = log.timestamp || log.recordTime || log.record_time;
         if (!deviceTime) return false;
         const rawTimestamp = parseDeviceTime(deviceTime);
-        rawTimestamp.setMilliseconds(0); // align with insertion logic
-        return rawTimestamp.getTime() >= windowStart.getTime();
+        return rawTimestamp >= threeDaysAgo;
       });
     } else {
-      // For deep sync, we fetch EVERYTHING and don't apply any filter
       windowStart.setFullYear(2000, 0, 1);
     }
 
@@ -551,10 +551,10 @@ export const syncZkTecoData = async (daysToFetch: number | boolean = 1): Promise
       return { synced: 0, skipped: 0, total: 0 };
     }
     
-    if (daysToFetch === true) {
+    if (isDeepSync) {
       console.log(`[ZKService] 📋 Deep Sync: ${recentLogs.length} logs fetched (Entire History).`);
     } else {
-      console.log(`[ZKService] 📋 Deep Sync: ${recentLogs.length} logs fetched within the last ${daysToFetch} days.`);
+      console.log(`[ZKService] 📋 Cron Sync: ${recentLogs.length} logs fetched within the last 3 days.`);
     }
 
     // Sort logs chronologically ascending (earliest to latest)
@@ -694,7 +694,7 @@ export const syncZkTecoData = async (daysToFetch: number | boolean = 1): Promise
 
 export const getDeviceAttendance = async (forceSync3Days = false) => {
     // Backwards compatibility wrapper for old code
-    return syncZkTecoData(forceSync3Days ? 3 : 1);
+    return syncZkTecoData(forceSync3Days ? false : false); // Both map to normal cron behavior now, since true is deep sync
 };
 
 /**
