@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from '@/context/LanguageContext';
 import Link from 'next/link';
 import { Volume2, Play, Save, Menu, Lightbulb, ArrowLeft } from 'lucide-react';
@@ -16,6 +16,22 @@ export default function NotificationSettingsPage() {
     warning: 'notification.mp3',
     error: 'notification.mp3',
   });
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('notificationSettings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.isEnabled === 'boolean') setIsEnabled(parsed.isEnabled);
+        if (typeof parsed.volume === 'number') setVolume(parsed.volume);
+        if (parsed.soundConfig) setSoundConfig(parsed.soundConfig);
+      }
+    } catch (e) {
+      console.error("Failed to parse notification settings", e);
+    }
+    setIsLoaded(true);
+  }, []);
 
   const soundOptions = [
     { label: 'Default Notification', value: 'notification.mp3' },
@@ -84,7 +100,8 @@ export default function NotificationSettingsPage() {
           {/* Custom Tailwind Toggle */}
           <button 
             type="button"
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 ${isEnabled ? 'bg-brand-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+            disabled={!isLoaded}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 ${!isLoaded ? 'opacity-50 cursor-not-allowed ' : ''}${isEnabled ? 'bg-brand-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
             role="switch"
             aria-checked={isEnabled}
             onClick={() => setIsEnabled(!isEnabled)}
@@ -109,8 +126,8 @@ export default function NotificationSettingsPage() {
             value={volume} 
             onChange={(e) => setVolume(Number(e.target.value))}
             className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-primary"
-            disabled={!isEnabled}
-            style={{ opacity: isEnabled ? 1 : 0.5 }}
+            disabled={!isLoaded || !isEnabled}
+            style={{ opacity: isLoaded && isEnabled ? 1 : 0.5 }}
           />
         </div>
 
@@ -138,7 +155,7 @@ export default function NotificationSettingsPage() {
                   <select 
                     value={soundConfig[row.type as NotificationType]}
                     onChange={(e) => setSoundConfig({...soundConfig, [row.type]: e.target.value})}
-                    disabled={!isEnabled}
+                    disabled={!isLoaded || !isEnabled}
                     className="w-full max-w-[200px] bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 appearance-none cursor-pointer"
                     style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
                   >
@@ -151,7 +168,7 @@ export default function NotificationSettingsPage() {
                 {/* Play Button */}
                 <button 
                   onClick={() => playPreview(row.type as NotificationType)}
-                  disabled={!isEnabled}
+                  disabled={!isLoaded || !isEnabled}
                   className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-slate-200 dark:border-white/10 text-slate-500 hover:text-brand-primary hover:border-brand-primary hover:bg-brand-primary/5 dark:text-gray-400 dark:hover:text-brand-primary transition-colors disabled:pointer-events-none"
                   title="Play preview"
                 >
@@ -167,7 +184,8 @@ export default function NotificationSettingsPage() {
       <div className="flex justify-end pt-2">
         <button
           onClick={handleSave}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] bg-brand-primary shadow-lg shadow-brand-primary/50"
+          disabled={!isLoaded}
+          className="flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] bg-brand-primary shadow-lg shadow-brand-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Save className="w-5 h-5" /> Save sound settings
         </button>

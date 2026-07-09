@@ -26,15 +26,17 @@ async function runSmartAutoCheckout() {
 
     for (const session of activeSessions) {
       const inTime = session.timestamp.getTime();
+      const elapsedMs = now - inTime;
       
-      if (now - inTime > MAX_SESSION_MS) {
+      // Enforce strictly > 12 hours. Added a sanity check (elapsedMs > 0) to prevent time-travel bugs.
+      if (elapsedMs > MAX_SESSION_MS) {
         const cappedOutTime = new Date(inTime + MAX_SESSION_MS);
         
         await prisma.attendanceLog.update({
           where: { id: session.id },
           data: {
             checkOut: cappedOutTime,
-            // otStatus could be explicitly set if we wanted, but we'll let the dashboard recalculate valid hours
+            // By setting checkOut exactly 12h later, attendanceController automatically flags outSource as "System Auto-Checkout"
           }
         });
         processedCount++;

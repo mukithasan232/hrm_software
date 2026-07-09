@@ -44,50 +44,88 @@ export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, dat
   }
 
   // Full view
+  if (isAdmin) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex flex-col w-full h-full min-h-[300px] shadow-sm dark:shadow-md">
+        <h3 className="text-lg font-semibold mb-4 border-b border-slate-100 dark:border-white/10 pb-2 text-slate-800 dark:text-white flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          Currently Present Employees ({stats.activeNow})
+        </h3>
+        <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+          {data.presentEmployees && data.presentEmployees.length > 0 ? (
+            <table className="w-full text-left text-sm">
+               <thead>
+                 <tr className="text-slate-400 text-xs uppercase tracking-wider">
+                   <th className="pb-3 font-semibold">Employee</th>
+                   <th className="pb-3 font-semibold hidden sm:table-cell">Designation</th>
+                   <th className="pb-3 font-semibold">Check-In</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {data.presentEmployees.map((emp: any) => (
+                   <tr key={emp.id} className="border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                     <td className="py-3 flex items-center gap-3">
+                       {emp.avatar ? (
+                         <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" />
+                       ) : (
+                         <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-200 dark:border-indigo-500/30">
+                           {emp.name.charAt(0)}
+                         </div>
+                       )}
+                       <span className="font-medium text-slate-800 dark:text-slate-200">{emp.name}</span>
+                     </td>
+                     <td className="py-3 text-slate-500 dark:text-slate-400 hidden sm:table-cell">{emp.designation}</td>
+                     <td className="py-3 text-emerald-600 dark:text-emerald-400 font-medium">
+                       {toBDDisplay(emp.checkIn, 'hh:mm a')}
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[150px]">
+              <Clock className="w-8 h-8 mb-2" />
+              <p className="text-sm">No employees present right now.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md h-full">
       <div className="flex items-start justify-between w-full">
         <div className="min-w-0">
           <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
-            {isAdmin ? t("presentNow") : "Today's Punch Status"}
+            Today's Punch Status
           </p>
-          {isAdmin ? (
-            <div className="flex items-center gap-2 mt-2">
-              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${stats.activeNow > 0 ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
-              <p className="text-3xl font-bold text-slate-800 dark:text-white">
-                {loading ? "-" : stats.activeNow}
-              </p>
-            </div>
-          ) : (
-            <div className="mt-2">
-              {loading ? (
-                <p className="text-lg font-bold text-slate-400">—</p>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full flex-shrink-0 ${latestPunch ? (punchStatus?.isIn ? "bg-emerald-500 animate-pulse" : "bg-orange-400") : "bg-slate-300"}`} />
-                  <p className={`text-sm font-bold leading-tight ${punchStatus?.isIn ? "text-emerald-600 dark:text-emerald-400" : latestPunch ? "text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-gray-400"}`}>
-                    {punchStatus?.label}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="mt-2">
+            {loading ? (
+              <p className="text-lg font-bold text-slate-400">—</p>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full flex-shrink-0 ${latestPunch ? (punchStatus?.isIn ? "bg-emerald-500 animate-pulse" : "bg-orange-400") : "bg-slate-300"}`} />
+                <p className={`text-sm font-bold leading-tight ${punchStatus?.isIn ? "text-emerald-600 dark:text-emerald-400" : latestPunch ? "text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-gray-400"}`}>
+                  {punchStatus?.label}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-        <div className={`p-3 rounded-xl flex-shrink-0 ${punchStatus?.isIn || (isAdmin && stats.activeNow > 0) ? "bg-emerald-500/20 text-emerald-500" : "bg-slate-100 dark:bg-white/5 text-slate-400"}`}>
+        <div className={`p-3 rounded-xl flex-shrink-0 ${punchStatus?.isIn ? "bg-emerald-500/20 text-emerald-500" : "bg-slate-100 dark:bg-white/5 text-slate-400"}`}>
           {punchStatus?.isIn ? <LogIn className="w-5 h-5" /> : latestPunch ? <LogOut className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
         </div>
       </div>
 
-      {!isAdmin && (
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between w-full">
-          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Assigned Shift</span>
-          <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-            {assignedShift ? `${assignedShift.start} - ${assignedShift.end}` : <span className="text-slate-400 font-normal italic">Not Assigned</span>}
-          </span>
-        </div>
-      )}
+      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between w-full">
+        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Assigned Shift</span>
+        <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+          {assignedShift ? `${assignedShift.start} - ${assignedShift.end}` : <span className="text-slate-400 font-normal italic">Not Assigned</span>}
+        </span>
+      </div>
       
-      {!isAdmin && todayWorkingHours && (
+      {todayWorkingHours && (
         <div className="mt-2 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between w-full">
           <div className="flex flex-col">
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Office Hour</span>
@@ -134,11 +172,60 @@ export const AbsentDaysWidget = ({ isCompact, data }: { isCompact: boolean, data
     );
   }
 
+  if (isAdmin) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex flex-col w-full h-full min-h-[300px] shadow-sm dark:shadow-md">
+        <h3 className="text-lg font-semibold mb-4 border-b border-slate-100 dark:border-white/10 pb-2 text-slate-800 dark:text-white flex items-center gap-2">
+          <UserMinus className="w-5 h-5 text-orange-500" />
+          Absent Employees ({stats.totalAbsent})
+        </h3>
+        <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+          {data.absentEmployees && data.absentEmployees.length > 0 ? (
+            <table className="w-full text-left text-sm">
+               <thead>
+                 <tr className="text-slate-400 text-xs uppercase tracking-wider">
+                   <th className="pb-3 font-semibold">Employee</th>
+                   <th className="pb-3 font-semibold">Department</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {data.absentEmployees.map((emp: any) => (
+                   <tr key={emp.id} className="border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                     <td className="py-3 flex items-center gap-3">
+                       {emp.profileImage || emp.avatar ? (
+                         <img src={emp.profileImage || emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" />
+                       ) : (
+                         <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-xs border border-orange-200 dark:border-orange-500/30">
+                           {emp.name?.charAt(0) || '?'}
+                         </div>
+                       )}
+                       <span className="font-medium text-slate-800 dark:text-slate-200">{emp.name}</span>
+                     </td>
+                     <td className="py-3 text-slate-500 dark:text-slate-400">
+                       <span className="bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-md text-xs border border-slate-200 dark:border-white/10">
+                         {emp.department || 'Unassigned'}
+                       </span>
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[150px]">
+              <UserMinus className="w-8 h-8 mb-2" />
+              <p className="text-sm">No employees are absent today.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex items-center justify-between hover:border-orange-500/50 transition-all shadow-sm dark:shadow-md h-full">
       <div>
         <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
-          {isAdmin ? "Total Absent" : "Absent Days"}
+          Absent Days
         </p>
         <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">
           {loading ? "-" : stats.totalAbsent}
@@ -171,16 +258,56 @@ export const LeavesRemainingWidget = ({ isCompact, data }: { isCompact: boolean,
     );
   }
 
+  if (isAdmin) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex flex-col w-full h-full min-h-[300px] shadow-sm dark:shadow-md">
+        <h3 className="text-lg font-semibold mb-4 border-b border-slate-100 dark:border-white/10 pb-2 text-slate-800 dark:text-white flex items-center gap-2">
+          <CalendarRange className="w-5 h-5 text-purple-500" />
+          Pending Leave Requests ({stats.pendingLeaves})
+        </h3>
+        <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+          {data.pendingLeavesList && data.pendingLeavesList.length > 0 ? (
+            <div className="space-y-3">
+              {data.pendingLeavesList.map((leave: any) => (
+                <div key={leave.id} className="flex items-center justify-between p-3 border border-slate-100 dark:border-white/10 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-semibold text-slate-800 dark:text-white text-sm">{leave.employeeName || leave.user?.name || "Unknown"}</span>
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded font-medium">
+                        {leave.leaveType}
+                      </span>
+                      <span>
+                        {toBDDisplay(leave.startDate, 'MMM dd')} - {toBDDisplay(leave.endDate, 'MMM dd')}
+                      </span>
+                    </div>
+                  </div>
+                  <button className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm hover:shadow-md transition-all font-medium text-slate-700 dark:text-slate-300">
+                    View
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[150px]">
+              <CalendarCheck2 className="w-8 h-8 mb-2" />
+              <p className="text-sm">No pending leave requests.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex items-center justify-between hover:border-purple-500/50 transition-all shadow-sm dark:shadow-md h-full">
       <div>
         <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
-          {isAdmin ? t("pendingLeaves") : "Remaining Leaves"}
+          Remaining Leaves
         </p>
         <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">
-          {loading ? "-" : isAdmin ? stats.pendingLeaves : stats.remainingLeaves}
+          {loading ? "-" : stats.remainingLeaves}
         </p>
-        {!isAdmin && !loading && (
+        {!loading && (
           <p className="text-[10px] text-slate-400 dark:text-gray-500 mt-0.5">
             of {ANNUAL_LEAVE_QUOTA} days/year
           </p>
@@ -214,18 +341,34 @@ export const LeavesPendingWidget = ({ isCompact, data }: { isCompact: boolean, d
   }
 
   return (
-    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex items-center justify-between hover:border-sky-500/50 transition-all shadow-sm dark:shadow-md h-full">
-      <div>
-        <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
-          Pending Leaves
-        </p>
-        <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">
-          {loading ? "-" : stats.pendingLeaves}
-        </p>
-        <p className="text-[10px] text-slate-400 dark:text-gray-500 mt-0.5">awaiting approval</p>
-      </div>
-      <div className="p-3 bg-sky-500/20 rounded-xl text-sky-500 dark:text-sky-400 flex-shrink-0">
-        <CalendarCheck2 className="w-5 h-5" />
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex flex-col w-full h-full min-h-[300px] shadow-sm dark:shadow-md">
+      <h3 className="text-lg font-semibold mb-4 border-b border-slate-100 dark:border-white/10 pb-2 text-slate-800 dark:text-white flex items-center gap-2">
+        <CalendarCheck2 className="w-5 h-5 text-sky-500" />
+        My Pending Leaves ({stats.pendingLeaves})
+      </h3>
+      <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+        {data.pendingLeavesList && data.pendingLeavesList.length > 0 ? (
+          <div className="space-y-3">
+            {data.pendingLeavesList.map((leave: any) => (
+              <div key={leave.id} className="flex items-center justify-between p-3 border border-slate-100 dark:border-white/10 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-slate-800 dark:text-white text-sm">{leave.leaveType}</span>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    {toBDDisplay(leave.startDate, 'MMM dd')} - {toBDDisplay(leave.endDate, 'MMM dd')}
+                  </div>
+                </div>
+                <button className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm hover:shadow-md transition-all font-medium text-slate-700 dark:text-slate-300">
+                  View
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[150px]">
+            <CalendarCheck2 className="w-8 h-8 mb-2" />
+            <p className="text-sm">No pending leave requests.</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -444,25 +587,38 @@ export const DepartmentOverviewWidget = ({ isCompact, data }: { isCompact: boole
   }
 
   return (
-    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl h-full">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500">
-          <PieChartIcon className="w-5 h-5" />
-        </div>
-        <h3 className="text-base font-bold text-slate-800 dark:text-white">Department Overview</h3>
-      </div>
-      <div className="w-full relative">
-        {loading ? (
-          <div className="h-72 flex items-center justify-center min-h-[300px]">
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex flex-col w-full h-full min-h-[300px] shadow-sm dark:shadow-md">
+      <h3 className="text-lg font-semibold mb-4 border-b border-slate-100 dark:border-white/10 pb-2 text-slate-800 dark:text-white flex items-center gap-2">
+        <PieChartIcon className="w-5 h-5 text-blue-500" />
+        Department Overview
+      </h3>
+      <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
+        <div className="flex-1 relative min-h-[200px] flex items-center justify-center">
+          {loading ? (
             <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
+          ) : departmentData.length === 0 ? (
+            <div className="text-slate-400 text-sm">No data available</div>
+          ) : (
+            <DepartmentChart departmentData={departmentData} COLORS={COLORS} totalEmployees={stats.employees} />
+          )}
+        </div>
+        
+        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar border-l border-slate-100 dark:border-white/10 pl-6 hidden md:block">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">Headcount Breakdown</h4>
+          <div className="space-y-2">
+            {departmentData.map((dept: any, index: number) => (
+              <div key={dept.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{dept.name}</span>
+                </div>
+                <span className="text-sm font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded-md">
+                  {dept.value}
+                </span>
+              </div>
+            ))}
           </div>
-        ) : departmentData.length === 0 ? (
-          <div className="h-72 flex items-center justify-center text-slate-400 text-sm min-h-[300px]">
-            No data available
-          </div>
-        ) : (
-          <DepartmentChart departmentData={departmentData} COLORS={COLORS} totalEmployees={stats.employees} />
-        )}
+        </div>
       </div>
     </div>
   );

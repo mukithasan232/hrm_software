@@ -81,7 +81,9 @@ export default function DashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getBDToday());
-
+  const [presentEmployees, setPresentEmployees] = useState<any[]>([]);
+  const [absentEmployees, setAbsentEmployees] = useState<any[]>([]);
+  const [pendingLeavesList, setPendingLeavesList] = useState<any[]>([]);
   // ── Derive admin status ────────────────────────────────────────────────────
   const isAdmin = [
     "Admin",
@@ -199,6 +201,30 @@ export default function DashboardOverview() {
 
       const allLogs = presenceRes.data.recentAll || presenceRes.data.recent || [];
       setRecentAttendance(allLogs);
+
+      const recentPresent = presenceRes.data.recent || [];
+      const presentEmps = recentPresent.map((log: any) => {
+        const u = allUsers.find((user: any) => user.id === log.employeeId || user.employeeId === log.employeeId);
+        return {
+          id: log.id,
+          name: log.employeeName || (u?.name || "Unknown"),
+          avatar: u?.profileImage || u?.avatar || "",
+          designation: u?.designation || "Employee",
+          checkIn: log.timestamp
+        };
+      });
+      setPresentEmployees(presentEmps);
+
+      const presentUserIds = new Set(allLogs.map((l: any) => l.employeeId));
+      const absentEmps = allUsers.filter((u: any) => {
+        if (!u.isActive || u.employeeId === "UNMAPPED_FALLBACK") return false;
+        const desig = (u.designation || '').toLowerCase();
+        if (['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'].includes(desig) || u.email === 'dev@fixanyphoto.com') return false;
+        return !presentUserIds.has(u.id) && !presentUserIds.has(u.employeeId);
+      });
+      setAbsentEmployees(absentEmps);
+
+      setPendingLeavesList(allLeaves.filter((l: any) => l.status === "Pending"));
 
       // Derive the current user's latest punch globally (Cross-Midnight bug fix)
       if (!isAdmin && user?.id) {
@@ -353,7 +379,8 @@ export default function DashboardOverview() {
   const widgetData = {
     isAdmin, stats, loading, punchStatus, latestPunch, assignedShift, todayWorkingHours,
     ANNUAL_LEAVE_QUOTA, announcements, handleClearBoard, handleDeleteNotice,
-    selectedDate, setSelectedDate, recentAttendance, chartData, departmentData, COLORS, t
+    selectedDate, setSelectedDate, recentAttendance, chartData, departmentData, COLORS, t,
+    presentEmployees, absentEmployees, pendingLeavesList
   };
 
   const { layout, isLoaded, handleDragEnd } = useDashboardLayout(isAdmin);

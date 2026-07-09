@@ -182,31 +182,51 @@ export const exportToPDF = async (
     return `${h}h ${m}m`;
   };
 
-  const tableData = data.map(session => {
-    const empName = session.employeeName || 'Unknown Employee';
-    const dateStr = session.date || 'N/A';
-    
-    const checkInTime = session.checkInRaw ? toBDDisplay(session.checkInRaw, 'hh:mm a') : 'Missing';
-    
-    let checkOutTime = 'Missing / Working';
-    if (session.checkOutRaw) {
-      checkOutTime = toBDDisplay(session.checkOutRaw, 'hh:mm a');
-      if (session.isAutoCheckout) {
-        checkOutTime += ' (Auto)';
-      }
-    } else if (session.isMissingOut) {
-      checkOutTime = 'Missing';
-    }
+  const tableData: any[][] = [];
+  
+  data.forEach(summary => {
+    if (summary.punchTimeline && summary.punchTimeline.length > 0) {
+      summary.punchTimeline.forEach((session: any) => {
+        const empName = summary.employeeName || 'Unknown Employee';
+        const dateStr = summary.date || 'N/A';
+        
+        const checkInTime = session.inTime ? toBDDisplay(session.inTime, 'hh:mm a') : 'Missing';
+        
+        let checkOutTime = 'Missing / Working';
+        if (session.outTime) {
+          checkOutTime = toBDDisplay(session.outTime, 'hh:mm a');
+          if (session.isAutoCheckout) {
+            checkOutTime += ' (Auto)';
+          }
+        } else if (session.isMissingOut) {
+          checkOutTime = 'Missing';
+        }
 
-    const totalHours = formatMs(session.totalValidMs);
-    
-    return [
-      empName,
-      dateStr,
-      checkInTime,
-      checkOutTime,
-      totalHours
-    ];
+        const totalHours = session.duration || '0h 0m';
+        
+        tableData.push([empName, dateStr, checkInTime, checkOutTime, totalHours]);
+      });
+    } else {
+      // Fallback if no timeline exists (e.g., legacy data structure)
+      const empName = summary.employeeName || 'Unknown Employee';
+      const dateStr = summary.date || 'N/A';
+      
+      const checkInTime = summary.checkInRaw ? toBDDisplay(summary.checkInRaw, 'hh:mm a') : 'Missing';
+      
+      let checkOutTime = 'Missing / Working';
+      if (summary.checkOutRaw) {
+        checkOutTime = toBDDisplay(summary.checkOutRaw, 'hh:mm a');
+        if (summary.isAutoCheckout) {
+          checkOutTime += ' (Auto)';
+        }
+      } else if (summary.isMissingOut) {
+        checkOutTime = 'Missing';
+      }
+
+      const totalHours = formatMs(summary.totalValidMs);
+      
+      tableData.push([empName, dateStr, checkInTime, checkOutTime, totalHours]);
+    }
   });
 
   autoTable(doc, {

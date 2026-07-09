@@ -109,8 +109,11 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
               <div className="w-10 h-10 rounded-full bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-600">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
-              <span className="text-xl font-bold text-slate-900 dark:text-white">
+              <span className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 {toBDDisplay(checkOutRaw, 'hh:mm a')}
+                {initialData.isAutoCheckout && (
+                  <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold border border-orange-200">Auto-Checkout</span>
+                )}
               </span>
             </div>
           ) : (
