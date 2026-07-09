@@ -96,7 +96,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         email: true,
         customDesignation: { select: { id: true, name: true, permissions: true } },
         department: true,
-        customDepartment: { select: { id: true, name: true, shiftStartTime: true, shiftEndTime: true } },
+        customDepartment: { select: { id: true, name: true, shiftStartTime: true, shiftEndTime: true, lunchStartTime: true, lunchEndTime: true, snacksStartTime: true, snacksEndTime: true } },
         designation: true,
         shiftId: true,
         shift: { select: { id: true, name: true, startTime: true, endTime: true } },

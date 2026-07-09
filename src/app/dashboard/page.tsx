@@ -378,7 +378,7 @@ export default function DashboardOverview() {
 
 
   const widgetData = {
-    isAdmin, stats, loading, punchStatus, latestPunch, assignedShift, todayWorkingHours,
+    user, isAdmin, stats, loading, punchStatus, latestPunch, assignedShift, todayWorkingHours,
     ANNUAL_LEAVE_QUOTA, announcements, handleClearBoard, handleDeleteNotice,
     selectedDate, setSelectedDate, recentAttendance, chartData, departmentData, COLORS, t,
     presentEmployees, absentEmployees, pendingLeavesList

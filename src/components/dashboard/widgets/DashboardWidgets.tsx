@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 const WeeklyChart = dynamic(() => import('@/components/charts/WeeklyChart'), { ssr: false });
 const DepartmentChart = dynamic(() => import('@/components/charts/DepartmentChart'), { ssr: false });
 const LateTodayWidget = dynamic(() => import('@/components/dashboard/LateTodayWidget'), { ssr: false });
+import { BreakCountdownWidget } from '@/components/dashboard/BreakCountdownWidget';
 
 export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
   const { t } = useTranslation();
@@ -654,4 +655,5 @@ export const WidgetMap: Record<string, React.FC<any>> = {
   'weekly-attendance': WeeklyAttendanceWidget,
   'department-overview': DepartmentOverviewWidget,
   'late-today': LateTodayWidgetWrapper,
+  'break-countdown': BreakCountdownWidget,
 };
