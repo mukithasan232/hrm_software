@@ -504,7 +504,7 @@ let hasSanitizedManualLogs = false;
 /**
  * Fetch attendance logs from device → upsert into MongoDB.
  */
-export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: number; total: number }> => {
+export const getDeviceAttendance = async (forceSync3Days = false): Promise<{ synced: number; skipped: number; total: number }> => {
   const zk = await createZK();
   const currentZkIp = (zk as any).deviceIp || 'Unknown IP';
   try {
@@ -530,7 +530,14 @@ export const getDeviceAttendance = async (): Promise<{ synced: number; skipped: 
 
     // Delta Sync Optimization: Track Last Sync Time
     const latestLog = await prisma.attendanceLog.findFirst({ orderBy: { timestamp: 'desc' } });
-    const lastSyncTime = latestLog ? latestLog.timestamp.getTime() : new Date('2000-01-01').getTime();
+    
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    
+    // If forced manual sync, ignore cursor and fetch last 3 days safely
+    const lastSyncTime = forceSync3Days
+      ? threeDaysAgo.getTime()
+      : (latestLog ? latestLog.timestamp.getTime() : new Date('2000-01-01').getTime());
 
     // Backend-Level Filtering (Fallback) - Only process logs newer than the last synced record
     const recentLogs = rawLogs.filter((log: any) => {
@@ -726,8 +733,8 @@ export const pingDevice = async (): Promise<{ reachable: boolean; info?: any; er
 };
 
 /** Legacy alias */
-export const fetchDeviceLogs = async (): Promise<number> => {
-  const { synced } = await getDeviceAttendance();
+export const fetchDeviceLogs = async (forceSync3Days = false): Promise<number> => {
+  const { synced } = await getDeviceAttendance(forceSync3Days);
   return synced;
 };
 

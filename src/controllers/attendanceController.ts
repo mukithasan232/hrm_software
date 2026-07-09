@@ -101,7 +101,8 @@ export const syncDeviceLogs = async (req: Request, res: Response) => {
     // Pure additive sync — no destructive wipe. The DB unique constraint
     // (@@unique([employeeId, timestamp])) and skipDuplicates:true on createMany
     // are the sole deduplication mechanism.
-    const newRecordsCount = await runWithDeviceLock(() => fetchDeviceLogs());
+    // We pass `true` here to force the sync to look back 3 days, bypassing the cursor for manual syncs
+    const newRecordsCount = await runWithDeviceLock(() => fetchDeviceLogs(true));
     res.status(200).json({
       message: 'Sync completed successfully',
       newRecordsSynced: newRecordsCount,
