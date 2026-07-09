@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const payload = await req.json().catch(() => ({}));
     const deploymentId = payload.deploymentId || payload.id;
 
-    // Task 2: Idempotency Check
+    // Task 3: Prevent Duplicate Processing
     if (deploymentId) {
       if (processedDeployments.has(deploymentId)) {
         console.log(`[Webhook] Deployment ${deploymentId} already processed. Acknowledging safely.`);
@@ -28,16 +28,23 @@ export async function POST(req: Request) {
       setTimeout(() => processedDeployments.delete(deploymentId), 1000 * 60 * 60 * 24);
     }
 
-    // Call WhatsApp API to send the message
-    await sendWhatsAppNotification(payload);
+    // Task 2: Fire and Forget Notification (Do NOT await)
+    sendWhatsAppNotification(payload).catch((err) => {
+      console.error("WhatsApp Send Failed:", err);
+    });
 
-    // CRITICAL (Task 1): Return 200 OK immediately so the webhook provider stops retrying!
-    return NextResponse.json({ success: true }, { status: 200 });
+    // INSTANTLY return 200 OK to kill the retry loop from the deployment server
+    return NextResponse.json(
+      { success: true, message: "Webhook acknowledged successfully" },
+      { status: 200 }
+    );
     
   } catch (error) {
-    console.error("Notification Webhook Error:", error);
-    // Even on error, we return 200 to stop retry spam. The provider already sent the webhook.
-    // If we return 500, it will retry and spam WhatsApp again if the error happened AFTER sending.
-    return NextResponse.json({ error: "Processed with internal errors" }, { status: 200 });
+    console.error("Webhook processing error:", error);
+    // EMERGENCY FAILSAFE: Always return 200 to stop the spam loop, even on fatal errors.
+    return NextResponse.json(
+      { success: true, message: "Failsafe triggered" },
+      { status: 200 }
+    );
   }
 }
