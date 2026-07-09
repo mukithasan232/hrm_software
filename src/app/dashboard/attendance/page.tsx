@@ -232,11 +232,7 @@ export default function AttendancePage() {
     if (isAdminProxy) {
       setLoading(true);
       try {
-        const currentTimestamp = getBDNowLocal();
-        const [datePart, timePart] = currentTimestamp.split('T');
-        const utcTimestamp = toUTCFromBD(datePart, timePart);
-        
-        await api.post('/attendance/manual', { ...manualEntry, timestamp: utcTimestamp, locationAddress: 'Admin Manual Entry' });
+        await api.post('/attendance/manual', { employeeId: manualEntry.employeeId, punchType: manualEntry.punchType, locationAddress: 'Admin Manual Entry' });
         toast.success(t('manual_entry_success') || 'Manual entry added successfully');
         setIsModalOpen(false);
         fetchLogs();
@@ -266,12 +262,8 @@ export default function AttendancePage() {
         try {
           const { latitude, longitude } = position.coords;
           
-          // Always use the exact current time at the moment of submission
-          const currentTimestamp = getBDNowLocal();
-          const [datePart, timePart] = currentTimestamp.split('T');
-          const utcTimestamp = toUTCFromBD(datePart, timePart);
-          
-          await api.post('/attendance/manual', { ...manualEntry, timestamp: utcTimestamp, latitude, longitude });
+          // Use purely the required fields, letting the backend handle the time
+          await api.post('/attendance/manual', { employeeId: manualEntry.employeeId, punchType: manualEntry.punchType, latitude, longitude });
           toast.dismiss('geo-fetch');
           toast.success(t('manual_entry_success') || 'Manual entry added successfully');
           setIsModalOpen(false);
@@ -290,11 +282,7 @@ export default function AttendancePage() {
           setLoading(false);
         } else {
           toast.error("Location unavailable. Proceeding with fallback mode.");
-          const currentTimestamp = getBDNowLocal();
-          const [datePart, timePart] = currentTimestamp.split('T');
-          const utcTimestamp = toUTCFromBD(datePart, timePart);
-          
-          api.post('/attendance/manual', { ...manualEntry, timestamp: utcTimestamp, locationAddress: 'Location Unavailable' })
+          api.post('/attendance/manual', { employeeId: manualEntry.employeeId, punchType: manualEntry.punchType, locationAddress: 'Location Unavailable' })
             .then(() => {
                toast.success(t('manual_entry_success') || 'Manual entry added successfully (Fallback)');
                setIsModalOpen(false);
@@ -739,14 +727,10 @@ export default function AttendancePage() {
                 </div>
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('time') || 'Time'}</label>
-                  <input 
-                    type="datetime-local" 
-                    disabled
-                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-semibold disabled:opacity-75 disabled:cursor-not-allowed"
-                    value={manualEntry.timestamp}
-                    onChange={(e) => setManualEntry({...manualEntry, timestamp: e.target.value})}
-                  />
-                  <p className="text-[10px] text-slate-500 italic mt-1">Time is automatically recorded and cannot be changed.</p>
+                  <div className="w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3 text-emerald-700 dark:text-emerald-400 text-sm font-semibold flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Time will be automatically recorded based on secure server time.
+                  </div>
                 </div>
               </div>
   

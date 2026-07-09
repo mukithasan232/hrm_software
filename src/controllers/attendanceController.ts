@@ -643,7 +643,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
 export const createManualLog = async (req: Request, res: Response): Promise<void> => {
   try {
-    let { employeeId, timestamp, punchType, latitude, longitude } = req.body;
+    let { employeeId, punchType, latitude, longitude } = req.body;
     
     let locationAddress: string | null = null;
     if (latitude && longitude) {
@@ -656,13 +656,8 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       }
     }
     
-    // Ensure the date string is correctly parsed into a valid ISO-8601 Date object
-    let parsedDate = new Date(timestamp);
-    
-    if (isNaN(parsedDate.getTime())) {
-      res.status(400).json({ message: 'Invalid timestamp format.' });
-      return;
-    }
+    // 100% Secure Server Time - completely ignore client time payload
+    const parsedDate = new Date();
     
     // --- Security RBAC Check ---
     const reqUser = (req as any).user;
@@ -683,11 +678,6 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     if (!canCreateAll && String(employeeId) !== String(reqUser.id) && String(employeeId) !== String(reqUser.employeeId)) {
       res.status(403).json({ message: 'Forbidden: You do not have permission to create attendance for other employees.' });
       return;
-    }
-    
-    // Enforce Server Time for standard employees
-    if (!canCreateAll) {
-      parsedDate = new Date();
     }
     // ---------------------------
 
