@@ -527,20 +527,23 @@ export const syncZkTecoData = async (daysToFetch: number | boolean = 1): Promise
 
     // Calculate time window for deep sync
     const windowStart = new Date();
-    if (daysToFetch === true) {
-      windowStart.setFullYear(2000, 0, 1); // Fetch all history
-    } else {
+    let recentLogs = rawLogs;
+
+    if (daysToFetch !== true) {
       windowStart.setDate(windowStart.getDate() - (daysToFetch as number));
       windowStart.setHours(0, 0, 0, 0);
+      
+      recentLogs = rawLogs.filter((log: any) => {
+        const deviceTime = log.timestamp || log.recordTime || log.record_time;
+        if (!deviceTime) return false;
+        const rawTimestamp = parseDeviceTime(deviceTime);
+        rawTimestamp.setMilliseconds(0); // align with insertion logic
+        return rawTimestamp.getTime() >= windowStart.getTime();
+      });
+    } else {
+      // For deep sync, we fetch EVERYTHING and don't apply any filter
+      windowStart.setFullYear(2000, 0, 1);
     }
-
-    const recentLogs = rawLogs.filter((log: any) => {
-      const deviceTime = log.timestamp || log.recordTime || log.record_time;
-      if (!deviceTime) return false;
-      const rawTimestamp = parseDeviceTime(deviceTime);
-      rawTimestamp.setMilliseconds(0); // align with insertion logic
-      return rawTimestamp.getTime() >= windowStart.getTime();
-    });
 
     if (recentLogs.length === 0) {
       const io = (global as any).io;

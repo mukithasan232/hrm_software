@@ -127,7 +127,7 @@ export const getDeviceStatus = async (req: Request, res: Response) => {
 
 export const syncDeviceUsersToDB = async (req: Request, res: Response) => {
   try {
-    const result = await runWithDeviceLock(() => getDeviceAttendance());
+    const result = await runWithDeviceLock(() => syncZkTecoData(true));
     startRealtimeListener();
 
     res.status(200).json({
