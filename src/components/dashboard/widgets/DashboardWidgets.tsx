@@ -1,0 +1,501 @@
+import React from 'react';
+import { useTranslation } from '@/context/LanguageContext';
+import { LogIn, LogOut, Clock, UserMinus, CalendarRange, CalendarCheck2, Megaphone, Trash2, X, BarChart3, PieChart as PieChartIcon, RefreshCw } from 'lucide-react';
+import { toBDDisplay, getBDToday } from '@/lib/dateUtils';
+import { useLiveOfficeHour } from '@/hooks/useLiveOfficeHour';
+import dynamic from 'next/dynamic';
+
+const WeeklyChart = dynamic(() => import('@/components/charts/WeeklyChart'), { ssr: false });
+const DepartmentChart = dynamic(() => import('@/components/charts/DepartmentChart'), { ssr: false });
+const LateTodayWidget = dynamic(() => import('@/components/dashboard/LateTodayWidget'), { ssr: false });
+
+export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  const { t } = useTranslation();
+  const { isAdmin, stats, loading, punchStatus, latestPunch, assignedShift, todayWorkingHours } = data;
+
+  const activeCheckInTime = punchStatus?.isIn && latestPunch ? latestPunch.timestamp : null;
+  const liveHours = useLiveOfficeHour(activeCheckInTime);
+
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-between hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md h-full">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider truncate">
+            {isAdmin ? t("presentNow") : "Today's Punch"}
+          </p>
+          <div className={`p-1.5 rounded-lg flex-shrink-0 ${punchStatus?.isIn || (isAdmin && stats.activeNow > 0) ? "bg-emerald-500/20 text-emerald-500" : "bg-slate-100 dark:bg-white/5 text-slate-400"}`}>
+            {punchStatus?.isIn ? <LogIn className="w-4 h-4" /> : latestPunch ? <LogOut className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+          </div>
+        </div>
+        <div className="mt-2">
+          {isAdmin ? (
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${stats.activeNow > 0 ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
+              <p className="text-2xl font-bold text-slate-800 dark:text-white">{loading ? "-" : stats.activeNow}</p>
+            </div>
+          ) : (
+            <p className={`text-sm font-bold truncate ${punchStatus?.isIn ? "text-emerald-600 dark:text-emerald-400" : latestPunch ? "text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-gray-400"}`}>
+              {punchStatus?.label || 'Not Punched In'}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Full view
+  return (
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-all shadow-sm dark:shadow-md h-full">
+      <div className="flex items-start justify-between w-full">
+        <div className="min-w-0">
+          <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
+            {isAdmin ? t("presentNow") : "Today's Punch Status"}
+          </p>
+          {isAdmin ? (
+            <div className="flex items-center gap-2 mt-2">
+              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${stats.activeNow > 0 ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">
+                {loading ? "-" : stats.activeNow}
+              </p>
+            </div>
+          ) : (
+            <div className="mt-2">
+              {loading ? (
+                <p className="text-lg font-bold text-slate-400">—</p>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full flex-shrink-0 ${latestPunch ? (punchStatus?.isIn ? "bg-emerald-500 animate-pulse" : "bg-orange-400") : "bg-slate-300"}`} />
+                  <p className={`text-sm font-bold leading-tight ${punchStatus?.isIn ? "text-emerald-600 dark:text-emerald-400" : latestPunch ? "text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-gray-400"}`}>
+                    {punchStatus?.label}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div className={`p-3 rounded-xl flex-shrink-0 ${punchStatus?.isIn || (isAdmin && stats.activeNow > 0) ? "bg-emerald-500/20 text-emerald-500" : "bg-slate-100 dark:bg-white/5 text-slate-400"}`}>
+          {punchStatus?.isIn ? <LogIn className="w-5 h-5" /> : latestPunch ? <LogOut className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+        </div>
+      </div>
+
+      {!isAdmin && (
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between w-full">
+          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Assigned Shift</span>
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+            {assignedShift ? `${assignedShift.start} - ${assignedShift.end}` : <span className="text-slate-400 font-normal italic">Not Assigned</span>}
+          </span>
+        </div>
+      )}
+      
+      {!isAdmin && todayWorkingHours && (
+        <div className="mt-2 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between w-full">
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Office Hour</span>
+            <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
+              {punchStatus?.isIn ? (
+                 <span className="flex items-center gap-2">
+                   <span className="relative flex h-2 w-2">
+                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                   </span>
+                   {liveHours} <span className="text-xs font-normal text-emerald-500/70">(Live)</span>
+                 </span>
+              ) : (
+                todayWorkingHours || '—'
+              )}
+            </span>
+          </div>
+          <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500 flex-shrink-0 border border-indigo-500/20">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const AbsentDaysWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  const { t } = useTranslation();
+  const { isAdmin, stats, loading } = data;
+
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-between hover:border-orange-500/50 transition-all shadow-sm dark:shadow-md h-full">
+        <div className="flex items-center justify-between">
+           <p className="text-[10px] text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider truncate">
+             {isAdmin ? "Total Absent" : "Absent Days"}
+           </p>
+           <div className="p-1.5 bg-orange-500/20 rounded-lg text-orange-500 dark:text-orange-400 flex-shrink-0">
+             <UserMinus className="w-4 h-4" />
+           </div>
+        </div>
+        <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{loading ? "-" : stats.totalAbsent}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex items-center justify-between hover:border-orange-500/50 transition-all shadow-sm dark:shadow-md h-full">
+      <div>
+        <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
+          {isAdmin ? "Total Absent" : "Absent Days"}
+        </p>
+        <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">
+          {loading ? "-" : stats.totalAbsent}
+        </p>
+      </div>
+      <div className="p-3 bg-orange-500/20 rounded-xl text-orange-500 dark:text-orange-400 flex-shrink-0">
+        <UserMinus className="w-5 h-5" />
+      </div>
+    </div>
+  );
+};
+
+export const LeavesRemainingWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  const { t } = useTranslation();
+  const { isAdmin, stats, loading, ANNUAL_LEAVE_QUOTA } = data;
+
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-between hover:border-purple-500/50 transition-all shadow-sm dark:shadow-md h-full">
+        <div className="flex items-center justify-between">
+           <p className="text-[10px] text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider truncate">
+             {isAdmin ? t("pendingLeaves") : "Remaining Leaves"}
+           </p>
+           <div className="p-1.5 bg-purple-500/20 rounded-lg text-purple-500 dark:text-purple-400 flex-shrink-0">
+             <CalendarRange className="w-4 h-4" />
+           </div>
+        </div>
+        <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{loading ? "-" : isAdmin ? stats.pendingLeaves : stats.remainingLeaves}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex items-center justify-between hover:border-purple-500/50 transition-all shadow-sm dark:shadow-md h-full">
+      <div>
+        <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
+          {isAdmin ? t("pendingLeaves") : "Remaining Leaves"}
+        </p>
+        <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">
+          {loading ? "-" : isAdmin ? stats.pendingLeaves : stats.remainingLeaves}
+        </p>
+        {!isAdmin && !loading && (
+          <p className="text-[10px] text-slate-400 dark:text-gray-500 mt-0.5">
+            of {ANNUAL_LEAVE_QUOTA} days/year
+          </p>
+        )}
+      </div>
+      <div className="p-3 bg-purple-500/20 rounded-xl text-purple-500 dark:text-purple-400 flex-shrink-0">
+        <CalendarRange className="w-5 h-5" />
+      </div>
+    </div>
+  );
+};
+
+export const LeavesPendingWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  const { stats, loading } = data;
+  if (data.isAdmin) return null;
+
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-between hover:border-sky-500/50 transition-all shadow-sm dark:shadow-md h-full">
+         <div className="flex items-center justify-between">
+           <p className="text-[10px] text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider truncate">
+             Pending Leaves
+           </p>
+           <div className="p-1.5 bg-sky-500/20 rounded-lg text-sky-500 dark:text-sky-400 flex-shrink-0">
+             <CalendarCheck2 className="w-4 h-4" />
+           </div>
+        </div>
+        <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{loading ? "-" : stats.pendingLeaves}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 flex items-center justify-between hover:border-sky-500/50 transition-all shadow-sm dark:shadow-md h-full">
+      <div>
+        <p className="text-xs text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
+          Pending Leaves
+        </p>
+        <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">
+          {loading ? "-" : stats.pendingLeaves}
+        </p>
+        <p className="text-[10px] text-slate-400 dark:text-gray-500 mt-0.5">awaiting approval</p>
+      </div>
+      <div className="p-3 bg-sky-500/20 rounded-xl text-sky-500 dark:text-sky-400 flex-shrink-0">
+        <CalendarCheck2 className="w-5 h-5" />
+      </div>
+    </div>
+  );
+};
+
+export const NoticeBoardWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  const { isAdmin, announcements, handleClearBoard, handleDeleteNotice } = data;
+  
+  if (announcements.length === 0) return null;
+
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-indigo-200 dark:border-indigo-500/20 rounded-2xl p-4 shadow-sm dark:shadow-md h-full flex flex-col justify-between">
+        <div className="flex items-center gap-2">
+          <Megaphone className="w-4 h-4 text-indigo-500" />
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Notices</h3>
+        </div>
+        <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{announcements.length}</p>
+        <p className="text-xs text-slate-400 truncate mt-1">{announcements[0]?.title || ''}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-indigo-200 dark:border-indigo-500/20 rounded-3xl p-6 shadow-md dark:shadow-2xl h-full">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+            <Megaphone className="w-5 h-5" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white">Notice Board</h3>
+        </div>
+        {isAdmin && (
+          <button
+            onClick={handleClearBoard}
+            className="text-xs flex items-center gap-1 font-bold text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-3 h-3" /> Clear All
+          </button>
+        )}
+      </div>
+      <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+        {announcements.map((notice: any) => {
+          const isNew = new Date().getTime() - new Date(notice.createdAt).getTime() < 24 * 60 * 60 * 1000;
+          return (
+            <div key={notice.id} className="p-4 bg-indigo-50/50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 relative group">
+              {isNew && <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm animate-pulse">NEW</span>}
+              {isAdmin && (
+                <button
+                  onClick={() => handleDeleteNotice(notice.id)}
+                  className="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Delete Announcement"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm md:text-base pr-6">{notice.title}</h4>
+              <p className="text-slate-600 dark:text-slate-300 text-xs md:text-sm mt-1 whitespace-pre-wrap">{notice.message}</p>
+              <div className="flex items-center justify-between mt-3 text-[10px] text-slate-500 dark:text-slate-400">
+                <span>By {notice.author?.name || "Admin"}</span>
+                <span>{toBDDisplay(notice.createdAt, "MMM dd, hh:mm a")}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export const MyPunchesWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  const { t } = useTranslation();
+  const { isAdmin, selectedDate, setSelectedDate, loading, recentAttendance } = data;
+
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm dark:shadow-md h-full flex flex-col justify-between">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-indigo-500" />
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Activity</h3>
+        </div>
+        <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{recentAttendance.length}</p>
+        <p className="text-xs text-slate-400 mt-1">Punches logged today</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl flex flex-col h-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          {isAdmin ? t("liveActivity") : "My Punches"}
+        </h3>
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 w-full sm:w-auto">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value || getBDToday())}
+              className="bg-transparent text-slate-800 dark:text-white text-sm focus:outline-none cursor-pointer font-medium w-full sm:w-32"
+              title="Select date to view punches"
+            />
+          </div>
+          <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-500 font-bold px-2 py-1.5 bg-emerald-500/10 rounded-lg w-full sm:w-auto text-center">
+            {selectedDate === getBDToday() ? t("realTime") : "Historical"}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-4 flex-1">
+        {loading ? (
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10 animate-pulse">
+                <div className="flex flex-col gap-2 w-[70%]">
+                  <div className="h-2 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div className="h-3 w-32 bg-slate-300 dark:bg-slate-600 rounded" />
+                  <div className="h-2 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                </div>
+                <div className="h-5 w-16 bg-slate-200 dark:bg-slate-700 rounded-md" />
+              </div>
+            ))}
+          </div>
+        ) : recentAttendance.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-gray-500 gap-2 opacity-50 py-8">
+            <Clock className="w-8 h-8" />
+            <p className="text-sm italic">{t("waitingForPunches")}</p>
+          </div>
+        ) : (
+          recentAttendance.map((log: any, i: number) => {
+            const isCheckIn = log.punchType?.toLowerCase().includes("in");
+            return (
+              <div key={log.id || i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10 animate-in slide-in-from-right-4 duration-300">
+                <div className="flex flex-col gap-1 min-w-0 max-w-[75%]">
+                  <span className="text-[10px] text-slate-400 dark:text-gray-500 font-mono truncate block">{log.employeeId}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-slate-800 dark:text-white truncate">{log.employeeName || "Unknown Employee"}</span>
+                    {isCheckIn && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0" />}
+                  </div>
+                  <span className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1 mt-1">
+                    <Clock className="w-3 h-3" />
+                    {toBDDisplay(log.timestamp, "hh:mm a")}
+                  </span>
+                </div>
+                <div className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${isCheckIn ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"}`}>
+                  {isCheckIn ? t("checkIn") || "Check In" : t("checkOut") || "Check Out"}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const WeeklyAttendanceWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  const { isAdmin, loading, chartData } = data;
+
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm dark:shadow-md h-full flex flex-col justify-between">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-brand-primary" />
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Weekly</h3>
+        </div>
+        <p className="text-xs text-slate-400 mt-2">Expand to view full weekly analytics chart.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl h-full">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 bg-brand-primary/20 rounded-lg text-brand-primary">
+          <BarChart3 className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold text-slate-800 dark:text-white">
+            {isAdmin ? "Weekly Attendance" : "My Weekly Attendance"}
+          </h3>
+          <p className="text-[10px] text-slate-400 dark:text-gray-500 font-medium">Mon – Sat (Sun excluded)</p>
+        </div>
+      </div>
+      <div className="w-full relative">
+        {loading ? (
+          <div className="h-72 flex items-center justify-center min-h-[300px]">
+            <RefreshCw className="w-6 h-6 text-brand-primary animate-spin" />
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="h-72 flex items-center justify-center text-slate-400 text-sm min-h-[300px]">
+            No data available
+          </div>
+        ) : (
+          <WeeklyChart chartData={chartData} />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const DepartmentOverviewWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  const { loading, departmentData, COLORS, stats } = data;
+
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm dark:shadow-md h-full flex flex-col justify-between">
+        <div className="flex items-center gap-2">
+          <PieChartIcon className="w-4 h-4 text-blue-500" />
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Departments</h3>
+        </div>
+        <p className="text-xs text-slate-400 mt-2">Expand to view department breakdown.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl h-full">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500">
+          <PieChartIcon className="w-5 h-5" />
+        </div>
+        <h3 className="text-base font-bold text-slate-800 dark:text-white">Department Overview</h3>
+      </div>
+      <div className="w-full relative">
+        {loading ? (
+          <div className="h-72 flex items-center justify-center min-h-[300px]">
+            <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
+          </div>
+        ) : departmentData.length === 0 ? (
+          <div className="h-72 flex items-center justify-center text-slate-400 text-sm min-h-[300px]">
+            No data available
+          </div>
+        ) : (
+          <DepartmentChart departmentData={departmentData} COLORS={COLORS} totalEmployees={stats.employees} />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const LateTodayWidgetWrapper = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm dark:shadow-md h-full flex flex-col justify-between">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-red-500" />
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Late Today</h3>
+        </div>
+        <p className="text-xs text-slate-400 mt-2">Expand to view late employees.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="h-96 w-full">
+      <LateTodayWidget />
+    </div>
+  );
+};
+
+// Map widget IDs to their components
+export const WidgetMap: Record<string, React.FC<any>> = {
+  'punch-status': PunchStatusWidget,
+  'absent-days': AbsentDaysWidget,
+  'leaves-remaining': LeavesRemainingWidget,
+  'leaves-pending': LeavesPendingWidget,
+  'notice-board': NoticeBoardWidget,
+  'my-punches': MyPunchesWidget,
+  'weekly-attendance': WeeklyAttendanceWidget,
+  'department-overview': DepartmentOverviewWidget,
+  'late-today': LateTodayWidgetWrapper,
+};

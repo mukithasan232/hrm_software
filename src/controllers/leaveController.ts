@@ -96,6 +96,14 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
       // Broadcast the notifications in real-time
       // Note: createMany doesn't return the IDs, but for real-time we mainly need the payload to show in the dropdown
       notifications.forEach((n) => eventEmitter.emit('new-notification', { ...n, id: Math.random().toString(36).substring(7), createdAt: new Date() }));
+
+      // Native Browser Notification Trigger via Socket.io
+      if ((global as any).io) {
+        (global as any).io.emit('global_notification', {
+          title: 'New Leave Request',
+          body: `${applyingUser?.name || 'An employee'} applied for ${type} leave.`
+        });
+      }
     }
 
     return res.status(201).json({ message: 'Leave applied successfully', leave });

@@ -14,6 +14,8 @@ import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 import NotificationModal from '@/components/notifications/NotificationModal';
 import { useTranslation } from '@/context/LanguageContext';
 import { useBreakTimer, BreakDepartment } from '@/hooks/useBreakTimer';
+import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { io as socketIO } from 'socket.io-client';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -41,6 +43,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   const { user, logout } = useAuth();
   const { brand } = useBrand();
   const { t, language } = useTranslation();
+  const { triggerNotification } = useBrowserNotification();
   
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -197,9 +200,20 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
         }
       };
 
-      return () => eventSource.close();
+      // Add a universal socket listener for native browser notifications
+      const socket = socketIO({ path: '/socket.io', transports: ['websocket', 'polling'] });
+      
+      socket.on('global_notification', (data: { title: string; body: string }) => {
+        triggerNotification(data.title, data.body);
+      });
+
+      return () => {
+        eventSource.close();
+        socket.off('global_notification');
+        socket.disconnect();
+      };
     }
-  }, [user]);
+  }, [user, triggerNotification]);
 
   // Close dropdowns on outside click
   useEffect(() => {
