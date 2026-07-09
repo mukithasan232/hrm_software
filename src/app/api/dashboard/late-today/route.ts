@@ -19,7 +19,8 @@ export async function GET() {
           gte: today,
           lt: tomorrow
         },
-        punchType: { contains: 'In' }
+        punchType: { contains: 'In' },
+        user: { isActive: true }
       },
       include: {
         user: {

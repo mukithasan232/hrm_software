@@ -16,8 +16,9 @@ import { checkPermission } from '@/utils/checkPermission';
 import { useDetailsStore } from '@/store/useDetailsStore';
 import MetricDetailsModal from '@/components/attendance/MetricDetailsModal';
 
-const WorkModeBadge = ({ mode }: { mode?: string }) => {
-  if (mode === 'REMOTE') {
+const WorkModeBadge = ({ mode, source }: { mode?: string, source?: string }) => {
+  const isManual = source?.toLowerCase().includes('manual') || mode === 'REMOTE';
+  if (isManual) {
     return <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] px-1.5 py-0.5 rounded-md mt-1 font-semibold flex w-max items-center gap-1">🏠 Remote</span>;
   }
   return <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] px-1.5 py-0.5 rounded-md mt-1 font-semibold flex w-max items-center gap-1">🏢 In-House</span>;
@@ -587,7 +588,7 @@ export default function AttendancePage() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-slate-900 dark:text-white font-bold">{row?.employeeName}</span>
-                        <WorkModeBadge mode={row.workMode} />
+                        <WorkModeBadge mode={row.workMode} source={row.inSource} />
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-900 dark:text-gray-200">

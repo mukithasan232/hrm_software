@@ -21,7 +21,8 @@ export default function LateTodayWidget() {
       try {
         const res = await api.get('/dashboard/late-today');
         if (res.data?.success) {
-          setLateEmployees(res.data.data || []);
+          const allLate = res.data.data || [];
+          setLateEmployees(allLate.filter((emp: any) => emp.lateMinutes && emp.lateMinutes > 0));
         }
       } catch (error) {
         console.error("Failed to fetch late employees:", error);
@@ -77,7 +78,9 @@ export default function LateTodayWidget() {
                   </div>
                 </div>
                 <div className="px-2.5 py-1 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold whitespace-nowrap">
-                  {emp.lateMinutes} min late
+                  {emp.lateMinutes >= 60 
+                    ? `${Math.floor(emp.lateMinutes / 60)}h ${emp.lateMinutes % 60}m late`
+                    : `${emp.lateMinutes}m late`}
                 </div>
               </div>
             ))}

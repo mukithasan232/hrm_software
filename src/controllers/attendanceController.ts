@@ -186,7 +186,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const queryDate = req.query.date as string | undefined;
     const { start, end } = queryDate ? getDayBoundaries(queryDate) : getTodayBoundaries();
 
-    const whereClause: any = { timestamp: { gte: start, lte: end } };
+    const whereClause: any = { timestamp: { gte: start, lte: end }, user: { isActive: true } };
     if (!isAdmin && user?.id) {
       whereClause.employeeId = user.id;
     }
@@ -372,6 +372,9 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         ...(targetDeptName ? [{ department: targetDeptName }] : [])
       ];
     }
+
+    // Ensure we only count attendance for active users
+    where.user = { ...where.user, isActive: true };
 
     const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualPunches, activeEmployees, allPunchesInRange] = await Promise.all([
       prisma.attendanceLog.findMany({

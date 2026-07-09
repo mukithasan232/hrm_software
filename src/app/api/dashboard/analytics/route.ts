@@ -36,7 +36,7 @@ const getAnalytics = async (req: any, res: any) => {
 
       const whereClause: any = {
         timestamp: { gte: startUTC, lte: endUTC },
-        user: { employeeId: { not: 'UNMAPPED_FALLBACK' } }
+        user: { employeeId: { not: 'UNMAPPED_FALLBACK' }, isActive: true }
       };
 
       if (!isAdmin && user?.id) {

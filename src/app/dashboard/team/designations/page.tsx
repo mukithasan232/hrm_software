@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import DesignationUsersModal from '@/components/designation/DesignationUsersModal';
 
 // ─── Scope / Module definitions ───────────────────────────────────────────────
 
@@ -208,6 +209,7 @@ export default function DesignationsPage() {
   const [annualLeave, setAnnualLeave]       = useState<number>(15);
   const [weekendDays, setWeekendDays]       = useState<string[]>(['Sunday']);
   const [showWeekendModal, setShowWeekendModal] = useState(false);
+  const [showUsersModal, setShowUsersModal] = useState<any | null>(null);
   const DAYS_OF_WEEK = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const [submitting, setSubmitting]         = useState(false);
 
@@ -448,10 +450,14 @@ export default function DesignationsPage() {
                           <PermPill count={permCount} />
                         </button>
                       </div>
-                      <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-gray-400">
-                        <Users className="w-3.5 h-3.5 text-slate-400 dark:text-gray-600" />
+                      <button 
+                        onClick={() => setShowUsersModal(designation)}
+                        className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-2 py-1 -ml-2 rounded-lg transition-colors w-fit"
+                        title="Manage Users"
+                      >
+                        <Users className="w-3.5 h-3.5" />
                         <span className="font-medium">{designation._count?.users ?? 0}</span>
-                      </div>
+                      </button>
                       <div className="text-xs text-slate-400 dark:text-gray-600">
                         {new Date(designation.createdAt).toLocaleDateString('en-GB', {
                           day: '2-digit', month: 'short', year: 'numeric',
@@ -520,10 +526,13 @@ export default function DesignationsPage() {
                         <PermPill count={permCount} />
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1 text-slate-600 dark:text-gray-400 font-medium">
-                          <Users className="w-3.5 h-3.5 text-slate-400" />
+                        <button
+                          onClick={() => setShowUsersModal(designation)}
+                          className="flex items-center gap-1 text-slate-600 dark:text-gray-400 font-medium hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-2 py-1 -ml-2 rounded-lg transition-colors"
+                        >
+                          <Users className="w-3.5 h-3.5" />
                           <span>{designation._count?.users ?? 0}</span>
-                        </div>
+                        </button>
                         <span className="text-slate-300 dark:text-gray-700">•</span>
                         <span className="text-slate-400 dark:text-gray-500">
                           {new Date(designation.createdAt).toLocaleDateString('en-GB', {
@@ -539,6 +548,15 @@ export default function DesignationsPage() {
           </>
         )}
       </div>
+
+      {showUsersModal && (
+        <DesignationUsersModal
+          designationId={showUsersModal.id}
+          designationName={showUsersModal.name}
+          onClose={() => setShowUsersModal(null)}
+          onUpdate={fetchDesignations}
+        />
+      )}
 
       {/* ════════════════════════ CREATE / EDIT MODAL ════════════════════════ */}
       {showModal && (
