@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 
 interface AttendanceReadViewProps {
   id: string | number;
@@ -16,6 +17,19 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
   const { t } = useTranslation();
   const router = useRouter();
   const [showDetails, setShowDetails] = useState(false);
+
+  // ── RBAC: derive admin status from the current logged-in user ──────────────
+  const { user: currentUser } = useAuth();
+  const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hrm manager'];
+  const designName = typeof currentUser?.designation === 'object'
+    ? (currentUser?.designation as any)?.name
+    : currentUser?.designation;
+  const isAdmin =
+    ADMIN_DESIGNATIONS.includes((designName || '').toLowerCase()) ||
+    (currentUser as any)?.roles?.some((r: any) =>
+      ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase())
+    ) ||
+    false;
   
   if (!initialData) {
     return <div className="text-center p-6 text-slate-500">No attendance data provided.</div>;
@@ -190,27 +204,50 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
               {otBadge === 'Approved' ? formatMinutes(overtimeMinutes) : formatMinutes(systemCalculatedOtMinutes || 0)}
             </p>
             
-            {/* Dynamic Badges and Action Buttons */}
-            {otBadge === 'Pending' && systemCalculatedOtMinutes > 0 && (
-              <div className="flex flex-wrap items-center gap-2 mt-3">
-                 <button onClick={() => handleOtAction('APPROVED')} className="text-[11px] font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md hover:bg-emerald-200 transition">
-                   ✅ Approve
-                 </button>
-                 <button onClick={() => handleOtAction('REJECTED')} className="text-[11px] font-semibold bg-red-100 text-red-700 px-2.5 py-1 rounded-md hover:bg-red-200 transition">
-                   ❌ Reject
-                 </button>
-              </div>
-            )}
-            {otBadge === 'Approved' && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded inline-block w-max border border-emerald-100">✓ Approved</span>
-                <button onClick={() => handleOtAction('PENDING')} className="text-[10px] text-slate-500 hover:text-slate-700 underline font-medium cursor-pointer">Undo</button>
-              </div>
-            )}
-            {otBadge === 'Rejected' && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded inline-block w-max border border-red-100">✗ Rejected</span>
-                <button onClick={() => handleOtAction('PENDING')} className="text-[10px] text-slate-500 hover:text-slate-700 underline font-medium cursor-pointer">Undo</button>
+            {/* ── Dynamic Badges and Action Buttons — ADMIN ONLY ─────────── */}
+            {isAdmin ? (
+              <>
+                {otBadge === 'Pending' && systemCalculatedOtMinutes > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <button
+                      onClick={() => handleOtAction('APPROVED')}
+                      className="text-[11px] font-semibold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md hover:bg-emerald-200 transition"
+                    >
+                      ✅ Approve
+                    </button>
+                    <button
+                      onClick={() => handleOtAction('REJECTED')}
+                      className="text-[11px] font-semibold bg-red-100 text-red-700 px-2.5 py-1 rounded-md hover:bg-red-200 transition"
+                    >
+                      ❌ Reject
+                    </button>
+                  </div>
+                )}
+                {otBadge === 'Approved' && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded inline-block w-max border border-emerald-100">✓ Approved</span>
+                    <button onClick={() => handleOtAction('PENDING')} className="text-[10px] text-slate-500 hover:text-slate-700 underline font-medium cursor-pointer">Undo</button>
+                  </div>
+                )}
+                {otBadge === 'Rejected' && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded inline-block w-max border border-red-100">✗ Rejected</span>
+                    <button onClick={() => handleOtAction('PENDING')} className="text-[10px] text-slate-500 hover:text-slate-700 underline font-medium cursor-pointer">Undo</button>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* ── Read-only status badge for regular employees ── */
+              <div className="mt-3">
+                {otBadge === 'Approved' && (
+                  <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded inline-block w-max border border-emerald-100">✓ Approved</span>
+                )}
+                {otBadge === 'Rejected' && (
+                  <span className="text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded inline-block w-max border border-red-100">✗ Rejected</span>
+                )}
+                {otBadge === 'Pending' && systemCalculatedOtMinutes > 0 && (
+                  <span className="text-xs text-amber-600 font-bold bg-amber-50 px-2 py-1 rounded inline-block w-max border border-amber-100">⏳ Status: Pending</span>
+                )}
               </div>
             )}
           </div>
