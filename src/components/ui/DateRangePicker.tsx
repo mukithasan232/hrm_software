@@ -56,8 +56,9 @@ export function DateRangePicker({ value, onChange, disabled }: DateRangePickerPr
 
   const getDisplayText = () => {
     if (value.range === 'today') return 'Today';
+    if (value.range === 'yesterday') return 'Yesterday';
     if (value.range === 'week') return 'Last 7 Days';
-    if (value.range === 'month') return 'This Month';
+    if (value.range === 'month') return 'Last 1 Month';
     if (value.range === 'custom' && value.start && value.end) {
       return `${format(new Date(value.start), 'MMM dd, yyyy')} - ${format(new Date(value.end), 'MMM dd, yyyy')}`;
     }
@@ -66,8 +67,9 @@ export function DateRangePicker({ value, onChange, disabled }: DateRangePickerPr
 
   const presets = [
     { id: 'today', label: 'Today' },
+    { id: 'yesterday', label: 'Yesterday' },
     { id: 'week', label: 'Last 7 Days' },
-    { id: 'month', label: 'This Month' },
+    { id: 'month', label: 'Last 1 Month' },
     { id: 'custom', label: 'Custom Range' },
   ];
 

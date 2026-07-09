@@ -20,24 +20,14 @@ function getTodayBoundaries(): { start: Date; end: Date } {
 
 function getDayBoundaries(filter: string): { start: Date; end: Date } {
   let dateStr = filter;
-  if (filter === 'month') {
-    const now = new Date();
-    const year = formatInTimeZone(now, BD_TZ, 'yyyy');
-    const month = formatInTimeZone(now, BD_TZ, 'MM');
-    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-    
-    return {
-      start: new Date(`${year}-${month}-01T00:00:00+06:00`),
-      end: new Date(`${year}-${month}-${lastDay}T23:59:59.999+06:00`)
-    };
-  }
-
-  if (filter === 'today' || filter === 'yesterday' || filter === 'week') {
+  if (filter === 'today' || filter === 'yesterday' || filter === 'week' || filter === 'month') {
     const targetDate = new Date();
     if (filter === 'yesterday') {
       targetDate.setDate(targetDate.getDate() - 1);
     } else if (filter === 'week') {
       targetDate.setDate(targetDate.getDate() - 7);
+    } else if (filter === 'month') {
+      targetDate.setDate(targetDate.getDate() - 30);
     }
     dateStr = formatInTimeZone(targetDate, BD_TZ, 'yyyy-MM-dd');
     
