@@ -15,6 +15,10 @@ import {
   LogIn,
   LogOut,
   CalendarCheck2,
+  LayoutDashboard,
+  Save,
+  XCircle,
+  GripVertical,
 } from "lucide-react";
 import {
   BarChart,
@@ -57,6 +61,9 @@ export default function DashboardOverview() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { can } = usePermissions();
+
+  // ── Edit Mode State ────────────────────────────────────────────────────────
+  const [isEditing, setIsEditing] = useState(false);
 
   const [stats, setStats] = useState({
     employees: 0,
@@ -384,7 +391,19 @@ export default function DashboardOverview() {
     presentEmployees, absentEmployees, pendingLeavesList
   };
 
-  const { layout, isLoaded, handleDragEnd } = useDashboardLayout(isAdmin);
+  const { layout, isLoaded, handleDragEnd, persistLayout, revertDraft } = useDashboardLayout(isAdmin);
+
+  // ── Edit Mode Handlers ─────────────────────────────────────────────────────
+  const handleCancelEdit = () => {
+    revertDraft();
+    setIsEditing(false);
+  };
+
+  const handleSaveLayout = () => {
+    persistLayout(layout);
+    setIsEditing(false);
+    toast.success("Dashboard layout saved successfully!");
+  };
 
   if (!isLoaded) {
     return (
@@ -395,11 +414,11 @@ export default function DashboardOverview() {
   }
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <DragDropContext onDragEnd={isEditing ? handleDragEnd : () => {}}>
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-6">
         
-        {/* ─── Sync Button Row ─── */}
-        <div className="flex items-center justify-between">
+        {/* ─── Header Row ─── */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-xl font-bold text-slate-800 dark:text-white">
               {isAdmin ? "Admin Dashboard" : "My Dashboard"}
@@ -408,15 +427,63 @@ export default function DashboardOverview() {
               {new Date().toLocaleDateString("en-BD", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
-          <button
-            onClick={handleManualSync}
-            disabled={syncing}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-            Sync Data
-          </button>
+
+          {/* ─── Action Buttons ─── */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {!isEditing ? (
+              <>
+                {/* Customize Dashboard — ghost/outline */}
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-2 px-4 py-2 border border-indigo-300 dark:border-indigo-600 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all font-medium text-sm"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Customize Dashboard
+                </button>
+                {/* Sync Data */}
+                <button
+                  onClick={handleManualSync}
+                  disabled={syncing}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10 text-sm"
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+                  Sync Data
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Cancel — red ghost */}
+                <button
+                  onClick={handleCancelEdit}
+                  className="flex items-center gap-2 px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all font-medium text-sm"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Cancel
+                </button>
+                {/* Save Layout — primary solid */}
+                <button
+                  onClick={handleSaveLayout}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all font-medium shadow-md shadow-emerald-500/20 text-sm"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Layout
+                </button>
+              </>
+            )}
+          </div>
         </div>
+
+        {/* ─── Edit Mode Banner ─── */}
+        {isEditing && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-indigo-400 dark:border-indigo-500 bg-indigo-50/60 dark:bg-indigo-900/20 backdrop-blur-sm animate-in fade-in duration-200">
+            <GripVertical className="w-5 h-5 text-indigo-500 shrink-0" />
+            <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">
+              <span className="font-semibold">Edit Mode active</span> — drag widgets to rearrange. Click{" "}
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Save Layout</span> to keep changes or{" "}
+              <span className="text-red-500 font-semibold">Cancel</span> to discard.
+            </p>
+          </div>
+        )}
 
         {/* ─── Summary Zone (Top) ─── */}
         <Droppable direction="horizontal" droppableId="summaryZone">
@@ -424,19 +491,29 @@ export default function DashboardOverview() {
             <div
               {...provided.droppableProps}
               ref={provided.innerRef}
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"
+              className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 transition-all duration-200 ${
+                isEditing
+                  ? "rounded-2xl p-2 border-2 border-dashed border-indigo-300/60 dark:border-indigo-600/50 bg-indigo-50/30 dark:bg-indigo-950/20"
+                  : ""
+              }`}
             >
               {layout.summaryZone.map((id, index) => {
                 const Widget = WidgetMap[id];
                 if (!Widget) return null;
                 return (
-                  <Draggable key={id} draggableId={id} index={index}>
+                  <Draggable key={id} draggableId={id} index={index} isDragDisabled={!isEditing}>
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
-                        className={`col-span-1 transition-transform ${snapshot.isDragging ? "z-50 scale-105 shadow-xl" : ""}`}
+                        className={`col-span-1 transition-all duration-150 ${
+                          snapshot.isDragging ? "z-50 scale-105 shadow-xl opacity-90" : ""
+                        } ${
+                          isEditing && !snapshot.isDragging
+                            ? "ring-2 ring-indigo-300/50 dark:ring-indigo-600/40 rounded-2xl cursor-grab active:cursor-grabbing"
+                            : ""
+                        }`}
                         style={{ ...provided.draggableProps.style }}
                       >
                         <Widget isCompact={true} data={widgetData} />
@@ -456,7 +533,11 @@ export default function DashboardOverview() {
             <div
               {...provided.droppableProps}
               ref={provided.innerRef}
-              className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+              className={`grid grid-cols-1 lg:grid-cols-2 gap-6 transition-all duration-200 ${
+                isEditing
+                  ? "rounded-2xl p-2 border-2 border-dashed border-indigo-300/60 dark:border-indigo-600/50 bg-indigo-50/30 dark:bg-indigo-950/20"
+                  : ""
+              }`}
             >
               {layout.detailZone.map((id, index) => {
                 const Widget = WidgetMap[id];
@@ -466,15 +547,20 @@ export default function DashboardOverview() {
                 if (id === 'notice-board' || id === 'my-punches') {
                    colSpanClass = "col-span-full";
                 }
-                
                 return (
-                  <Draggable key={id} draggableId={id} index={index}>
+                  <Draggable key={id} draggableId={id} index={index} isDragDisabled={!isEditing}>
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
-                        className={`${colSpanClass} transition-transform ${snapshot.isDragging ? "z-50 scale-[1.02] shadow-xl" : ""}`}
+                        className={`${colSpanClass} transition-all duration-150 ${
+                          snapshot.isDragging ? "z-50 scale-[1.02] shadow-xl opacity-90" : ""
+                        } ${
+                          isEditing && !snapshot.isDragging
+                            ? "ring-2 ring-indigo-300/50 dark:ring-indigo-600/40 rounded-2xl cursor-grab active:cursor-grabbing"
+                          : ""
+                        }`}
                         style={{ ...provided.draggableProps.style }}
                       >
                         <Widget isCompact={false} data={widgetData} />

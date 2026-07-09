@@ -8,54 +8,81 @@ type LayoutState = {
 export const useDashboardLayout = (isAdmin: boolean) => {
   const DEFAULT_LAYOUT: LayoutState = isAdmin ? {
     summaryZone: ['punch-status', 'absent-days', 'leaves-remaining', 'break-countdown'],
-    detailZone: ['notice-board', 'weekly-attendance', 'department-overview', 'late-today']
+    detailZone: ['notice-board', 'weekly-attendance', 'late-today']
   } : {
     summaryZone: ['punch-status', 'break-countdown', 'absent-days', 'leaves-remaining', 'leaves-pending'],
     detailZone: ['notice-board', 'my-punches', 'weekly-attendance']
   };
 
-  const [layout, setLayout] = useState<LayoutState>(DEFAULT_LAYOUT);
+  const STORAGE_KEY = `dashboard_layout_${isAdmin ? 'admin' : 'emp'}`;
+
+  // The persisted "source of truth" layout
+  const [savedLayout, setSavedLayout] = useState<LayoutState>(DEFAULT_LAYOUT);
+  // The in-progress draft layout (only active while editing)
+  const [draftLayout, setDraftLayout] = useState<LayoutState>(DEFAULT_LAYOUT);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from localStorage on mount
   useEffect(() => {
     try {
-      const savedLayout = localStorage.getItem(`dashboard_layout_${isAdmin ? 'admin' : 'emp'}`);
-      if (savedLayout) {
-        const parsed = JSON.parse(savedLayout);
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
         if (parsed.summaryZone && parsed.detailZone) {
-          setLayout(parsed);
+          setSavedLayout(parsed);
+          setDraftLayout(parsed);
+        } else {
+          setSavedLayout(DEFAULT_LAYOUT);
+          setDraftLayout(DEFAULT_LAYOUT);
         }
       } else {
-        setLayout(DEFAULT_LAYOUT);
+        setSavedLayout(DEFAULT_LAYOUT);
+        setDraftLayout(DEFAULT_LAYOUT);
       }
     } catch (e) {
-      console.warn("Failed to load dashboard layout", e);
+      console.warn('Failed to load dashboard layout', e);
     }
     setIsLoaded(true);
-  }, [isAdmin]); // Reload layout if role changes
+  }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveLayout = (newLayout: LayoutState) => {
-    setLayout(newLayout);
+  /**
+   * Persist the draft to localStorage and promote it to savedLayout.
+   * Called when the user clicks "Save Layout".
+   */
+  const persistLayout = (layout: LayoutState) => {
     try {
-      localStorage.setItem(`dashboard_layout_${isAdmin ? 'admin' : 'emp'}`, JSON.stringify(newLayout));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
     } catch (e) {
-      console.warn("Failed to save dashboard layout", e);
+      console.warn('Failed to persist dashboard layout', e);
     }
+    setSavedLayout(layout);
+    setDraftLayout(layout);
   };
 
+  /**
+   * Revert draftLayout back to the last saved state.
+   * Called when the user clicks "Cancel".
+   */
+  const revertDraft = () => {
+    setDraftLayout(savedLayout);
+  };
+
+  /**
+   * Handle a drag-end event — updates draft ONLY (does NOT persist).
+   * isDragDisabled should be false when isEditing is true.
+   */
   const handleDragEnd = (result: any) => {
     const { source, destination, draggableId } = result;
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
-    const newLayout = { ...layout };
+    const newLayout = { ...draftLayout };
     const sourceZoneId = source.droppableId as keyof LayoutState;
     const destZoneId = destination.droppableId as keyof LayoutState;
-    
+
     const sourceItems = Array.from(newLayout[sourceZoneId]);
     sourceItems.splice(source.index, 1);
-    
+
     if (sourceZoneId === destZoneId) {
       sourceItems.splice(destination.index, 0, draggableId);
       newLayout[sourceZoneId] = sourceItems;
@@ -66,13 +93,17 @@ export const useDashboardLayout = (isAdmin: boolean) => {
       newLayout[destZoneId] = destItems;
     }
 
-    saveLayout(newLayout);
+    // Update draft only — do NOT save to localStorage yet
+    setDraftLayout(newLayout);
   };
 
   return {
-    layout,
+    layout: draftLayout,      // Always render from draftLayout
+    savedLayout,
+    draftLayout,
     isLoaded,
     handleDragEnd,
-    setLayout: saveLayout
+    persistLayout,
+    revertDraft,
   };
 };
