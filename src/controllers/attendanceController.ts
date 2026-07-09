@@ -722,6 +722,12 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     let log: any;
     let created = false;
 
+    // 🚀 STRICT OVERLAP PREVENTION
+    if (punchType?.toLowerCase().includes('in') && isActiveShift) {
+      res.status(400).json({ message: 'You are already checked in. Please check out before starting a new session.' });
+      return;
+    }
+
     if (isActiveShift) {
       // 🚀 FORCE CHECKOUT ON PREVIOUS RECORD (Even if it's from yesterday, preventing consecutive Check Ins)
       log = await prisma.attendanceLog.update({

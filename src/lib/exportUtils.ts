@@ -186,26 +186,27 @@ export const exportToPDF = async (
   
   data.forEach(summary => {
     if (summary.punchTimeline && summary.punchTimeline.length > 0) {
-      summary.punchTimeline.forEach((session: any) => {
-        const empName = summary.employeeName || 'Unknown Employee';
-        const dateStr = summary.date || 'N/A';
-        
-        const checkInTime = session.inTime ? toBDDisplay(session.inTime, 'hh:mm a') : 'Missing';
-        
-        let checkOutTime = 'Missing / Working';
-        if (session.outTime) {
-          checkOutTime = toBDDisplay(session.outTime, 'hh:mm a');
-          if (session.isAutoCheckout) {
-            checkOutTime += ' (Auto)';
-          }
-        } else if (session.isMissingOut) {
-          checkOutTime = 'Missing';
-        }
+      const empName = summary.employeeName || 'Unknown Employee';
+      const dateStr = summary.date || 'N/A';
+      
+      const firstSession = summary.punchTimeline[0];
+      const lastSession = summary.punchTimeline[summary.punchTimeline.length - 1];
 
-        const totalHours = session.duration || '0h 0m';
-        
-        tableData.push([empName, dateStr, checkInTime, checkOutTime, totalHours]);
-      });
+      const checkInTime = firstSession.inTime ? toBDDisplay(firstSession.inTime, 'hh:mm a') : 'Missing';
+      
+      let checkOutTime = 'Missing / Working';
+      if (lastSession.outTime) {
+        checkOutTime = toBDDisplay(lastSession.outTime, 'hh:mm a');
+        if (lastSession.isAutoCheckout) {
+          checkOutTime += ' (Auto)';
+        }
+      } else if (lastSession.isMissingOut) {
+        checkOutTime = 'Missing';
+      }
+
+      const totalHours = formatMs(summary.totalValidMs);
+      
+      tableData.push([empName, dateStr, checkInTime, checkOutTime, totalHours]);
     } else {
       // Fallback if no timeline exists (e.g., legacy data structure)
       const empName = summary.employeeName || 'Unknown Employee';
