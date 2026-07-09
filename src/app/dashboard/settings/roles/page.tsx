@@ -34,13 +34,18 @@ export default function RolesPage() {
   // Fetch Roles
   const fetchRoles = async () => {
     try {
+      setLoading(true);
       const res = await fetch('/api/settings/roles');
       if (res.ok) {
         const data = await res.json();
-        setRoles(data);
+        // Safe check for the array in case response is wrapped in an object
+        const rolesArray = Array.isArray(data) ? data : (data?.data || data?.roles || []);
+        setRoles(rolesArray);
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -173,10 +178,11 @@ export default function RolesPage() {
                 <select
                   value={selectedRole || ''}
                   onChange={e => setSelectedRole(e.target.value)}
-                  className="w-full max-w-sm px-3 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-medium text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
+                  disabled={loading}
+                  className="w-full max-w-sm px-3 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl text-sm font-medium text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all disabled:opacity-50"
                 >
-                  <option value="">— Select Designation —</option>
-                  {roles.map(r => (
+                  <option value="" disabled>{loading ? 'Loading designations...' : '— Select Designation —'}</option>
+                  {roles && roles.length > 0 && roles.map(r => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>

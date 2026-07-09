@@ -174,23 +174,44 @@ export const exportToPDF = async (
 
   startY += 35;
 
-  const tableData = data.map(log => {
-    const empName = log.employeeName || 'Unknown Employee';
-    const timestampStr = log.formattedTimestamp || (log.timestamp ? toBDDisplay(log.timestamp, 'yyyy-MM-dd hh:mm:ss a') : 'N/A');
-    const rawType = (log.punchType || '').toLowerCase();
-    const punchType = rawType === 'checkin' ? 'Check In' : rawType === 'checkout' ? 'Check Out' : log.punchType;
+  const formatMs = (ms: number) => {
+    if (!ms || ms <= 0) return '0h 0m';
+    const mins = Math.floor(ms / 60000);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${h}h ${m}m`;
+  };
+
+  const tableData = data.map(session => {
+    const empName = session.employeeName || 'Unknown Employee';
+    const dateStr = session.date || 'N/A';
+    
+    const checkInTime = session.checkInRaw ? toBDDisplay(session.checkInRaw, 'hh:mm a') : 'Missing';
+    
+    let checkOutTime = 'Missing / Working';
+    if (session.checkOutRaw) {
+      checkOutTime = toBDDisplay(session.checkOutRaw, 'hh:mm a');
+      if (session.isAutoCheckout) {
+        checkOutTime += ' (Auto)';
+      }
+    } else if (session.isMissingOut) {
+      checkOutTime = 'Missing';
+    }
+
+    const totalHours = formatMs(session.totalValidMs);
     
     return [
       empName,
-      timestampStr,
-      punchType,
-      log.deviceId || 'Manual/Network'
+      dateStr,
+      checkInTime,
+      checkOutTime,
+      totalHours
     ];
   });
 
   autoTable(doc, {
     startY,
-    head: [['Employee Name', 'Timestamp', 'Punch Type', 'Device / Location']],
+    head: [['Employee Name', 'Date', 'Check In Time', 'Check Out Time', 'Total Hours']],
     body: tableData,
     theme: 'grid',
     styles: {
@@ -211,13 +232,12 @@ export const exportToPDF = async (
       fillColor: [253, 253, 253],
     },
     didParseCell: function (data) {
-      if (data.section === 'body' && data.column.index === 2) {
-        if (data.cell.raw === 'Check In') {
-          data.cell.styles.textColor = [16, 185, 129];
-          data.cell.styles.fontStyle = 'bold';
-        } else if (data.cell.raw === 'Check Out') {
-          data.cell.styles.textColor = [249, 115, 22];
-          data.cell.styles.fontStyle = 'bold';
+      if (data.section === 'body') {
+        if (data.column.index === 3) {
+          if (data.cell.raw && typeof data.cell.raw === 'string' && data.cell.raw.includes('(Auto)')) {
+            data.cell.styles.textColor = [249, 115, 22]; // Orange for Auto-Checkout
+            data.cell.styles.fontStyle = 'bold';
+          }
         }
       }
     }

@@ -394,7 +394,7 @@ export default function AttendancePage() {
     try {
       await new Promise(resolve => setTimeout(resolve, 300));
       await exportToPDF(
-        filteredLogs, 
+        dailySummaries, 
         `Attendance_Report_${dateRange}`, 
         'Daily Attendance Report', 
         brand
@@ -603,9 +603,16 @@ export default function AttendancePage() {
                     </td>
                     <td className="px-6 py-4">
                       {row.checkOutRaw ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">
-                          {toBDDisplay(row.checkOutRaw, 'hh:mm a')}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">
+                            {toBDDisplay(row.checkOutRaw, 'hh:mm a')}
+                          </span>
+                          {row.isAutoCheckout && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-white/20 uppercase tracking-wider">
+                              Auto-Checkout
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-white/10">
                           {row.isMissingOut ? t('attendance.missingWorking' as any) : 'Missing'}

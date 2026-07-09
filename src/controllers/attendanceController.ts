@@ -475,12 +475,11 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     for (const empId in logsByEmp) {
       const empLogs = logsByEmp[empId].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
       
-      for (let i = 0; i < empLogs.length; i += 2) {
-        const checkIn = empLogs[i];
-        const checkOut = empLogs[i + 1] || null;
+      for (let i = 0; i < empLogs.length; i++) {
+        const session = empLogs[i];
         
-        const inTime = checkIn.timestamp;
-        const outTime = checkOut ? checkOut.timestamp : null;
+        const inTime = session.timestamp;
+        const outTime = session.checkOut || null;
         const dateStr = formatYMD(inTime); // The session logically belongs to the Check-In date
         
         // Filter out sessions that belong to the extended boundary limit (the next day)
@@ -493,7 +492,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
         const k = `${empId}_${dateStr}`;
         if (!sessionsByEmpAndDate[k]) {
-          sessionsByEmpAndDate[k] = { sessions: [], dateStr, firstLog: checkIn };
+          sessionsByEmpAndDate[k] = { sessions: [], dateStr, firstLog: session };
         }
         
         let durationMs = 0;
@@ -509,21 +508,24 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
           durationStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
         }
         
+        const isAutoCheckout = outTime && (outTime.getTime() === inTime.getTime() + 12 * 60 * 60 * 1000);
+        
         sessionsByEmpAndDate[k].sessions.push({
-          id: `session_${i / 2 + 1}`,
+          id: session.id,
           inTime: inTime,
-          inSource: checkIn.deviceId || 'Manual',
-          inLatitude: checkIn.latitude,
-          inLongitude: checkIn.longitude,
-          inAddress: checkIn.locationAddress,
+          inSource: session.deviceId || 'Manual',
+          inLatitude: session.latitude,
+          inLongitude: session.longitude,
+          inAddress: session.locationAddress,
           outTime: outTime,
-          outSource: checkOut ? (checkOut.deviceId || 'Manual') : null,
-          outLatitude: checkOut?.latitude,
-          outLongitude: checkOut?.longitude,
-          outAddress: checkOut?.locationAddress,
+          outSource: outTime ? (isAutoCheckout ? 'System Auto-Checkout' : 'Manual') : null,
+          outLatitude: outTime ? session.latitude : null,
+          outLongitude: outTime ? session.longitude : null,
+          outAddress: outTime ? session.locationAddress : null,
           duration: durationStr,
           durationMs,
-          isMissingOut: !checkOut
+          isMissingOut: !outTime,
+          isAutoCheckout
         });
       }
     }
@@ -546,6 +548,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       
       const checkInRaw = sessions.length > 0 ? sessions[0].inTime : null;
       const checkOutRaw = sessions.length > 0 && sessions[sessions.length - 1].outTime ? sessions[sessions.length - 1].outTime : null;
+      const isAutoCheckoutSession = sessions.length > 0 && sessions[sessions.length - 1].isAutoCheckout;
 
       let lateMinutes = 0;
       if (checkInRaw) {
@@ -617,6 +620,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         status,
         otStatus: log.otStatus,
         approvedOtMinutes: log.approvedOtMinutes,
+        isAutoCheckout: isAutoCheckoutSession,
         punchTimeline
       };
     });
