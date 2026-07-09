@@ -360,36 +360,46 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const nowUTC = new Date(); // For Ghost Record Mitigation
 
     let strictEndUTC = nowUTC;
+
     if (startDate && endDate) {
+      // ── Custom date range (from DateRangePicker) ───────────────────────────
+      // Use strict BD timezone boundaries: start-of-day and end-of-day in +06:00
       const startUTC = new Date(`${startDate as string}T00:00:00+06:00`);
-      const endUTC = new Date(`${endDate as string}T23:59:59.999+06:00`);
-      strictEndUTC = endUTC;
-      
-      const extendedEndUTC = new Date(endUTC.getTime() + 14 * 60 * 60 * 1000); // Next day 14:00
-      const effectiveEndUTC = extendedEndUTC > nowUTC ? nowUTC : extendedEndUTC;
-      where.timestamp = { gte: startUTC, lte: effectiveEndUTC };
+      const endUTC   = new Date(`${endDate as string}T23:59:59.999+06:00`);
+      // Cap the end at the current moment to exclude future ghost records
+      strictEndUTC = endUTC > nowUTC ? nowUTC : endUTC;
+      where.timestamp = { gte: startUTC, lte: strictEndUTC };
+      console.log(`[Attendance] Custom range filter: ${startDate} → ${endDate} (UTC: ${startUTC.toISOString()} → ${strictEndUTC.toISOString()})`);
     } else if (filter && filter !== 'all') {
+      // ── Named filter: today / yesterday / week / month / yyyy-MM-dd ────────
       const { start, end } = getDayBoundaries(filter as any);
-      strictEndUTC = end;
-      
-      const extendedEnd = new Date(end.getTime() + 14 * 60 * 60 * 1000); // Next day 14:00
-      const effectiveEnd = extendedEnd > nowUTC ? nowUTC : extendedEnd;
-      where.timestamp = { gte: start, lte: effectiveEnd };
+      strictEndUTC = end > nowUTC ? nowUTC : end;
+      where.timestamp = { gte: start, lte: strictEndUTC };
+      console.log(`[Attendance] Named filter "${filter}": ${start.toISOString()} → ${strictEndUTC.toISOString()}`);
     } else {
-      where.timestamp = { lte: nowUTC }; // Ignore future ghost records
+      // ── All-time (no filter, no date range) ───────────────────────────────
+      where.timestamp = { lte: nowUTC }; // Exclude future ghost records
+      console.log(`[Attendance] All-time filter applied (lte: ${nowUTC.toISOString()})`);
     }
 
     let skip: number | undefined;
     let take: number | undefined;
 
     if (limit) {
+      // Explicit pagination from caller
       take = parseInt(limit as string);
       skip = page ? (parseInt(page as string) - 1) * take : 0;
     } else if (startDate && endDate) {
-      take = 10000; // Large fallback for custom date ranges without limit
+      // Custom date range — fetch up to 10 000 rows (spans can be wide)
+      take = 10000;
       skip = page ? (parseInt(page as string) - 1) * take : 0;
-    } else if (!filter || filter === 'all') {
-      take = 50;
+    } else if (filter && filter !== 'all') {
+      // Named filter (today / week / month) — generous cap
+      take = 5000;
+      skip = page ? (parseInt(page as string) - 1) * take : 0;
+    } else {
+      // All-time without explicit limit — return up to 5 000 most-recent rows
+      take = 5000;
       skip = page ? (parseInt(page as string) - 1) * take : 0;
     }
 
