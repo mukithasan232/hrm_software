@@ -266,7 +266,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, designationId, shiftId, shiftStartTime, shiftEndTime, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions, salaryAccount } = req.body as any;
+    const { name, designationId, shiftId, shiftStartTime, shiftEndTime, remoteShiftStartTime, remoteShiftEndTime, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions, salaryAccount } = req.body as any;
     let finalDesignationId = designationId !== undefined ? (designationId || null) : undefined;
     if (finalDesignationId && !finalDesignationId.includes('-')) {
       let desig = await prisma.designation.findFirst({
@@ -306,6 +306,8 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         shiftId: shiftId === '' || shiftId === 'null' ? null : (shiftId !== undefined ? shiftId : undefined),
         shiftStartTime: shiftStartTime === '' || shiftStartTime === 'null' ? null : (shiftStartTime !== undefined ? shiftStartTime : undefined),
         shiftEndTime: shiftEndTime === '' || shiftEndTime === 'null' ? null : (shiftEndTime !== undefined ? shiftEndTime : undefined),
+        remoteShiftStartTime: remoteShiftStartTime === '' || remoteShiftStartTime === 'null' ? null : (remoteShiftStartTime !== undefined ? remoteShiftStartTime : undefined),
+        remoteShiftEndTime: remoteShiftEndTime === '' || remoteShiftEndTime === 'null' ? null : (remoteShiftEndTime !== undefined ? remoteShiftEndTime : undefined),
         department,
         departmentId: finalDepartmentId,
         employeeType: employeeType || undefined,

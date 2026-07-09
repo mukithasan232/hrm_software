@@ -93,6 +93,7 @@ model AttendanceLog {
   latitude          Float?
   longitude         Float?
   locationAddress   String?
+  workMode          String? @default("IN_HOUSE")
 
   @@unique([employeeId, timestamp])
   @@index([timestamp(sort: Desc)])
@@ -181,8 +182,8 @@ model User {
   designation           String?
   shiftStartTime        String?
   shiftEndTime          String?
-  shift2Start           String?
-  shift2End             String?
+  remoteShiftStartTime  String?
+  remoteShiftEndTime    String?
   joiningDate           DateTime @default(now())
   profileImage          String?
   salaryAccount         String?

@@ -282,8 +282,8 @@ export default function TeamUsersPage() {
           ...form,
           designationId: form.designationId || null,
           shiftId: form.shiftId || null,
-          shift2Start: form.employeeType === 'HYBRID' ? (form.shift2Start || null) : null,
-          shift2End: form.employeeType === 'HYBRID' ? (form.shift2End || null) : null,
+          remoteShiftStartTime: form.employeeType === 'HYBRID' ? (form.shift2Start || null) : null,
+          remoteShiftEndTime: form.employeeType === 'HYBRID' ? (form.shift2End || null) : null,
         };
         const { password, employeeId, sendEmail, roleIds, employeeType, zktecoId, casualLeave, sickLeave, annualLeave, ...updatePayload } = payload as any;
         if (password) updatePayload.password = password;
@@ -316,8 +316,8 @@ export default function TeamUsersPage() {
         if (form.shiftStartTime) formData.append('shiftStartTime', form.shiftStartTime);
         if (form.shiftEndTime) formData.append('shiftEndTime', form.shiftEndTime);
         if (form.employeeType === 'HYBRID') {
-          if (form.shift2Start) formData.append('shift2Start', form.shift2Start);
-          if (form.shift2End) formData.append('shift2End', form.shift2End);
+          if (form.shift2Start) formData.append('remoteShiftStartTime', form.shift2Start);
+          if (form.shift2End) formData.append('remoteShiftEndTime', form.shift2End);
         }
         formData.append('department', form.department);
         formData.append('employeeType', form.employeeType);

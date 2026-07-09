@@ -74,7 +74,7 @@ export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, dat
                        )}
                        <span className="font-medium text-slate-800 dark:text-slate-200">{emp.name}</span>
                      </td>
-                     <td className="py-3 text-slate-500 dark:text-slate-400 hidden sm:table-cell">{emp.designation}</td>
+                     <td className="py-3 text-slate-500 dark:text-slate-400 hidden sm:table-cell">{emp?.designation?.name || emp?.designation || 'N/A'}</td>
                      <td className="py-3 text-emerald-600 dark:text-emerald-400 font-medium">
                        {toBDDisplay(emp.checkIn, 'hh:mm a')}
                      </td>
@@ -203,7 +203,7 @@ export const AbsentDaysWidget = ({ isCompact, data }: { isCompact: boolean, data
                      </td>
                      <td className="py-3 text-slate-500 dark:text-slate-400">
                        <span className="bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-md text-xs border border-slate-200 dark:border-white/10">
-                         {emp.department || 'Unassigned'}
+                         {emp?.department?.name || emp?.department || 'Unassigned'}
                        </span>
                      </td>
                    </tr>
@@ -610,7 +610,7 @@ export const DepartmentOverviewWidget = ({ isCompact, data }: { isCompact: boole
               <div key={dept.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{dept.name}</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{typeof dept.name === 'object' ? dept.name?.name : dept.name || 'Unassigned'}</span>
                 </div>
                 <span className="text-sm font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded-md">
                   {dept.value}

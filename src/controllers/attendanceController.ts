@@ -384,6 +384,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
               department: true, 
               shiftStartTime: true, 
               shiftEndTime: true,
+              remoteShiftStartTime: true,
+              remoteShiftEndTime: true,
               shift: { select: { startTime: true, endTime: true } },
               customDepartment: { select: { shiftStartTime: true, shiftEndTime: true } }
             } 
@@ -543,8 +545,13 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
          if (s.isMissingOut) isMissingOut = true;
       }
 
-      const shiftStartTime = log.user?.shiftStartTime || log.user?.customDepartment?.shiftStartTime || '09:00';
-      const shiftEndTime = log.user?.shiftEndTime || log.user?.customDepartment?.shiftEndTime || '17:00';
+      let shiftStartTime = log.user?.shiftStartTime || log.user?.customDepartment?.shiftStartTime || '09:00';
+      let shiftEndTime = log.user?.shiftEndTime || log.user?.customDepartment?.shiftEndTime || '17:00';
+      
+      if (log.workMode === 'REMOTE') {
+        shiftStartTime = log.user?.remoteShiftStartTime || shiftStartTime;
+        shiftEndTime = log.user?.remoteShiftEndTime || shiftEndTime;
+      }
       
       const checkInRaw = sessions.length > 0 ? sessions[0].inTime : null;
       const checkOutRaw = sessions.length > 0 && sessions[sessions.length - 1].outTime ? sessions[sessions.length - 1].outTime : null;
@@ -618,6 +625,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         systemCalculatedOtMinutes,
         otBadge,
         status,
+        workMode: log.workMode,
         otStatus: log.otStatus,
         approvedOtMinutes: log.approvedOtMinutes,
         isAutoCheckout: isAutoCheckoutSession,
@@ -721,6 +729,11 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       punchType = 'CheckOut';
     } else {
       // FRESH CHECK IN OR NORMAL PUNCH
+      let sessionWorkMode = 'IN_HOUSE';
+      if (user.employeeType === 'HYBRID' || user.employeeType === 'REMOTE') {
+        sessionWorkMode = 'REMOTE';
+      }
+
       log = await prisma.attendanceLog.upsert({
         where: {
           employeeId_timestamp: {
@@ -728,7 +741,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
             timestamp: parsedDate,
           },
         },
-        update: { punchType, latitude, longitude, locationAddress } as any,
+        update: { punchType, latitude, longitude, locationAddress, workMode: sessionWorkMode } as any,
         create: {
           employeeId: user.id,
           timestamp: parsedDate,
@@ -736,7 +749,8 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
           deviceId: 'Manual Entry',
           latitude,
           longitude,
-          locationAddress
+          locationAddress,
+          workMode: sessionWorkMode
         } as any,
         include: { user: { select: { name: true } } },
       });
@@ -745,7 +759,10 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
 
     // --- Late Detection ---
     if (punchType === 'CheckIn') {
-      const expectedShiftStart = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
+      let expectedShiftStart = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
+      if (log && log.workMode === 'REMOTE') {
+         expectedShiftStart = user.remoteShiftStartTime || expectedShiftStart;
+      }
       const checkInLocalStr = formatInTimeZone(parsedDate, BD_TZ, 'yyyy-MM-dd');
       const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;
       const shiftStartUTC = new Date(shiftStartLocalStr);

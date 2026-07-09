@@ -223,8 +223,8 @@ export default function EmployeesPage() {
         sickLeaveAdjustment: Number(sickLeaveAdjustment),
         shiftStartTime: shiftStartTime,
         shiftEndTime: shiftEndTime,
-        shift2Start: editType === 'HYBRID' ? shift2Start : null,
-        shift2End: editType === 'HYBRID' ? shift2End : null,
+        remoteShiftStartTime: editType === 'HYBRID' ? shift2Start : null,
+        remoteShiftEndTime: editType === 'HYBRID' ? shift2End : null,
       };
       if (editDesignation) payload.designationId = editDesignation;
       if (editZkEnroll) payload.zktecoId = editZkEnroll;

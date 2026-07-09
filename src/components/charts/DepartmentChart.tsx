@@ -22,19 +22,24 @@ export default function DepartmentChart({
     return <div className="flex h-full items-center justify-center text-gray-400">No chart data available</div>;
   }
 
+  const safeData = departmentData.map(d => ({
+    ...d,
+    name: typeof d.name === 'object' ? d.name?.name : d.name || 'Unassigned'
+  }));
+
   return (
     <div className="w-full relative h-72 min-h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={departmentData}
+            data={safeData}
             innerRadius={60}
             outerRadius={80}
             paddingAngle={5}
             dataKey="value"
             stroke="none"
           >
-            {departmentData.map((_, index) => (
+            {safeData.map((_, index) => (
               <Cell
                 key={`cell-${index}`}
                 fill={COLORS[index % COLORS.length]}

@@ -73,7 +73,7 @@ export default function LateTodayWidget() {
                   )}
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white">{emp.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{emp.designation}</p>
+                    <p className="text-xs text-slate-500 capitalize">{emp?.designation?.name || emp?.designation || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="px-2.5 py-1 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold whitespace-nowrap">
