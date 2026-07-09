@@ -504,22 +504,19 @@ let hasSanitizedManualLogs = false;
 /**
  * Fetch attendance logs from device → upsert into MongoDB.
  */
-export const getDeviceAttendance = async (forceSync3Days = false): Promise<{ synced: number; skipped: number; total: number }> => {
+export const syncZkTecoData = async (daysToFetch: number = 1): Promise<{ synced: number; skipped: number; total: number }> => {
   const zk = await createZK();
   const currentZkIp = (zk as any).deviceIp || 'Unknown IP';
   try {
     await connectProperly(zk);
     console.log(`[ZKService] ✅ Connected to ${currentZkIp} (${zk.connectionType})`);
 
-    // Data sanitization logic has been removed as the root timezone bug is permanently resolved.
-
     // 1. Fetch Users from device (Mapping Phase)
-    // Removed auto-upsert to enforce strict Hardware-to-Software mapping
     console.log('[ZKService] 👥 Fetching users from device for mapping...');
     const rawUsers = await getDeviceUsersRaw(zk);
     const userIdMap = new Map<string, string>(); // maps device employeeId -> User.id (UUID)
-
-    // Load any other existing users in database into the userIdMap
+    
+    // Load existing users in database into the userIdMap
     const dbUsers = await prisma.user.findMany({});
     for (const user of dbUsers) {
       if (user.employeeId) userIdMap.set(user.employeeId, user.id);
@@ -528,146 +525,143 @@ export const getDeviceAttendance = async (forceSync3Days = false): Promise<{ syn
 
     const rawLogs = await getAttendanceAsync(zk);
 
-    // Delta Sync Optimization: Track Last Sync Time
-    const latestLog = await prisma.attendanceLog.findFirst({ orderBy: { timestamp: 'desc' } });
-    
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    
-    // If forced manual sync, ignore cursor and fetch last 3 days safely
-    const lastSyncTime = forceSync3Days
-      ? threeDaysAgo.getTime()
-      : (latestLog ? latestLog.timestamp.getTime() : new Date('2000-01-01').getTime());
+    // Calculate time window for deep sync
+    const windowStart = new Date();
+    windowStart.setDate(windowStart.getDate() - daysToFetch);
+    windowStart.setHours(0, 0, 0, 0);
 
-    // Backend-Level Filtering (Fallback) - Only process logs newer than the last synced record
     const recentLogs = rawLogs.filter((log: any) => {
       const deviceTime = log.timestamp || log.recordTime || log.record_time;
       if (!deviceTime) return false;
-      
       const rawTimestamp = parseDeviceTime(deviceTime);
       rawTimestamp.setMilliseconds(0); // align with insertion logic
-
-      return rawTimestamp.getTime() > lastSyncTime;
+      return rawTimestamp.getTime() >= windowStart.getTime();
     });
 
     if (recentLogs.length === 0) {
-      // Emit socket event to frontend via global.io
       const io = (global as any).io;
-      if (io) {
-        io.emit('attendanceUpdate', { checkIn: true });
-      }
+      if (io) io.emit('attendanceUpdate', { checkIn: true });
       return { synced: 0, skipped: 0, total: 0 };
     }
-    console.log(`[ZKService] 📋 Delta Sync: ${recentLogs.length} new record(s) out of ${rawLogs.length} total on device.`);
+    console.log(`[ZKService] 📋 Deep Sync: ${recentLogs.length} logs fetched within the last ${daysToFetch} days.`);
 
-    // Sort logs chronologically ascending (earliest to latest) to guarantee correct CheckIn/CheckOut determination
-    const sortedRawLogs = Array.isArray(recentLogs) ? [...recentLogs].sort((a: any, b: any) => new Date(a.timestamp || a.recordTime || a.record_time).getTime() - new Date(b.timestamp || b.recordTime || b.record_time).getTime()) : [];
+    // Sort logs chronologically ascending (earliest to latest)
+    const sortedRawLogs = [...recentLogs].sort((a: any, b: any) => new Date(a.timestamp || a.recordTime || a.record_time).getTime() - new Date(b.timestamp || b.recordTime || b.record_time).getTime());
+
+    // 2. Fetch existing RawDeviceLogs to find which ones are truly NEW
+    const dbRawLogs = await prisma.rawDeviceLog.findMany({
+      where: { recordTime: { gte: windowStart } },
+      select: { deviceUserId: true, recordTime: true }
+    });
+    const dbRawSet = new Set(dbRawLogs.map(l => `${l.deviceUserId}_${l.recordTime.getTime()}`));
+
+    const newLogsToProcess: any[] = [];
+    const newRawInserts: any[] = [];
 
     let skipped = 0;
-
-    // Track timestamps globally to prevent duplicate compound constraints on exact millisecond Architecture.
-    // Track timestamps globally to prevent duplicate compound constraints on exact millisecond
-    const usedTimestamps = new Set<string>();
-    const formattedLogsArray: any[] = [];
-    const unmappedLogsArray: any[] = [];
-    const unmappedUsedTimestamps = new Set<string>();
-    const batchState = new Map<string, { lastPunchType: string; timestamp: Date }>();
-
+    
     for (const log of sortedRawLogs) {
-      try {
-        const deviceEmpId = String(log.deviceUserId ?? log.user_id ?? log.userId ?? log.uid);
-
-        if (!log.recordTime && !log.timestamp && !log.record_time) {
-          console.log("[ZKService] ⚠️ Skipping empty heartbeat packet...");
-          skipped++;
-          continue;
-        }
-
-        const deviceTime = log.timestamp || log.recordTime || log.record_time;
-
-        // parseDeviceTime converts device-local Dhaka time → UTC and strips milliseconds.
-        // The defensive setMilliseconds(0) below is a belt-and-suspenders guard: if any
-        // future code path introduces sub-second jitter, it is zeroed here before the
-        // @@unique([employeeId, timestamp]) constraint and createMany deduplicate on it.
-        const rawTimestamp = parseDeviceTime(deviceTime);
-        if (rawTimestamp.getMilliseconds() !== 0) {
-          console.warn(`[ZKService] ⚠️ Non-zero ms detected (${rawTimestamp.getMilliseconds()}ms) — stripping. Raw: ${deviceTime}`);
-        }
-        rawTimestamp.setMilliseconds(0);
-        const timestamp = rawTimestamp;
-
-        if (isNaN(timestamp.getTime())) {
-          skipped++;
-          continue;
-        }
-
-        let employeeId = userIdMap.get(deviceEmpId);
-        if (!employeeId) {
-          // STRICT OPT-IN: Save unmapped device user punch safely without an employee profile
-          const collisionKey = `${deviceEmpId}_${timestamp.getTime()}`;
-          if (!unmappedUsedTimestamps.has(collisionKey)) {
-            unmappedUsedTimestamps.add(collisionKey);
-            unmappedLogsArray.push({
-              deviceUserId: deviceEmpId,
-              recordTime: timestamp,
-              punchType: log.punchType !== undefined && log.punchType !== null ? String(log.punchType) : null,
-              ip: currentZkIp,
-            });
-          }
-          continue;
-        }
-
-        const punchType = await resolvePunchType(employeeId, timestamp, log, batchState);
-        console.log("SYNC_LOG_TYPE:", { userId: employeeId, timestamp, type: punchType });
-
-        if (!punchType) {
-          skipped++;
-          continue; // Exact-second duplicate — skipped by in-memory Set below
-        }
-
-        // In-memory dedup: last line of defence before createMany (skipDuplicates:true
-        // in createMany + the DB unique constraint are the authoritative dedup).
-        const collisionKey = `${employeeId}_${timestamp.getTime()}`;
-        if (usedTimestamps.has(collisionKey)) {
-          skipped++;
-          continue;
-        }
-        usedTimestamps.add(collisionKey);
-
-        formattedLogsArray.push({
-          employeeId,
-          timestamp,
-          punchType: punchType as any,
-          deviceId: currentZkIp,
-        });
-
-      } catch (err: any) {
-        console.error(`[ZKService] ❌ Failed to format log:`, err.message);
+      const deviceEmpId = String(log.deviceUserId ?? log.user_id ?? log.userId ?? log.uid);
+      const deviceTime = log.timestamp || log.recordTime || log.record_time;
+      
+      if (!deviceTime) {
         skipped++;
+        continue;
+      }
+      
+      const rawTimestamp = parseDeviceTime(deviceTime);
+      rawTimestamp.setMilliseconds(0);
+
+      // Unique composite identifier constraint
+      const collisionKey = `${deviceEmpId}_${rawTimestamp.getTime()}`;
+      if (dbRawSet.has(collisionKey)) {
+        skipped++;
+        continue; // Already processed/inserted in a previous run
+      }
+
+      // Add to our insertion batch
+      newRawInserts.push({
+        deviceUserId: deviceEmpId,
+        recordTime: rawTimestamp,
+        punchType: log.punchType !== undefined && log.punchType !== null ? String(log.punchType) : null,
+        ip: currentZkIp,
+      });
+
+      // Also add to processing batch if mapped
+      const employeeId = userIdMap.get(deviceEmpId);
+      if (employeeId) {
+        newLogsToProcess.push({
+          employeeId,
+          recordTime: rawTimestamp,
+        });
+      }
+      
+      dbRawSet.add(collisionKey); // prevent duplicates in this very batch
+    }
+
+    // 3. UPSERT ALL new raw logs for auditing/idempotency
+    if (newRawInserts.length > 0) {
+      const result = await prisma.rawDeviceLog.createMany({
+        data: newRawInserts,
+        skipDuplicates: true // Prisma's batch upsert behavior based on @@unique
+      });
+      console.log(`[ZKService] 🛡️ Upserted ${result.count} raw punches into RawDeviceLog.`);
+    }
+
+    // 4. Auto-Pairing Logic (No Orphaned CheckOuts)
+    let synced = 0;
+    
+    for (const log of newLogsToProcess) {
+      const logTime = log.recordTime;
+      const startOfDay = new Date(logTime);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(logTime);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Find an open session for this employee on this specific day
+      const openSession = await prisma.attendanceLog.findFirst({
+        where: {
+          employeeId: log.employeeId,
+          punchType: 'CheckIn',
+          checkOut: null,
+          timestamp: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        },
+        orderBy: { timestamp: 'asc' } // Ensure we get the oldest open session for the day
+      });
+
+      if (openSession && logTime > new Date(openSession.timestamp)) {
+        // Perfect match: Update the open session with CheckOut time
+        await prisma.attendanceLog.update({
+          where: { id: openSession.id },
+          data: { checkOut: logTime }
+        });
+        synced++;
+      } else if (!openSession) {
+        // No open session: Create a fresh CheckIn
+        // Add a check here to ensure a completed session doesn't already exist for this exact time to prevent absolute duplicates.
+        const existingExact = await prisma.attendanceLog.findFirst({
+            where: { employeeId: log.employeeId, timestamp: logTime }
+        });
+        
+        if(!existingExact) {
+            await prisma.attendanceLog.create({
+              data: {
+                employeeId: log.employeeId,
+                punchType: 'CheckIn',
+                deviceId: currentZkIp, // Mark it clearly as machine punch
+                workMode: 'IN_HOUSE', // Default work mode for machine
+                timestamp: logTime
+              }
+            });
+            synced++;
+        }
       }
     }
 
-    // TASK 2: Convert to Bulk Insert (createMany)
-    let synced = 0;
-    if (formattedLogsArray.length > 0) {
-      const result = await prisma.attendanceLog.createMany({
-        data: formattedLogsArray,
-        skipDuplicates: true, // Automatically ignores records that violate the Unique Constraint
-      });
-      synced = result.count;
-      console.log(`[ZKService] ✅ Synced ${synced} mapped logs.`);
-    }
-
-    if (unmappedLogsArray.length > 0) {
-      const rawResult = await prisma.rawDeviceLog.createMany({
-        data: unmappedLogsArray,
-        skipDuplicates: true,
-      });
-      console.log(`[ZKService] 🛡️ Safely stored ${rawResult.count} unmapped punches in RawDeviceLog.`);
-      skipped += unmappedLogsArray.length; // From Attendance dashboard perspective, they are skipped/invisible
-    }
-
-    console.log(`[ZKService] ✔  Synced: ${synced} | Skipped: ${skipped} | Total Recent: ${sortedRawLogs.length}`);
+    console.log(`[ZKService] ✔  Synced: ${synced} | Skipped/Duplicate: ${skipped} | Total Recent: ${sortedRawLogs.length}`);
 
     // Emit socket event to frontend via global.io for instant dashboard refresh
     const io = (global as any).io;
@@ -684,6 +678,11 @@ export const getDeviceAttendance = async (forceSync3Days = false): Promise<{ syn
   } finally {
     await safeDisconnect(zk);
   }
+};
+
+export const getDeviceAttendance = async (forceSync3Days = false) => {
+    // Backwards compatibility wrapper for old code
+    return syncZkTecoData(forceSync3Days ? 3 : 1);
 };
 
 /**

@@ -32,6 +32,9 @@ export async function POST(req: Request) {
     sendWhatsAppNotification(payload).catch((err) => {
       console.error("WhatsApp Send Failed:", err);
     });
+    
+    // Deep Sync Fire-and-Forget: Automatically rebuild last 30 days of ZKTeco data on deploy
+    fetch(`http://localhost:${process.env.PORT || 3000}/api/admin/deep-sync`).catch(console.error);
 
     // INSTANTLY return 200 OK to kill the retry loop from the deployment server
     return NextResponse.json(

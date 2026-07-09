@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-attendance",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
