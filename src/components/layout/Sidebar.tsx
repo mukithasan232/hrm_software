@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
-  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare, Volume2
+  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare, Volume2, BarChart
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -32,6 +32,10 @@ const TEAM_SUB_DEFS = [
   { key: 'employees',    href: '/dashboard/team/employees',    icon: Users, module: 'Employees' },
 ];
 
+const REPORTS_SUB_DEFS = [
+  { key: 'reports.late', label: 'Late Arrivals', href: '/dashboard/reports/late', icon: Clock, module: 'Reports' },
+];
+
 interface SidebarProps {
   mobileOpen?: boolean;
   onClose?: () => void;
@@ -47,6 +51,10 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   // Keep Team section open if we're on a /team/* route
   const isTeamActive = pathname.startsWith('/dashboard/team');
   const [teamOpen, setTeamOpen] = useState(isTeamActive);
+
+  const isReportsActive = pathname.startsWith('/dashboard/reports');
+  const [reportsOpen, setReportsOpen] = useState(isReportsActive);
+
   const [logoError, setLogoError] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -70,6 +78,15 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   });
   const canSeeTeam = filteredTeamItems.length > 0;
 
+  const filteredReportsItems = REPORTS_SUB_DEFS.filter(sub => {
+    // 🚀 GOD MODE BYPASS FOR DEVELOPER
+    if (user?.email === 'dev@fixanyphoto.com' || user?.email === 'admin@fixanyphoto.com' || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.userType === 'SUPER_ADMIN' || user?.designation === 'Super Admin' || user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+      return true;
+    }
+    return checkPermission(user, sub.module.toLowerCase(), 'access') || checkPermission(user, 'reports', 'access');
+  });
+  const canSeeReports = filteredReportsItems.length > 0;
+
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
   const initials = user?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
@@ -79,17 +96,19 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const hasSettingsPermission = user?.email === 'dev@fixanyphoto.com' ||
     user?.email === 'admin@fixanyphoto.com' ||
-    user?.role === 'SUPER_ADMIN' ||
+    (user as any)?.role === 'SUPER_ADMIN' ||
     (user as any)?.userType === 'SUPER_ADMIN' ||
     user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN') ||
     checkPermission(user, 'manage_system_settings', 'view');
 
   // 🚀 FOOLPROOF GOD MODE OVERRIDE
   const userEmail = user?.email;
-  const isSuperAdmin = userEmail === 'dev@fixanyphoto.com' || userEmail === 'admin@fixanyphoto.com' || user?.role === 'SUPER_ADMIN' || (user as any)?.userType === 'SUPER_ADMIN';
+  const isSuperAdmin = userEmail === 'dev@fixanyphoto.com' || userEmail === 'admin@fixanyphoto.com' || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.userType === 'SUPER_ADMIN';
   const menusToRender = isSuperAdmin ? NAV_ITEM_DEFS : filteredItems;
   const teamMenusToRender = isSuperAdmin ? TEAM_SUB_DEFS : filteredTeamItems;
+  const reportsMenusToRender = isSuperAdmin ? REPORTS_SUB_DEFS : filteredReportsItems;
   const canSeeTeamRender = isSuperAdmin ? true : canSeeTeam;
+  const canSeeReportsRender = isSuperAdmin ? true : canSeeReports;
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full overflow-hidden">
@@ -237,6 +256,76 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                       <SubIcon className={`h-4 w-4 flex-shrink-0 ${isSubActive ? 'text-indigo-500' : ''}`} />
                       {!collapsed && <span className="capitalize">{(sub as any).label || t(sub.key as any)}</span>}
                       {!collapsed && isSubActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />}
+                      
+                      {collapsed && (
+                        <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700 capitalize">
+                          {(sub as any).label || t(sub.key as any)}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Reports Section (Admin / Managers) ── */}
+        {canSeeReportsRender && (
+          <div className="pt-1">
+            <button
+              onClick={() => setReportsOpen(prev => !prev)}
+              className={`w-full flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${
+                isReportsActive
+                  ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20'
+                  : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+              } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
+            >
+              <BarChart
+                className={`h-5 w-5 flex-shrink-0 transition-colors ${
+                  isReportsActive ? 'text-orange-600' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
+                }`}
+              />
+              {!collapsed && <span className="flex-1 text-left capitalize">{t('reports' as any) || 'Reports'}</span>}
+              {!collapsed && (
+                <ChevronDown
+                  className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${reportsOpen ? 'rotate-180' : ''} ${
+                    isReportsActive ? 'text-orange-600' : 'text-slate-400 dark:text-gray-500'
+                  }`}
+                />
+              )}
+              {collapsed && (
+                <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700 capitalize">
+                  {t('reports' as any) || 'Reports'}
+                </span>
+              )}
+            </button>
+
+            <div
+              style={{
+                maxHeight: reportsOpen ? '200px' : '0px',
+                overflow: 'hidden',
+                transition: 'max-height 0.25s ease',
+              }}
+            >
+              <div className={`${collapsed ? 'mt-1 space-y-1 mx-2' : 'ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-white/10 pl-3'}`}>
+                {reportsMenusToRender.map(sub => {
+                  const isSubActive = pathname === sub.href || pathname.startsWith(sub.href);
+                  const SubIcon = sub.icon;
+                  return (
+                    <Link
+                      key={sub.key}
+                      href={sub.href}
+                      onClick={onClose}
+                      className={`flex items-center gap-2.5 py-2 rounded-lg transition-all text-sm font-medium group relative ${
+                        isSubActive
+                          ? 'bg-orange-500/10 text-orange-600'
+                          : 'text-slate-500 dark:text-gray-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                      } ${collapsed ? 'justify-center px-0' : 'px-3'}`}
+                    >
+                      <SubIcon className={`h-4 w-4 flex-shrink-0 ${isSubActive ? 'text-orange-600' : ''}`} />
+                      {!collapsed && <span className="capitalize">{(sub as any).label || t(sub.key as any)}</span>}
+                      {!collapsed && isSubActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-orange-600" />}
                       
                       {collapsed && (
                         <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 whitespace-nowrap shadow-xl border border-slate-700 capitalize">

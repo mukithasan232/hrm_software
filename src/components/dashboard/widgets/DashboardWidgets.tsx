@@ -6,7 +6,6 @@ import { useLiveOfficeHour } from '@/hooks/useLiveOfficeHour';
 import dynamic from 'next/dynamic';
 
 const WeeklyChart = dynamic(() => import('@/components/charts/WeeklyChart'), { ssr: false });
-const DepartmentChart = dynamic(() => import('@/components/charts/DepartmentChart'), { ssr: false });
 const LateTodayWidget = dynamic(() => import('@/components/dashboard/LateTodayWidget'), { ssr: false });
 import { BreakCountdownWidget } from '@/components/dashboard/BreakCountdownWidget';
 
@@ -572,59 +571,6 @@ export const WeeklyAttendanceWidget = ({ isCompact, data }: { isCompact: boolean
   );
 };
 
-export const DepartmentOverviewWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
-  const { loading, departmentData, COLORS, stats } = data;
-
-  if (isCompact) {
-    return (
-      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm dark:shadow-md h-full flex flex-col justify-between">
-        <div className="flex items-center gap-2">
-          <PieChartIcon className="w-4 h-4 text-blue-500" />
-          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Departments</h3>
-        </div>
-        <p className="text-xs text-slate-400 mt-2">Expand to view department breakdown.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex flex-col w-full h-full min-h-[300px] shadow-sm dark:shadow-md">
-      <h3 className="text-lg font-semibold mb-4 border-b border-slate-100 dark:border-white/10 pb-2 text-slate-800 dark:text-white flex items-center gap-2">
-        <PieChartIcon className="w-5 h-5 text-blue-500" />
-        Department Overview
-      </h3>
-      <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
-        <div className="flex-1 relative min-h-[200px] flex items-center justify-center">
-          {loading ? (
-            <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
-          ) : departmentData.length === 0 ? (
-            <div className="text-slate-400 text-sm">No data available</div>
-          ) : (
-            <DepartmentChart departmentData={departmentData} COLORS={COLORS} totalEmployees={stats.employees} />
-          )}
-        </div>
-        
-        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar border-l border-slate-100 dark:border-white/10 pl-6 hidden md:block">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">Headcount Breakdown</h4>
-          <div className="space-y-2">
-            {departmentData.map((dept: any, index: number) => (
-              <div key={dept.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{typeof dept.name === 'object' ? dept.name?.name : dept.name || 'Unassigned'}</span>
-                </div>
-                <span className="text-sm font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded-md">
-                  {dept.value}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export const LateTodayWidgetWrapper = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
   if (isCompact) {
     return (
@@ -653,7 +599,6 @@ export const WidgetMap: Record<string, React.FC<any>> = {
   'notice-board': NoticeBoardWidget,
   'my-punches': MyPunchesWidget,
   'weekly-attendance': WeeklyAttendanceWidget,
-  'department-overview': DepartmentOverviewWidget,
   'late-today': LateTodayWidgetWrapper,
   'break-countdown': BreakCountdownWidget,
 };

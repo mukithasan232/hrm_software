@@ -34,14 +34,23 @@ export async function GET() {
             customDepartment: { select: { shiftStartTime: true } }
           }
         }
-      }
+      },
+      orderBy: { timestamp: 'asc' }
     });
 
     const lateEmployees = [];
+    const processedEmployees = new Set();
     const gracePeriodMs = 10 * 60 * 1000; // 10 minutes
 
     for (const log of checkIns) {
       if (!log.user) continue;
+      
+      // FIX: Only calculate late minutes for the FIRST session of the day
+      if (processedEmployees.has(log.employeeId)) {
+        continue;
+      }
+      processedEmployees.add(log.employeeId);
+
       const expectedShiftStart = log.user.shift?.startTime || log.user.shiftStartTime || log.user.customDepartment?.shiftStartTime || '09:00';
       const checkInLocalStr = formatInTimeZone(log.timestamp, BD_TZ, 'yyyy-MM-dd');
       const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;
