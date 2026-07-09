@@ -81,7 +81,7 @@ export async function parseRequest(
             else if (key === 'attachment') uploadSubdir = 'leaves';
             else if (key === 'signature') uploadSubdir = 'signatures';
             
-            const uploadDir = path.join(process.cwd(), 'public', 'storage', uploadSubdir);
+            const uploadDir = path.join(process.cwd(), 'public', 'uploads', uploadSubdir);
             try {
               await fs.promises.mkdir(uploadDir, { recursive: true });
             } catch (err: any) {
@@ -112,7 +112,7 @@ export async function parseRequest(
               originalname: fileEntry.name,
               mimetype: fileEntry.type,
               size: fileEntry.size,
-              path: `/api/storage/${uploadSubdir}/${filename}`, // Web-accessible path
+              path: `/uploads/${uploadSubdir}/${filename}`, // Web-accessible path
             };
           }
         } else {

@@ -70,7 +70,8 @@ export async function PUT(req: NextRequest) {
   const user = resolveToken(req);
   if (!user) return NextResponse.json({ message: 'Not authorized' }, { status: 401 });
   const ADMIN_ROLES = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-  let userRole = (user.designation || '').toLowerCase().trim();
+  const desigName = typeof user.designation === 'object' ? (user.designation as any)?.name : user.designation;
+  let userRole = (desigName || '').toLowerCase().trim();
   let isAdmin = ADMIN_ROLES.includes(userRole);
 
   const checkPermission = (u: any, moduleName: string, action: string = 'access'): boolean => {
@@ -157,7 +158,7 @@ export async function PUT(req: NextRequest) {
       const logoFile    = formData.get('logo') as File | null;
       const faviconFile = formData.get('favicon') as File | null;
 
-      const uploadDir = path.join(process.cwd(), 'public', 'storage');
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -168,7 +169,7 @@ export async function PUT(req: NextRequest) {
           const safeName = logoFile.name.replace(/[^a-zA-Z0-9.-]/g, '-');
           const filename = `logo-${Date.now()}-${safeName}`;
           fs.writeFileSync(path.join(uploadDir, filename), buffer);
-          logoUrl = `/api/storage/${filename}`;
+          logoUrl = `/uploads/${filename}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }
@@ -180,7 +181,7 @@ export async function PUT(req: NextRequest) {
           const safeName = faviconFile.name.replace(/[^a-zA-Z0-9.-]/g, '-');
           const filename = `favicon-${Date.now()}-${safeName}`;
           fs.writeFileSync(path.join(uploadDir, filename), buffer);
-          faviconUrl = `/api/storage/${filename}`;
+          faviconUrl = `/uploads/${filename}`;
         } catch (uploadErr) {
           console.error('[Upload Error]: ', uploadErr);
         }

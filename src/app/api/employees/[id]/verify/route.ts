@@ -56,7 +56,7 @@ export const POST = wrapHandler(async (req: any, res: any) => {
 
       const baseSalaryNum = parseFloat(baseSalary) || 0;
       const appointmentLetterFilename = `Appointment_Letter_${id}.pdf`;
-      const appointmentLetterDbPath = `/api/storage/documents/${appointmentLetterFilename}`;
+      const appointmentLetterDbPath = `/uploads/documents/${appointmentLetterFilename}`;
       
       // 1. Update Database First
       await prisma.user.update({
@@ -247,10 +247,10 @@ export const POST = wrapHandler(async (req: any, res: any) => {
       const getBase64Image = (url: string | null | undefined) => {
         if (!url) return null;
         try {
-          const filename = url.replace('/api/storage/', '');
+          const filename = url.replace('/uploads/', '');
           if (!filename || url === filename) return null;
           
-          let physicalPath = path.join('/app/public/storage', filename);
+          let physicalPath = path.join(process.cwd(), 'public', 'uploads', filename);
           if (!fs.existsSync(physicalPath)) {
             physicalPath = path.join(process.cwd(), 'public', 'storage', filename);
           }
@@ -326,7 +326,7 @@ export const POST = wrapHandler(async (req: any, res: any) => {
         console.error('Error saving appointment letter', err);
       }
       
-      const appointmentLetterDbPath = `/api/storage/documents/${appointmentLetterFilename}`;
+      const appointmentLetterDbPath = `/uploads/documents/${appointmentLetterFilename}`;
       
       // Removed redundant second DB update since it is now in the first update
 

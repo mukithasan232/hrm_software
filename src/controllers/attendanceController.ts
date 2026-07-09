@@ -226,7 +226,8 @@ export const getActivePresence = async (req: Request, res: Response) => {
     });
 
     const regularEmployees = activeEmployees.filter(u => {
-      const desig = (u.designation || '').toLowerCase();
+      const desigName = typeof u.designation === 'object' ? (u.designation as any)?.name : u.designation;
+      const desig = (desigName || '').toLowerCase();
       return !['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'].includes(desig) && u.email !== 'dev@fixanyphoto.com' && u.userType !== 'SUPER_ADMIN';
     });
 

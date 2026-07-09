@@ -140,7 +140,7 @@ export async function POST(req: Request) {
 
     // Handle files
     const documentPaths: Record<string, string> = {};
-    const uploadDir = path.join(process.cwd(), 'public', 'storage', 'documents');
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'documents');
     
     // Ensure dir exists
     if (!fs.existsSync(uploadDir)) {
@@ -156,7 +156,7 @@ export async function POST(req: Request) {
         const fileName = `${newEmployeeId}_${field}_${Date.now()}${ext}`;
         const filePath = path.join(uploadDir, fileName);
         fs.writeFileSync(filePath, buffer);
-        documentPaths[field] = `/api/storage/documents/${fileName}`;
+        documentPaths[field] = `/uploads/documents/${fileName}`;
       }
     }
 

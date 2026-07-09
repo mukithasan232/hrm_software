@@ -218,7 +218,8 @@ export default function DashboardOverview() {
       const presentUserIds = new Set(allLogs.map((l: any) => l.employeeId));
       const absentEmps = allUsers.filter((u: any) => {
         if (!u.isActive || u.employeeId === "UNMAPPED_FALLBACK") return false;
-        const desig = (u.designation || '').toLowerCase();
+        const desigName = typeof u.designation === 'object' ? u.designation?.name : u.designation;
+        const desig = (desigName || '').toLowerCase();
         if (['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'].includes(desig) || u.email === 'dev@fixanyphoto.com') return false;
         return !presentUserIds.has(u.id) && !presentUserIds.has(u.employeeId);
       });

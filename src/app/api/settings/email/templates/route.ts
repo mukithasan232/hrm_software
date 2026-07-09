@@ -13,7 +13,8 @@ function getAuthUser(req: NextRequest) {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
-    return { id: decoded.id, designation: (decoded.designation || '').toLowerCase().trim() };
+    const desigName = typeof decoded.designation === 'object' ? (decoded.designation as any)?.name : decoded.designation;
+    return { id: decoded.id, designation: (desigName || '').toLowerCase().trim() };
   } catch {
     return null;
   }
