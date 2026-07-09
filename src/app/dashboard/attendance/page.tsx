@@ -1,11 +1,11 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useTranslation } from '@/context/LanguageContext';
 import { useBrand } from '@/context/BrandContext';
 import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X, Loader2 } from 'lucide-react';
 import api from '@/services/api';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateUtils';
 import { calculateWorkingHours } from '@/lib/timeUtils';
@@ -33,10 +33,11 @@ const WorkModeBadge = ({ mode, source }: { mode?: string, source?: string }) => 
   return <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] px-1.5 py-0.5 rounded-md mt-1 font-semibold flex w-max items-center gap-1">🏢 In-House</span>;
 };
 
-export default function AttendancePage() {
+function AttendancePageContent() {
   const { t } = useTranslation();
   const { brand } = useBrand();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
   const [serverSummaries, setServerSummaries] = useState<any[]>([]);
@@ -99,9 +100,9 @@ export default function AttendancePage() {
     punchType: 'CheckIn',
     timestamp: getBDNowLocal()
   });
-  const [dateRange, setDateRange] = useState('today');
-  const [customStartDate, setCustomStartDate] = useState(getBDToday());
-  const [customEndDate, setCustomEndDate] = useState(getBDToday());
+  const dateRange = searchParams.get('range') || 'today';
+  const customStartDate = searchParams.get('startDate') || getBDToday();
+  const customEndDate = searchParams.get('endDate') || getBDToday();
   const [departmentFilter, setDepartmentFilter] = useState('all');
 
   const fetchLogs = async (isPolling = false) => {
@@ -472,9 +473,11 @@ export default function AttendancePage() {
             <DateRangePicker 
               value={{ range: dateRange, start: customStartDate, end: customEndDate }}
               onChange={(val) => {
-                setDateRange(val.range);
-                if (val.start) setCustomStartDate(val.start);
-                if (val.end) setCustomEndDate(val.end);
+                const params = new URLSearchParams(searchParams.toString());
+                if (val.range) params.set('range', val.range);
+                if (val.start) params.set('startDate', val.start);
+                if (val.end) params.set('endDate', val.end);
+                router.push(`?${params.toString()}`, { scroll: false });
               }}
               disabled={syncing}
             />
@@ -864,6 +867,14 @@ export default function AttendancePage() {
         />
       )}
     </div>
+  );
+}
+
+export default function AttendancePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-8 h-8 animate-spin text-brand-primary" /></div>}>
+      <AttendancePageContent />
+    </Suspense>
   );
 }
 
