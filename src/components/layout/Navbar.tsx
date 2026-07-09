@@ -13,6 +13,7 @@ import { useBrand } from '@/context/BrandContext';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 import NotificationModal from '@/components/notifications/NotificationModal';
 import { useTranslation } from '@/context/LanguageContext';
+import { getDisplayRole } from '@/utils/formatRole';
 import { useBreakTimer, BreakDepartment } from '@/hooks/useBreakTimer';
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { io as socketIO } from 'socket.io-client';
@@ -241,9 +242,10 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
     } catch (_) { }
   };
 
-  const filteredNotifications = activeTab === 'unread' 
-    ? notifications.filter(n => !n.read) 
-    : notifications;
+  const filteredNotifications = notifications.filter(n => n.titleEn !== 'Salary Account Request' && n.title !== 'Salary Account Request');
+  const activeNotifications = activeTab === 'unread' 
+    ? filteredNotifications.filter(n => !n.read) 
+    : filteredNotifications;
 
   const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
   const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
@@ -303,39 +305,41 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
         <ThemeToggle />
 
         {/* App Launcher */}
-        <div className="relative" ref={appsRef}>
-          <button 
-            onClick={() => setShowApps(!showApps)}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
-          >
-            <LayoutGrid className="w-5 h-5" />
-          </button>
+        {connectedApps && connectedApps.length > 0 && (
+          <div className="relative" ref={appsRef}>
+            <button 
+              onClick={() => setShowApps(!showApps)}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+            >
+              <LayoutGrid className="w-5 h-5" />
+            </button>
 
-          {showApps && (
-            <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-4 z-50">
-              <div className="grid grid-cols-3 gap-2">
-                {connectedApps.map((app) => (
-                  <a 
-                    key={app.id} 
-                    href={app.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex flex-col items-center justify-center p-3 gap-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition group"
-                  >
-                    <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-                       {app.iconUrl ? <img src={app.iconUrl} alt={app.name} className="w-6 h-6 rounded" /> : <ExternalLink className="w-5 h-5" />}
-                    </div>
-                    <span className="text-xs text-slate-600 dark:text-slate-300 font-medium text-center truncate w-full">
-                      {app.name}
-                    </span>
-                  </a>
-                ))}
+            {showApps && (
+              <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-4 z-50">
+                <div className="grid grid-cols-3 gap-2">
+                  {connectedApps.map((app) => (
+                    <a 
+                      key={app.id} 
+                      href={app.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center justify-center p-3 gap-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition group"
+                    >
+                      <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center group-hover:scale-110 transition">
+                         {app.iconUrl ? <img src={app.iconUrl} alt={app.name} className="w-6 h-6 rounded" /> : <ExternalLink className="w-5 h-5" />}
+                      </div>
+                      <span className="text-xs text-slate-600 dark:text-slate-300 font-medium text-center truncate w-full">
+                        {app.name}
+                      </span>
+                    </a>
+                  ))}
 
 
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Notification Center */}
         <div className="relative" ref={notifRef}>
@@ -395,14 +399,14 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                 </div>
               </div>
               
-              <div className="overflow-y-auto flex-1 p-2">
-                {filteredNotifications.length === 0 ? (
+              <div className="max-h-[60vh] overflow-y-auto overscroll-contain">
+                {activeNotifications.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 opacity-50">
                     <Bell className="w-8 h-8 text-slate-400 mb-2" />
                     <p className="text-sm font-medium text-slate-500">{activeTab === 'unread' ? 'No unread notifications' : 'You are all caught up!'}</p>
                   </div>
                 ) : (
-                  filteredNotifications.map(n => {
+                  activeNotifications.map(n => {
                     const dispTitle = language === 'bn' ? (n.titleBn || n.titleEn || n.title) : (n.titleEn || n.titleBn || n.title);
                     const dispMsg = language === 'bn' ? (n.messageBn || n.messageEn || n.message) : (n.messageEn || n.messageBn || n.message);
                     return (
@@ -467,7 +471,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
                 <span
                   className="mt-2 inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-primary/20 text-brand-primary"
                 >
-                  {typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation}
+                  {getDisplayRole(user)}
                 </span>
               </div>
 

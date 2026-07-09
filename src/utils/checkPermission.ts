@@ -2,7 +2,7 @@ export const checkPermission = (user: any, moduleName: string, action: string = 
   if (!user) return false;
 
   // 🚀 GOD MODE BYPASS FOR DEVELOPER
-  if (user.email === 'dev@fixanyphoto.com' || user.role === 'SUPER_ADMIN' || user.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+  if (user.email === 'dev@fixanyphoto.com' || user.email === 'admin@fixanyphoto.com' || user.role === 'SUPER_ADMIN' || user.userType === 'SUPER_ADMIN' || user.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
     return true;
   }
 
@@ -60,7 +60,7 @@ export const getPermissionScopeSync = (user: any, moduleName: string, action: st
   if (!user) return 'no';
 
   // 🚀 GOD MODE BYPASS FOR DEVELOPER
-  if (user.email === 'dev@fixanyphoto.com' || user.role === 'SUPER_ADMIN' || user.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+  if (user.email === 'dev@fixanyphoto.com' || user.email === 'admin@fixanyphoto.com' || user.role === 'SUPER_ADMIN' || user.userType === 'SUPER_ADMIN' || user.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
     return 'all';
   }
 

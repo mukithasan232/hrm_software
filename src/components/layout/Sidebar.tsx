@@ -63,7 +63,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const filteredTeamItems = TEAM_SUB_DEFS.filter(sub => {
     // 🚀 GOD MODE BYPASS FOR DEVELOPER
-    if (user?.email === 'dev@fixanyphoto.com' || (user as any)?.role === 'SUPER_ADMIN' || user?.designation === 'Super Admin' || user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+    if (user?.email === 'dev@fixanyphoto.com' || user?.email === 'admin@fixanyphoto.com' || (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.userType === 'SUPER_ADMIN' || user?.designation === 'Super Admin' || user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
       return true;
     }
     return checkPermission(user, sub.module.toLowerCase(), 'access');
@@ -77,11 +77,19 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation
   );
 
+  const hasSettingsPermission = user?.email === 'dev@fixanyphoto.com' ||
+    user?.email === 'admin@fixanyphoto.com' ||
+    user?.role === 'SUPER_ADMIN' ||
+    (user as any)?.userType === 'SUPER_ADMIN' ||
+    user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN') ||
+    checkPermission(user, 'manage_system_settings', 'view');
+
   // 🚀 FOOLPROOF GOD MODE OVERRIDE
   const userEmail = user?.email;
-  const menusToRender = userEmail === 'dev@fixanyphoto.com' ? NAV_ITEM_DEFS : filteredItems;
-  const teamMenusToRender = userEmail === 'dev@fixanyphoto.com' ? TEAM_SUB_DEFS : filteredTeamItems;
-  const canSeeTeamRender = userEmail === 'dev@fixanyphoto.com' ? true : canSeeTeam;
+  const isSuperAdmin = userEmail === 'dev@fixanyphoto.com' || userEmail === 'admin@fixanyphoto.com' || user?.role === 'SUPER_ADMIN' || (user as any)?.userType === 'SUPER_ADMIN';
+  const menusToRender = isSuperAdmin ? NAV_ITEM_DEFS : filteredItems;
+  const teamMenusToRender = isSuperAdmin ? TEAM_SUB_DEFS : filteredTeamItems;
+  const canSeeTeamRender = isSuperAdmin ? true : canSeeTeam;
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full overflow-hidden">
@@ -244,7 +252,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         )}
 
         {/* ── Settings Section (Admin / Superadmin only) ── */}
-        {isAdminUser && (
+        {hasSettingsPermission && (
           <div className="pt-1">
              <Link
                href="/dashboard/settings"

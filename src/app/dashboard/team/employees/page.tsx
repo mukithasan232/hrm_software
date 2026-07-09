@@ -559,7 +559,7 @@ export default function EmployeesPage() {
                 {editType === 'HYBRID' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                     <div className="space-y-1">
-                      <label className={labelCls}>Shift 2 Start Time</label>
+                      <label className={labelCls}>Remote Shift Start Time</label>
                       <input
                         type="time"
                         value={shift2Start}
@@ -568,7 +568,7 @@ export default function EmployeesPage() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className={labelCls}>Shift 2 End Time</label>
+                      <label className={labelCls}>Remote Shift End Time</label>
                       <input
                         type="time"
                         value={shift2End}

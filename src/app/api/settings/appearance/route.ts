@@ -73,12 +73,55 @@ export async function PUT(req: NextRequest) {
   let userRole = (user.designation || '').toLowerCase().trim();
   let isAdmin = ADMIN_ROLES.includes(userRole);
 
+  const checkPermission = (u: any, moduleName: string, action: string = 'access'): boolean => {
+    if (!u) return false;
+    const moduleKey = moduleName.toLowerCase();
+    const perms = u.permissions || {};
+    const exactKey = Object.keys(perms).find(k => k.toLowerCase() === moduleKey);
+    const modPerms = exactKey ? perms[exactKey] : {};
+    const getScope = (val: any) => {
+      if (typeof val === 'string') return val.toLowerCase().trim();
+      if (val === true) return 'enabled';
+      return 'no';
+    };
+    const accessScope = getScope(modPerms.access || modPerms.Access || modPerms.view || modPerms.read);
+    const readScope = getScope(modPerms.read || modPerms.Read);
+    const createScope = getScope(modPerms.create || modPerms.Create);
+    const editScope = getScope(modPerms.edit || modPerms.Edit);
+    const deleteScope = getScope(modPerms.delete || modPerms.Delete);
+    const isAccessAllowed = (scope: string) => ['enabled', 'own', 'all', 'true'].includes(scope);
+    const isCrudAllowed = (scope: string) => ['own', 'all', 'true'].includes(scope);
+    if ((action === 'access' || action === 'read' || action === 'view') && (isAccessAllowed(accessScope) || isAccessAllowed(readScope))) return true;
+    if (action === 'create' && isCrudAllowed(createScope)) return true;
+    if (action === 'edit' && isCrudAllowed(editScope)) return true;
+    if (action === 'delete' && isCrudAllowed(deleteScope)) return true;
+    return false;
+  };
+
   // 🚀 FOOLPROOF GLOBAL GOD MODE
   if (!isAdmin && user.id) {
     const { prisma } = await import('@/lib/prisma');
-    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-    if (dbUser?.email === 'dev@fixanyphoto.com' || dbUser?.userType === 'SUPER_ADMIN' || dbUser?.designation === 'Super Admin') {
+    const dbUser = await prisma.user.findUnique({ 
+      where: { id: user.id },
+      include: {
+        designation: true,
+        roles: true
+      }
+    });
+    
+    if (dbUser?.email === 'dev@fixanyphoto.com' || dbUser?.userType === 'SUPER_ADMIN' || dbUser?.designation === 'Super Admin' || dbUser?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
       isAdmin = true;
+    } else if (dbUser) {
+      // Check the specific permission
+      let perms = {};
+      if (dbUser.designation && typeof dbUser.designation === 'object' && (dbUser.designation as any).permissions) {
+        perms = (dbUser.designation as any).permissions;
+      }
+      if (Object.keys(perms).length === 0 && dbUser.permissions) {
+        perms = typeof dbUser.permissions === 'string' ? JSON.parse(dbUser.permissions as any) : dbUser.permissions;
+      }
+      
+      isAdmin = checkPermission({ ...dbUser, permissions: perms }, 'manage_system_settings', 'edit');
     }
   }
 

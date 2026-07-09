@@ -26,6 +26,7 @@ const DEFAULT_PERMISSIONS = {
   payroll: { view: false, create: false, edit: false, delete: false },
   departments: { view: false, create: false, edit: false, delete: false },
   settings: { view: false, create: false, edit: false, delete: false },
+  manage_system_settings: { view: false, create: false, edit: false, delete: false },
 };
 
 const ALL_PERMISSIONS = {
@@ -36,6 +37,7 @@ const ALL_PERMISSIONS = {
   payroll: { view: true, create: true, edit: true, delete: true },
   departments: { view: true, create: true, edit: true, delete: true },
   settings: { view: true, create: true, edit: true, delete: true },
+  manage_system_settings: { view: true, create: true, edit: true, delete: true },
 };
 
 const EMPTY_FORM = {
@@ -911,7 +913,7 @@ export default function TeamUsersPage() {
                         {form.employeeType === 'HYBRID' && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                             <div className="space-y-1">
-                              <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Shift 2 Start</label>
+                              <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Remote Shift Start</label>
                               <input
                                 type="time"
                                 value={form.shift2Start}
@@ -920,7 +922,7 @@ export default function TeamUsersPage() {
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Shift 2 End</label>
+                              <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Remote Shift End</label>
                               <input
                                 type="time"
                                 value={form.shift2End}
@@ -1063,7 +1065,7 @@ export default function TeamUsersPage() {
                   const perms = desigPermissions[moduleKey] || { view: false, create: false, edit: false, delete: false };
                   return (
                     <div key={moduleKey} className="grid grid-cols-5 items-center p-3 border-b last:border-0 border-slate-100 dark:border-white/5 hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-                      <div className="col-span-1 text-sm font-medium text-slate-700 dark:text-gray-300 capitalize">{moduleKey}</div>
+                      <div className="col-span-1 text-sm font-medium text-slate-700 dark:text-gray-300 capitalize">{moduleKey.replace(/_/g, ' ')}</div>
                       {['view', 'create', 'edit', 'delete'].map((action) => (
                         <div key={`${moduleKey}-${action}`} className="text-center">
                           <input

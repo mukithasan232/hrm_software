@@ -16,8 +16,6 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
   const [isResetting, setIsResetting] = useState(false);
   const [employeeData, setEmployeeData] = useState(initialData);
   const [baseSalary, setBaseSalary] = useState(initialData?.baseSalary || '');
-  const [salaryAccount, setSalaryAccount] = useState(initialData?.salaryAccount || '');
-  const [isSavingAccount, setIsSavingAccount] = useState(false);
 
   if (!initialData) {
     return (
@@ -30,7 +28,7 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
   const handleVerificationAction = async (action: 'APPROVE' | 'REJECT') => {
     try {
       setIsApproving(true);
-      await api.post(`/employees/${id}/verify`, { action, baseSalary, salaryAccount });
+      await api.post(`/employees/${id}/verify`, { action, baseSalary });
 
       if (action === 'APPROVE') {
         toast.success('Documents approved! Account activated and email sent.');
@@ -60,18 +58,7 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
     }
   };
 
-  const handleSaveSalaryAccount = async () => {
-    try {
-      setIsSavingAccount(true);
-      await api.put(`/users/${id}`, { salaryAccount });
-      toast.success('Salary account updated successfully');
-      setEmployeeData((prev: any) => ({ ...prev, salaryAccount }));
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update salary account');
-    } finally {
-      setIsSavingAccount(false);
-    }
-  };
+
 
   const emp = employeeData;
   const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
@@ -210,26 +197,7 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5"><KeyRound className="w-3.5 h-3.5" /> Leave Adjustments</p>
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{emp.leaveAdjustment ?? '0'}</p>
           </div>
-          <div className="col-span-1 md:col-span-2 mt-2 pt-4 border-t border-slate-100 dark:border-slate-700">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5" /> Salary / Bank Account</p>
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <input
-                type="text"
-                value={salaryAccount}
-                onChange={e => setSalaryAccount(e.target.value)}
-                placeholder="Enter Salary/Bank Account details"
-                disabled={!canEditBankInfo}
-                className="flex-1 w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-slate-50 dark:bg-slate-700/50 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              <button
-                onClick={handleSaveSalaryAccount}
-                disabled={!canEditBankInfo || isSavingAccount}
-                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-              >
-                {isSavingAccount ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save Account'}
-              </button>
-            </div>
-          </div>
+
           <div>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Appointment Letter</p>
             {emp.appointmentLetter ? (

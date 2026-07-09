@@ -481,36 +481,7 @@ export default function ProfilePage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-4 mt-4">
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold flex items-center gap-1.5"><Building className="w-3.5 h-3.5" /> Salary / Bank Account</label>
-                  {form.salaryAccount ? (
-                    <div className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm font-semibold opacity-80 cursor-not-allowed">
-                      {form.salaryAccount}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl">
-                      <p className="text-xs text-amber-700 dark:text-amber-400 font-medium flex-1">
-                        You do not have a salary account configured.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await api.post('/users/profile/request-salary-account');
-                            toast.success('Request sent to admin successfully!');
-                          } catch (err: any) {
-                            toast.error('Failed to send request');
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap"
-                      >
-                        Request for a salary account
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+
 
               <div className="pt-2">
                 <button
