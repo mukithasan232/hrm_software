@@ -229,7 +229,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-2">
                         <div className="flex items-center gap-1">
                           <span className="text-emerald-600 dark:text-emerald-400 font-medium">IN:</span> 
-                          {toBDDisplay(new Date(session.inTime), 'hh:mm a')} 
+                          {new Date(session.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
                           <span className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-[10px] ml-1">🌐 {session.inSource}</span>
                           {session.inLatitude && session.inLongitude && (
                             <a 
@@ -248,7 +248,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                         ) : (
                           <div className="flex items-center gap-1">
                             <span className="text-amber-600 dark:text-amber-400 font-medium">OUT:</span> 
-                            {toBDDisplay(new Date(session.outTime), 'hh:mm a')} 
+                            {new Date(session.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
                             {(() => {
                               const checkInDate = new Date(session.inTime);
                               const checkOutDate = new Date(session.outTime);

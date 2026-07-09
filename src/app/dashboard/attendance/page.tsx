@@ -798,8 +798,19 @@ export default function AttendancePage() {
 
                 const parseLocal = (val: string) => {
                   if (!val) return null;
-                  // The input gives 'YYYY-MM-DDTHH:mm'. We append +06:00 so JS parses it as Dhaka time.
-                  return new Date(val + '+06:00').toISOString(); 
+                  // The input gives 'YYYY-MM-DDTHH:mm'
+                  // We explicitly extract the components and use the native Date constructor
+                  // which strictly interprets the values in the browser's local timezone.
+                  const [date, time] = val.split('T');
+                  const [y, m, d] = date.split('-');
+                  const [h, min] = time.split(':');
+                  return new Date(Number(y), Number(m) - 1, Number(d), Number(h), Number(min)).toISOString();
+                };
+
+                const getLocalDatetimeLocal = (utcDateString: Date | string) => {
+                  const d = new Date(utcDateString);
+                  const pad = (n: number) => n.toString().padStart(2, '0');
+                  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
                 };
 
                 await api.patch(`/attendance/${editingRecord.id}`, {
@@ -818,7 +829,7 @@ export default function AttendancePage() {
                 <input 
                   type="datetime-local" 
                   name="checkIn"
-                  defaultValue={editingRecord.checkInRaw ? formatInTimeZone(new Date(editingRecord.checkInRaw), BD_TZ, "yyyy-MM-dd'T'HH:mm") : ''}
+                  defaultValue={editingRecord.checkInRaw ? getLocalDatetimeLocal(editingRecord.checkInRaw) : ''}
                   className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
@@ -827,7 +838,7 @@ export default function AttendancePage() {
                 <input 
                   type="datetime-local" 
                   name="checkOut"
-                  defaultValue={editingRecord.checkOutRaw ? formatInTimeZone(new Date(editingRecord.checkOutRaw), BD_TZ, "yyyy-MM-dd'T'HH:mm") : ''}
+                  defaultValue={editingRecord.checkOutRaw ? getLocalDatetimeLocal(editingRecord.checkOutRaw) : ''}
                   className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>

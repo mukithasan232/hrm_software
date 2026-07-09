@@ -17,24 +17,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const { checkIn, checkOut } = await req.json();
-    
-    // Convert to null if empty, otherwise parse to Date
-    const checkInDate = checkIn ? new Date(checkIn) : null;
-    const checkOutDate = checkOut ? new Date(checkOut) : null;
-
-    if (checkInDate && isNaN(checkInDate.getTime())) {
-      return NextResponse.json({ error: "Invalid Check In Date" }, { status: 400 });
-    }
-    if (checkOutDate && isNaN(checkOutDate.getTime())) {
-      return NextResponse.json({ error: "Invalid Check Out Date" }, { status: 400 });
-    }
 
     // Use prisma.attendanceLog based on our actual schema
+    // Bypassing native new Date() parsing to prevent timezone offset shifts
     const updated = await prisma.attendanceLog.update({
       where: { id },
       data: {
-        timestamp: checkInDate || undefined, 
-        checkOut: checkOutDate
+        timestamp: checkIn || undefined, 
+        checkOut: checkOut || null
       } as any
     });
     return NextResponse.json({ message: "Updated", data: updated });
