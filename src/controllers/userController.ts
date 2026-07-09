@@ -313,7 +313,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         employeeType: employeeType || undefined,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,
         leaveConfig: leaveConfig !== undefined ? (typeof leaveConfig === 'string' ? JSON.parse(leaveConfig) : leaveConfig) : undefined,
-        zktecoId: zktecoId ? parseInt(zktecoId, 10) : undefined,
+        zktecoId: zktecoId !== undefined ? (zktecoId && zktecoId !== 'null' ? parseInt(zktecoId, 10) : null) : undefined,
         casualLeaveAdjustment: casualLeaveAdjustment !== undefined ? Number(casualLeaveAdjustment) : undefined,
         sickLeaveAdjustment: sickLeaveAdjustment !== undefined ? Number(sickLeaveAdjustment) : undefined,
         permissions: permissions !== undefined ? (typeof permissions === 'string' ? JSON.parse(permissions) : permissions) : undefined,

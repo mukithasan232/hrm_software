@@ -288,6 +288,8 @@ export default function TeamUsersPage() {
         const { password, employeeId, sendEmail, roleIds, employeeType, zktecoId, casualLeave, sickLeave, annualLeave, ...updatePayload } = payload as any;
         if (password) updatePayload.password = password;
         updatePayload.roles = form.roleIds;
+        updatePayload.employeeType = employeeType;
+        updatePayload.zktecoId = zktecoId;
         updatePayload.leaveConfig = JSON.stringify({
           casual: casualLeave !== '' ? Number(casualLeave) : null,
           sick: sickLeave !== '' ? Number(sickLeave) : null,
