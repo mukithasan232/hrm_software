@@ -60,9 +60,44 @@ function getDayBoundaries(filter: string): { start: Date; end: Date } {
   return { start: startUTC, end: endUTC };
 }
 
-// @desc    Legacy sync (used by cron job)
 export const syncDeviceLogs = async (req: Request, res: Response) => {
   try {
+    const reqAny = req as any;
+    let forceReset = false;
+    let dateToSync = new Date();
+    
+    // Attempt to parse body for forceReset
+    try {
+      if (typeof reqAny.json === 'function') {
+        const body = await reqAny.json();
+        forceReset = body.forceReset === true;
+        if (body.date) dateToSync = new Date(body.date);
+      } else if (reqAny.body) {
+        forceReset = reqAny.body.forceReset === true;
+        if (reqAny.body.date) dateToSync = new Date(reqAny.body.date);
+      }
+    } catch (e) {
+      // Ignore body parse errors
+    }
+
+    if (forceReset) {
+      await prisma.attendanceLog.deleteMany({
+        where: {
+          timestamp: {
+            gte: new Date(dateToSync.setHours(0, 0, 0, 0)),
+            lte: new Date(dateToSync.setHours(23, 59, 59, 999))
+          },
+          // ONLY delete records that came from the machine. 
+          // Our deviceId for machine records is usually an IP or 'RAW_PROCESSOR'. 
+          // Manual entries use 'Manual Entry'.
+          deviceId: {
+            not: { contains: 'Manual' }
+          }
+        }
+      });
+      console.log(`[ZKService] 🧹 Force Reset triggered. Cleared machine logs for ${dateToSync.toDateString()}.`);
+    }
+
     // Pure additive sync — no destructive wipe. The DB unique constraint
     // (@@unique([employeeId, timestamp])) and skipDuplicates:true on createMany
     // are the sole deduplication mechanism.

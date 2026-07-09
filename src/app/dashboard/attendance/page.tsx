@@ -12,6 +12,9 @@ import { calculateWorkingHours } from '@/lib/timeUtils';
 import { exportToExcel, exportToPDF } from '@/lib/exportUtils';
 import { io as socketIO } from 'socket.io-client';
 import { useAuth } from '@/context/AuthContext';
+import { formatInTimeZone } from 'date-fns-tz';
+
+const BD_TZ = 'Asia/Dhaka';
 import { checkPermission } from '@/utils/checkPermission';
 import { useDetailsStore } from '@/store/useDetailsStore';
 import MetricDetailsModal from '@/components/attendance/MetricDetailsModal';
@@ -792,9 +795,16 @@ export default function AttendancePage() {
                 const formData = new FormData(e.currentTarget);
                 const checkInDate = formData.get('checkIn') as string;
                 const checkOutDate = formData.get('checkOut') as string;
+
+                const parseLocal = (val: string) => {
+                  if (!val) return null;
+                  // The input gives 'YYYY-MM-DDTHH:mm'. We append +06:00 so JS parses it as Dhaka time.
+                  return new Date(val + '+06:00').toISOString(); 
+                };
+
                 await api.patch(`/attendance/${editingRecord.id}`, {
-                  checkIn: checkInDate || null,
-                  checkOut: checkOutDate || null
+                  checkIn: parseLocal(checkInDate),
+                  checkOut: parseLocal(checkOutDate)
                 });
                 toast.success("Updated Successfully");
                 setEditingRecord(null);
@@ -808,7 +818,7 @@ export default function AttendancePage() {
                 <input 
                   type="datetime-local" 
                   name="checkIn"
-                  defaultValue={editingRecord.checkInRaw ? new Date(new Date(editingRecord.checkInRaw).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                  defaultValue={editingRecord.checkInRaw ? formatInTimeZone(new Date(editingRecord.checkInRaw), BD_TZ, "yyyy-MM-dd'T'HH:mm") : ''}
                   className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
@@ -817,7 +827,7 @@ export default function AttendancePage() {
                 <input 
                   type="datetime-local" 
                   name="checkOut"
-                  defaultValue={editingRecord.checkOutRaw ? new Date(new Date(editingRecord.checkOutRaw).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                  defaultValue={editingRecord.checkOutRaw ? formatInTimeZone(new Date(editingRecord.checkOutRaw), BD_TZ, "yyyy-MM-dd'T'HH:mm") : ''}
                   className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>

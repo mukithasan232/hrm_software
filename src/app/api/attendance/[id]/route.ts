@@ -22,6 +22,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const checkInDate = checkIn ? new Date(checkIn) : null;
     const checkOutDate = checkOut ? new Date(checkOut) : null;
 
+    if (checkInDate && isNaN(checkInDate.getTime())) {
+      return NextResponse.json({ error: "Invalid Check In Date" }, { status: 400 });
+    }
+    if (checkOutDate && isNaN(checkOutDate.getTime())) {
+      return NextResponse.json({ error: "Invalid Check Out Date" }, { status: 400 });
+    }
+
     // Use prisma.attendanceLog based on our actual schema
     const updated = await prisma.attendanceLog.update({
       where: { id },
