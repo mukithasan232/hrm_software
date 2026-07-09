@@ -233,6 +233,7 @@ export default function AttendancePage() {
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     
     // Admin Proxy Check: if current logged-in user is NOT the one selected in the modal
     const isAdminProxy = user?.id !== manualEntry.employeeId && user?.employeeId !== manualEntry.employeeId;

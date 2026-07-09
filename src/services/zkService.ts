@@ -291,7 +291,6 @@ export async function processRawDeviceLogs(): Promise<number> {
       grouped[key].push(log);
     }
 
-    const newAttendanceLogs: any[] = [];
     const rawLogIdsToDelete: string[] = [];
 
     for (const key in grouped) {
@@ -300,8 +299,6 @@ export async function processRawDeviceLogs(): Promise<number> {
       
       // Sort chronologically (earliest to latest)
       logs.sort((a, b) => a.recordTime.getTime() - b.recordTime.getTime());
-
-      const batchState = new Map<string, { lastPunchType: string; timestamp: Date }>();
 
       for (let i = 0; i < logs.length; i++) {
         const log = logs[i];
@@ -312,32 +309,53 @@ export async function processRawDeviceLogs(): Promise<number> {
            continue; 
         }
 
-        const punchType = await resolvePunchType(empId, log.recordTime, log as any, batchState);
+        const logTime = log.recordTime;
         
-        if (!punchType) {
-           rawLogIdsToDelete.push(log.id);
-           continue;
+        // 1. Find ANY open session for this employee today
+        const startOfDay = new Date(logTime);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(logTime);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const openSession = await prisma.attendanceLog.findFirst({
+          where: {
+            employeeId: empId,
+            checkOut: null,
+            timestamp: {
+              gte: startOfDay,
+              lte: endOfDay
+            }
+          },
+          orderBy: { timestamp: 'desc' }
+        });
+
+        if (openSession) {
+          // 2. Pair as Check-Out if logically after Check-In
+          if (logTime.getTime() > openSession.timestamp.getTime()) {
+            await prisma.attendanceLog.update({
+              where: { id: openSession.id },
+              data: { checkOut: logTime }
+            });
+            processedCount++;
+            rawLogIdsToDelete.push(log.id);
+            continue; 
+          }
         }
 
-        newAttendanceLogs.push({
-          employeeId: empId,
-          timestamp: log.recordTime,
-          punchType: punchType,
-          deviceId: log.ip || 'RAW_PROCESSOR',
+        // 3. Create a NEW Check-In
+        await prisma.attendanceLog.create({
+          data: {
+            employeeId: empId,
+            timestamp: logTime,
+            punchType: 'CheckIn',
+            deviceId: log.ip || 'RAW_PROCESSOR',
+          }
         });
         
-        console.log("SYNC_LOG_TYPE:", { userId: empId, timestamp: log.recordTime, type: punchType });
-        
+        console.log("SYNC_LOG_TYPE:", { userId: empId, timestamp: logTime, type: 'CheckIn (Machine)' });
+        processedCount++;
         rawLogIdsToDelete.push(log.id);
       }
-    }
-
-    if (newAttendanceLogs.length > 0) {
-      const result = await prisma.attendanceLog.createMany({
-        data: newAttendanceLogs,
-        skipDuplicates: true // Ignores compound unique constraint violations safely
-      });
-      processedCount = result.count;
     }
 
     // Safely cleanup the raw logs that were processed/mapped

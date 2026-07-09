@@ -1,6 +1,6 @@
 'use client';
 import { useTranslation } from '@/context/LanguageContext';
-import { Clock, Calendar, AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, Calendar, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, TrashIcon } from 'lucide-react';
 import { toBDDisplay } from '@/lib/dateUtils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -20,6 +20,22 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
   if (!initialData) {
     return <div className="text-center p-6 text-slate-500">No attendance data provided.</div>;
   }
+
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) return;
+    setIsDeleting(sessionId);
+    try {
+      await axios.delete(`/api/attendance/${sessionId}`);
+      toast.success('Session deleted successfully');
+      window.location.reload(); 
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete session');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const {
     employeeName,
@@ -254,7 +270,19 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                         )}
                       </div>
                     </div>
-                    <div className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">{session.duration || '--'}</div>
+                    <div className="flex items-center gap-4">
+                      <div className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">{session.duration || '--'}</div>
+                      {session.id && (
+                        <button 
+                          onClick={() => handleDeleteSession(session.id)}
+                          disabled={isDeleting === session.id}
+                          className="text-red-400 hover:text-red-600 transition-colors p-1 disabled:opacity-50"
+                          title="Delete this session"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 <div className="text-xs text-center text-slate-400 mt-2 italic">

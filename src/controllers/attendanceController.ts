@@ -722,6 +722,25 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     let log: any;
     let created = false;
 
+    // 🚀 STRICT COOLDOWN PREVENTION (1 MINUTE)
+    if (lastRecord && lastRecord.timestamp) {
+      const COOLDOWN_MS = 60 * 1000;
+      const lastActionTime = (lastRecord as any).checkOut 
+        ? new Date((lastRecord as any).checkOut).getTime() 
+        : new Date(lastRecord.timestamp).getTime();
+        
+      if (Date.now() - lastActionTime < COOLDOWN_MS) {
+        res.status(429).json({ message: 'Please wait at least 1 minute before punching again to prevent duplicate entries.' });
+        return;
+      }
+    }
+
+    // 🚀 SAFE OUT IGNORANCE (Task 3)
+    if (punchType?.toLowerCase().includes('out') && !isActiveShift) {
+      res.status(200).json({ message: 'Session already checked out. Ignored duplicate request.', data: lastRecord });
+      return;
+    }
+
     // 🚀 STRICT OVERLAP PREVENTION
     if (punchType?.toLowerCase().includes('in') && isActiveShift) {
       res.status(400).json({ message: 'You are already checked in. Please check out before starting a new session.' });

@@ -4,7 +4,7 @@ import { wrapHandler } from '@/lib/adapter';
 
 // GET: Fetch users associated with this designation, and those who are not
 async function getDesignationUsers(req: Request, res: any) {
-  const designationId = res.params.id;
+  const designationId = (req as any).params?.id;
 
   try {
     const allUsers = await prisma.user.findMany({
@@ -43,7 +43,7 @@ async function getDesignationUsers(req: Request, res: any) {
 
 // POST: Add a user to this designation
 async function addUserToDesignation(req: Request, res: any) {
-  const designationId = res.params.id;
+  const designationId = (req as any).params?.id;
   
   try {
     const body = await req.json();
@@ -76,7 +76,7 @@ async function addUserToDesignation(req: Request, res: any) {
 
 // DELETE: Remove a user from this designation
 async function removeUserFromDesignation(req: Request, res: any) {
-  const designationId = res.params.id;
+  const designationId = (req as any).params?.id;
   
   try {
     const { searchParams } = new URL(req.url);
