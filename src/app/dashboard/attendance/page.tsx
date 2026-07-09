@@ -15,6 +15,12 @@ import { useAuth } from '@/context/AuthContext';
 import { formatInTimeZone } from 'date-fns-tz';
 
 const BD_TZ = 'Asia/Dhaka';
+
+const getLocalDatetimeLocal = (utcDateString: Date | string) => {
+  const d = new Date(utcDateString);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 import { checkPermission } from '@/utils/checkPermission';
 import { useDetailsStore } from '@/store/useDetailsStore';
 import MetricDetailsModal from '@/components/attendance/MetricDetailsModal';
@@ -805,12 +811,6 @@ export default function AttendancePage() {
                   const [y, m, d] = date.split('-');
                   const [h, min] = time.split(':');
                   return new Date(Number(y), Number(m) - 1, Number(d), Number(h), Number(min)).toISOString();
-                };
-
-                const getLocalDatetimeLocal = (utcDateString: Date | string) => {
-                  const d = new Date(utcDateString);
-                  const pad = (n: number) => n.toString().padStart(2, '0');
-                  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
                 };
 
                 await api.patch(`/attendance/${editingRecord.id}`, {
