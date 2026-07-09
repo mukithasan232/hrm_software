@@ -262,7 +262,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
       include: { customDepartment: true, shift: true }
     });
 
-    const regularEmployees = activeEmployees.filter(u => {
+    const regularEmployees = activeEmployees.filter((u: any) => {
       const desigName = typeof u.designation === 'object' ? (u.designation as any)?.name : u.designation;
       const desig = (desigName || '').toLowerCase();
       return !['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'].includes(desig) && u.email !== 'dev@fixanyphoto.com' && u.userType !== 'SUPER_ADMIN';
@@ -279,14 +279,14 @@ export const getActivePresence = async (req: Request, res: Response) => {
       },
       select: { employeeId: true }
     });
-    const leaveUserIds = new Set(leavesToday.map(l => l.employeeId));
+    const leaveUserIds = new Set(leavesToday.map((l: any) => l.employeeId));
 
     let trueAbsentCount = 0;
     const currentTime = new Date();
     const isSunday = currentTime.getDay() === 0;
 
     if (!isSunday) {
-      regularEmployees.forEach(user => {
+      regularEmployees.forEach((user: any) => {
         if (presentUserIds.has(user.id) || leaveUserIds.has(user.id)) return; // Skip if present or on leave
 
         const shiftStr = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
@@ -675,7 +675,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     });
 
     res.status(200).json({ 
-      logs: logs.map(l => ({ ...l, employeeName: (l as any).user?.name || 'Unmapped' })), 
+      logs: logs.map((l: any) => ({ ...l, employeeName: (l as any).user?.name || 'Unmapped' })), 
       summaries: aggregatedSummaries,
       total, 
       checkInCount, 
