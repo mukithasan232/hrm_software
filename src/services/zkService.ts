@@ -274,7 +274,7 @@ export async function processRawDeviceLogs(): Promise<number> {
       if (u.zktecoId) zktecoIdToUserId.set(u.zktecoId.toString(), u.id);
     }
 
-    const mappedLogs = rawLogs.filter(log => zktecoIdToUserId.has(log.deviceUserId));
+    const mappedLogs = rawLogs.filter((log: any) => zktecoIdToUserId.has(log.deviceUserId));
     if (mappedLogs.length === 0) return 0;
 
     // Group mappedLogs by employeeId + YYYY-MM-DD
@@ -298,7 +298,7 @@ export async function processRawDeviceLogs(): Promise<number> {
       const empId = key.split('_')[0];
       
       // Sort chronologically (earliest to latest)
-      logs.sort((a, b) => a.recordTime.getTime() - b.recordTime.getTime());
+      logs.sort((a: any, b: any) => a.recordTime.getTime() - b.recordTime.getTime());
 
       for (let i = 0; i < logs.length; i++) {
         const log = logs[i];
@@ -562,7 +562,7 @@ export const syncZkTecoData = async (daysToFetch: number | boolean = 1): Promise
       where: { recordTime: { gte: windowStart } },
       select: { deviceUserId: true, recordTime: true }
     });
-    const dbRawSet = new Set(dbRawLogs.map(l => `${l.deviceUserId}_${l.recordTime.getTime()}`));
+    const dbRawSet = new Set(dbRawLogs.map((l: any) => `${l.deviceUserId}_${l.recordTime.getTime()}`));
 
     const newLogsToProcess: any[] = [];
     const newRawInserts: any[] = [];
@@ -873,7 +873,7 @@ export const fetchUnregisteredDeviceUsers = async (): Promise<{ deviceUserId: nu
     const dbUsers = await prisma.user.findMany({
       select: { zktecoId: true }
     });
-    const registeredIds = new Set(dbUsers.map(u => u.zktecoId).filter(Boolean));
+    const registeredIds = new Set(dbUsers.map((u: any) => u.zktecoId).filter(Boolean));
 
     const unregistered = rawUsers.filter((u: any) => {
       const uid = parseInt(u.userId || u.uid || u.user_id, 10);
