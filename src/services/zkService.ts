@@ -504,7 +504,7 @@ let hasSanitizedManualLogs = false;
 /**
  * Fetch attendance logs from device → upsert into MongoDB.
  */
-export const syncZkTecoData = async (daysToFetch: number = 1): Promise<{ synced: number; skipped: number; total: number }> => {
+export const syncZkTecoData = async (daysToFetch: number | boolean = 1): Promise<{ synced: number; skipped: number; total: number }> => {
   const zk = await createZK();
   const currentZkIp = (zk as any).deviceIp || 'Unknown IP';
   try {
@@ -527,8 +527,12 @@ export const syncZkTecoData = async (daysToFetch: number = 1): Promise<{ synced:
 
     // Calculate time window for deep sync
     const windowStart = new Date();
-    windowStart.setDate(windowStart.getDate() - daysToFetch);
-    windowStart.setHours(0, 0, 0, 0);
+    if (daysToFetch === true) {
+      windowStart.setFullYear(2000, 0, 1); // Fetch all history
+    } else {
+      windowStart.setDate(windowStart.getDate() - (daysToFetch as number));
+      windowStart.setHours(0, 0, 0, 0);
+    }
 
     const recentLogs = rawLogs.filter((log: any) => {
       const deviceTime = log.timestamp || log.recordTime || log.record_time;
@@ -543,7 +547,12 @@ export const syncZkTecoData = async (daysToFetch: number = 1): Promise<{ synced:
       if (io) io.emit('attendanceUpdate', { checkIn: true });
       return { synced: 0, skipped: 0, total: 0 };
     }
-    console.log(`[ZKService] 📋 Deep Sync: ${recentLogs.length} logs fetched within the last ${daysToFetch} days.`);
+    
+    if (daysToFetch === true) {
+      console.log(`[ZKService] 📋 Deep Sync: ${recentLogs.length} logs fetched (Entire History).`);
+    } else {
+      console.log(`[ZKService] 📋 Deep Sync: ${recentLogs.length} logs fetched within the last ${daysToFetch} days.`);
+    }
 
     // Sort logs chronologically ascending (earliest to latest)
     const sortedRawLogs = [...recentLogs].sort((a: any, b: any) => new Date(a.timestamp || a.recordTime || a.record_time).getTime() - new Date(b.timestamp || b.recordTime || b.record_time).getTime());

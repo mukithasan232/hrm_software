@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express-serve-static-core';
-import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs } from '../services/zkService';
+import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs, syncZkTecoData } from '../services/zkService';
 import { runWithDeviceLock, startRealtimeListener } from '../services/realtimeService';
 import { prisma } from '../lib/prisma';
 import { checkPermission } from '../utils/checkPermission';
@@ -101,8 +101,9 @@ export const syncDeviceLogs = async (req: Request, res: Response) => {
     // Pure additive sync — no destructive wipe. The DB unique constraint
     // (@@unique([employeeId, timestamp])) and skipDuplicates:true on createMany
     // are the sole deduplication mechanism.
-    // We pass `true` here to force the sync to look back 3 days, bypassing the cursor for manual syncs
-    const newRecordsCount = await runWithDeviceLock(() => fetchDeviceLogs(true));
+    // We pass `true` here to force the sync to look back all the way to 2000 for a Deep Sync
+    const result = await runWithDeviceLock(() => syncZkTecoData(true));
+    const newRecordsCount = result.synced;
     res.status(200).json({
       message: 'Sync completed successfully',
       newRecordsSynced: newRecordsCount,
