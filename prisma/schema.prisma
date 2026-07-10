@@ -87,8 +87,14 @@ model AttendanceLog {
   checkOut   DateTime?
   updatedAt  DateTime  @updatedAt
 
-  otStatus          String @default("PENDING")
-  approvedOtMinutes Int    @default(0)
+  otStatus          String  @default("PENDING")
+  approvedOtMinutes Int     @default(0)
+
+  // ── Early Leave & Missing Out ─────────────────────────────────────────────
+  // earlyLeaveMinutes: how many minutes before shiftEndTime the employee punched out (0 = on time / overtime)
+  // isMissingOut: true when the session was auto-closed by the 14-hour stale-session guard (no biometric check-out received)
+  earlyLeaveMinutes Int     @default(0)
+  isMissingOut      Boolean @default(false)
 
   latitude          Float?
   longitude         Float?

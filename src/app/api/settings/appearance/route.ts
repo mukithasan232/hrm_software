@@ -105,7 +105,6 @@ export async function PUT(req: NextRequest) {
     const dbUser = await prisma.user.findUnique({ 
       where: { id: user.id },
       include: {
-        designation: true,
         roles: true
       }
     });

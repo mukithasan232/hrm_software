@@ -501,6 +501,222 @@ async function getAttendanceAsync(zk: any): Promise<any[]> {
 
 let hasSanitizedManualLogs = false;
 
+// ─── Constants for edge-case thresholds ───────────────────────────────────────
+/** Minimum gap between two biometric punches for the same employee. Punches
+ *  arriving within this window are treated as spam/device duplicate and ignored. */
+const DEBOUNCE_MS = 10 * 60 * 1000; // 10 minutes
+
+/** How far back to search for an open (checkOut=null) session.
+ *  Covers night-shift workers whose shift crosses midnight. */
+const CROSS_MIDNIGHT_WINDOW_MS = 18 * 60 * 60 * 1000; // 18 hours
+
+/** If the most recent open session is older than this, treat it as a
+ *  "forgot to punch out" case, mark it MISSING_OUT, and start a fresh session. */
+const STALE_SESSION_MS = 14 * 60 * 60 * 1000; // 14 hours
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * processBiometricPunch
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Atomic handler for a single biometric punch event. Wraps ALL database
+ * reads and writes in a single Prisma interactive transaction so that:
+ *  - no concurrent punch for the same employee can race between the read
+ *    and the write
+ *  - any partial failure rolls back cleanly without corrupting state
+ *
+ * Returns one of: 'debounced' | 'checked_out' | 'missing_out_closed' | 'checked_in'
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+async function processBiometricPunch(
+  employeeId: string,
+  punchTime: Date,
+  deviceIp: string
+): Promise<{ result: 'debounced' | 'checked_out' | 'missing_out_closed' | 'checked_in'; detail?: string }> {
+  try {
+    return await prisma.$transaction(async (tx) => {
+
+      // ── Fetch user for shift-end time (needed for early-leave calc) ──────────
+      const userRecord = await tx.user.findUnique({
+        where: { id: employeeId },
+        select: {
+          shiftEndTime: true,
+          shift: { select: { endTime: true } },
+          customDepartment: { select: { shiftEndTime: true } },
+        },
+      });
+
+      // Priority: linked Shift → direct field → department default
+      const shiftEndTimeStr: string =
+        userRecord?.shift?.endTime ||
+        userRecord?.shiftEndTime ||
+        userRecord?.customDepartment?.shiftEndTime ||
+        '17:00';
+
+      // ── [Task 1] Cooldown / Debounce ─────────────────────────────────────────
+      // Fetch the employee's most recent punch (any date, any type) to detect
+      // spam / rapid duplicate punches from a confused employee.
+      const lastPunch = await tx.attendanceLog.findFirst({
+        where: { employeeId },
+        orderBy: { timestamp: 'desc' },
+      });
+
+      if (lastPunch) {
+        // Use the latest timestamp that touched this record:
+        // If the session already has a checkOut, that is the last real action.
+        const lastActionTime =
+          lastPunch.checkOut
+            ? lastPunch.checkOut.getTime()
+            : lastPunch.timestamp.getTime();
+
+        const gapMs = punchTime.getTime() - lastActionTime;
+
+        if (gapMs >= 0 && gapMs < DEBOUNCE_MS) {
+          // Within 10-minute cooldown window — silently accept for device but
+          // do not write to DB. This is the correct biometric debounce.
+          return {
+            result: 'debounced',
+            detail: `Gap ${Math.round(gapMs / 1000)}s < 10 min cooldown. Ignored.`,
+          };
+        }
+      }
+
+      // ── [Task 2 + 3] Cross-Midnight & Stale Session Detection ───────────────
+      // Search for the most recent open session within the last 18 hours.
+      // This intentionally crosses date boundaries to handle night-shift workers.
+      const windowStart = new Date(punchTime.getTime() - CROSS_MIDNIGHT_WINDOW_MS);
+
+      const openSession = await tx.attendanceLog.findFirst({
+        where: {
+          employeeId,
+          checkOut: null,
+          isMissingOut: false, // Don't re-process already-closed stale sessions
+          timestamp: {
+            gte: windowStart,
+            lte: punchTime,   // Cannot be in the future
+          },
+        },
+        orderBy: { timestamp: 'desc' }, // The most recent open session
+      });
+
+      if (openSession) {
+        const sessionAgeMs = punchTime.getTime() - openSession.timestamp.getTime();
+
+        // ── [Task 3] Stale session guard ────────────────────────────────────
+        // If the session is older than 14 hours the employee almost certainly
+        // forgot to punch out. Mark it as incomplete and start a new CheckIn.
+        if (sessionAgeMs > STALE_SESSION_MS) {
+          await tx.attendanceLog.update({
+            where: { id: openSession.id },
+            data: {
+              // Soft-close: set checkOut to exactly 14 hours after checkIn
+              // so duration is bounded and the UI does not show infinity.
+              checkOut: new Date(openSession.timestamp.getTime() + STALE_SESSION_MS),
+              isMissingOut: true,
+            },
+          });
+
+          console.log(
+            `[ZKService] ⚠️  MISSING_OUT: Stale session for employee ${employeeId} ` +
+            `(open since ${openSession.timestamp.toISOString()}) auto-closed. ` +
+            `New CheckIn started at ${punchTime.toISOString()}.`
+          );
+
+          // Fall through to create a fresh CheckIn below
+        } else {
+          // ── [Task 2 + Task 4] Normal CheckOut with early-leave calc ─────
+          //
+          // Calculate earlyLeaveMinutes:
+          //   Parse shiftEndTime ("HH:MM") against the LOCAL calendar date of
+          //   the CHECK-IN (not check-out) because cross-midnight workers
+          //   punch out on the next calendar day.
+          //
+          const BD_TZ_OFFSET_MS = 6 * 60 * 60 * 1000;
+          const checkInLocal = new Date(openSession.timestamp.getTime() + BD_TZ_OFFSET_MS);
+          const y = checkInLocal.getUTCFullYear();
+          const m = String(checkInLocal.getUTCMonth() + 1).padStart(2, '0');
+          const d = String(checkInLocal.getUTCDate()).padStart(2, '0');
+
+          // Build the shift-end moment in BD local time on the check-in date
+          const shiftEndUTC = new Date(`${y}-${m}-${d}T${shiftEndTimeStr}:00+06:00`);
+
+          // If shift crosses midnight (e.g., 10 PM → 6 AM), shiftEndTime may be
+          // on the next day — nudge forward 24 hours when end < start.
+          const checkInUTC = openSession.timestamp;
+          const effectiveShiftEndUTC =
+            shiftEndUTC <= checkInUTC
+              ? new Date(shiftEndUTC.getTime() + 24 * 60 * 60 * 1000)
+              : shiftEndUTC;
+
+          // earlyLeaveMinutes > 0 means the employee left before their shift ended
+          const earlyLeaveMs = Math.max(0, effectiveShiftEndUTC.getTime() - punchTime.getTime());
+          const earlyLeaveMinutes = Math.floor(earlyLeaveMs / 60000);
+
+          await tx.attendanceLog.update({
+            where: { id: openSession.id },
+            data: {
+              checkOut: punchTime,
+              earlyLeaveMinutes,
+            },
+          });
+
+          const detail =
+            earlyLeaveMinutes > 0
+              ? `Early leave by ${earlyLeaveMinutes} min (shift ends ${shiftEndTimeStr})`
+              : `On-time / overtime checkout`;
+
+          console.log(
+            `[ZKService] ✅ CheckOut: employee ${employeeId} at ${punchTime.toISOString()}. ${detail}`
+          );
+
+          return { result: 'checked_out', detail };
+        }
+      }
+
+      // ── [Task 2 / Fresh CheckIn] ─────────────────────────────────────────────
+      // No open session (or stale session was just closed) → create a new CheckIn.
+      //
+      // Guard against absolute exact-timestamp duplicates (@@unique constraint)
+      // by checking first — avoids a P2002 unique violation in the transaction.
+      const existingExact = await tx.attendanceLog.findUnique({
+        where: {
+          employeeId_timestamp: { employeeId, timestamp: punchTime },
+        },
+      });
+
+      if (existingExact) {
+        return {
+          result: 'debounced',
+          detail: 'Exact-timestamp duplicate already exists.',
+        };
+      }
+
+      await tx.attendanceLog.create({
+        data: {
+          employeeId,
+          timestamp: punchTime,
+          punchType: 'CheckIn',
+          deviceId: deviceIp,
+          workMode: 'IN_HOUSE', // Default for biometric hardware punches
+        },
+      });
+
+      console.log(
+        `[ZKService] 🟢 CheckIn: employee ${employeeId} at ${punchTime.toISOString()}.`
+      );
+
+      return { result: 'checked_in' };
+    }); // end prisma.$transaction
+  } catch (err: any) {
+    // Transaction rolled back. Log and surface the error without crashing the
+    // sync loop — the next cron run will retry this punch via RawDeviceLog.
+    console.error(
+      `[ZKService] ❌ Transaction failed for employee ${employeeId} at ${punchTime.toISOString()}:`,
+      err.message
+    );
+    throw err; // Re-throw so the caller can count it as a failed sync
+  }
+}
+
 /**
  * Fetch attendance logs from device → upsert into MongoDB.
  */
@@ -620,58 +836,43 @@ export const syncZkTecoData = async (isDeepSync: boolean = false): Promise<{ syn
       console.log(`[ZKService] 🛡️ Upserted ${result.count} raw punches into RawDeviceLog.`);
     }
 
-    // 4. Auto-Pairing Logic (No Orphaned CheckOuts)
+    // ── 4. Atomic Auto-Pairing Logic ──────────────────────────────────────────
+    // Each punch is evaluated by processBiometricPunch which handles all 5 tasks
+    // (debounce, cross-midnight, stale session, early leave, transaction safety)
+    // atomically inside a single Prisma interactive transaction.
     let synced = 0;
-    
+    let debounced = 0;
+
     for (const log of newLogsToProcess) {
-      const logTime = log.recordTime;
-      const startOfDay = new Date(logTime);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(logTime);
-      endOfDay.setHours(23, 59, 59, 999);
+      try {
+        const { result } = await processBiometricPunch(
+          log.employeeId,
+          log.recordTime,
+          currentZkIp
+        );
 
-      // Find an open session for this employee on this specific day
-      const openSession = await prisma.attendanceLog.findFirst({
-        where: {
-          employeeId: log.employeeId,
-          punchType: 'CheckIn',
-          checkOut: null,
-          timestamp: {
-            gte: startOfDay,
-            lte: endOfDay
-          }
-        },
-        orderBy: { timestamp: 'asc' } // Ensure we get the oldest open session for the day
-      });
-
-      if (openSession && logTime > new Date(openSession.timestamp)) {
-        // Perfect match: Update the open session with CheckOut time
-        await prisma.attendanceLog.update({
-          where: { id: openSession.id },
-          data: { checkOut: logTime }
-        });
-        synced++;
-      } else if (!openSession) {
-        // No open session: Create a fresh CheckIn
-        // Add a check here to ensure a completed session doesn't already exist for this exact time to prevent absolute duplicates.
-        const existingExact = await prisma.attendanceLog.findFirst({
-            where: { employeeId: log.employeeId, timestamp: logTime }
-        });
-        
-        if(!existingExact) {
-            await prisma.attendanceLog.create({
-              data: {
-                employeeId: log.employeeId,
-                punchType: 'CheckIn',
-                deviceId: currentZkIp, // Mark it clearly as machine punch
-                workMode: 'IN_HOUSE', // Default work mode for machine
-                timestamp: logTime
-              }
-            });
-            synced++;
+        if (result === 'debounced') {
+          debounced++;
+        } else {
+          // 'checked_in' | 'checked_out' | 'missing_out_closed'
+          synced++;
         }
+      } catch (punchErr: any) {
+        // A single punch failure must NEVER abort the entire sync loop.
+        // The raw log is already persisted in RawDeviceLog, so the next
+        // cron run will attempt to re-process it via processRawDeviceLogs().
+        console.error(
+          `[ZKService] ⚠️  Punch skipped for employee ${log.employeeId}:`,
+          punchErr.message
+        );
+        skipped++;
       }
     }
+
+    console.log(
+      `[ZKService] 📊 Punch results — ` +
+      `synced: ${synced} | debounced (spam): ${debounced} | errored: ${skipped}`
+    );
 
     console.log(`[ZKService] ✔  Synced: ${synced} | Skipped/Duplicate: ${skipped} | Total Recent: ${sortedRawLogs.length}`);
 
