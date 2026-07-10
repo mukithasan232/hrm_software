@@ -27,23 +27,24 @@ if [ -n "$DB_HOST" ]; then
   fi
 fi
 
-# 1. Sync database schema
-echo "🚀 [1/3] Running Prisma DB Push..."
-if ! npx prisma db push --accept-data-loss; then
+# 1. Sync database schema (STRICT: db push only — never migrate deploy/reset)
+# Runs at container RUNTIME so DATABASE_URL is available from environment.
+echo "🚀 [1/3] Running Prisma DB Push (schema sync)..."
+if ! pnpm exec prisma db push --accept-data-loss; then
   echo "⚠️  Prisma db push failed. This is non-fatal — server will still start."
   echo "    Check DATABASE_URL and DB connectivity in Coolify environment variables."
 fi
 
 # 2. Seed default admin account
 echo "🌱 [2/3] Running Admin Seed..."
-if ! npx tsx src/scripts/seedAdmins.ts; then
+if ! pnpm exec tsx src/scripts/seedAdmins.ts; then
   echo "⚠️  Seed failed. This is non-fatal — server will still start."
   echo "    Admin account may need to be seeded manually if the DB was just created."
 fi
 
 # 2.5. Sync biometric data on boot
 echo "🔄 [Boot Sync] Syncing Biometric Data..."
-if ! npx tsx src/scripts/sync-on-boot.ts; then
+if ! pnpm exec tsx src/scripts/sync-on-boot.ts; then
   echo "⚠️  Biometric sync failed. This is non-fatal — server will still start."
 fi
 
