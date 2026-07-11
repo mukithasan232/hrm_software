@@ -19,7 +19,11 @@ const getAnalytics = async (req: any, res: any) => {
       totalEmployees = await prisma.user.count({
         where: {
           isActive: true,
-          userType: 'Employee'
+          userType: { not: 'SUPER_ADMIN' },
+          email: { not: 'dev@fixanyphoto.com' },
+          designation: {
+            notIn: ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'HR', 'admin', 'super admin', 'system administrator', 'hrm manager', 'hr']
+          }
         }
       });
     }
