@@ -30,7 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <span className="text-2xl">⏳</span>
                   <div>
                     <h3 className="text-blue-800 dark:text-blue-500 font-semibold text-sm">Under Review</h3>
-                    <p className="text-blue-700 dark:text-blue-400 text-sm">Your documents are currently being verified by an Admin.</p>
+                    <p className="text-blue-700 dark:text-blue-400 text-sm">Your documents is under review.</p>
                   </div>
                 </div>
                 <Link href="/onboarding" className="shrink-0 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <span className="text-2xl">⚠️</span>
                   <div>
                     <h3 className="text-amber-800 dark:text-amber-500 font-semibold text-sm">Action Required</h3>
-                    <p className="text-amber-700 dark:text-amber-600 text-sm">Please upload your mandatory verification documents.</p>
+                    <p className="text-amber-700 dark:text-amber-600 text-sm">You need to submit your documents.</p>
                   </div>
                 </div>
                 <Link href="/onboarding" className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">

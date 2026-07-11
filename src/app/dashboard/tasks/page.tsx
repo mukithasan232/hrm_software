@@ -215,6 +215,14 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
   const canUpdateWorkerFields = !isReadOnly || task?.assignedToId === currentUserId;
   const canEditStatus = canUpdateWorkerFields;
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+      const file = e.clipboardData.files[0];
+      setAttachment(file);
+      toast.success(`Attached ${file.name} from clipboard`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canUpdateWorkerFields) return;
@@ -297,6 +305,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
               placeholder="Optional task description..."
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
+              onPaste={handlePaste}
               disabled={!canUpdateWorkerFields}
             />
           </div>
@@ -618,6 +627,7 @@ export default function TasksPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter]     = useState<TaskStatus | 'ALL'>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'ALL'>('ALL');
+  const [employeeFilter, setEmployeeFilter] = useState('ALL');
   const [dateFilter, setDateFilter]         = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -702,6 +712,11 @@ export default function TasksPage() {
 
     if (!taskId) return; // same column, no-op
 
+    if (!isAdminUser && newStatus === 'COMPLETED') {
+      toast.error('Only Admins can approve and mark tasks as Completed.');
+      return;
+    }
+
     // Optimistic update
     setTasks(prev =>
       prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t)
@@ -723,6 +738,7 @@ export default function TasksPage() {
       t.assignedTo.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus   = statusFilter   === 'ALL' || t.status   === statusFilter;
     const matchPriority = priorityFilter === 'ALL' || t.priority === priorityFilter;
+    const matchEmployee = employeeFilter === 'ALL' || t.assignedToId === employeeFilter;
 
     let matchDate = true;
     if (dateFilter !== 'all') {
@@ -747,7 +763,7 @@ export default function TasksPage() {
       }
     }
 
-    return matchSearch && matchStatus && matchPriority && matchDate;
+    return matchSearch && matchStatus && matchPriority && matchEmployee && matchDate;
   });
 
   const priorityWeight: Record<TaskPriority, number> = { URGENT: 4, HIGH: 3, NORMAL: 2, LOW: 1 };
@@ -810,6 +826,17 @@ export default function TasksPage() {
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
           </div>
+
+          {/* Employee filter */}
+          {(canEditTasks || isAdminUser) && (
+            <div className="relative">
+              <select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} className={selectCls}>
+                <option value="ALL">All Employees</option>
+                {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            </div>
+          )}
 
           {/* Priority filter */}
           <div className="relative">
@@ -990,7 +1017,7 @@ export default function TasksPage() {
                                       }}
                                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                     >
-                                      {STATUS_COLUMNS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                                      {STATUS_COLUMNS.filter(c => isAdminUser || c.key !== 'COMPLETED').map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                                     </select>
                                     <span className="pointer-events-none text-slate-700 dark:text-slate-300">{task.status || 'To Do'}</span>
                                     <svg className="w-3 h-3 text-slate-400 ml-2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>

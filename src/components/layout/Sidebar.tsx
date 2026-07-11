@@ -107,8 +107,8 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const menusToRender = isSuperAdmin ? NAV_ITEM_DEFS : filteredItems;
   const teamMenusToRender = isSuperAdmin ? TEAM_SUB_DEFS : filteredTeamItems;
   const reportsMenusToRender = isSuperAdmin ? REPORTS_SUB_DEFS : filteredReportsItems;
-  const canSeeTeamRender = isSuperAdmin ? true : canSeeTeam;
-  const canSeeReportsRender = isSuperAdmin ? true : canSeeReports;
+  const canSeeTeamRender = isSuperAdmin ? true : (isAdminUser && canSeeTeam);
+  const canSeeReportsRender = isSuperAdmin ? true : (isAdminUser && canSeeReports);
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full overflow-hidden">

@@ -38,6 +38,8 @@ interface Employee {
   shiftEndTime?: string | null;
   shift2Start?: string | null;
   shift2End?: string | null;
+  remoteShiftStartTime?: string | null;
+  remoteShiftEndTime?: string | null;
   verificationStatus?: string;
 }
 
@@ -198,8 +200,8 @@ export default function EmployeesPage() {
     setSickLeaveAdjustment(emp.sickLeaveAdjustment ?? 0);
     setShiftStartTime(emp.shiftStartTime || '');
     setShiftEndTime(emp.shiftEndTime || '');
-    setShift2Start(emp.shift2Start || '');
-    setShift2End(emp.shift2End || '');
+    setShift2Start(emp.remoteShiftStartTime || emp.shift2Start || '');
+    setShift2End(emp.remoteShiftEndTime || emp.shift2End || '');
     setEditTarget(emp);
   };
 

@@ -482,14 +482,16 @@ function AttendancePageContent() {
               disabled={syncing}
             />
           </div>
-          <button 
-            onClick={handleManualSync}
-            disabled={syncing}
-            className="flex justify-center items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10 w-full md:w-auto"
-          >
-            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} 
-            {syncing ? 'Syncing Live...' : (t('sync_data') || 'Sync Data')}
-          </button>
+          {isAdminUser && (
+            <button 
+              onClick={handleManualSync}
+              disabled={syncing}
+              className="flex justify-center items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10 w-full md:w-auto"
+            >
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} 
+              {syncing ? 'Syncing Live...' : (t('sync_data') || 'Sync Data')}
+            </button>
+          )}
 
           <div className="relative w-full md:w-auto">
             <button 

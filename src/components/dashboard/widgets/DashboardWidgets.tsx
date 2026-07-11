@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { useTranslation } from '@/context/LanguageContext';
 import { LogIn, LogOut, Clock, UserMinus, CalendarRange, CalendarCheck2, Megaphone, Trash2, X, BarChart3, PieChart as PieChartIcon, RefreshCw } from 'lucide-react';
 import { toBDDisplay, getBDToday } from '@/lib/dateUtils';
@@ -8,6 +9,7 @@ import dynamic from 'next/dynamic';
 const WeeklyChart = dynamic(() => import('@/components/charts/WeeklyChart'), { ssr: false });
 const LateTodayWidget = dynamic(() => import('@/components/dashboard/LateTodayWidget'), { ssr: false });
 import { BreakCountdownWidget } from '@/components/dashboard/BreakCountdownWidget';
+import { GlobalStreamWidget } from '@/components/dashboard/widgets/GlobalStreamWidget';
 
 export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
   const { t } = useTranslation();
@@ -190,19 +192,20 @@ export const AbsentDaysWidget = ({ isCompact, data }: { isCompact: boolean, data
                </thead>
                <tbody>
                  {data.absentEmployees.map((emp: any) => (
-                   <tr key={emp.id} className="border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                   <tr key={emp.id} className="border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group cursor-pointer relative">
                      <td className="py-3 flex items-center gap-3">
+                       <Link href={`/dashboard/team/employees`} className="absolute inset-0 z-0" />
                        {emp.profileImage || emp.avatar ? (
-                         <img src={emp.profileImage || emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" />
+                         <img src={emp.profileImage || emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 relative z-10" />
                        ) : (
-                         <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-xs border border-orange-200 dark:border-orange-500/30">
+                         <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-xs border border-orange-200 dark:border-orange-500/30 relative z-10">
                            {emp.name?.charAt(0) || '?'}
                          </div>
                        )}
-                       <span className="font-medium text-slate-800 dark:text-slate-200">{emp.name}</span>
+                       <span className="font-medium text-slate-800 dark:text-slate-200 relative z-10">{emp.name}</span>
                      </td>
-                     <td className="py-3 text-slate-500 dark:text-slate-400">
-                       <span className="bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-md text-xs border border-slate-200 dark:border-white/10">
+                     <td className="py-3 text-slate-500 dark:text-slate-400 relative z-10">
+                       <span className="bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-md text-xs border border-slate-200 dark:border-white/10 group-hover:bg-orange-50 dark:group-hover:bg-orange-500/10 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
                          {emp?.department?.name || emp?.department || 'Unassigned'}
                        </span>
                      </td>
@@ -601,4 +604,5 @@ export const WidgetMap: Record<string, React.FC<any>> = {
   'weekly-attendance': WeeklyAttendanceWidget,
   'late-today': LateTodayWidgetWrapper,
   'break-countdown': BreakCountdownWidget,
+  'global-stream': GlobalStreamWidget,
 };

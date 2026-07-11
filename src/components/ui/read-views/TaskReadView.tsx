@@ -226,9 +226,17 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
 
           {/* Chat Input Box */}
           <div className="flex gap-3 items-end">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-sm font-bold text-blue-700">
-              ME
-            </div>
+            {currentUser?.profileImage || (currentUser as any)?.avatar ? (
+              <img 
+                src={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}${currentUser?.profileImage || (currentUser as any)?.avatar}`} 
+                alt={currentUser?.name || 'User'} 
+                className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm flex-shrink-0" 
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-sm font-bold text-blue-700 shadow-sm border border-blue-200">
+                {currentUser?.name ? currentUser.name.substring(0, 2).toUpperCase() : 'U'}
+              </div>
+            )}
             <div className="relative flex-1 border border-slate-300 rounded-xl bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
               <textarea
                 value={comment}

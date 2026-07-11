@@ -14,12 +14,13 @@ function LateReportContent() {
   const [loading, setLoading] = useState(false);
 
   // Initialize dates from URL or default to current month
-  const from = searchParams.get('from');
-  const to = searchParams.get('to');
+  const from = searchParams.get('startDate');
+  const to = searchParams.get('endDate');
+  const range = searchParams.get('range');
   
   const [customStartDate, setCustomStartDate] = useState(from || '');
   const [customEndDate, setCustomEndDate] = useState(to || '');
-  const [dateRange, setDateRange] = useState(from && to ? 'custom' : 'last-30-days'); // fallback
+  const [dateRange, setDateRange] = useState(range || (from && to ? 'custom' : 'last-30-days')); // fallback
 
   useEffect(() => {
     if (from && to) {
@@ -54,12 +55,12 @@ function LateReportContent() {
     if (val.range === 'custom' && val.start && val.end) {
       setCustomStartDate(val.start);
       setCustomEndDate(val.end);
-      router.push(`?from=${val.start}&to=${val.end}`);
-    } else if (val.start && val.end) {
-      router.push(`?from=${val.start}&to=${val.end}`);
-    } else {
-      router.push('?');
     }
+    const params = new URLSearchParams(searchParams.toString());
+    if (val.range) params.set('range', val.range);
+    if (val.start) params.set('startDate', val.start);
+    if (val.end) params.set('endDate', val.end);
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   const handleExport = () => {

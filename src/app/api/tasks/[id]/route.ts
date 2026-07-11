@@ -76,6 +76,10 @@ export async function PATCH(
       if (!status) {
         return NextResponse.json({ message: 'Status is required' }, { status: 400, headers: getCorsHeaders() });
       }
+      
+      if (status === 'COMPLETED') {
+        return NextResponse.json({ message: 'Employees cannot mark tasks as COMPLETED' }, { status: 403, headers: getCorsHeaders() });
+      }
 
       const updated = await prisma.task.update({
         where: { id },
@@ -87,6 +91,29 @@ export async function PATCH(
         } as any,
         include: TASK_INCLUDE,
       });
+      
+      // Trigger notification if status moved to PENDING
+      if (status === 'PENDING' && task.status !== 'PENDING') {
+        const safeTitle = updated.title.length > 50 ? updated.title.substring(0, 47) + '...' : updated.title;
+        // Notify the creator of the task, assuming they are an admin. Or notify all admins. 
+        // For simplicity, let's notify the creator if the creator is different from assignedTo.
+        if (updated.createdById && updated.createdById !== updated.assignedToId) {
+          const { eventEmitter } = await import('@/lib/eventEmitter');
+          const newNotification = await prisma.notification.create({
+            data: {
+              userId: updated.createdById,
+              titleEn: 'Task Pending Verification',
+              titleBn: 'টাস্ক যাচাইয়ের জন্য পেন্ডিং',
+              messageEn: `Task "${safeTitle}" has been moved to Pending by the employee.`,
+              messageBn: `টাস্ক "${safeTitle}" পেন্ডিং অবস্থায় আনা হয়েছে।`,
+              type: 'TASK',
+              referenceId: task.id
+            }
+          });
+          eventEmitter.emit('new-notification', newNotification);
+        }
+      }
+
       return NextResponse.json(updated, { headers: getCorsHeaders() });
     }
 

@@ -65,7 +65,7 @@ const upsertEmailSettings = async (req: any, res: any) => {
       return res.status(403).json({ error: 'Access Denied: Missing Manage System Settings permission' });
     }
 
-    const body = req.body;
+    const body = req.body || {};
     const {
       // SMTP fields
       host, port, security, username, password,
@@ -97,32 +97,37 @@ const upsertEmailSettings = async (req: any, res: any) => {
     if (senderEmail !== undefined) smtpData.senderEmail = senderEmail.trim();
     if (emailEnabled !== undefined) smtpData.emailEnabled = Boolean(emailEnabled);
 
-    const existing = await prisma.smtpSettings.findFirst();
+    try {
+      const existing = await prisma.smtpSettings.findFirst();
 
-    let settings;
-    if (existing) {
-      settings = await prisma.smtpSettings.update({
-        where: { id: existing.id },
-        data:  smtpData,
-      });
-    } else {
-      // Require SMTP fields for first-time creation
-      if (!host || !port || !username || !password) {
-        return res.status(400).json({ error: 'All SMTP fields are required for initial setup.' });
-      }
-      // Auto-create singleton TenantSettings if needed
-      let tenant = await prisma.tenantSettings.findFirst();
-      if (!tenant) {
-        tenant = await prisma.tenantSettings.create({
-          data: { companyName: 'Default Tenant' },
+      let settings;
+      if (existing) {
+        settings = await prisma.smtpSettings.update({
+          where: { id: existing.id },
+          data:  smtpData,
+        });
+      } else {
+        // Require SMTP fields for first-time creation
+        if (!host || !port || !username || !password) {
+          return res.status(400).json({ error: 'All SMTP fields are required for initial setup.' });
+        }
+        // Auto-create singleton TenantSettings if needed
+        let tenant = await prisma.tenantSettings.findFirst();
+        if (!tenant) {
+          tenant = await prisma.tenantSettings.create({
+            data: { companyName: 'Default Tenant' },
+          });
+        }
+        settings = await prisma.smtpSettings.create({
+          data: { ...smtpData, tenantId: tenant.id } as any,
         });
       }
-      settings = await prisma.smtpSettings.create({
-        data: { ...smtpData, tenantId: tenant.id } as any,
-      });
-    }
 
-    return res.json({ success: true, data: settings });
+      return res.json({ success: true, data: settings });
+    } catch (dbError: any) {
+      console.error('SMTP Prisma Logic Error:', dbError);
+      return res.status(500).json({ error: `Database Error: ${dbError.message || 'Unknown database error'}` });
+    }
   } catch (error: any) {
     console.error('SMTP DB Save Error:', error);
     return res.status(500).json({ error: error.message || 'Failed to save settings' });

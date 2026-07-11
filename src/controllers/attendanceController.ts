@@ -249,7 +249,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
     // Task 2: Smart Absenteeism Calculation (Time-Aware)
     const activeEmployees = await prisma.user.findMany({
       where: { isActive: true },
-      include: { customDepartment: true, shift: true }
+      include: { customDepartment: true, shift: true, customDesignation: true }
     });
 
     const regularEmployees = activeEmployees.filter((u: any) => {
@@ -273,11 +273,23 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     let trueAbsentCount = 0;
     const currentTime = new Date();
-    const isSunday = currentTime.getDay() === 0;
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayName = dayNames[currentTime.getDay()];
 
-    if (!isSunday) {
-      regularEmployees.forEach((user: any) => {
-        if (presentUserIds.has(user.id) || leaveUserIds.has(user.id)) return; // Skip if present or on leave
+    regularEmployees.forEach((user: any) => {
+      if (presentUserIds.has(user.id) || leaveUserIds.has(user.id)) return; // Skip if present or on leave
+
+      let weekendDays = ['Sunday'];
+      if (user.customDesignation?.weekendDays) {
+        try {
+          const parsed = typeof user.customDesignation.weekendDays === 'string' 
+            ? JSON.parse(user.customDesignation.weekendDays) 
+            : user.customDesignation.weekendDays;
+          if (Array.isArray(parsed) && parsed.length > 0) weekendDays = parsed;
+        } catch(e) {}
+      }
+
+      if (weekendDays.includes(todayName)) return; // Strictly exclude if today is their weekend
 
         const shiftStr = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
         const [hours, minutes] = shiftStr.split(':').map(Number);
@@ -285,12 +297,11 @@ export const getActivePresence = async (req: Request, res: Response) => {
         const userShiftStartTime = new Date();
         userShiftStartTime.setHours(hours, minutes, 0, 0);
 
-        // Core Logic: Only count as absent if current time has passed their shift start time
-        if (currentTime > userShiftStartTime) {
-          trueAbsentCount++;
-        }
-      });
-    }
+      // Core Logic: Only count as absent if current time has passed their shift start time
+      if (currentTime > userShiftStartTime) {
+        trueAbsentCount++;
+      }
+    });
 
     const calculatedAbsent = trueAbsentCount;
 

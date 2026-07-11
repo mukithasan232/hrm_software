@@ -8,10 +8,10 @@ type LayoutState = {
 export const useDashboardLayout = (isAdmin: boolean) => {
   const DEFAULT_LAYOUT: LayoutState = isAdmin ? {
     summaryZone: ['punch-status', 'absent-days', 'leaves-remaining', 'break-countdown'],
-    detailZone: ['notice-board', 'weekly-attendance', 'late-today']
+    detailZone: ['global-stream', 'notice-board', 'weekly-attendance', 'late-today']
   } : {
     summaryZone: ['punch-status', 'break-countdown', 'absent-days', 'leaves-remaining', 'leaves-pending'],
-    detailZone: ['notice-board', 'my-punches', 'weekly-attendance']
+    detailZone: ['global-stream', 'notice-board', 'my-punches', 'weekly-attendance']
   };
 
   const STORAGE_KEY = `dashboard_layout_${isAdmin ? 'admin' : 'emp'}`;

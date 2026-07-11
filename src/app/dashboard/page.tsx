@@ -228,6 +228,21 @@ export default function DashboardOverview() {
         const desigName = typeof u.designation === 'object' ? u.designation?.name : u.designation;
         const desig = (desigName || '').toLowerCase();
         if (['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'].includes(desig) || u.email === 'dev@fixanyphoto.com') return false;
+        
+        let weekendDays = ['Sunday'];
+        if (u.customDesignation?.weekendDays) {
+          try {
+            const parsed = typeof u.customDesignation.weekendDays === 'string' 
+              ? JSON.parse(u.customDesignation.weekendDays) 
+              : u.customDesignation.weekendDays;
+            if (Array.isArray(parsed) && parsed.length > 0) weekendDays = parsed;
+          } catch(e) {}
+        }
+        
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const todayName = dayNames[new Date().getDay()];
+        if (weekendDays.includes(todayName)) return false; // Exclude if today is their weekend
+
         return !presentUserIds.has(u.id) && !presentUserIds.has(u.employeeId);
       });
       setAbsentEmployees(absentEmps);
@@ -441,14 +456,16 @@ export default function DashboardOverview() {
                   Customize Dashboard
                 </button>
                 {/* Sync Data */}
-                <button
-                  onClick={handleManualSync}
-                  disabled={syncing}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10 text-sm"
-                >
-                  <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-                  Sync Data
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={handleManualSync}
+                    disabled={syncing}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10 text-sm"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+                    Sync Data
+                  </button>
+                )}
               </>
             ) : (
               <>
