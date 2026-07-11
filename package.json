@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "npx prisma generate && node server.cjs",
     "postinstall": "prisma generate",
-    "build": "npx prisma generate && next build",
+    "build": "npx prisma generate && next build && tsc workers/zk-sync-worker.ts --outDir dist/workers --esModuleInterop",
     "build:next": "next build",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "start": "concurrently --kill-others-on-fail -c \"blue,green\" \"node worker.js\" \"next start\"",

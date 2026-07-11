@@ -25,9 +25,9 @@ ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Generate Prisma client, then build Next.js
+# Generate Prisma client, then build Next.js AND compile the worker
 ENV NODE_ENV=production
-RUN pnpm exec prisma generate && pnpm exec next build
+RUN pnpm run build
 
 # ── Step 4: Runtime ───────────────────────────────────────────────────────────
 RUN npm install -g pm2
@@ -35,4 +35,5 @@ ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
 
-ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
+COPY ecosystem.config.js ./
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && pm2-runtime start ecosystem.config.js"]

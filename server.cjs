@@ -50,12 +50,8 @@ app.prepare()
 
     try {
       const { connectDB }              = require('./src/config/db');
-      const { initCronJobs }           = require('./src/jobs/cronJob');
-      const { initRealtimeAttendance } = require('./src/services/realtimeService');
 
       await connectDB();
-      initCronJobs();
-      initRealtimeAttendance(io);
     } catch (err) {
       console.error('[Server Startup] Failed to load backend modules:', err);
       // Non-fatal: HTTP server still starts and serves the Next.js app
