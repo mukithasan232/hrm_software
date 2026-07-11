@@ -25,18 +25,18 @@ const getNotificationLink = (n: any) => {
   const title = (n.titleEn || n.titleBn || n.title || '').toLowerCase();
   
   if (type === 'ATTENDANCE' || title.includes('late')) {
-    return '/dashboard/attendance';
+    return '/attendance';
   }
 
   const idParam = n.referenceId ? `?id=${n.referenceId}` : '';
   switch (type) {
     case 'TASK': return `/dashboard/tasks${idParam}`;
     case 'LEAVE': return `/dashboard/leaves${idParam}`;
-    case 'USER_MANAGEMENT': return '/dashboard/employees';
-    case 'ANNOUNCEMENT': return '/dashboard/announcements';
-    case 'PERFORMANCE': return '/dashboard/performance';
-    case 'PAYROLL': return '/dashboard/payroll';
-    default: return '/dashboard';
+    case 'USER_MANAGEMENT': return '/employees';
+    case 'ANNOUNCEMENT': return '/announcements';
+    case 'PERFORMANCE': return '/performance';
+    case 'PAYROLL': return '/payroll';
+    default: return '/';
   }
 };
 
@@ -458,7 +458,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
 
               <div className="p-2">
                 <Link
-                  href="/dashboard/profile"
+                  href="/profile"
                   onClick={() => setShowProfile(false)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 dark:hover:text-white text-sm transition-colors duration-150"
                 >

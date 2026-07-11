@@ -8,7 +8,7 @@ type LayoutState = {
 export const useDashboardLayout = (isAdmin: boolean) => {
   const DEFAULT_LAYOUT: LayoutState = isAdmin ? {
     summaryZone: ['punch-status', 'absent-days', 'leaves-remaining', 'break-countdown'],
-    detailZone: ['global-stream', 'notice-board', 'weekly-attendance', 'late-today']
+    detailZone: ['global-stream', 'notice-board', 'weekly-attendance', 'late-today', 'checked-out']
   } : {
     summaryZone: ['punch-status', 'break-countdown', 'absent-days', 'leaves-remaining', 'leaves-pending'],
     detailZone: ['global-stream', 'notice-board', 'my-punches', 'weekly-attendance']
@@ -29,6 +29,11 @@ export const useDashboardLayout = (isAdmin: boolean) => {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.summaryZone && parsed.detailZone) {
+          // Inject checked-out for existing admin layouts if missing
+          if (isAdmin && !parsed.summaryZone.includes('checked-out') && !parsed.detailZone.includes('checked-out')) {
+             parsed.detailZone.push('checked-out');
+             localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          }
           setSavedLayout(parsed);
           setDraftLayout(parsed);
         } else {

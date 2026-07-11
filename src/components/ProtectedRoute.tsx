@@ -7,29 +7,29 @@ import { usePermissions } from '@/hooks/usePermissions';
 
 // Define which module is required for each route prefix
 const ROUTE_MODULES: Record<string, string> = {
-  '/dashboard/payroll':     'Payroll',
-  '/dashboard/performance': 'Performance',
-  '/dashboard/leaves':      'Leaves',
-  '/dashboard/attendance':  'Attendance',
-  '/dashboard/announcements': 'Announcements',
-  '/dashboard/team/users':  'Users',
-  '/dashboard/team/designations': 'Designations',
-  '/dashboard/team/departments': 'Departments',
-  '/dashboard/team/employees': 'Employees',
-  '/dashboard/team':        'Users',
-  '/dashboard/employees':   'Employees',
-  '/dashboard/profile':     'Profile',
-  '/dashboard':             'Dashboard',
+  '/payroll':     'Payroll',
+  '/performance': 'Performance',
+  '/leaves':      'Leaves',
+  '/attendance':  'Attendance',
+  '/announcements': 'Announcements',
+  '/team/users':  'Users',
+  '/team/designations': 'Designations',
+  '/team/departments': 'Departments',
+  '/team/employees': 'Employees',
+  '/team':        'Users',
+  '/employees':   'Employees',
+  '/profile':     'Profile',
+  '/':             'Dashboard',
 };
 
 // Where each designation lands after login
 export const DESIGNATION_HOME: Record<string, string> = {
-  Admin:                  '/dashboard',
-  'Super Admin':          '/dashboard',
-  'System Administrator': '/dashboard',
-  Stakeholder:            '/dashboard',
-  'HR Manager':           '/dashboard',
-  Employee:               '/dashboard',
+  Admin:                  '/',
+  'Super Admin':          '/',
+  'System Administrator': '/',
+  Stakeholder:            '/',
+  'HR Manager':           '/',
+  Employee:               '/',
 };
 
 function getSpinner() {
@@ -53,7 +53,7 @@ function getAccessDenied(designation: string, path: string) {
           Your current roles do not grant permission to access <span className="text-red-400">{path}</span>.
         </p>
         <a
-          href={'/dashboard'}
+          href={'/'}
           className="inline-block mt-4 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-all"
         >
           Go to My Dashboard

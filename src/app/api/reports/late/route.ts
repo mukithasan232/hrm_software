@@ -11,6 +11,9 @@ export async function GET(request: Request) {
     const startParam = searchParams.get('startDate');
     const endParam = searchParams.get('endDate');
 
+    const departmentId = searchParams.get('departmentId');
+    const employeeId = searchParams.get('employeeId');
+
     let startDate: Date;
     let endDate: Date;
 
@@ -19,21 +22,32 @@ export async function GET(request: Request) {
       endDate = new Date(endParam);
       endDate.setHours(23, 59, 59, 999);
     } else {
-      // Default to current month
+      // Default to last 7 days as requested by user if not provided
       const now = new Date();
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+    }
+
+    const whereClause: any = {
+      timestamp: {
+        gte: startDate,
+        lte: endDate
+      },
+      punchType: { contains: 'In' },
+      user: { 
+        isActive: true,
+        ...(departmentId && departmentId !== 'ALL' && { departmentId })
+      }
+    };
+
+    if (employeeId && employeeId !== 'ALL') {
+      whereClause.employeeId = employeeId;
     }
 
     const checkIns = await prisma.attendanceLog.findMany({
-      where: {
-        timestamp: {
-          gte: startDate,
-          lte: endDate
-        },
-        punchType: { contains: 'In' },
-        user: { isActive: true }
-      },
+      where: whereClause,
       include: {
         user: {
           select: {

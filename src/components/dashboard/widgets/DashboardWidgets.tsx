@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 
 const WeeklyChart = dynamic(() => import('@/components/charts/WeeklyChart'), { ssr: false });
 const LateTodayWidget = dynamic(() => import('@/components/dashboard/LateTodayWidget'), { ssr: false });
+const CheckedOutWidget = dynamic(() => import('@/components/dashboard/CheckedOutWidget'), { ssr: false });
 import { BreakCountdownWidget } from '@/components/dashboard/BreakCountdownWidget';
 export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
   const { t } = useTranslation();
@@ -49,7 +50,7 @@ export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, dat
       <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex flex-col w-full h-full min-h-[300px] shadow-sm dark:shadow-md">
         <h3 className="text-lg font-semibold mb-4 border-b border-slate-100 dark:border-white/10 pb-2 text-slate-800 dark:text-white flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          Currently Present Employees ({stats.activeNow})
+          Currently Present Employees ({data.presentEmployees?.length || 0})
         </h3>
         <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
           {data.presentEmployees && data.presentEmployees.length > 0 ? (
@@ -177,7 +178,7 @@ export const AbsentDaysWidget = ({ isCompact, data }: { isCompact: boolean, data
       <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex flex-col w-full h-full min-h-[300px] shadow-sm dark:shadow-md">
         <h3 className="text-lg font-semibold mb-4 border-b border-slate-100 dark:border-white/10 pb-2 text-slate-800 dark:text-white flex items-center gap-2">
           <UserMinus className="w-5 h-5 text-orange-500" />
-          Absent Employees ({stats.totalAbsent})
+          Absent Employees ({data.absentEmployees?.length || 0})
         </h3>
         <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
           {data.absentEmployees && data.absentEmployees.length > 0 ? (
@@ -580,6 +581,25 @@ export const LateTodayWidgetWrapper = ({ isCompact, data }: { isCompact: boolean
   );
 };
 
+export const CheckedOutWidgetWrapper = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm dark:shadow-md h-full flex flex-col justify-between">
+        <div className="flex items-center gap-2">
+          <LogOut className="w-4 h-4 text-indigo-500" />
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Checked Out</h3>
+        </div>
+        <p className="text-xs text-slate-400 mt-2">Expand to view.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="h-96 w-full">
+      <CheckedOutWidget />
+    </div>
+  );
+};
+
 // Map widget IDs to their components
 export const WidgetMap: Record<string, React.FC<any>> = {
   'punch-status': PunchStatusWidget,
@@ -590,5 +610,6 @@ export const WidgetMap: Record<string, React.FC<any>> = {
   'my-punches': MyPunchesWidget,
   'weekly-attendance': WeeklyAttendanceWidget,
   'late-today': LateTodayWidgetWrapper,
+  'checked-out': CheckedOutWidgetWrapper,
   'break-countdown': BreakCountdownWidget,
 };

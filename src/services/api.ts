@@ -19,6 +19,9 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       console.error("JWT Expired or Missing. Redirecting to login...");
       if (typeof window !== 'undefined') {
+        // Clear token so proxy.ts doesn't infinitely bounce us back to /
+        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        localStorage.removeItem('user');
         window.location.href = '/login';
       }
     }

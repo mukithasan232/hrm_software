@@ -2,28 +2,26 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function proxy(request: NextRequest) {
-  // Read the token from cookies
   const token = request.cookies.get('token')?.value;
+  const { pathname } = request.nextUrl;
 
-  // Protect /dashboard routes
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
-    if (!token) {
-      // If there is no token, redirect to login
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isApi = pathname.startsWith('/api');
+  const isStatic = pathname.startsWith('/_next') || pathname.includes('.');
+
+  // Protect all non-auth and non-api routes
+  if (!token && !isAuthPage && !isApi && !isStatic) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Prevent logged-in users from accessing /login or /
-  if (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname === '/') {
-    if (token) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
+  // Prevent logged-in users from accessing /login
+  if (token && isAuthPage) {
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   return NextResponse.next();
 }
 
-// Specify the paths the middleware should run on
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

@@ -91,17 +91,33 @@ export async function GET(req: NextRequest) {
     }
 
     for (const a of attendanceLogs) {
+      // 1. Always push the Check-In event
       streamItems.push({
-        id: `att-${a.id}`,
+        id: `att-in-${a.id}`,
         type: 'ATTENDANCE',
-        actionContext: `Punched ${a.punchType} at ${a.locationAddress || (a.deviceId ? 'Device' : 'Web')}`,
+        actionContext: `Checked In at ${a.locationAddress || (a.deviceId ? 'Device' : 'Web')}`,
         user: a.user,
         timestamp: a.timestamp,
         metadata: {
-          punchType: a.punchType,
+          punchType: 'CheckIn',
           workMode: a.workMode
         }
       });
+
+      // 2. If they have checked out, push a separate Check-Out event
+      if (a.checkOut) {
+        streamItems.push({
+          id: `att-out-${a.id}`,
+          type: 'ATTENDANCE',
+          actionContext: `Checked Out at ${a.locationAddress || (a.deviceId ? 'Device' : 'Web')}`,
+          user: a.user,
+          timestamp: a.checkOut,
+          metadata: {
+            punchType: 'CheckOut',
+            workMode: a.workMode
+          }
+        });
+      }
     }
 
     for (const l of leaves) {

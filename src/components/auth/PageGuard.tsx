@@ -16,7 +16,7 @@ export default function PageGuard({ children, moduleName }: PageGuardProps) {
   useEffect(() => {
     if (!loading) {
       if (user && !checkPermission(user, moduleName, 'view')) {
-        router.replace('/dashboard');
+        router.replace('/');
       } else if (!user) {
         router.replace('/login');
       }

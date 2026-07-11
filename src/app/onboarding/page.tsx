@@ -24,7 +24,7 @@ export default function OnboardingPage() {
 
   // Redirect active users
   if (user && user.verificationStatus === 'ACTIVE') {
-    router.push('/dashboard');
+    router.push('/');
     return null;
   }
 
