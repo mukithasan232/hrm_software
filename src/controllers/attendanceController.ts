@@ -567,12 +567,14 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         sessionsByEmpAndDate[k].sessions.push({
           id: session.id,
           inTime: inTime,
-          inSource: session.deviceId || 'Manual',
+          inSource: session.deviceId || 'Machine',
+          isManualIn: session.isManualIn || false,
           inLatitude: session.latitude,
           inLongitude: session.longitude,
           inAddress: session.locationAddress,
           outTime: outTime,
-          outSource: outTime ? (isAutoCheckout ? 'System Auto-Checkout' : 'Manual') : null,
+          outSource: outTime ? (isAutoCheckout ? 'System Auto-Checkout' : (session.checkOutDeviceId || 'Machine')) : null,
+          isManualOut: outTime ? (session.isManualOut || false) : false,
           outLatitude: outTime ? session.latitude : null,
           outLongitude: outTime ? session.longitude : null,
           outAddress: outTime ? session.locationAddress : null,
@@ -707,7 +709,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
 export const createManualLog = async (req: Request, res: Response): Promise<void> => {
   try {
-    let { employeeId, punchType, latitude, longitude } = req.body;
+    let { employeeId, punchType, latitude, longitude, date, isOverride } = req.body;
     
     let locationAddress: string | null = null;
     if (latitude && longitude) {
@@ -721,7 +723,11 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     }
     
     // 100% Secure Server Time - completely ignore client time payload
-    const parsedDate = new Date();
+    let parsedDate = new Date();
+    if (date) {
+       const [year, month, day] = date.split('-');
+       parsedDate.setFullYear(Number(year), Number(month) - 1, Number(day));
+    }
     
     // --- Security RBAC Check ---
     const reqUser = (req as any).user;
@@ -761,8 +767,19 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    const startOfDay = new Date(parsedDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(parsedDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
     const lastRecord = await prisma.attendanceLog.findFirst({
-      where: { employeeId: user.id },
+      where: { 
+        employeeId: user.id,
+        timestamp: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      },
       orderBy: { timestamp: 'desc' }
     });
 
@@ -771,7 +788,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     let created = false;
 
     // 🚀 STRICT COOLDOWN PREVENTION (1 MINUTE)
-    if (lastRecord && lastRecord.timestamp) {
+    if (lastRecord && lastRecord.timestamp && !isOverride) {
       const COOLDOWN_MS = 60 * 1000;
       const lastActionTime = (lastRecord as any).checkOut 
         ? new Date((lastRecord as any).checkOut).getTime() 
@@ -784,22 +801,29 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     }
 
     // 🚀 SAFE OUT IGNORANCE (Task 3)
-    if (punchType?.toLowerCase().includes('out') && !isActiveShift) {
+    if (punchType?.toLowerCase().includes('out') && !isActiveShift && !isOverride) {
       res.status(200).json({ message: 'Session already checked out. Ignored duplicate request.', data: lastRecord });
       return;
     }
 
     // 🚀 STRICT OVERLAP PREVENTION
-    if (punchType?.toLowerCase().includes('in') && isActiveShift) {
+    if (punchType?.toLowerCase().includes('in') && isActiveShift && !isOverride) {
       res.status(400).json({ message: 'You are already checked in. Please check out before starting a new session.' });
       return;
     }
 
-    if (isActiveShift) {
-      // 🚀 FORCE CHECKOUT ON PREVIOUS RECORD (Even if it's from yesterday, preventing consecutive Check Ins)
+    if (isActiveShift && (!isOverride || punchType?.toLowerCase().includes('out'))) {
+      // 🚀 FORCE CHECKOUT ON PREVIOUS RECORD
       log = await prisma.attendanceLog.update({
         where: { id: lastRecord.id },
-        data: { checkOut: parsedDate, latitude, longitude, locationAddress } as any,
+        data: { 
+          checkOut: parsedDate, 
+          latitude, 
+          longitude, 
+          locationAddress,
+          checkOutDeviceId: isAdmin ? 'Manual Entry' : 'MANUAL_WEB',
+          isManualOut: true
+        } as any,
         include: { user: { select: { name: true } } },
       });
       // Override punchType so late notifications or responses know it was a checkout
@@ -820,7 +844,8 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
           employeeId: user.id,
           timestamp: parsedDate,
           punchType,
-          deviceId: 'MANUAL_WEB',
+          deviceId: isAdmin ? 'Manual Entry' : 'MANUAL_WEB',
+          isManualIn: true,
           latitude,
           longitude,
           locationAddress,

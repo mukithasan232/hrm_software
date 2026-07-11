@@ -1,6 +1,6 @@
 'use client';
 import { useTranslation } from '@/context/LanguageContext';
-import { Clock, Calendar, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, TrashIcon } from 'lucide-react';
+import { Clock, Calendar, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, TrashIcon, Smartphone, Globe, Pencil } from 'lucide-react';
 import { toBDDisplay } from '@/lib/dateUtils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -101,7 +101,28 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
       toast.error(error.response?.data?.error || "Failed to update Overtime");
     }
   };
-
+  const renderPunchSource = (sourceType: string | null | undefined, ipAddress: string | null | undefined, isManual: boolean | undefined) => {
+    if (isManual || sourceType?.toUpperCase() === 'MANUAL' || sourceType === 'Manual Entry' || sourceType === 'MANUAL_WEB') {
+      return (
+        <span className="px-2 py-0.5 rounded bg-orange-500/10 text-orange-500 border border-orange-500/20 text-xs font-medium whitespace-nowrap ml-1">
+          <Pencil className="w-3 h-3 mr-1 inline" /> Manual
+        </span>
+      );
+    }
+    if (sourceType?.toUpperCase() === 'MACHINE' || sourceType?.toUpperCase() === 'DEVICE') {
+      return (
+        <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 border border-purple-500/20 text-xs font-medium whitespace-nowrap ml-1">
+          <Smartphone className="w-3 h-3 mr-1 inline" /> Machine
+        </span>
+      );
+    }
+    // Default to Web/Remote
+    return (
+      <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 text-xs font-medium whitespace-nowrap ml-1">
+        <Globe className="w-3 h-3 mr-1 inline" /> {ipAddress || 'Web'}
+      </span>
+    );
+  };
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col items-center text-center">
@@ -277,7 +298,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                         <div className="flex items-center gap-1">
                           <span className="text-emerald-600 dark:text-emerald-400 font-medium">IN:</span> 
                           {new Date(session.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
-                          <span className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-[10px] ml-1">🌐 {session.inSource}</span>
+                          {renderPunchSource(session.inSource, session.inSource, session.isManualIn)}
                           {session.inLatitude && session.inLongitude && (
                             <a 
                               href={`https://www.google.com/maps/search/?api=1&query=${session.inLatitude},${session.inLongitude}`} 
@@ -302,7 +323,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                               const isNextDay = checkOutDate.getDate() !== checkInDate.getDate() || checkOutDate.getMonth() !== checkInDate.getMonth() || checkOutDate.getFullYear() !== checkInDate.getFullYear();
                               return isNextDay ? <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold ml-0.5">(+1 Day)</span> : null;
                             })()}
-                            <span className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-[10px] ml-1">📱 {session.outSource}</span>
+                            {renderPunchSource(session.outSource, session.outSource, session.isManualOut)}
                             {session.outLatitude && session.outLongitude && (
                               <a 
                                 href={`https://www.google.com/maps/search/?api=1&query=${session.outLatitude},${session.outLongitude}`} 

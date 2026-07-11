@@ -311,19 +311,13 @@ export async function processRawDeviceLogs(): Promise<number> {
 
         const logTime = log.recordTime;
         
-        // 1. Find ANY open session for this employee today
-        const startOfDay = new Date(logTime);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(logTime);
-        endOfDay.setHours(23, 59, 59, 999);
-
+        // 1. Find ANY open session for this employee within the last 24 hours
         const openSession = await prisma.attendanceLog.findFirst({
           where: {
             employeeId: empId,
             checkOut: null,
             timestamp: {
-              gte: startOfDay,
-              lte: endOfDay
+              gte: new Date(logTime.getTime() - 24 * 60 * 60 * 1000)
             }
           },
           orderBy: { timestamp: 'desc' }
@@ -334,7 +328,11 @@ export async function processRawDeviceLogs(): Promise<number> {
           if (logTime.getTime() > openSession.timestamp.getTime()) {
             await prisma.attendanceLog.update({
               where: { id: openSession.id },
-              data: { checkOut: logTime }
+              data: { 
+                checkOut: logTime,
+              checkOutDeviceId: 'MACHINE',
+              isManualOut: false
+            }
             });
             processedCount++;
             rawLogIdsToDelete.push(log.id);
@@ -349,6 +347,7 @@ export async function processRawDeviceLogs(): Promise<number> {
             timestamp: logTime,
             punchType: 'CheckIn',
             deviceId: log.ip || 'RAW_PROCESSOR',
+            workMode: 'IN_HOUSE',
           }
         });
         
@@ -656,6 +655,8 @@ async function processBiometricPunch(
             data: {
               checkOut: punchTime,
               earlyLeaveMinutes,
+              checkOutDeviceId: 'MACHINE',
+              isManualOut: false,
             },
           });
 

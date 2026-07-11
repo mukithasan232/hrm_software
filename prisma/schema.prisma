@@ -89,6 +89,12 @@ model AttendanceLog {
   punchType  String
   timestamp  DateTime  @default(now())
   checkOut   DateTime?
+  
+  // Track checkout source
+  checkOutDeviceId String?
+  isManualOut      Boolean @default(false)
+  isManualIn       Boolean @default(false)
+
   updatedAt  DateTime  @updatedAt
 
   otStatus          String  @default("PENDING")

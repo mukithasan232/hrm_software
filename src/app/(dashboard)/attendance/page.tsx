@@ -28,18 +28,29 @@ import MetricDetailsModal from '@/components/attendance/MetricDetailsModal';
 
 import { MonitorSmartphone, Globe, UserCog } from 'lucide-react';
 
-const PunchSourceBadge = ({ source }: { source?: string }) => {
-  const getPunchSourceDisplay = (sourceType: string = '') => {
-    const s = sourceType.toUpperCase();
-    if (s === 'DEVICE' || s === 'MACHINE' || s.startsWith('DEVICE')) return { text: 'Machine', icon: <MonitorSmartphone className="w-3 h-3" />, color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20' };
-    if (s === 'WEB') return { text: 'Web', icon: <Globe className="w-3 h-3" />, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
-    return { text: 'Manual Entry', icon: <UserCog className="w-3 h-3" />, color: 'text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20' };
-  };
+const PunchSourceBadge = ({ record }: { record?: any }) => {
+  if (!record) return null;
+  const isManual = record.inSource?.includes('Manual') || record.inSource === 'MANUAL_WEB';
 
-  const display = getPunchSourceDisplay(source);
+  if (isManual) {
+    return (
+      <span className="text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20 border text-[10px] px-1.5 py-0.5 rounded-md mt-1 font-semibold flex w-max items-center gap-1">
+        <UserCog className="w-3 h-3" /> Manual Entry
+      </span>
+    );
+  }
+
+  if (record.workMode === 'REMOTE') {
+    return (
+      <span className="text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20 border text-[10px] px-1.5 py-0.5 rounded-md mt-1 font-semibold flex w-max items-center gap-1">
+        <Globe className="w-3 h-3" /> Remote
+      </span>
+    );
+  }
+
   return (
-    <span className={`${display.color} border text-[10px] px-1.5 py-0.5 rounded-md mt-1 font-semibold flex w-max items-center gap-1`}>
-      {display.icon} {display.text}
+    <span className="text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/20 border text-[10px] px-1.5 py-0.5 rounded-md mt-1 font-semibold flex w-max items-center gap-1">
+      <MonitorSmartphone className="w-3 h-3" /> In-House
     </span>
   );
 };
@@ -109,8 +120,10 @@ function AttendancePageContent() {
   const [manualEntry, setManualEntry] = useState({
     employeeId: user?.employeeId || user?.id || '',
     punchType: 'CheckIn',
+    date: getBDToday(),
     timestamp: getBDNowLocal()
   });
+  const [isOverrideMode, setIsOverrideMode] = useState(false);
   const dateRange = searchParams.get('range') || 'today';
   const customStartDate = searchParams.get('startDate') || getBDToday();
   const customEndDate = searchParams.get('endDate') || getBDToday();
@@ -184,13 +197,13 @@ function AttendancePageContent() {
     fetchLogs();
   }, [dateRange, customStartDate, customEndDate, departmentFilter]);
 
-  const updateManualEntryForEmployee = (empId: string) => {
+  const updateManualEntryForEmployee = (empId: string, customDate?: string) => {
     let calculatedPunchType = 'CheckIn';
+    const targetDate = customDate || manualEntry.date || getBDToday();
     if (empId && logs) {
-      const today = getBDToday();
       const userLogsToday = logs.filter(log => {
         const logDate = toBDDisplay(log.timestamp, 'yyyy-MM-dd');
-        return (String(log.employeeId) === String(empId) || String(log.user?.employeeId) === String(empId)) && logDate === today;
+        return (String(log.employeeId) === String(empId) || String(log.user?.employeeId) === String(empId)) && logDate === targetDate;
       });
 
       userLogsToday.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -205,6 +218,7 @@ function AttendancePageContent() {
       ...prev,
       employeeId: empId,
       punchType: calculatedPunchType,
+      date: targetDate,
       timestamp: getBDNowLocal()
     }));
   };
@@ -264,7 +278,7 @@ function AttendancePageContent() {
     if (isAdminProxy) {
       setLoading(true);
       try {
-        await api.post('/attendance/manual', { employeeId: manualEntry.employeeId, punchType: manualEntry.punchType, locationAddress: 'Admin Manual Entry' });
+        await api.post('/attendance/manual', { employeeId: manualEntry.employeeId, punchType: manualEntry.punchType, locationAddress: 'Admin Manual Entry', date: manualEntry.date, isOverride: isOverrideMode });
         toast.success(t('manual_entry_success') || 'Manual entry added successfully');
         setIsModalOpen(false);
         fetchLogs();
@@ -295,7 +309,7 @@ function AttendancePageContent() {
           const { latitude, longitude } = position.coords;
           
           // Use purely the required fields, letting the backend handle the time
-          await api.post('/attendance/manual', { employeeId: manualEntry.employeeId, punchType: manualEntry.punchType, latitude, longitude });
+          await api.post('/attendance/manual', { employeeId: manualEntry.employeeId, punchType: manualEntry.punchType, latitude, longitude, date: manualEntry.date, isOverride: isOverrideMode });
           toast.dismiss('geo-fetch');
           toast.success(t('manual_entry_success') || 'Manual entry added successfully');
           setIsModalOpen(false);
@@ -314,7 +328,7 @@ function AttendancePageContent() {
           setLoading(false);
         } else {
           toast.error("Location unavailable. Proceeding with fallback mode.");
-          api.post('/attendance/manual', { employeeId: manualEntry.employeeId, punchType: manualEntry.punchType, locationAddress: 'Location Unavailable' })
+          api.post('/attendance/manual', { employeeId: manualEntry.employeeId, punchType: manualEntry.punchType, locationAddress: 'Location Unavailable', date: manualEntry.date, isOverride: isOverrideMode })
             .then(() => {
                toast.success(t('manual_entry_success') || 'Manual entry added successfully (Fallback)');
                setIsModalOpen(false);
@@ -615,7 +629,7 @@ function AttendancePageContent() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-slate-900 dark:text-white font-bold">{row?.employeeName}</span>
-                        <PunchSourceBadge source={row.inSource} />
+                        <PunchSourceBadge record={row} />
                       </div>
                     </td>
                     <td className="px-6 py-4 text-slate-900 dark:text-gray-200">
@@ -732,41 +746,79 @@ function AttendancePageContent() {
             </div>
             <form onSubmit={handleManualSubmit} className="px-4 sm:px-6 py-4 space-y-4 md:space-y-6">
               {isAdminUser && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('select_employee') || 'Select Employee'}</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500" />
-                  <CustomDropdown
-                    value={manualEntry.employeeId}
-                    onChange={(val) => updateManualEntryForEmployee(val)}
-                    placeholder={t('select_an_employee') || 'Select an employee...'}
-                    options={[
-                      ...(isAdminUser ? [{ value: '', label: t('select_an_employee') || 'Select an employee...' }] : []),
-                      ...employees.map(emp => ({ value: emp.employeeId, label: `${emp.name} (ID: ${emp.employeeId})` })),
-                      ...(!isAdminUser && !employees.find(e => e.employeeId === user?.employeeId) && user ? [{ value: user.employeeId, label: `${user.name} (ID: ${user.employeeId})` }] : [])
-                    ]}
-                    className="w-full bg-slate-50 dark:bg-black/40 border-slate-200 dark:border-white/10 pl-10"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('select_employee') || 'Select Employee'}</label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500" />
+                      <CustomDropdown
+                        value={manualEntry.employeeId}
+                        onChange={(val) => updateManualEntryForEmployee(val)}
+                        placeholder={t('select_an_employee') || 'Select an employee...'}
+                        options={[
+                          ...(isAdminUser ? [{ value: '', label: t('select_an_employee') || 'Select an employee...' }] : []),
+                          ...employees.map(emp => ({ value: emp.employeeId, label: `${emp.name} (ID: ${emp.employeeId})` })),
+                          ...(!isAdminUser && !employees.find(e => e.employeeId === user?.employeeId) && user ? [{ value: user.employeeId, label: `${user.name} (ID: ${user.employeeId})` }] : [])
+                        ]}
+                        className="w-full bg-slate-50 dark:bg-black/40 border-slate-200 dark:border-white/10 pl-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('date') || 'Date'}</label>
+                    <input 
+                      type="date"
+                      value={manualEntry.date}
+                      onChange={(e) => updateManualEntryForEmployee(manualEntry.employeeId, e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white"
+                    />
+                  </div>
                 </div>
-              </div>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('punchType') || 'Punch Type (Auto-Detected)'}</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      readOnly
-                      disabled
-                      value={manualEntry.punchType === 'CheckOut' ? "Check Out" : "Check In"}
-                      className="w-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-500 font-semibold cursor-not-allowed text-sm"
-                    />
-                    <Lock className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    System automatically determines the required punch type.
-                  </p>
+                  <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('punchType') || 'Punch Type'}</label>
+                  {!isOverrideMode ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        value={manualEntry.punchType === 'CheckOut' ? "Check Out" : "Check In"}
+                        className="w-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-500 font-semibold cursor-not-allowed text-sm"
+                      />
+                      <Lock className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    </div>
+                  ) : (
+                    <select
+                      value={manualEntry.punchType}
+                      onChange={(e) => setManualEntry({ ...manualEntry, punchType: e.target.value })}
+                      className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white"
+                    >
+                      <option value="CheckIn">Check In</option>
+                      <option value="CheckOut">Check Out</option>
+                    </select>
+                  )}
+                  {isAdminUser && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <input 
+                        type="checkbox" 
+                        id="overrideToggle" 
+                        checked={isOverrideMode}
+                        onChange={(e) => setIsOverrideMode(e.target.checked)}
+                        className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                      />
+                      <label htmlFor="overrideToggle" className="text-xs text-slate-500 font-medium cursor-pointer">
+                        Override System Auto-Detection
+                      </label>
+                    </div>
+                  )}
+                  {!isOverrideMode && !isAdminUser && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      System automatically determines the required punch type.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('time') || 'Time'}</label>
