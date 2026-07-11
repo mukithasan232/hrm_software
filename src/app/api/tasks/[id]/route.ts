@@ -95,23 +95,28 @@ export async function PATCH(
       // Trigger notification if status moved to PENDING
       if (status === 'PENDING' && task.status !== 'PENDING') {
         const safeTitle = updated.title.length > 50 ? updated.title.substring(0, 47) + '...' : updated.title;
-        // Notify the creator of the task, assuming they are an admin. Or notify all admins. 
-        // For simplicity, let's notify the creator if the creator is different from assignedTo.
-        if (updated.createdById && updated.createdById !== updated.assignedToId) {
-          const { eventEmitter } = await import('@/lib/eventEmitter');
-          const newNotification = await prisma.notification.create({
+        
+        // Find all admins
+        const allUsers = await prisma.user.findMany({ include: { roles: true } });
+        const admins = allUsers.filter(u => isAdmin(u));
+        
+        const { eventEmitter } = await import('@/lib/eventEmitter');
+        
+        const notifications = await Promise.all(admins.map(admin => 
+          prisma.notification.create({
             data: {
-              userId: updated.createdById,
+              userId: admin.id,
               titleEn: 'Task Pending Verification',
               titleBn: 'টাস্ক যাচাইয়ের জন্য পেন্ডিং',
-              messageEn: `Task "${safeTitle}" has been moved to Pending by the employee.`,
-              messageBn: `টাস্ক "${safeTitle}" পেন্ডিং অবস্থায় আনা হয়েছে।`,
+              messageEn: `${(mockReq.user as any)?.name || 'An employee'} has submitted task "${safeTitle}" for verification.`,
+              messageBn: `${(mockReq.user as any)?.name || 'An employee'} টাস্ক "${safeTitle}" যাচাইয়ের জন্য পেন্ডিং করেছেন।`,
               type: 'TASK',
               referenceId: task.id
             }
-          });
-          eventEmitter.emit('new-notification', newNotification);
-        }
+          })
+        ));
+        
+        notifications.forEach(n => eventEmitter.emit('new-notification', n));
       }
 
       return NextResponse.json(updated, { headers: getCorsHeaders() });

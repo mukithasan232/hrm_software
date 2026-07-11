@@ -31,9 +31,22 @@ const getAnalytics = async (req: any, res: any) => {
     const today = new Date();
     const analytics = [];
 
-    // Fetch distinct attendances grouped by day for the last 7 days
-    for (let i = 6; i >= 0; i--) {
-      const targetDate = subDays(today, i);
+    // Collect the last 6 working days (Mon–Sat), skipping Sunday (dayOfWeek === 0)
+    const WEEKEND_DAYS = [0]; // 0 = Sunday; add 6 for Saturday if needed
+    const workingDays: Date[] = [];
+    let daysBack = 0;
+    while (workingDays.length < 6) {
+      const candidate = subDays(today, daysBack);
+      const dow = candidate.getDay(); // 0 = Sun, 6 = Sat
+      if (!WEEKEND_DAYS.includes(dow)) {
+        workingDays.push(candidate);
+      }
+      daysBack++;
+      if (daysBack > 60) break; // safety guard
+    }
+    workingDays.reverse(); // oldest → newest
+
+    for (const targetDate of workingDays) {
       const dateStr = formatInTimeZone(targetDate, BD_TZ, 'yyyy-MM-dd');
       const startUTC = new Date(`${dateStr}T00:00:00+06:00`);
       const endUTC = new Date(`${dateStr}T23:59:59.999+06:00`);
@@ -57,8 +70,9 @@ const getAnalytics = async (req: any, res: any) => {
       const absent = totalEmployees - present;
 
       analytics.push({
-        date: formatInTimeZone(targetDate, BD_TZ, 'EEE'), // Mon, Tue
+        date: formatInTimeZone(targetDate, BD_TZ, 'EEE'), // Mon, Tue … Sat
         fullDate: dateStr,
+        dayOfWeek: targetDate.getDay(),
         present,
         absent: absent > 0 ? absent : 0
       });

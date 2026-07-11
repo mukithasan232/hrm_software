@@ -36,6 +36,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+// Days to exclude from the chart (0 = Sunday). Matches server-side WEEKEND_DAYS.
+const CHART_WEEKEND_DAYS = new Set([0]);
+
 export default function WeeklyChart({ chartData: initialData }: { chartData?: any[] }) {
   const [data, setData] = useState<any[]>(initialData || []);
   const [loading, setLoading] = useState(!initialData || initialData.length === 0);
@@ -53,10 +56,25 @@ export default function WeeklyChart({ chartData: initialData }: { chartData?: an
       }
     };
 
-    fetchData(); // Fetch immediately on mount
-    const interval = setInterval(fetchData, 10000); // 10s polling
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // ── Defensive client-side weekend filter ─────────────────────────────────
+  // Removes any Sunday (or configured weekend day) entries that may have slipped
+  // through from an older API response or a stale cache.
+  const filteredData = (data || []).filter(day => {
+    // If the API already sends dayOfWeek use it; otherwise re-derive from the
+    // three-letter label ("Sun" → skip).
+    if (typeof day.dayOfWeek === 'number') {
+      return !CHART_WEEKEND_DAYS.has(day.dayOfWeek);
+    }
+    // Fallback: label-based filter for safety
+    const WEEKEND_LABELS = new Set(['Sun']);
+    return !WEEKEND_LABELS.has(day.date);
+  });
+  // ─────────────────────────────────────────────────────────────────────────;
 
   if (loading) {
     return (
@@ -66,7 +84,7 @@ export default function WeeklyChart({ chartData: initialData }: { chartData?: an
     );
   }
 
-  if (!data || data.length === 0) {
+  if (!filteredData || filteredData.length === 0) {
     return <div className="flex h-[320px] items-center justify-center text-gray-400">No chart data available</div>;
   }
 
@@ -74,7 +92,7 @@ export default function WeeklyChart({ chartData: initialData }: { chartData?: an
     <div className="w-full">
       <ResponsiveContainer width="100%" height={320}>
         <AreaChart
-          data={data}
+          data={filteredData}
           margin={{ top: 15, right: 10, left: -20, bottom: 5 }}
         >
           <defs>

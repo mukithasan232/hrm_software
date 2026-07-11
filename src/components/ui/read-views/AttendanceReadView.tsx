@@ -319,7 +319,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">{session.duration || '--'}</div>
-                      {session.id && (
+                      {session.id && isAdmin && (
                         <button 
                           onClick={() => handleDeleteSession(session.id)}
                           disabled={isDeleting === session.id}

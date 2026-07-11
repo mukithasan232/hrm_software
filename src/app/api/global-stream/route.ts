@@ -20,6 +20,10 @@ function isAdmin(user: any): boolean {
 
 export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+
     const mockReq = await parseRequest(req);
 
     if (!mockReq.user) {
@@ -38,7 +42,7 @@ export async function GET(req: NextRequest) {
 
     // 1. Fetch recent tasks
     const tasksPromise = prisma.task.findMany({
-      take: 50,
+      take: 200,
       orderBy: { updatedAt: 'desc' },
       include: {
         assignedTo: { select: { name: true, profileImage: true } },
@@ -47,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Fetch recent attendance logs
     const attendancePromise = prisma.attendanceLog.findMany({
-      take: 50,
+      take: 200,
       orderBy: { timestamp: 'desc' },
       include: {
         user: { select: { name: true, profileImage: true } },
@@ -56,7 +60,7 @@ export async function GET(req: NextRequest) {
 
     // 3. Fetch recent leaves
     const leavesPromise = prisma.leave.findMany({
-      take: 50,
+      take: 200,
       orderBy: { updatedAt: 'desc' },
       include: {
         user: { select: { name: true, profileImage: true } },
@@ -118,8 +122,17 @@ export async function GET(req: NextRequest) {
     // Sort by timestamp descending
     streamItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // Return top 100 records max
-    return NextResponse.json(streamItems.slice(0, 100), { headers: getCorsHeaders() });
+    // Calculate Pagination
+    const totalRecords = streamItems.length;
+    const totalPages = Math.ceil(totalRecords / limit);
+    
+    // Slice for the requested page
+    const paginatedData = streamItems.slice((page - 1) * limit, page * limit);
+
+    return NextResponse.json({
+      data: paginatedData,
+      meta: { currentPage: page, totalPages, totalRecords }
+    }, { headers: getCorsHeaders() });
 
   } catch (error: any) {
     console.error('GLOBAL_STREAM_ERROR:', error);

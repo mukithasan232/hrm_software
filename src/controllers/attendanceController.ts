@@ -886,6 +886,47 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     }
     // ----------------------
 
+    // --- General Punch Notification (CheckIn / CheckOut) ---
+    try {
+      const punchLabel = punchType === 'CheckIn' ? 'checked in' : 'checked out';
+      const punchLabelBn = punchType === 'CheckIn' ? 'চেক-ইন করেছেন' : 'চেক-আউট করেছেন';
+      const nowBD = new Date().toLocaleTimeString('en-BD', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dhaka', hour12: true });
+
+      const adminsForPunch = await prisma.user.findMany({
+        where: {
+          OR: [
+            { designation: { contains: 'Admin' } },
+            { designation: { contains: 'admin' } },
+            { designation: { contains: 'HR' } },
+            { designation: { contains: 'hr' } },
+            { customDesignation: { name: { contains: 'Admin' } } },
+            { customDesignation: { name: { contains: 'admin' } } },
+            { customDesignation: { name: { contains: 'HR' } } },
+            { roles: { some: { name: { contains: 'Admin' } } } }
+          ]
+        },
+        select: { id: true }
+      });
+
+      for (const admin of adminsForPunch) {
+        const punchNotif = await prisma.notification.create({
+          data: {
+            userId: admin.id,
+            titleEn: punchType === 'CheckIn' ? 'Employee Check-In' : 'Employee Check-Out',
+            titleBn: punchType === 'CheckIn' ? 'কর্মচারী চেক-ইন' : 'কর্মচারী চেক-আউট',
+            messageEn: `${user.name} ${punchLabel} at ${nowBD}.`,
+            messageBn: `${user.name} ${nowBD} তে ${punchLabelBn}।`,
+            type: 'ATTENDANCE',
+            referenceId: log.id
+          }
+        });
+        eventEmitter.emit('new-notification', punchNotif);
+      }
+    } catch (notifErr) {
+      console.error('[Punch Notification Error]:', notifErr);
+    }
+    // -------------------------------------------------------
+
     // Trigger instant global state update for connected Dashboards
     eventEmitter.emit('attendanceUpdate', log);
     eventEmitter.emit('new-attendance', log);

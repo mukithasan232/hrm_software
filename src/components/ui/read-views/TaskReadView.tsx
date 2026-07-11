@@ -100,7 +100,7 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
           <div className="flex flex-wrap items-center gap-3">
             <button className={`px-4 py-1.5 text-xs font-bold rounded-md border uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors ${getStatusColor(task.status)}`}>
               {task.status === 'COMPLETED' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-              {task.status?.replace('_', ' ')}
+              {task.status === 'PENDING' ? 'PENDING VERIFICATION' : task.status?.replace('_', ' ')}
             </button>
             <button className={`px-4 py-1.5 text-xs font-bold rounded-md border uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors ${getPriorityColor(task.priority)}`}>
               <AlertCircle className="w-4 h-4" />

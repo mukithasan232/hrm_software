@@ -152,11 +152,13 @@ export default function DashboardOverview() {
         
         if (currentUserData) {
           const shiftStart = 
+            (currentUserData as any)?.remoteShiftStartTime ||
             (currentUserData as any)?.shift?.startTime || 
             (currentUserData as any)?.shiftStartTime || 
             (currentUserData as any)?.customDepartment?.shiftStartTime;
           
           const shiftEnd = 
+            (currentUserData as any)?.remoteShiftEndTime ||
             (currentUserData as any)?.shift?.endTime || 
             (currentUserData as any)?.shiftEndTime || 
             (currentUserData as any)?.customDepartment?.shiftEndTime;

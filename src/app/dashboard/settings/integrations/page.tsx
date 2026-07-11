@@ -1,6 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import grapesjs from 'grapesjs';
+import grapesjsNewsletter from 'grapesjs-preset-newsletter';
+import 'grapesjs/dist/css/grapes.min.css';
 import {
   Mail, Save, Loader2, Send,
   Server, User, Lock, Globe, CheckCircle2, AlertCircle, Shield, Network, Plug, ArrowLeft
@@ -532,13 +535,38 @@ function TemplatesTab() {
   const [selectedType, setSelectedType] = useState('WELCOME_EMAIL');
   const [subject, setSubject] = useState('Welcome to the Team!');
   const [isSaving, setIsSaving] = useState(false);
-  const [htmlContent, setHtmlContent] = useState('');
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [editorInstance, setEditorInstance] = useState<any>(null);
 
   const TEMPLATE_TYPES = [
     { value: 'WELCOME_EMAIL', label: 'Welcome Email' },
     { value: 'LEAVE_UPDATE', label: 'Leave Update Email' },
     { value: 'HR_NOTIFICATION', label: 'HR Notification Email' }
   ];
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+    
+    // Check if grapesjs is available
+    if (typeof window !== 'undefined' && grapesjs) {
+      const editor = grapesjs.init({
+        container: editorRef.current,
+        height: '700px',
+        width: '100%',
+        plugins: [grapesjsNewsletter as any],
+        pluginsOpts: {
+          [grapesjsNewsletter as any]: {}
+        },
+        storageManager: false,
+      });
+      
+      setEditorInstance(editor);
+
+      return () => {
+        editor.destroy();
+      };
+    }
+  }, []);
 
   useEffect(() => {
     const fetchTemplate = async () => {
@@ -548,25 +576,41 @@ function TemplatesTab() {
         
         if (data) {
           setSubject(data.subject || '');
-          setHtmlContent(data.body || '');
+          if (editorInstance) {
+            editorInstance.setComponents(data.body || '');
+          }
         } else {
           setSubject('');
-          setHtmlContent('');
+          if (editorInstance) {
+            editorInstance.setComponents('');
+          }
         }
       } catch (err) {
         console.error('Failed to load template', err);
       }
     };
-    fetchTemplate();
-  }, [selectedType]);
+
+    // Only fetch if editorInstance is ready to ensure we can set components
+    if (editorInstance) {
+      fetchTemplate();
+    }
+  }, [selectedType, editorInstance]);
 
   const handleSave = async () => {
+    if (!editorInstance) return;
     setIsSaving(true);
+    
+    const html = editorInstance.getHtml();
+    const css = editorInstance.getCss();
+    
+    // Combine CSS and HTML for the email
+    const finalHtml = `<style>${css}</style>${html}`;
+    
     try {
       await api.post('/settings/email/templates', {
         type: selectedType,
         subject,
-        body: htmlContent,
+        body: finalHtml,
         designJson: null
       });
       toast.success('Template saved successfully!');
@@ -615,39 +659,16 @@ function TemplatesTab() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[750px]">
-        {/* Code Editor */}
-        <div className="flex flex-col bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
-          <div className="bg-slate-800 px-4 py-2 border-b border-slate-700 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Raw HTML Code</span>
-          </div>
-          <textarea
-            value={htmlContent}
-            onChange={(e) => setHtmlContent(e.target.value)}
-            className="flex-1 w-full p-4 bg-transparent text-emerald-400 font-mono text-sm focus:outline-none resize-none leading-relaxed"
-            placeholder="<html><body>...</body></html>"
-            spellCheck="false"
-          />
-        </div>
+      {/* Placeholders Banner */}
+      <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3 flex items-center justify-between mt-4">
+        <span className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
+          <strong>Available placeholders:</strong> {'{name}'}, {'{email}'}, {'{designation}'}, {'{company_name}'}
+        </span>
+      </div>
 
-        {/* Live Preview */}
-        <div className="flex flex-col bg-slate-200 dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 shadow-2xl">
-          <div className="bg-slate-300 dark:bg-slate-700 px-4 py-2 border-b border-slate-400 dark:border-slate-600 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Preview</span>
-          </div>
-          <div className="flex-1 w-full bg-white overflow-y-auto p-4 md:p-8">
-            {htmlContent ? (
-              <div 
-                className="w-full h-full max-w-full preview-container"
-                dangerouslySetInnerHTML={{ __html: htmlContent }} 
-              />
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                <span className="text-sm">Start typing HTML to see the preview.</span>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* GrapesJS Editor */}
+      <div className="w-full h-[700px] border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl bg-white">
+        <div ref={editorRef} className="w-full h-full"></div>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { useBrand } from '@/context/BrandContext';
 import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X, Loader2 } from 'lucide-react';
 import api from '@/services/api';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { CustomDropdown } from '@/components/ui/CustomDropdown';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateUtils';
@@ -457,17 +458,16 @@ function AttendancePageContent() {
             <Plus className="w-4 h-4" /> {t('manualEntry')}
           </button>
           
-          <select 
+          <CustomDropdown 
             value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            disabled={syncing || departmentsLoading}
-            className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium w-full md:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <option value="all">{departmentsLoading ? 'Loading...' : 'All Departments'}</option>
-            {departments.map((dept) => (
-              <option key={dept.id} value={dept.id}>{dept.name}</option>
-            ))}
-          </select>
+            onChange={(val) => setDepartmentFilter(val)}
+            placeholder={departmentsLoading ? 'Loading...' : 'All Departments'}
+            options={[
+              { value: 'all', label: 'All Departments' },
+              ...departments.map((dept) => ({ value: dept.id, label: dept.name }))
+            ]}
+            className="w-full md:w-auto bg-slate-100 dark:bg-white/10 border-slate-200 dark:border-white/10 !py-2"
+          />
 
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
             <DateRangePicker 
@@ -724,21 +724,17 @@ function AttendancePageContent() {
                   <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('select_employee') || 'Select Employee'}</label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-gray-500" />
-                  <select 
-                    required
-                    disabled={!canCreateAll}
-                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none font-semibold disabled:opacity-75 disabled:cursor-not-allowed"
+                  <CustomDropdown
                     value={manualEntry.employeeId}
-                    onChange={(e) => updateManualEntryForEmployee(e.target.value)}
-                  >
-                    {isAdminUser && <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('select_an_employee') || 'Select an employee...'}</option>}
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.employeeId} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{emp.name} (ID: {emp.employeeId})</option>
-                    ))}
-                    {!isAdminUser && !employees.find(e => e.employeeId === user?.employeeId) && (
-                      <option value={user?.employeeId} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{user?.name} (ID: {user?.employeeId})</option>
-                    )}
-                  </select>
+                    onChange={(val) => updateManualEntryForEmployee(val)}
+                    placeholder={t('select_an_employee') || 'Select an employee...'}
+                    options={[
+                      ...(isAdminUser ? [{ value: '', label: t('select_an_employee') || 'Select an employee...' }] : []),
+                      ...employees.map(emp => ({ value: emp.employeeId, label: `${emp.name} (ID: ${emp.employeeId})` })),
+                      ...(!isAdminUser && !employees.find(e => e.employeeId === user?.employeeId) && user ? [{ value: user.employeeId, label: `${user.name} (ID: ${user.employeeId})` }] : [])
+                    ]}
+                    className="w-full bg-slate-50 dark:bg-black/40 border-slate-200 dark:border-white/10 pl-10"
+                  />
                 </div>
               </div>
               )}
@@ -746,15 +742,15 @@ function AttendancePageContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('punchType') || 'Punch Type'}</label>
-                  <select 
-                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none font-semibold disabled:opacity-75 disabled:cursor-not-allowed"
+                  <CustomDropdown
                     value={manualEntry.punchType}
-                    onChange={(e) => setManualEntry({...manualEntry, punchType: e.target.value})}
-                    disabled={!isAdminUser}
-                  >
-                    <option value="CheckIn" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('checkIn') || 'Check In'}</option>
-                    <option value="CheckOut" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">{t('checkOut') || 'Check Out'}</option>
-                  </select>
+                    onChange={(val) => setManualEntry({...manualEntry, punchType: val})}
+                    options={[
+                      { value: 'CheckIn', label: t('checkIn') || 'Check In' },
+                      { value: 'CheckOut', label: t('checkOut') || 'Check Out' }
+                    ]}
+                    className="w-full bg-slate-50 dark:bg-black/40 border-slate-200 dark:border-white/10"
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-650 dark:text-gray-400">{t('time') || 'Time'}</label>

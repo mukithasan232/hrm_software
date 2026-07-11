@@ -84,27 +84,8 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
     return t('header.goodEvening' as any);
   };
 
-  const playNotificationSound = (type?: string) => {
-    let filename = 'notification.mp3';
-    switch (type?.toUpperCase()) {
-      case 'ATTENDANCE':
-        filename = 'chime.mp3';
-        break;
-      case 'TASK':
-        filename = 'ding.mp3'; // or bell.mp3
-        break;
-      case 'LEAVE':
-        filename = 'swoosh.mp3';
-        break;
-      case 'ANNOUNCEMENT':
-        filename = 'bell.mp3';
-        break;
-      default:
-        filename = 'notification.mp3';
-        break;
-    }
-
-    const audio = new Audio(`/sounds/${filename}`); 
+  const playNotificationSound = (_type?: string) => {
+    const audio = new Audio('/sounds/notify.mp3');
     audio.play().catch((error) => {
       console.warn('Browser autoplay policy blocked the notification sound:', error);
     });

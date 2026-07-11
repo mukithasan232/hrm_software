@@ -464,20 +464,9 @@ export const MyPunchesWidget = ({ isCompact, data }: { isCompact: boolean, data:
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
           {isAdmin ? t("liveActivity") : "My Punches"}
         </h3>
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 w-full sm:w-auto">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value || getBDToday())}
-              className="bg-transparent text-slate-800 dark:text-white text-sm focus:outline-none cursor-pointer font-medium w-full sm:w-32"
-              title="Select date to view punches"
-            />
-          </div>
-          <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-500 font-bold px-2 py-1.5 bg-emerald-500/10 rounded-lg w-full sm:w-auto text-center">
-            {selectedDate === getBDToday() ? t("realTime") : "Historical"}
-          </span>
-        </div>
+        <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-500 font-bold px-2 py-1.5 bg-emerald-500/10 rounded-lg">
+          {t("realTime")}
+        </span>
       </div>
 
       <div className="space-y-4 flex-1">
@@ -552,7 +541,7 @@ export const WeeklyAttendanceWidget = ({ isCompact, data }: { isCompact: boolean
           <h3 className="text-base font-bold text-slate-800 dark:text-white">
             {isAdmin ? "Weekly Attendance" : "My Weekly Attendance"}
           </h3>
-          <p className="text-[10px] text-slate-400 dark:text-gray-500 font-medium">Mon – Sat (Sun excluded)</p>
+          <p className="text-[10px] text-slate-400 dark:text-gray-500 font-medium">Mon – Sat · Working days only</p>
         </div>
       </div>
       <div className="w-full relative">

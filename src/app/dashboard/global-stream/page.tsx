@@ -18,15 +18,25 @@ type StreamItem = {
 export default function GlobalStreamPage() {
   const [stream, setStream] = useState<StreamItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const loadingRef = useRef(false);
 
-  const fetchStream = async (silent = false) => {
+  const fetchStream = async (pageToFetch = currentPage, silent = false) => {
     if (loadingRef.current) return;
     try {
       if (!silent) setLoading(true);
       loadingRef.current = true;
-      const res = await api.get('/global-stream');
-      if (res.data) setStream(res.data);
+      const res = await api.get(`/global-stream?page=${pageToFetch}&limit=10`);
+      if (res.data && res.data.data) {
+        setStream(res.data.data);
+        if (res.data.meta) {
+          setTotalPages(res.data.meta.totalPages || 1);
+        }
+      } else if (res.data) {
+        // Fallback if API hasn't updated yet
+        setStream(Array.isArray(res.data) ? res.data : []);
+      }
     } catch (err) {
       console.error('Error fetching global stream:', err);
     } finally {
@@ -36,11 +46,17 @@ export default function GlobalStreamPage() {
   };
 
   useEffect(() => {
-    fetchStream();
+    fetchStream(currentPage);
     // Poll every 15 seconds
-    const intervalId = setInterval(() => fetchStream(true), 15000);
+    const intervalId = setInterval(() => fetchStream(currentPage, true), 15000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [currentPage]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -139,6 +155,55 @@ export default function GlobalStreamPage() {
               ))}
             </div>
           )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-12 mb-8">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Previous
+              </button>
+
+              <div className="flex items-center gap-1 mx-2">
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const page = idx + 1;
+                  // Simple truncation for many pages
+                  if (totalPages > 7) {
+                    if (page !== 1 && page !== totalPages && Math.abs(page - currentPage) > 1) {
+                      if (page === 2 || page === totalPages - 1) return <span key={page} className="px-2 text-slate-400">...</span>;
+                      return null;
+                    }
+                  }
+                  
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`w-9 h-9 flex items-center justify-center text-sm font-bold rounded-lg transition-colors ${
+                        currentPage === page
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
     </PageGuard>

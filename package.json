@@ -47,6 +47,8 @@
     "eslint-config-next": "16.2.6",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "grapesjs": "^0.23.2",
+    "grapesjs-preset-newsletter": "^1.0.2",
     "html2canvas": "^1.4.1",
     "html2canvas-pro": "^2.0.4",
     "js-cookie": "^3.0.5",

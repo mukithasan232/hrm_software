@@ -5,11 +5,9 @@ import { formatDistanceToNow, format } from 'date-fns';
 import {
   DragDropContext, Droppable, Draggable, DropResult,
 } from '@hello-pangea/dnd';
-import {
-  Plus, LayoutList, Columns3, Search, X, Loader2, Pencil, Trash2,
-  CalendarDays, User as UserIcon, ChevronDown, Flag, AlertTriangle,
-  CheckCircle2, Clock, Circle, Hourglass, Paperclip, CheckSquare, BarChart3
-} from 'lucide-react';
+import { UploadCloud, File, Trash, Edit3, X, Paperclip, MessageSquare, AlertCircle, Clock, CheckCircle2, ChevronDown, Hourglass, Plus, Filter, Search, Circle, LayoutDashboard, LayoutList, Pencil, Trash2, CalendarDays, User as UserIcon, Flag, AlertTriangle, BarChart3, Loader2, CheckSquare } from 'lucide-react';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { CustomDropdown } from '@/components/ui/CustomDropdown';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -58,7 +56,7 @@ interface Task {
 const STATUS_COLUMNS: { key: TaskStatus; label: string; color: string; bg: string; border: string; icon: any }[] = [
   { key: 'TODO',        label: 'To Do',       color: 'text-slate-400',   bg: 'bg-slate-500/10',   border: 'border-slate-500/20',   icon: Circle       },
   { key: 'IN_PROGRESS', label: 'In Progress', color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    icon: Clock        },
-  { key: 'PENDING',     label: 'Pending',     color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   icon: Hourglass    },
+  { key: 'PENDING',     label: 'Pending Verification',     color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   icon: Hourglass    },
   { key: 'COMPLETED',   label: 'Completed',   color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: CheckCircle2 },
 ];
 
@@ -175,7 +173,7 @@ function CustomSelect({
         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </div>
       {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden py-1 max-h-60 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900/90 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 py-1 max-h-60 overflow-y-auto overflow-hidden">
           {options.map((opt) => (
             <div
               key={opt.value}
@@ -215,11 +213,23 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
   const canUpdateWorkerFields = !isReadOnly || task?.assignedToId === currentUserId;
   const canEditStatus = canUpdateWorkerFields;
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+  const handlePaste = (e: React.ClipboardEvent<HTMLElement>) => {
     if (e.clipboardData.files && e.clipboardData.files.length > 0) {
       const file = e.clipboardData.files[0];
       setAttachment(file);
       toast.success(`Attached ${file.name} from clipboard`);
+    } else if (e.clipboardData.items) {
+      const items = Array.from(e.clipboardData.items);
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            setAttachment(file);
+            toast.success('Attached pasted image');
+            break;
+          }
+        }
+      }
     }
   };
 
@@ -279,7 +289,7 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+        <form onSubmit={handleSubmit} onPaste={handlePaste} className="flex flex-col flex-1 overflow-hidden">
           <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           {/* Title */}
           <div>
@@ -305,7 +315,6 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
               placeholder="Optional task description..."
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
-              onPaste={handlePaste}
               disabled={!canUpdateWorkerFields}
             />
           </div>
@@ -749,11 +758,11 @@ export default function TasksPage() {
         const yesterday = new Date(now);
         yesterday.setDate(yesterday.getDate() - 1);
         matchDate = taskDate.toDateString() === yesterday.toDateString();
-      } else if (dateFilter === 'week') {
+      } else if (dateFilter === 'this_week') {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         matchDate = taskDate >= sevenDaysAgo;
-      } else if (dateFilter === 'month') {
+      } else if (dateFilter === 'this_month') {
         matchDate = taskDate.getMonth() === now.getMonth() && taskDate.getFullYear() === now.getFullYear();
       } else if (dateFilter === 'custom' && customStartDate && customEndDate) {
         const start = new Date(customStartDate);
@@ -819,50 +828,62 @@ export default function TasksPage() {
           </div>
 
           {/* Status filter */}
-          <div className="relative">
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className={selectCls}>
-              <option value="ALL">All Statuses</option>
-              {STATUS_COLUMNS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <div className="relative w-48">
+            <CustomDropdown
+              value={statusFilter}
+              onChange={(val) => setStatusFilter(val as any)}
+              options={[
+                { value: 'ALL', label: 'All Statuses' },
+                ...STATUS_COLUMNS.map(c => ({ value: c.key, label: c.label }))
+              ]}
+              className="bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 !py-2.5"
+            />
           </div>
 
           {/* Employee filter */}
           {(canEditTasks || isAdminUser) && (
-            <div className="relative">
-              <select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} className={selectCls}>
-                <option value="ALL">All Employees</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            <div className="relative w-48">
+              <CustomDropdown
+                value={employeeFilter}
+                onChange={(val) => setEmployeeFilter(val)}
+                options={[
+                  { value: 'ALL', label: 'All Employees' },
+                  ...employees.map(e => ({ value: e.id, label: e.name }))
+                ]}
+                className="bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 !py-2.5"
+              />
             </div>
           )}
 
           {/* Priority filter */}
-          <div className="relative">
-            <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value as any)} className={selectCls}>
-              <option value="ALL">All Priorities</option>
-              {Object.entries(PRIORITY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <div className="relative w-48">
+            <CustomDropdown
+              value={priorityFilter}
+              onChange={(val) => setPriorityFilter(val as any)}
+              options={[
+                { value: 'ALL', label: 'All Priorities' },
+                ...Object.entries(PRIORITY_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))
+              ]}
+              className="bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 !py-2.5"
+            />
           </div>
 
           {/* Date filter */}
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
-              <select 
-                value={dateFilter} 
-                onChange={e => setDateFilter(e.target.value)} 
-                className={selectCls}
-              >
-                <option value="all">All Time</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="week">Last 7 Days</option>
-                <option value="month">This Month</option>
-                <option value="custom">Custom Range</option>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            <div className="relative w-40">
+              <CustomDropdown
+                value={dateFilter}
+                onChange={(val) => setDateFilter(val)}
+                options={[
+                  { value: 'all', label: 'All Time' },
+                  { value: 'today', label: 'Today' },
+                  { value: 'yesterday', label: 'Yesterday' },
+                  { value: 'week', label: 'Last 7 Days' },
+                  { value: 'month', label: 'This Month' },
+                  { value: 'custom', label: 'Custom Range' }
+                ]}
+                className="bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 !py-2.5"
+              />
             </div>
 
             {dateFilter === 'custom' && (

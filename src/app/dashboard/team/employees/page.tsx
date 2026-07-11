@@ -367,7 +367,7 @@ export default function EmployeesPage() {
                   <span className="px-2.5 py-1 bg-slate-100 dark:bg-black/30 text-[10px] uppercase tracking-wider rounded-lg text-slate-500 dark:text-gray-400 font-bold border border-slate-200 dark:border-white/5">
                     {emp.employeeId}
                   </span>
-                  {emp.verificationStatus === 'PENDING_VERIFICATION' && (
+                  {(emp.verificationStatus !== 'ACTIVE') && (
                     <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 text-[9px] uppercase tracking-wider rounded font-bold border border-amber-200 dark:border-amber-500/30">
                       Pending Verif.
                     </span>
