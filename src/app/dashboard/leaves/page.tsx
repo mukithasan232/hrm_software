@@ -372,12 +372,6 @@ export default function LeavesPage() {
             {canManage ? 'Review and manage all employee leave requests.' : 'Submit a new leave request and track your history.'}
           </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-200 dark:border-indigo-500/20 rounded-2xl">
-          <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          <span className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
-            {getRemainingLeaves()} Days Remaining
-          </span>
-        </div>
       </div>
 
       {/* ── 2-Column Grid ── */}
