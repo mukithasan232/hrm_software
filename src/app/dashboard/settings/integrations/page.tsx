@@ -11,17 +11,6 @@ import api from '@/services/api';
 import { useTranslation } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
-
-const EmailEditor = dynamic(() => import('react-email-editor').then((mod) => mod.EmailEditor), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[700px] w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl animate-pulse">
-      <div className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-      <span className="text-slate-400 font-medium tracking-wide">Loading Drag & Drop Editor...</span>
-    </div>
-  )
-});
 
 // ─── Shared input / label styles ─────────────────────────────────────────────
 const inputCls =
@@ -543,7 +532,7 @@ function TemplatesTab() {
   const [selectedType, setSelectedType] = useState('WELCOME_EMAIL');
   const [subject, setSubject] = useState('Welcome to the Team!');
   const [isSaving, setIsSaving] = useState(false);
-  const editorRef = React.useRef<any>(null);
+  const [htmlContent, setHtmlContent] = useState('');
 
   const TEMPLATE_TYPES = [
     { value: 'WELCOME_EMAIL', label: 'Welcome Email' },
@@ -559,9 +548,10 @@ function TemplatesTab() {
         
         if (data) {
           setSubject(data.subject || '');
-          if (data.designJson && editorRef.current?.editor) {
-            editorRef.current.editor.loadDesign(data.designJson);
-          }
+          setHtmlContent(data.body || '');
+        } else {
+          setSubject('');
+          setHtmlContent('');
         }
       } catch (err) {
         console.error('Failed to load template', err);
@@ -570,28 +560,22 @@ function TemplatesTab() {
     fetchTemplate();
   }, [selectedType]);
 
-  const handleSave = () => {
-    if (!editorRef.current?.editor) return;
+  const handleSave = async () => {
     setIsSaving(true);
-
-    editorRef.current.editor.exportHtml(async (data: any) => {
-      const { design, html } = data;
-
-      try {
-        await api.post('/settings/email/templates', {
-          type: selectedType,
-          subject,
-          body: html,
-          designJson: design
-        });
-        toast.success('Template saved successfully!');
-      } catch (error) {
-        console.error('Error saving:', error);
-        toast.error('Failed to save template.');
-      } finally {
-        setIsSaving(false);
-      }
-    });
+    try {
+      await api.post('/settings/email/templates', {
+        type: selectedType,
+        subject,
+        body: htmlContent,
+        designJson: null
+      });
+      toast.success('Template saved successfully!');
+    } catch (error) {
+      console.error('Error saving:', error);
+      toast.error('Failed to save template.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -631,23 +615,39 @@ function TemplatesTab() {
         </button>
       </div>
 
-      <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl h-[750px] bg-slate-50 dark:bg-slate-900">
-        <EmailEditor
-          ref={editorRef}
-          options={{
-            projectId: 0,
-            appearance: {
-              theme: 'dark',
-              panels: { tools: { dock: 'right' } }
-            },
-            mergeTags: {
-              name: { name: 'Employee Name', value: '{{name}}' },
-              messageBody: { name: 'Message Body', value: '{{messageBody}}' },
-              title: { name: 'Title', value: '{{title}}' },
-              currentYear: { name: 'Current Year', value: '{{currentYear}}' }
-            }
-          }}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[750px]">
+        {/* Code Editor */}
+        <div className="flex flex-col bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
+          <div className="bg-slate-800 px-4 py-2 border-b border-slate-700 flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Raw HTML Code</span>
+          </div>
+          <textarea
+            value={htmlContent}
+            onChange={(e) => setHtmlContent(e.target.value)}
+            className="flex-1 w-full p-4 bg-transparent text-emerald-400 font-mono text-sm focus:outline-none resize-none leading-relaxed"
+            placeholder="<html><body>...</body></html>"
+            spellCheck="false"
+          />
+        </div>
+
+        {/* Live Preview */}
+        <div className="flex flex-col bg-slate-200 dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 shadow-2xl">
+          <div className="bg-slate-300 dark:bg-slate-700 px-4 py-2 border-b border-slate-400 dark:border-slate-600 flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Live Preview</span>
+          </div>
+          <div className="flex-1 w-full bg-white overflow-y-auto p-4 md:p-8">
+            {htmlContent ? (
+              <div 
+                className="w-full h-full max-w-full preview-container"
+                dangerouslySetInnerHTML={{ __html: htmlContent }} 
+              />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                <span className="text-sm">Start typing HTML to see the preview.</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
