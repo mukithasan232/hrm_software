@@ -16,8 +16,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         router.replace('/login');
       } else {
         const hasSettingsPermission = user?.email === 'dev@fixanyphoto.com' ||
-          user?.role === 'SUPER_ADMIN' ||
-          user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN') ||
+          (user as any)?.role === 'SUPER_ADMIN' ||
+          (user as any)?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN') ||
           checkPermission(user, 'manage_system_settings', 'view');
 
         if (!hasSettingsPermission) {
@@ -37,8 +37,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   }
 
   const hasSettingsPermission = user?.email === 'dev@fixanyphoto.com' ||
-    user?.role === 'SUPER_ADMIN' ||
-    user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN') ||
+    (user as any)?.role === 'SUPER_ADMIN' ||
+    (user as any)?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN') ||
     checkPermission(user, 'manage_system_settings', 'view');
 
   if (!hasSettingsPermission) {

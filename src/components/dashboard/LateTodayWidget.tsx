@@ -8,7 +8,7 @@ interface LateEmployee {
   id: string;
   name: string;
   avatar: string | null;
-  designation: string;
+  designation: any;
   lateMinutes: number;
 }
 

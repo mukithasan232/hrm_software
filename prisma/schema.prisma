@@ -57,6 +57,8 @@ model Department {
   description     String?
   shiftStartTime  String   @default("09:00")
   shiftEndTime    String   @default("17:00")
+  remoteShiftStartTime String?
+  remoteShiftEndTime   String?
   lunchStartTime  String?
   lunchEndTime    String?
   snacksStartTime String?
@@ -68,9 +70,11 @@ model Department {
 
 model Shift {
   id        String   @id @default(cuid())
-  name      String   @unique
-  startTime String
-  endTime   String
+  name                 String   @unique
+  startTime            String
+  endTime              String
+  remoteShiftStartTime String?
+  remoteShiftEndTime   String?
   users     User[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

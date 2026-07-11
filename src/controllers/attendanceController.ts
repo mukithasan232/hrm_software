@@ -809,7 +809,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
           employeeId: user.id,
           timestamp: parsedDate,
           punchType,
-          deviceId: 'Manual Entry',
+          deviceId: 'MANUAL_WEB',
           latitude,
           longitude,
           locationAddress,
@@ -823,8 +823,8 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     // --- Late Detection ---
     if (punchType === 'CheckIn') {
       let expectedShiftStart = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
-      if (log && log.workMode === 'REMOTE') {
-         expectedShiftStart = user.remoteShiftStartTime || expectedShiftStart;
+      if (log && (log.workMode === 'REMOTE' || log.deviceId === 'MANUAL_WEB')) {
+         expectedShiftStart = user.shift?.remoteShiftStartTime || user.remoteShiftStartTime || user.customDepartment?.remoteShiftStartTime || expectedShiftStart;
       }
       const checkInLocalStr = formatInTimeZone(parsedDate, BD_TZ, 'yyyy-MM-dd');
       const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;

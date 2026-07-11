@@ -30,8 +30,9 @@ export async function GET() {
             designation: true,
             customDesignation: { select: { name: true } },
             shiftStartTime: true,
-            shift: { select: { startTime: true } },
-            customDepartment: { select: { shiftStartTime: true } }
+            remoteShiftStartTime: true,
+            shift: { select: { startTime: true, remoteShiftStartTime: true } },
+            customDepartment: { select: { shiftStartTime: true, remoteShiftStartTime: true } }
           }
         }
       },
@@ -51,7 +52,11 @@ export async function GET() {
       }
       processedEmployees.add(log.employeeId);
 
-      const expectedShiftStart = log.user.shift?.startTime || log.user.shiftStartTime || log.user.customDepartment?.shiftStartTime || '09:00';
+      let expectedShiftStart = log.user.shift?.startTime || log.user.shiftStartTime || log.user.customDepartment?.shiftStartTime || '09:00';
+      if (log.workMode === 'REMOTE' || log.deviceId === 'MANUAL_WEB') {
+        expectedShiftStart = log.user.shift?.remoteShiftStartTime || log.user.remoteShiftStartTime || log.user.customDepartment?.remoteShiftStartTime || expectedShiftStart;
+      }
+
       const checkInLocalStr = formatInTimeZone(log.timestamp, BD_TZ, 'yyyy-MM-dd');
       const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;
       const shiftStartUTC = new Date(shiftStartLocalStr);
