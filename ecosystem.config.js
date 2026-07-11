@@ -13,12 +13,11 @@ module.exports = {
     },
     {
       name: 'zk-worker',
-      script: 'node',
-      args: 'dist/workers/zk-sync-worker.js',
+      script: 'dist/workers/zk-sync-worker.js',
       instances: 1, // Must be 1 to prevent multiple UDP port bindings
       exec_mode: 'fork',
       autorestart: true,
-      max_memory_restart: '256M', // Restart worker if memory exceeds 256MB
+      max_memory_restart: '256M',
       env: {
         NODE_ENV: 'production'
       }
