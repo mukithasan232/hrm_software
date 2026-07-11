@@ -9,8 +9,6 @@ import dynamic from 'next/dynamic';
 const WeeklyChart = dynamic(() => import('@/components/charts/WeeklyChart'), { ssr: false });
 const LateTodayWidget = dynamic(() => import('@/components/dashboard/LateTodayWidget'), { ssr: false });
 import { BreakCountdownWidget } from '@/components/dashboard/BreakCountdownWidget';
-import { GlobalStreamWidget } from '@/components/dashboard/widgets/GlobalStreamWidget';
-
 export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
   const { t } = useTranslation();
   const { isAdmin, stats, loading, punchStatus, latestPunch, assignedShift, todayWorkingHours } = data;
@@ -604,5 +602,4 @@ export const WidgetMap: Record<string, React.FC<any>> = {
   'weekly-attendance': WeeklyAttendanceWidget,
   'late-today': LateTodayWidgetWrapper,
   'break-countdown': BreakCountdownWidget,
-  'global-stream': GlobalStreamWidget,
 };

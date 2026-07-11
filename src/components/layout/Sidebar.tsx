@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
-  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare, Volume2, BarChart
+  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare, Volume2, BarChart, Activity
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +22,7 @@ const NAV_ITEM_DEFS = [
   { key: 'leaves',       href: '/dashboard/leaves',     icon: CalendarRange,   module: 'Leaves'       },
   { key: 'announcements',href: '/dashboard/announcements', icon: Megaphone,   module: 'Announcements'},
   { key: 'tasks',        href: '/dashboard/tasks',      icon: CheckSquare,     module: 'Tasks'        },
+  { key: 'globalStream', href: '/dashboard/global-stream', icon: Activity,    module: 'GlobalStream', adminOnly: true },
   { key: 'myProfile',    href: '/dashboard/profile',    icon: User,            module: 'Profile'      },
 ];
 
@@ -60,11 +61,16 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const collapsed = !mobileOpen && isCollapsed;
 
+  const isAdminUserCheck = user && ['Admin', 'Super Admin', 'System Administrator', 'admin', 'super admin', 'superadmin', 'ultra admin'].includes(
+    (typeof user?.designation === 'object' ? (user?.designation as any)?.name : user?.designation)?.toLowerCase()?.trim()
+  ) || user?.roles?.some((r: any) => ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'].includes((r?.name || r)?.toLowerCase()?.trim()));
+
   const filteredItems = NAV_ITEM_DEFS.filter(item => {
     // 🚀 GOD MODE BYPASS FOR DEVELOPER
     if (user?.email === 'dev@fixanyphoto.com' || (user as any)?.role === 'SUPER_ADMIN' || user?.designation === 'Super Admin' || user?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
       return true;
     }
+    if ((item as any).adminOnly && !isAdminUserCheck) return false;
     if (item.module === 'Dashboard' || item.module === 'Profile') return true;
     return checkPermission(user, item.module.toLowerCase(), 'access');
   });
