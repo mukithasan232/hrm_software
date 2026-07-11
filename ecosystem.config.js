@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'next-web',
       script: 'node_modules/next/dist/bin/next',
-      args: 'start',
+      args: 'start -H 0.0.0.0 -p 3000',
       instances: 1,
       exec_mode: 'fork',
       env: {
