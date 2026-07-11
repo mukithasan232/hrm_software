@@ -4,8 +4,8 @@ module.exports = {
       name: 'next-web',
       script: 'node_modules/next/dist/bin/next',
       args: 'start',
-      instances: 1,
-      exec_mode: 'fork',
+      instances: 'max',
+      exec_mode: 'cluster',
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
