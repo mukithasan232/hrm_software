@@ -11,10 +11,12 @@ export async function generateMetadata(): Promise<Metadata> {
   let faviconUrl = '/favicon.ico';
   let companyName = 'FIX ANY PHOTO';
   try {
-    const settings = await prisma.tenantSettings.findFirst();
-    if (settings) {
-      if (settings.faviconUrl) faviconUrl = settings.faviconUrl;
-      if (settings.companyName) companyName = settings.companyName;
+    if (process.env.SKIP_DB_ON_BUILD !== 'true') {
+      const settings = await prisma.tenantSettings.findFirst();
+      if (settings) {
+        if (settings.faviconUrl) faviconUrl = settings.faviconUrl;
+        if (settings.companyName) companyName = settings.companyName;
+      }
     }
   } catch (e) {
     console.error('Failed to fetch initial tenant settings for metadata', e);
@@ -47,10 +49,12 @@ export default async function RootLayout({
   let primaryColor = '#8b5cf6';
   let secondaryColor = '#06b6d4';
   try {
-    const settings = await prisma.tenantSettings.findFirst();
-    if (settings) {
-      if (settings.primaryColor) primaryColor = settings.primaryColor;
-      if (settings.secondaryColor) secondaryColor = settings.secondaryColor;
+    if (process.env.SKIP_DB_ON_BUILD !== 'true') {
+      const settings = await prisma.tenantSettings.findFirst();
+      if (settings) {
+        if (settings.primaryColor) primaryColor = settings.primaryColor;
+        if (settings.secondaryColor) secondaryColor = settings.secondaryColor;
+      }
     }
   } catch (e) {
     console.error('Failed to fetch initial tenant settings', e);

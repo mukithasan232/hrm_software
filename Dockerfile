@@ -27,6 +27,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Generate Prisma client, then build Next.js AND compile the worker
 ENV NODE_ENV=production
+ENV SKIP_DB_ON_BUILD=true
 RUN pnpm run build
 
 # ── Step 4: Runtime ───────────────────────────────────────────────────────────
