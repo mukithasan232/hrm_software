@@ -37,4 +37,10 @@ ENV PORT=3000
 EXPOSE 3000
 
 COPY ecosystem.config.js ./
+
+# Security: run as non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
+USER appuser
+
 CMD ["sh", "-c", "npx prisma db push --accept-data-loss && pm2-runtime start ecosystem.config.js"]
