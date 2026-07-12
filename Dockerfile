@@ -9,6 +9,7 @@ RUN npm install -g pnpm pm2
 
 # Copy package files for layer caching
 COPY package.json pnpm-lock.yaml ./
+COPY prisma ./prisma/
 
 # Install ALL deps (including devDeps needed for build)
 RUN pnpm install --frozen-lockfile
