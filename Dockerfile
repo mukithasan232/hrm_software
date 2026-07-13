@@ -4,15 +4,11 @@ FROM node:22-alpine AS builder
 RUN apk add --no-cache openssl libc6-compat python3 make g++
 WORKDIR /app
 
-# Install pnpm globally and set network timeouts to prevent ETIMEDOUT
-RUN npm install -g pnpm pm2 && \
-    pnpm config set network-timeout 300000 && \
-    pnpm config set fetch-retries 5 && \
-    pnpm config set fetch-retry-mintimeout 20000 && \
-    pnpm config set fetch-retry-maxtimeout 120000
+# Install pnpm globally
+RUN npm install -g pnpm pm2
 
 # Copy package files for layer caching
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 COPY prisma ./prisma/
 
 # Install ALL deps (including devDeps needed for build)
@@ -38,15 +34,11 @@ RUN apk add --no-cache openssl libc6-compat netcat-openbsd python3 make g++
 
 WORKDIR /app
 
-# Install runtime tools and set network timeouts to prevent ETIMEDOUT
-RUN npm install -g pnpm pm2 tsx && \
-    pnpm config set network-timeout 300000 && \
-    pnpm config set fetch-retries 5 && \
-    pnpm config set fetch-retry-mintimeout 20000 && \
-    pnpm config set fetch-retry-maxtimeout 120000
+# Install runtime tools
+RUN npm install -g pnpm pm2 tsx
 
 # Copy package files for production install
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 
 # Copy prisma schema BEFORE installing
 COPY prisma ./prisma/
