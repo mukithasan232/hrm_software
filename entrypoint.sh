@@ -6,9 +6,12 @@
 
 # ─── Robust DB Waiter ──────────────────────────────────────────────────────────
 # Parse DB host and port from DATABASE_URL
-echo "⏳ Waiting for Database connection..."
-DB_HOST=$(echo "$DATABASE_URL" | sed -e 's,^.*://.*@\([^:]*\).*,\1,')
-DB_PORT=$(echo "$DATABASE_URL" | sed -e 's,^.*://.*@[^:]*:\([0-9]*\).*,\1,' | sed -e 's,/.*,,')
+echo "⏳ Waiting for database connection..."
+# Use shell parameter expansion for robust parsing: remove protocol, user/pass, and trailing path.
+DB_CONN_STRING=${DATABASE_URL#*@}
+DB_HOST=${DB_CONN_STRING%:*}
+DB_PORT=${DB_CONN_STRING#*:}
+DB_PORT=${DB_PORT%/*}
 
 if [ -n "$DB_HOST" ]; then
   # Use nc to check if the port is open (max 60 seconds)
@@ -27,11 +30,10 @@ if [ -n "$DB_HOST" ]; then
   fi
 fi
 
-# 1. Sync database schema (STRICT: db push only — never migrate deploy/reset)
-# Runs at container RUNTIME so DATABASE_URL is available from environment.
-echo "🚀 [1/3] Running Prisma DB Push (schema sync)..."
-if ! pnpm exec prisma db push --accept-data-loss; then
-  echo "⚠️  Prisma db push failed. This is non-fatal — server will still start."
+# 1. Apply database migrations (production-safe)
+echo "🚀 [1/3] Applying Prisma migrations..."
+if ! pnpm exec prisma migrate deploy; then
+  echo "⚠️  Prisma migrate deploy failed. This is non-fatal — server will still start."
   echo "    Check DATABASE_URL and DB connectivity in Coolify environment variables."
 fi
 
@@ -54,4 +56,4 @@ fuser -k 3000/tcp || true
 
 # 3. Start the production server using PM2
 echo "🔥 [3/3] Starting PM2 with Next.js & ZKTeco Worker..."
-exec npx pm2-runtime ecosystem.config.js
+exec pm2-runtime ecosystem.config.js
