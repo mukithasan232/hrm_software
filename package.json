@@ -3,15 +3,15 @@
   "private": true,
   "scripts": {
     "dev": "npx prisma generate && node server.cjs",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate || true",
     "build": "npx prisma generate && next build && tsc workers/zk-sync-worker.ts --outDir dist/workers --esModuleInterop --target ES2022 --moduleResolution node",
     "build:next": "next build",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "start": "concurrently --kill-others-on-fail -c \"blue,green\" \"node dist/workers/zk-sync-worker.js\" \"next start\"",
     "start:custom": "concurrently --kill-others-on-fail -c \"blue,green\" \"node dist/workers/zk-sync-worker.js\" \"sh ./entrypoint.sh\"",
     "fetch-zk": "npx tsx scripts/fetch-zk-users.ts",
-    "predeploy": "npm run db:push && npm run db:seed",
-    "db:push": "npx prisma db push --accept-data-loss",
+    "predeploy": "npm run db:push && npm run db:seed --legacy-peer-deps",
+    "db:push": "npx prisma db push --accept-data-loss --legacy-peer-deps",
     "db:seed": "npx tsx src/scripts/seedAdmins.ts",
     "db:bootstrap": "npx prisma generate && npm run db:push && npm run db:seed",
     "db:studio": "npx prisma studio",
@@ -82,20 +82,6 @@
     "typescript": "^5.9.3",
     "zkteco-js": "^1.7.1",
     "zustand": "^5.0.14"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
-      "core-js",
-      "prisma",
-      "sharp",
-      "unrs-resolver"
-    ]
-  },
-  "overrides": {
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@types/json2csv": "^5.0.7",
