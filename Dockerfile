@@ -30,7 +30,7 @@ RUN pnpm run build 2>&1 && echo "Build complete"
 # ── Stage 2: RUNNER ────────────────────────────────────────────
 FROM node:22-alpine AS runner
 
-RUN apk add --no-cache openssl libc6-compat netcat-openbsd
+RUN apk add --no-cache openssl libc6-compat netcat-openbsd python3 make g++
 
 WORKDIR /app
 
