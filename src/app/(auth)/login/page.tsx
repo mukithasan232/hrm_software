@@ -17,7 +17,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const { brand, isLoading: brandLoading } = useBrand();
 
-  const [email, setEmail]     = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -93,13 +93,13 @@ export default function LoginPage() {
               </span>
             </div>
           ) : (
-            <img 
-              src={logoUrl.startsWith('http') || logoUrl.startsWith('data:') 
-                ? logoUrl 
-                : `${BACKEND}${logoUrl}?t=${Date.now()}`} 
-              alt="Logo" 
+            <img
+              src={logoUrl.startsWith('http') || logoUrl.startsWith('data:')
+                ? logoUrl
+                : `${BACKEND}${logoUrl}?t=${Date.now()}`}
+              alt="Logo"
               className="h-12 w-auto object-contain mx-auto mb-6"
-              onError={() => setLogoError(true)} 
+              onError={() => setLogoError(true)}
             />
           )}
         </div>
