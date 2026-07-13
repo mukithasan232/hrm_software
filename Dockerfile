@@ -12,7 +12,11 @@ COPY package.json pnpm-lock.yaml .npmrc ./
 COPY prisma ./prisma/
 
 # Install ALL deps (including devDeps needed for build)
-RUN pnpm install --frozen-lockfile --config.ignore-scripts=false
+# Use a cache mount to persist the pnpm store between builds.
+# This dramatically speeds up dependency installation and makes it resilient
+# to network issues like the ETIMEDOUT errors observed.
+RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store \
+    pnpm install --frozen-lockfile --config.ignore-scripts=false
 
 # Copy source code
 COPY . .
@@ -44,8 +48,11 @@ COPY package.json pnpm-lock.yaml .npmrc ./
 COPY prisma ./prisma/
 
 # Install ONLY production dependencies
-RUN pnpm install --prod --frozen-lockfile --config.ignore-scripts=false && \
-    pnpm store prune
+# Use a cache mount for the production install as well.
+RUN --mount=type=cache,id=pnpm,target=/root/.pnpm-store \
+    pnpm install --prod --frozen-lockfile --config.ignore-scripts=false
+
+RUN pnpm store prune
 
 # Copy built artifacts from builder
 COPY --from=builder /app/.next ./.next
