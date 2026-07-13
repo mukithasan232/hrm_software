@@ -12,7 +12,7 @@ COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 
 # Install ALL deps (including devDeps needed for build)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --config.ignore-scripts=false
 
 # Copy source code
 COPY . .
@@ -41,7 +41,7 @@ RUN npm install -g pnpm pm2 tsx
 COPY package.json pnpm-lock.yaml ./
 
 # Install ONLY production dependencies
-RUN pnpm install --prod --frozen-lockfile --ignore-scripts && \
+RUN pnpm install --prod --frozen-lockfile --config.ignore-scripts=false && \
     pnpm store prune
 
 # Copy built artifacts from builder
