@@ -40,6 +40,9 @@ RUN npm install -g pnpm pm2 tsx
 # Copy package files for production install
 COPY package.json pnpm-lock.yaml ./
 
+# Copy prisma schema BEFORE installing
+COPY prisma ./prisma/
+
 # Install ONLY production dependencies
 RUN pnpm install --prod --frozen-lockfile --config.ignore-scripts=false && \
     pnpm store prune
