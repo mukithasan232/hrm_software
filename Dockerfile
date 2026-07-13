@@ -4,8 +4,12 @@ FROM node:22-alpine AS builder
 RUN apk add --no-cache openssl libc6-compat python3 make g++
 WORKDIR /app
 
-# Install pnpm globally
-RUN npm install -g pnpm pm2
+# Install pnpm globally and set network timeouts to prevent ETIMEDOUT
+RUN npm install -g pnpm pm2 && \
+    pnpm config set network-timeout 300000 && \
+    pnpm config set fetch-retries 5 && \
+    pnpm config set fetch-retry-mintimeout 20000 && \
+    pnpm config set fetch-retry-maxtimeout 120000
 
 # Copy package files for layer caching
 COPY package.json pnpm-lock.yaml ./
@@ -34,8 +38,12 @@ RUN apk add --no-cache openssl libc6-compat netcat-openbsd python3 make g++
 
 WORKDIR /app
 
-# Install runtime tools
-RUN npm install -g pnpm pm2 tsx
+# Install runtime tools and set network timeouts to prevent ETIMEDOUT
+RUN npm install -g pnpm pm2 tsx && \
+    pnpm config set network-timeout 300000 && \
+    pnpm config set fetch-retries 5 && \
+    pnpm config set fetch-retry-mintimeout 20000 && \
+    pnpm config set fetch-retry-maxtimeout 120000
 
 # Copy package files for production install
 COPY package.json pnpm-lock.yaml ./
