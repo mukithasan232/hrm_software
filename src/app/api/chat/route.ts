@@ -14,17 +14,33 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, userName, currentRoute, systemRole } = await req.json();
 
-    // ── Normalize messages: convert parts[] format → content string ───────────
-    const normalizedMessages = (messages ?? []).map((msg: any) => {
-      if (!msg.content && msg.parts && Array.isArray(msg.parts)) {
-        return {
-          id: msg.id || Math.random().toString(),
-          role: msg.role,
-          content: msg.parts.map((p: any) => p.text || '').join(''),
-        };
-      }
-      return msg;
-    });
+    // ── Normalize messages: strip tool messages, convert parts[] → content string ─
+    // Tool call/result messages cannot be re-sent to Gemini without thought_signature.
+    // Filtering them out prevents the 400 INVALID_ARGUMENT error on follow-up turns.
+    const normalizedMessages = (messages ?? [])
+      .filter((msg: any) => {
+        // Remove assistant messages that ONLY have tool calls (no text content)
+        if (msg.role === 'tool') return false;
+        if (msg.role === 'assistant') {
+          const hasText = msg.content || (msg.parts ?? []).some((p: any) => p.type === 'text' && p.text?.trim());
+          const hasToolCall = (msg.toolInvocations ?? []).length > 0 || (msg.parts ?? []).some((p: any) => p.type === 'tool-invocation');
+          // Keep only if it has real text content, drop pure tool-call turns
+          if (hasToolCall && !hasText) return false;
+        }
+        return true;
+      })
+      .map((msg: any) => {
+        // Convert parts[] format to content string
+        if (!msg.content && msg.parts && Array.isArray(msg.parts)) {
+          const text = msg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join('');
+          return { id: msg.id || Math.random().toString(), role: msg.role, content: text };
+        }
+        // Strip toolInvocations from assistant messages to avoid Gemini rejecting them
+        if (msg.role === 'assistant') {
+          return { id: msg.id, role: msg.role, content: msg.content ?? '' };
+        }
+        return { id: msg.id, role: msg.role, content: msg.content ?? '' };
+      });
 
     // ── Step 1: Fetch AI settings from DB ─────────────────────────────────────
     let dbApiKey: string | null = null;
@@ -69,7 +85,7 @@ export async function POST(req: NextRequest) {
       model = openai('gpt-4o-mini');
     } else {
       const google = createGoogleGenerativeAI({ apiKey: resolvedApiKey });
-      model = google('gemini-2.0-flash');
+      model = google('gemini-1.5-flash');
     }
 
     // ── Step 5: Stream with HR tools ─────────────────────────────────────────
