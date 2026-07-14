@@ -2,7 +2,8 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { Bot, Send, X, Loader2, AlertCircle } from 'lucide-react';
+import { DefaultChatTransport, type UIMessage } from 'ai';
+import { Bot, Sparkles, Send, X, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
@@ -195,18 +196,33 @@ export default function AIChatWidget() {
   const userName = user?.name || 'there';
   const pathname = usePathname();
 
-  const { messages, append, isLoading, error, reload } = useChat({
-    api: '/api/chat',
-    body: { userName, currentRoute: pathname, systemRole: 'Admin' },
-    initialMessages: [
+  const { messages, sendMessage, setMessages, status, error } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: { userName, currentRoute: pathname, systemRole: 'Admin' },
+    }),
+    // @ts-ignore - ai@7 typings are messy
+    messages: [
       {
         id: 'welcome',
         role: 'assistant',
-        content: `Hello **${userName}**! 👋 I'm your HRM AI Assistant. How can I help you today?`,
-      },
+        parts: [{ type: 'text', text: `Hello **${userName}**! 👋 I'm your HRM AI Assistant. How can I help you today?` }],
+      } as UIMessage,
     ],
   });
 
+  const isLoading = status === 'submitted' || status === 'streaming';
+
+  const handleRetry = () => {
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    if (lastUserMsg) {
+      const text: string =
+        (lastUserMsg.parts?.find((p: any) => p.type === 'text') as any)?.text ||
+        (lastUserMsg as any).content ||
+        '';
+      if (text) sendMessage({ text });
+    }
+  };
 
   useEffect(() => {
     if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -216,13 +232,13 @@ export default function AIChatWidget() {
     e.preventDefault();
     const trimmed = inputValue.trim();
     if (!trimmed || isLoading) return;
-    append({ role: 'user', content: trimmed });
+    sendMessage({ text: trimmed });
     setInputValue('');
   };
 
   const handleSuggestion = (text: string) => {
     if (isLoading) return;
-    append({ role: 'user', content: text });
+    sendMessage({ text });
   };
 
   return (
@@ -255,9 +271,18 @@ export default function AIChatWidget() {
                 <p className="text-[10px] text-green-600 font-medium mt-0.5">Online &amp; Ready</p>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close chat">
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setMessages && setMessages([{ id: 'welcome', role: 'assistant', parts: [{ type: 'text', text: `Hello **${userName}**! 👋 I'm your HRM AI Assistant. How can I help you today?` }] }])}
+                className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors flex items-center gap-1"
+                title="Clear Chat"
+              >
+                <Trash2 size={12} /> Clear
+              </button>
+              <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close chat">
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Error Banner */}
@@ -267,7 +292,7 @@ export default function AIChatWidget() {
                 <AlertCircle size={14} />
                 <span>Connection error. Please retry.</span>
               </div>
-              <button onClick={() => reload()} className="px-2 py-1 bg-red-100 hover:bg-red-200 rounded font-semibold transition-colors">
+              <button onClick={handleRetry} className="px-2 py-1 bg-red-100 hover:bg-red-200 rounded font-semibold transition-colors">
                 Retry
               </button>
             </div>
@@ -277,11 +302,18 @@ export default function AIChatWidget() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {messages.map((m: any) => {
               const isAssistant = m.role === 'assistant';
-              const textContent: string = m.content ?? '';
+              
+              // Extract text from parts array (ai@7) or content
+              const textContent: string = m.content || (m.parts ?? []).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
               const hasText = textContent.trim().length > 0;
 
-              // ai@3 stable: toolInvocations lives at the top level of the message
-              const toolInvocations: any[] = m.toolInvocations ?? [];
+              // extract toolInvocations (top level or parts)
+              let toolInvocations: any[] = [];
+              if (m.toolInvocations && m.toolInvocations.length > 0) {
+                toolInvocations = m.toolInvocations;
+              } else if (m.parts) {
+                toolInvocations = m.parts.filter((p: any) => p.type === 'tool-invocation' && p.toolInvocation).map((p: any) => p.toolInvocation);
+              }
               const hasTools = toolInvocations.length > 0;
 
               return (

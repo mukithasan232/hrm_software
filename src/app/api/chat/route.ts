@@ -14,33 +14,23 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, userName, currentRoute, systemRole } = await req.json();
 
-    // ── Normalize messages: strip tool messages, convert parts[] → content string ─
-    // Tool call/result messages cannot be re-sent to Gemini without thought_signature.
-    // Filtering them out prevents the 400 INVALID_ARGUMENT error on follow-up turns.
-    const normalizedMessages = (messages ?? [])
-      .filter((msg: any) => {
-        // Remove assistant messages that ONLY have tool calls (no text content)
-        if (msg.role === 'tool') return false;
-        if (msg.role === 'assistant') {
-          const hasText = msg.content || (msg.parts ?? []).some((p: any) => p.type === 'text' && p.text?.trim());
-          const hasToolCall = (msg.toolInvocations ?? []).length > 0 || (msg.parts ?? []).some((p: any) => p.type === 'tool-invocation');
-          // Keep only if it has real text content, drop pure tool-call turns
-          if (hasToolCall && !hasText) return false;
-        }
-        return true;
-      })
-      .map((msg: any) => {
-        // Convert parts[] format to content string
-        if (!msg.content && msg.parts && Array.isArray(msg.parts)) {
-          const text = msg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join('');
-          return { id: msg.id || Math.random().toString(), role: msg.role, content: text };
-        }
-        // Strip toolInvocations from assistant messages to avoid Gemini rejecting them
-        if (msg.role === 'assistant') {
-          return { id: msg.id, role: msg.role, content: msg.content ?? '' };
-        }
-        return { id: msg.id, role: msg.role, content: msg.content ?? '' };
-      });
+    // Sanitize messages to prevent thought_signature crashes with Gemini 3+
+    const sanitizedMessages = (messages ?? []).filter((msg: any) => {
+      // If it's a tool call from a previous session, it might lack the thought_signature.
+      // We can either filter old tool messages out, or map them safely.
+      // For safety with Gemini 3.1, keep user and standard assistant messages.
+      if (msg.role === 'tool' || (msg.role === 'assistant' && msg.toolInvocations)) {
+        return false; // Drop legacy tool calls from history to avoid 400 errors
+      }
+      return true;
+    }).map((msg: any) => {
+      // Ensure content is string for standard handling
+      if (!msg.content && msg.parts && Array.isArray(msg.parts)) {
+        const text = msg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join('');
+        return { ...msg, content: text };
+      }
+      return msg;
+    });
 
     // ── Step 1: Fetch AI settings from DB ─────────────────────────────────────
     let dbApiKey: string | null = null;
@@ -85,7 +75,7 @@ export async function POST(req: NextRequest) {
       model = openai('gpt-4o-mini');
     } else {
       const google = createGoogleGenerativeAI({ apiKey: resolvedApiKey });
-      model = google('gemini-1.5-flash');
+      model = google('gemini-3.1-flash-lite-latest');
     }
 
     // ── Step 5: Stream with HR tools ─────────────────────────────────────────
@@ -102,7 +92,7 @@ CRITICAL RULES:
 3. Never expose raw error logs — translate all errors into professional, human-friendly language.
 4. After any mutation succeeds, always confirm the action with a concise summary.
 5. Keep responses professional, focused, and under 200 words unless a detailed report is requested.`,
-      messages: normalizedMessages,
+      messages: sanitizedMessages,
       // @ts-ignore — maxSteps exists at runtime in ai@7
       maxSteps: 5,
       tools: {
@@ -352,7 +342,7 @@ CRITICAL RULES:
       } as any,
     });
 
-    return (await result).toDataStreamResponse();
+    return result.toUIMessageStreamResponse();
   } catch (error: any) {
     return NextResponse.json(
       { error: 'The chat service encountered an unexpected error. Please try again.' },
