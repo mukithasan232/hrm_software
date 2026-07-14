@@ -6,7 +6,7 @@ import grapesjsNewsletter from 'grapesjs-preset-newsletter';
 import 'grapesjs/dist/css/grapes.min.css';
 import {
   Mail, Save, Loader2, Send,
-  Server, User, Lock, Globe, CheckCircle2, AlertCircle, Shield, Network, Plug, ArrowLeft
+  Server, User, Lock, Globe, CheckCircle2, AlertCircle, Shield, Network, Plug, ArrowLeft, Bot, Key
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -674,8 +674,130 @@ function TemplatesTab() {
   );
 }
 
+function AiConfigTab() {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  const [aiProvider, setAiProvider] = useState('google');
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [maskedKey, setMaskedKey] = useState('');
+
+  useEffect(() => {
+    fetchAiSettings();
+  }, []);
+
+  const fetchAiSettings = async () => {
+    try {
+      const res = await api.get('/settings/ai');
+      if (res.data) {
+        setAiProvider(res.data.aiProvider || 'google');
+        setHasApiKey(res.data.hasApiKey);
+        setMaskedKey(res.data.maskedApiKey || '');
+      }
+    } catch (e) {
+      console.error('Failed to fetch AI settings', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      // Only send aiApiKey if it has been changed
+      const payload: any = { aiProvider };
+      if (aiApiKey) {
+        payload.aiApiKey = aiApiKey;
+      }
+      
+      const res = await api.put('/settings/ai', payload);
+      toast.success('AI Configuration saved successfully!');
+      
+      // Update state
+      setHasApiKey(res.data.hasApiKey);
+      if (res.data.hasApiKey) {
+          fetchAiSettings();
+      }
+      setAiApiKey(''); // clear the input after save
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to save AI configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center animate-pulse">Loading AI configuration...</div>;
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+            <Bot className="w-6 h-6 text-purple-500" />
+          </div>
+          Smart Assistant Settings
+        </h1>
+        <p className="text-slate-500 dark:text-gray-400 mt-1 text-sm">
+          Configure the LLM provider and API key for the AI Chat Assistant.
+        </p>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
+        <form onSubmit={handleSave} className="space-y-6 max-w-2xl">
+          <SectionTitle icon={Globe} title="Provider Selection" />
+          
+          <div className="space-y-2">
+            <label className={labelCls}>AI Provider</label>
+            <select 
+              value={aiProvider}
+              onChange={e => setAiProvider(e.target.value)}
+              className={inputCls}
+            >
+              <option value="google">Google Gemini (Default)</option>
+              <option value="openai">OpenAI (ChatGPT)</option>
+              <option value="anthropic">Anthropic Claude</option>
+            </select>
+          </div>
+
+          <SectionTitle icon={Key} title="Authentication" />
+
+          <div className="space-y-2">
+            <label className={labelCls}>API Key</label>
+            <input 
+              type="password"
+              value={aiApiKey}
+              onChange={e => setAiApiKey(e.target.value)}
+              className={inputCls} 
+              placeholder={hasApiKey ? `Configured (${maskedKey}). Enter new key to update.` : "Enter your API key"} 
+            />
+            {hasApiKey && !aiApiKey && (
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> API Key is configured and saved securely.
+              </p>
+            )}
+          </div>
+
+          <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex justify-end">
+            <button 
+              type="submit" 
+              disabled={saving}
+              className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-lg shadow-brand-primary/30 transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? 'Saving...' : 'Save Configurations'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function IntegrationsPage() {
-  const [mainTab, setMainTab] = useState<'ZKTECO' | 'EMAIL' | 'TEMPLATES'>('ZKTECO');
+  const [mainTab, setMainTab] = useState<'ZKTECO' | 'EMAIL' | 'TEMPLATES' | 'AI_CONFIG'>('ZKTECO');
   const { user } = useAuth();
   const router = useRouter();
 
@@ -733,12 +855,21 @@ export default function IntegrationsPage() {
         >
           Email Templates
         </button>
+        <button
+          onClick={() => setMainTab('AI_CONFIG')}
+          className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+            mainTab === 'AI_CONFIG' ? 'bg-brand-primary text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10'
+          }`}
+        >
+          AI Assistant
+        </button>
       </div>
 
       <div className="mt-4">
         {mainTab === 'ZKTECO' && <DeviceTab />}
         {mainTab === 'EMAIL' && <EmailTab />}
         {mainTab === 'TEMPLATES' && <TemplatesTab />}
+        {mainTab === 'AI_CONFIG' && <AiConfigTab />}
       </div>
     </div>
   );

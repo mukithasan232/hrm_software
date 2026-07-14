@@ -20,14 +20,17 @@
     "db:clean-db-dry": "DRY_RUN=true npx tsx prisma/clean-db.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.14",
+    "@ai-sdk/openai": "^4.0.13",
+    "@ai-sdk/react": "^4.0.27",
     "@hello-pangea/dnd": "^18.0.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^6.6.0",
     "@tailwindcss/postcss": "^4.1.8",
+    "@tailwindcss/typography": "^0.5.20",
     "@types/bcryptjs": "^2.4.6",
     "@types/canvas-confetti": "^1.9.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
     "@types/express-serve-static-core": "^5.1.1",
     "@types/js-cookie": "^3.0.6",
     "@types/jsonwebtoken": "^9.0.10",
@@ -36,6 +39,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "ai": "^7.0.26",
     "axios": "^1.16.1",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
@@ -70,9 +74,10 @@
     "react": "19.2.4",
     "react-day-picker": "^10.0.1",
     "react-dom": "19.2.4",
-    "react-is": "19.2.4",
     "react-hot-toast": "^2.6.0",
     "react-intersection-observer": "^10.0.3",
+    "react-is": "19.2.4",
+    "react-markdown": "^10.1.0",
     "react-quill-new": "^3.8.3",
     "recharts": "^3.8.1",
     "socket.io": "^4.8.3",
@@ -82,9 +87,12 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "zkteco-js": "^1.7.1",
+    "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/json2csv": "^5.0.7",
     "@types/nodemailer": "^8.0.0"
   }

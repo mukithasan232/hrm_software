@@ -363,9 +363,9 @@ const connectAndListen = async () => {
 // ─── Lifecycle ─────────────────────────────────────────────────────────────
 console.log('[Worker] Starting standalone ZKTeco background worker...');
 
-// 1. Schedule Polling (every 5 minutes to mimic realtimeService background sync)
-cron.schedule('*/5 * * * *', async () => {
-  console.log('[Worker] 🕒 Running 5-minute background bulk sync...');
+// 1. Schedule Polling — every 1 minute for real-time-like auto-sync
+cron.schedule('* * * * *', async () => {
+  console.log('[Worker] 🕒 Running 1-minute background bulk sync...');
   deviceMutex = deviceMutex.then(async () => {
     isListenerActive = false;
     if (activeReconnectTimeout) clearTimeout(activeReconnectTimeout);

@@ -269,6 +269,10 @@ model TenantSettings {
   secondaryColor String   @default("#06b6d4")
   updatedAt      DateTime @updatedAt
 
+  // AI Chat Assistant settings
+  aiProvider String? @default("google") // "google" | "openai"
+  aiApiKey   String? @db.Text           // stored securely, never exposed to client
+
   smtpSettings SmtpSettings?
 }
 

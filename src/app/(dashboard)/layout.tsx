@@ -7,6 +7,7 @@ import GlobalDetailsDrawer from '@/components/ui/DetailsDrawer';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import GlobalNotificationListener from '@/components/notifications/GlobalNotificationListener';
+import AIChatWidget from '@/components/AIChatWidget';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -61,6 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </div>
       <GlobalDetailsDrawer />
+      <AIChatWidget />
     </ProtectedRoute>
   );
 }
