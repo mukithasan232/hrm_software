@@ -683,6 +683,8 @@ function AiConfigTab() {
   const [aiApiKey, setAiApiKey] = useState('');
   const [hasApiKey, setHasApiKey] = useState(false);
   const [maskedKey, setMaskedKey] = useState('');
+  const [isEditingKey, setIsEditingKey] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchAiSettings();
@@ -707,13 +709,13 @@ function AiConfigTab() {
     e.preventDefault();
     setSaving(true);
     try {
-      // Only send aiApiKey if it has been changed
+      // Only send aiApiKey if we are editing and it's not empty
       const payload: any = { aiProvider };
-      if (aiApiKey) {
+      if (isEditingKey && aiApiKey) {
         payload.aiApiKey = aiApiKey;
       }
       
-      const res = await api.put('/settings/ai', payload);
+      const res = await api.post('/settings/ai', payload);
       toast.success('AI Configuration saved successfully!');
       
       // Update state
@@ -722,10 +724,28 @@ function AiConfigTab() {
           fetchAiSettings();
       }
       setAiApiKey(''); // clear the input after save
+      setIsEditingKey(false);
     } catch (e: any) {
       toast.error(e.response?.data?.error || 'Failed to save AI configuration');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemoveKey = async () => {
+    if (!confirm('Are you sure you want to remove the AI API Key? Features relying on AI will stop working until a new key is added.')) return;
+    setIsDeleting(true);
+    try {
+      await api.delete('/settings/ai');
+      toast.success('API Key removed successfully!');
+      setHasApiKey(false);
+      setMaskedKey('');
+      setAiApiKey('');
+      setIsEditingKey(true);
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to remove API key');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -766,17 +786,57 @@ function AiConfigTab() {
 
           <div className="space-y-2">
             <label className={labelCls}>API Key</label>
-            <input 
-              type="password"
-              value={aiApiKey}
-              onChange={e => setAiApiKey(e.target.value)}
-              className={inputCls} 
-              placeholder={hasApiKey ? `Configured (${maskedKey}). Enter new key to update.` : "Enter your API key"} 
-            />
-            {hasApiKey && !aiApiKey && (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> API Key is configured and saved securely.
-              </p>
+            {hasApiKey && !isEditingKey ? (
+              <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
+                    <Key className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-white tracking-widest">{maskedKey}</p>
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Key is configured and secure
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingKey(true)}
+                    className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemoveKey}
+                    disabled={isDeleting}
+                    className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                  >
+                    {isDeleting ? 'Removing...' : 'Remove'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <input 
+                  type="password"
+                  value={aiApiKey}
+                  onChange={e => setAiApiKey(e.target.value)}
+                  className={inputCls} 
+                  placeholder="Enter your API key" 
+                  required={!hasApiKey}
+                />
+                {hasApiKey && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingKey(false)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

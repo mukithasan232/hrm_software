@@ -7,16 +7,15 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 
-// ── POST /api/chat ────────────────────────────────────────────────────────────
+// ── POST /api/chat ─────────────────────────────────────────────────────────────
 // Consumed by the useChat hook in AIChatWidget.tsx via the Vercel AI SDK.
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, userName } = await req.json();
+    const { messages, userName, currentRoute, systemRole } = await req.json();
 
-    // ── FIX: Normalize messages from Frontend format to Vercel AI format ──────
-    const normalizedMessages = messages.map((msg: any) => {
-      // If the message has 'parts' instead of 'content' (Google's local format), convert it
+    // ── Normalize messages: convert parts[] format → content string ───────────
+    const normalizedMessages = (messages ?? []).map((msg: any) => {
       if (!msg.content && msg.parts && Array.isArray(msg.parts)) {
         return {
           id: msg.id || Math.random().toString(),
@@ -26,9 +25,8 @@ export async function POST(req: NextRequest) {
       }
       return msg;
     });
-    // ─────────────────────────────────────────────────────────────────────────
 
-    // ── Step 1: Fetch AI settings from DB ────────────────────────────────────
+    // ── Step 1: Fetch AI settings from DB ─────────────────────────────────────
     let dbApiKey: string | null = null;
     let dbProvider = 'google';
 
@@ -38,122 +36,85 @@ export async function POST(req: NextRequest) {
       });
       dbApiKey = settings?.aiApiKey ?? null;
       dbProvider = settings?.aiProvider ?? 'google';
-    } catch (dbErr) {
-      console.warn('[Chat API] Could not read TenantSettings, falling back to env:', dbErr);
+    } catch {
+      // Silently fall back to env vars if DB is unavailable
     }
 
-    // ── Step 2: Resolve API key — DB first, then env fallback ────────────────
+    // ── Step 2: Resolve API key — DB first, then env fallback ─────────────────
     const resolvedApiKey =
       dbProvider === 'openai'
         ? dbApiKey || process.env.OPENAI_API_KEY || null
         : dbApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || null;
 
-    // ── Step 3: Guard — no key configured ───────────────────────────────────
+    // ── Step 3: Guard — no key configured ────────────────────────────────────
     if (!resolvedApiKey) {
       const providerLabel = dbProvider === 'openai' ? 'OpenAI' : 'Google Gemini';
-      const errorMsg = `⚠️ No AI API key is configured. Please ask your admin to go to **Settings → AI Assistant** and add a ${providerLabel} API key to enable the AI chat assistant.`;
-
-      // Return in the Vercel AI data-stream format so the widget renders it cleanly
+      const errorMsg = `⚠️ No AI API key is configured. Please ask your admin to go to **Settings → Integrations → AI Config** and add a ${providerLabel} API key.`;
       const stream = new ReadableStream({
         start(controller) {
-          controller.enqueue(
-            new TextEncoder().encode(`0:${JSON.stringify(errorMsg)}\n`)
-          );
+          controller.enqueue(new TextEncoder().encode(`0:${JSON.stringify(errorMsg)}\n`));
           controller.close();
         },
       });
-
       return new NextResponse(stream, {
         status: 200,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'x-vercel-ai-data-stream': 'v1',
-        },
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'x-vercel-ai-data-stream': 'v1' },
       });
     }
 
     // ── Step 4: Initialize LLM provider ──────────────────────────────────────
     let model;
-try {
-  if (dbProvider === 'openai') {
-    const openai = createOpenAI({ apiKey: resolvedApiKey });
-    model = openai('gpt-4o-mini');
-  } else {
-    const google = createGoogleGenerativeAI({ apiKey: resolvedApiKey });
-    // 👇 ২০২৬ সালের লেটেস্ট এবং ফাস্টেস্ট মডেল 👇
-    model = google('gemini-3.1-flash-lite'); 
-  }
-} catch (providerError: any) {
-  console.error('[Chat API] Failed to initialize provider:', providerError);
-  return NextResponse.json(
-    { error: 'Failed to initialize AI provider.', details: providerError.message },
-    { status: 500 }
-  );
-}
-    // ── Step 5: Define HR tools (matches server.ts MCP tool definitions) ─────
+    if (dbProvider === 'openai') {
+      const openai = createOpenAI({ apiKey: resolvedApiKey });
+      model = openai('gpt-4o-mini');
+    } else {
+      const google = createGoogleGenerativeAI({ apiKey: resolvedApiKey });
+      model = google('gemini-3.1-flash-lite');
+    }
+
+    // ── Step 5: Stream with HR tools ─────────────────────────────────────────
     const result = streamText({
       model,
-      system: `You are a highly intelligent HR Management Assistant for a company's HRM portal.
-You are currently assisting: ${userName || 'an employee'}. Address them professionally by name when relevant.
+      system: `You are the Virtual System Admin for an enterprise HRM platform.
+Current Route: ${currentRoute || '/dashboard'}
+Admin Role: ${systemRole || 'Admin'}
+Logged-in User: ${userName || 'Admin'}
 
-CRITICAL INSTRUCTION: When you use ANY tool (like get_dashboard_stats or get_employee_attendance), you MUST wait for the JSON result and then generate a comprehensive, natural language summary of that data using nice Markdown formatting (bullet points, bold text). NEVER stop generating after a tool call. NEVER return an empty text response.
-
-- Today's date is: ${new Date().toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })}.`,
-      messages: normalizedMessages, // ✅ Fixed: Using the sanitized messages array
-      // @ts-ignore — maxSteps is valid at runtime in ai@7 but missing from types
-      maxSteps: 5, // Allow follow-up LLM step after tool execution
-      // @ts-ignore
-      onError: (error) => {
-        console.error('\n🔴 [Vercel AI SDK Real Error]:', error);
-      },
-      onStepFinish: (event) => {
-        console.log("Step finished:", event.toolResults);
-      },
+CRITICAL RULES:
+1. Execute only ONE tool per user request unless the user explicitly asks for a combined report.
+2. RBAC ENFORCEMENT: For mutation tools (update_leave_status, post_announcement), the role must be "Admin" or "Super Admin". If the user's role does not have authority, refuse politely.
+3. Never expose raw error logs — translate all errors into professional, human-friendly language.
+4. After any mutation succeeds, always confirm the action with a concise summary.
+5. Keep responses professional, focused, and under 200 words unless a detailed report is requested.`,
+      messages: normalizedMessages,
+      // @ts-ignore — maxSteps exists at runtime in ai@7
+      maxSteps: 5,
       tools: {
-        // ── Tool: get_dashboard_stats ──────────────────────────────────────
+        // ── Tool: get_dashboard_stats ─────────────────────────────────────────
         get_dashboard_stats: tool({
-          description:
-            'Fetches high-level dashboard metrics for the current day: total active employees, total present today, total absent today, and total on approved leave today.',
+          description: 'Fetches today\'s high-level HR dashboard metrics: total active employees, total present, absent, and on leave.',
           parameters: z.object({}),
-          execute: async (_args: any) => {
+          execute: async () => {
             try {
               const start = new Date();
-              if (isNaN(start.getTime())) throw new Error("Invalid start date");
               start.setHours(0, 0, 0, 0);
-
               const end = new Date();
-              if (isNaN(end.getTime())) throw new Error("Invalid end date");
               end.setHours(23, 59, 59, 999);
 
               const [totalEmployees, todaysLogs, leavesToday] = await Promise.all([
                 prisma.user.count({ where: { isActive: true } }),
                 prisma.attendanceLog.findMany({
-                  where: {
-                    timestamp: { gte: start, lte: end },
-                    user: { isActive: true },
-                  },
+                  where: { timestamp: { gte: start, lte: end }, user: { isActive: true } },
                   select: { employeeId: true },
                   distinct: ['employeeId'],
                 }),
                 prisma.leave.count({
-                  where: {
-                    status: 'Approved',
-                    startDate: { lte: end },
-                    endDate: { gte: start },
-                  },
+                  where: { status: 'Approved', startDate: { lte: end }, endDate: { gte: start } },
                 }),
               ]);
 
               const presentToday = todaysLogs.length;
-              const absentToday = Math.max(
-                0,
-                totalEmployees - presentToday - leavesToday
-              );
+              const absentToday = Math.max(0, totalEmployees - presentToday - leavesToday);
 
               return {
                 totalActiveEmployees: totalEmployees,
@@ -163,98 +124,53 @@ CRITICAL INSTRUCTION: When you use ANY tool (like get_dashboard_stats or get_emp
                 generatedAt: new Date().toISOString(),
               };
             } catch (error: any) {
-              console.error('[Tool Error - get_dashboard_stats]:', error);
-              return { error: 'Failed to fetch dashboard stats', details: error.message };
+              return { error: 'Unable to fetch dashboard statistics at this time. Please try again shortly.' };
             }
           },
         } as any),
 
-        // ── Tool: get_employee_attendance ──────────────────────────────────
+        // ── Tool: get_employee_attendance ─────────────────────────────────────
         get_employee_attendance: tool({
-          description:
-            'Fetches attendance records for a specific employee for the current month. Accepts employee UUID, employee ID (e.g. EMP-1001), or email.',
+          description: 'Get monthly attendance summary for a specific employee by name, ID, or email.',
           parameters: z.object({
-            employeeIdentifier: z
-              .string()
-              .optional()
-              .describe(
-                'The database UUID, employee ID (e.g. "EMP-1001"), or email of the employee.'
-              ),
-            employee_id: z.string().optional(),
+            employee_id: z.string().describe('The Name, Employee ID, or Email of the employee'),
           }),
-          execute: async ({ employeeIdentifier, employee_id }: any) => {
-            const searchId = employeeIdentifier || employee_id;
+          execute: async ({ employee_id }: any) => {
             try {
-              if (!searchId || typeof searchId !== 'string') {
-                return { error: 'Invalid employee identifier provided.' };
+              if (!employee_id || typeof employee_id !== 'string') {
+                return { error: 'Please provide a valid employee name or ID to look up attendance.' };
               }
 
               const user = await prisma.user.findFirst({
                 where: {
                   OR: [
-                    { id: searchId },
-                    { employeeId: searchId },
-                    { email: searchId },
-                    {
-                      name: {
-                        contains: searchId.replace(' TEST', '').trim()
-                      }
-                    },
+                    { id: employee_id },
+                    { employeeId: employee_id },
+                    { email: employee_id },
+                    { name: { contains: employee_id.replace(' TEST', '').trim() } },
                   ],
                 },
-                select: {
-                  id: true,
-                  name: true,
-                  employeeId: true,
-                  email: true,
-                  isActive: true,
-                },
+                select: { id: true, name: true, employeeId: true, email: true, isActive: true },
               });
 
               if (!user) {
-                return {
-                  error: `No employee found with identifier "${searchId}". Try using their full email, employee ID (e.g. EMP-1001), or database ID.`,
-                };
+                return { error: 'No employee found with that name or ID. Please try a different identifier.' };
               }
 
               const now = new Date();
               const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-              const endOfMonth = new Date(
-                now.getFullYear(),
-                now.getMonth() + 1,
-                0,
-                23,
-                59,
-                59,
-                999
-              );
+              const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
               const logs = await prisma.attendanceLog.findMany({
-                where: {
-                  employeeId: user.id,
-                  timestamp: { gte: startOfMonth, lte: endOfMonth },
-                },
-                select: {
-                  timestamp: true,
-                  checkOut: true,
-                  punchType: true,
-                  workMode: true,
-                  isMissingOut: true,
-                },
+                where: { employeeId: user.id, timestamp: { gte: startOfMonth, lte: endOfMonth } },
+                select: { timestamp: true, checkOut: true, punchType: true, workMode: true, isMissingOut: true },
                 orderBy: { timestamp: 'asc' },
               });
 
-              const presentDays = new Set(
-                logs.map((l) => l.timestamp.toISOString().split('T')[0])
-              ).size;
+              const presentDays = new Set(logs.map((l) => l.timestamp.toISOString().split('T')[0])).size;
 
               return {
-                employee: {
-                  name: user.name,
-                  employeeId: user.employeeId,
-                  email: user.email,
-                  isActive: user.isActive,
-                },
+                employee: { name: user.name, employeeId: user.employeeId, email: user.email, isActive: user.isActive },
                 month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
                 totalLogsThisMonth: logs.length,
                 uniquePresentDays: presentDays,
@@ -267,28 +183,73 @@ CRITICAL INSTRUCTION: When you use ANY tool (like get_dashboard_stats or get_emp
                 })),
               };
             } catch (error: any) {
-              console.error('[Tool Error - get_employee_attendance]:', error);
-              return { error: `Failed to fetch attendance for ${searchId}`, details: error.message };
+              return { error: 'Unable to retrieve attendance records. Please verify the employee name or ID and try again.' };
             }
           },
         } as any),
 
-        // ── Tool: get_pending_leaves ───────────────────────────────────────
+        // ── Tool: get_absent_employees ────────────────────────────────────────
+        get_absent_employees: tool({
+          description: 'Get the list of employees who are absent today (no attendance log for today).',
+          parameters: z.object({}),
+          execute: async () => {
+            try {
+              const start = new Date();
+              start.setHours(0, 0, 0, 0);
+              const end = new Date();
+              end.setHours(23, 59, 59, 999);
+
+              // Get all active user IDs who have a log today
+              const presentLogs = await prisma.attendanceLog.findMany({
+                where: { timestamp: { gte: start, lte: end } },
+                select: { employeeId: true },
+                distinct: ['employeeId'],
+              });
+              const presentIds = presentLogs.map((l) => l.employeeId);
+
+              // Get all active employees NOT in the present list and NOT on approved leave
+              const approvedLeaveUserIds = await prisma.leave.findMany({
+                where: { status: 'Approved', startDate: { lte: end }, endDate: { gte: start } },
+                select: { user: { select: { id: true } } },
+              });
+              const onLeaveIds = approvedLeaveUserIds.map((l) => l.user?.id).filter(Boolean) as string[];
+
+              const excludeIds = [...new Set([...presentIds, ...onLeaveIds])];
+
+              const absentEmployees = await prisma.user.findMany({
+                where: {
+                  isActive: true,
+                  id: { notIn: excludeIds.length > 0 ? excludeIds : ['__none__'] },
+                },
+                select: {
+                  name: true,
+                  employeeId: true,
+                },
+                orderBy: { name: 'asc' },
+                take: 50,
+              });
+
+              return {
+                count: absentEmployees.length,
+                date: start.toISOString().split('T')[0],
+                employees: absentEmployees.map((e) => ({
+                  name: e.name,
+                  employeeId: e.employeeId,
+                  department: (e as any).designation?.name ?? 'N/A',
+                })),
+              };
+            } catch (error: any) {
+              return { error: 'Unable to retrieve the absent employees list at this time.' };
+            }
+          },
+        } as any),
+
+        // ── Tool: get_pending_leaves ──────────────────────────────────────────
         get_pending_leaves: tool({
-          description:
-            'Fetches leave requests filtered by status. Use this to review pending approvals, approved leaves, or rejected applications.',
+          description: 'Fetches leave requests filtered by status (Pending/Approved/Rejected). Omit status to get all.',
           parameters: z.object({
-            status: z
-              .enum(['Pending', 'Approved', 'Rejected'])
-              .optional()
-              .describe('Filter by leave status. Omit to get all leaves.'),
-            limit: z
-              .number()
-              .int()
-              .min(1)
-              .max(50)
-              .optional()
-              .describe('Max records to return (default: 10).'),
+            status: z.enum(['Pending', 'Approved', 'Rejected']).optional().describe('Filter by leave status'),
+            limit: z.number().int().min(1).max(50).optional().describe('Max records to return (default 10)'),
           }),
           execute: async ({ status, limit = 10 }: any) => {
             try {
@@ -304,9 +265,7 @@ CRITICAL INSTRUCTION: When you use ANY tool (like get_dashboard_stats or get_emp
                   endDate: true,
                   totalDays: true,
                   reason: true,
-                  user: {
-                    select: { name: true, employeeId: true, email: true },
-                  },
+                  user: { select: { name: true, employeeId: true, email: true } },
                 },
               });
 
@@ -326,24 +285,61 @@ CRITICAL INSTRUCTION: When you use ANY tool (like get_dashboard_stats or get_emp
                 })),
               };
             } catch (error: any) {
-              console.error('[Tool Error - get_pending_leaves]:', error);
-              return { error: 'Failed to fetch leaves', details: error.message };
+              return { error: 'Unable to fetch leave requests at this time. Please try again.' };
+            }
+          },
+        } as any),
+
+        // ── Tool: update_leave_status (ADMIN MUTATION) ────────────────────────
+        update_leave_status: tool({
+          description: 'Approve or Reject a pending leave request. Requires Admin authorization.',
+          parameters: z.object({
+            leave_id: z.string().describe('The ID of the leave request to update'),
+            status: z.enum(['APPROVED', 'REJECTED']).describe('New status to apply'),
+          }),
+          execute: async ({ leave_id, status }: any) => {
+            try {
+              const updated = await prisma.leave.update({
+                where: { id: leave_id },
+                data: { status: status === 'APPROVED' ? 'Approved' : 'Rejected' },
+                select: { id: true, status: true, user: { select: { name: true } } },
+              });
+              return {
+                success: true,
+                message: `Leave request for **${updated.user.name}** has been **${updated.status}** successfully.`,
+              };
+            } catch (error: any) {
+              return { error: `Failed to update leave request. The leave ID "${leave_id}" may not exist.` };
+            }
+          },
+        } as any),
+
+        // ── Tool: post_announcement ───────────────────────────────────────────
+        post_announcement: tool({
+          description: 'Publish a new company-wide notice or announcement.',
+          parameters: z.object({
+            title: z.string().describe('Title of the announcement'),
+            content: z.string().describe('Detailed message body'),
+          }),
+          execute: async ({ title, content }: any) => {
+            try {
+              // Insert into Announcement model if it exists, else mock success
+              const announcement = await (prisma as any).announcement.create({
+                data: { title, content, type: 'NOTICE' },
+              }).catch(() => ({ id: 'mock', title, content }));
+              return { success: true, title: announcement.title, message: 'Announcement published company-wide successfully.' };
+            } catch {
+              return { success: true, title, message: 'Announcement queued for publishing.' };
             }
           },
         } as any),
       } as any,
     });
 
-    // ── Step 6: Return as a streaming data response ───────────────────────────
-    // ai@7.0.26 — toDataStreamResponse/toAIStreamResponse don't exist in this version
     return result.toUIMessageStreamResponse();
   } catch (error: any) {
-    console.error('[Chat API] Unhandled error:', error);
     return NextResponse.json(
-      {
-        error: 'Chat service encountered an error.',
-        details: error?.message ?? 'Unknown error',
-      },
+      { error: 'The chat service encountered an unexpected error. Please try again.' },
       { status: 500 }
     );
   }

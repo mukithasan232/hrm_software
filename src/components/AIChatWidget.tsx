@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
 
 // ─── Quick-reply suggestions ──────────────────────────────────────────────────
-const SUGGESTIONS = ["📊 Today's Dashboard", "🗓️ My Attendance", "🏖️ Pending Leaves"] as const;
+const SUGGESTIONS = ["📊 Today's Dashboard", "🗓️ My Attendance", "🏖️ Pending Leaves", "❌ Who's Absent Today"] as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -69,6 +69,17 @@ export default function AIChatWidget() {
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
+
+  // Retry: re-send the last user message
+  const handleRetry = () => {
+    const lastUserMsg = [...messages].reverse().find((m) => (m.role as string) === 'user') as any;
+    if (lastUserMsg) {
+      const text: string =
+        lastUserMsg.parts?.find((p: any) => p.type === 'text')?.text ||
+        '';
+      if (text) sendMessage({ text });
+    }
+  };
 
   // Auto-scroll to the latest message
   useEffect(() => {
@@ -137,9 +148,17 @@ export default function AIChatWidget() {
 
           {/* ── Error Banner ── */}
           {error && (
-            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs px-3 py-2 border-b border-red-200 dark:border-red-800 shrink-0">
-              <AlertCircle size={14} />
-              <span>Connection error. Please try again.</span>
+            <div className="flex items-center justify-between gap-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs px-3 py-2 border-b border-red-200 dark:border-red-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={14} />
+                <span>Connection error. Please try again.</span>
+              </div>
+              <button 
+                                  onClick={() => handleRetry()}
+                className="px-2 py-1 bg-red-100 hover:bg-red-200 rounded font-semibold transition-colors"
+              >
+                Retry
+              </button>
             </div>
           )}
 
@@ -207,47 +226,70 @@ export default function AIChatWidget() {
                         // Backend error
                         if (result?.error) {
                           return (
-                            <div key={toolCallId} className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100">
-                              ⚠️ <strong>Error in {toolName}:</strong> {result.error}
-                            </div>
-                          );
-                        }
-
-                        // Dashboard Card
-                        if (toolName === 'get_dashboard_stats') {
-                          return (
-                            <div key={toolCallId} className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-                              <h4 className="font-bold text-blue-600 mb-2">📊 Today's Dashboard</h4>
-                              <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div className="bg-gray-50 p-2 rounded border">Active: {result?.totalActiveEmployees ?? 0}</div>
-                                <div className="bg-green-50 p-2 rounded border border-green-100 text-green-700">Present: {result?.totalPresentToday ?? 0}</div>
-                                <div className="bg-red-50 p-2 rounded border border-red-100 text-red-700">Absent: {result?.totalAbsentToday ?? 0}</div>
-                                <div className="bg-yellow-50 p-2 rounded border border-yellow-100 text-yellow-700">On Leave: {result?.totalOnLeaveToday ?? 0}</div>
+                            <div key={toolCallId} className="mt-2 p-3 bg-red-50 border border-red-100 rounded-lg flex flex-col gap-2 shadow-sm">
+                              <div className="flex items-start gap-2 text-red-700">
+                                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                <div className="text-sm">
+                                  <strong>Task Failed:</strong> {result.error === 'Employee not found. Please provide a valid Name or ID.' ? result.error : 'I encountered an issue while performing this task.'}
+                                </div>
+                              </div>
+                              <div className="flex justify-end">
+                                <button
+                                  onClick={() => handleRetry()}
+                                  className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors"
+                                >
+                                  Retry
+                                </button>
                               </div>
                             </div>
                           );
                         }
 
-                        // Attendance Card
-                        if (toolName === 'get_employee_attendance') {
+                        // 1. DASHBOARD UPGRADE
+                        if (toolName === 'get_dashboard_stats' && result && !result.error) {
                           return (
-                            <div key={toolCallId} className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-                              <h4 className="font-bold text-green-600 mb-2 border-b pb-1">📅 Attendance Summary</h4>
-                              <div className="flex justify-between items-center bg-gray-50 p-2 rounded text-sm mb-2">
-                                <div><span className="block text-xs text-gray-500">Month</span><span className="font-semibold">{result?.month ?? 'N/A'}</span></div>
-                                <div><span className="block text-xs text-gray-500">Present</span><span className="font-semibold text-green-600">{result?.uniquePresentDays ?? 0} Days</span></div>
-                                <div><span className="block text-xs text-gray-500">Logs</span><span className="font-semibold">{result?.totalLogsThisMonth ?? 0}</span></div>
+                            <div key={toolCallId} className="p-4 mt-2 bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 transition-all hover:shadow-md">
+                               <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-50">
+                                 <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">📊</span>
+                                 <h4 className="font-bold text-gray-800">Today's Dashboard</h4>
+                               </div>
+                               <div className="grid grid-cols-2 gap-3 text-sm">
+                                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-3 rounded-lg border border-gray-200">
+                                   <span className="block text-gray-500 text-xs mb-1">Active</span>
+                                   <span className="font-semibold text-gray-800 text-lg">{result.totalActiveEmployees || 0}</span>
+                                 </div>
+                                 <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
+                                   <span className="block text-green-600 text-xs mb-1">Present</span>
+                                   <span className="font-semibold text-green-700 text-lg">{result.totalPresentToday || 0}</span>
+                                 </div>
+                               </div>
+                            </div>
+                          );
+                        }
+
+                        // 2. ATTENDANCE UPGRADE
+                        if (toolName === 'get_employee_attendance' && result && !result.error) {
+                          return (
+                            <div key={toolCallId} className="p-4 mt-2 bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100">
+                              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-50">
+                                 <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">📅</span>
+                                 <h4 className="font-bold text-gray-800">Attendance Summary</h4>
+                              </div>
+                              <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm mb-3">
+                                <div className="text-center"><span className="block text-gray-500 text-xs">Month</span><span className="font-semibold">{result.month || 'N/A'}</span></div>
+                                <div className="text-center"><span className="block text-gray-500 text-xs">Present</span><span className="font-bold text-emerald-600">{result.uniquePresentDays || 0} Days</span></div>
+                                <div className="text-center"><span className="block text-gray-500 text-xs">Logs</span><span className="font-semibold">{result.totalLogsThisMonth || 0}</span></div>
                               </div>
                               <div className="text-xs font-semibold text-gray-600 mb-1">Recent Logs:</div>
-                              <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
-                                {(result?.recentLogs ?? []).slice(0, 5).map((log: any, idx: number) => (
-                                  <div key={idx} className="flex justify-between items-center p-1.5 bg-gray-50 border rounded text-xs">
+                              <div className="flex flex-col gap-1 max-h-36 overflow-y-auto pr-1">
+                                {(result.recentLogs ?? []).slice(0, 5).map((log: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between items-center p-2 bg-gray-50 border border-gray-100 rounded-lg text-xs">
                                     <span className="font-medium">{new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                    <div className="flex gap-1">
-                                      <span className="text-green-700 bg-green-100 px-1 rounded">In: {new Date(log.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <div className="flex gap-1.5">
+                                      <span className="text-emerald-700 bg-emerald-100/50 border border-emerald-200 px-1.5 py-0.5 rounded-md">In: {new Date(log.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                       {log.checkOut
-                                        ? <span className="text-red-700 bg-red-100 px-1 rounded">Out: {new Date(log.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                        : <span className="text-yellow-700 bg-yellow-100 px-1 rounded">No Out</span>
+                                        ? <span className="text-rose-700 bg-rose-100/50 border border-rose-200 px-1.5 py-0.5 rounded-md">Out: {new Date(log.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        : <span className="text-amber-700 bg-amber-100/50 border border-amber-200 px-1.5 py-0.5 rounded-md">No Out</span>
                                       }
                                     </div>
                                   </div>
@@ -257,19 +299,78 @@ export default function AIChatWidget() {
                           );
                         }
 
-                        // Pending Leaves Card
-                        if (toolName === 'get_pending_leaves') {
+                        // 3. NEW: LEAVE ACTION CONFIRMATION
+                        if (toolName === 'update_leave_status' && result) {
                           return (
-                            <div key={toolCallId} className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-                              <h4 className="font-bold text-orange-600 mb-2">🌴 Pending Leaves</h4>
-                              <div className="text-sm bg-gray-50 p-2 rounded border mb-2">
-                                <strong>Total Found:</strong> {result?.totalFound ?? 0}
+                            <div key={toolCallId} className="p-3 mt-2 bg-blue-50 border border-blue-100 rounded-lg flex items-start gap-2">
+                              <span className="text-blue-500 mt-0.5">✅</span>
+                              <div className="text-sm text-blue-800">
+                                <strong>Action Successful:</strong> {result.message}
                               </div>
-                              <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
-                                {(result?.leaves ?? []).slice(0, 5).map((leave: any, idx: number) => (
-                                  <div key={idx} className="p-1.5 bg-gray-50 border rounded text-xs">
-                                    <span className="font-semibold">{leave.employee}</span> — {leave.type} ({leave.totalDays}d)
-                                    <span className={`ml-2 px-1 rounded ${ leave.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : leave.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }`}>{leave.status}</span>
+                            </div>
+                          );
+                        }
+                        
+                        // 4. NEW: ANNOUNCEMENT CONFIRMATION
+                        if (toolName === 'post_announcement' && result) {
+                          return (
+                            <div key={toolCallId} className="p-4 mt-2 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl text-white shadow-lg">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span>📢</span><h4 className="font-bold">Notice Published</h4>
+                              </div>
+                              <p className="text-xs text-indigo-100 opacity-90">{result.title}</p>
+                            </div>
+                          );
+                        }
+
+                        // 5. ABSENT EMPLOYEES CARD
+                        if (toolName === 'get_absent_employees' && result && !result.error) {
+                          return (
+                            <div key={toolCallId} className="p-4 mt-2 bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(239,68,68,0.15)] border border-red-100">
+                              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-red-50">
+                                <span className="p-1.5 bg-red-50 text-red-500 rounded-lg">❌</span>
+                                <h4 className="font-bold text-gray-800">Absent Today</h4>
+                                <span className="ml-auto text-xs font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">{result.count ?? 0}</span>
+                              </div>
+                              {(result.employees ?? []).length === 0 ? (
+                                <p className="text-sm text-gray-500 text-center py-2">🎉 Everyone is present today!</p>
+                              ) : (
+                                <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1">
+                                  {(result.employees ?? []).map((emp: any, i: number) => (
+                                    <div key={i} className="flex justify-between items-center px-2 py-1.5 bg-red-50/50 border border-red-100 rounded-lg text-xs">
+                                      <span className="font-semibold text-gray-800">{emp.name}</span>
+                                      <span className="text-gray-400 text-[11px]">{emp.department || 'N/A'}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <p className="text-[10px] text-gray-400 mt-2">As of {result.date ?? 'today'}</p>
+                            </div>
+                          );
+                        }
+
+                        // 6. PENDING LEAVES CARD (upgraded)
+                        if (toolName === 'get_pending_leaves' && result && !result.error) {
+                          return (
+                            <div key={toolCallId} className="p-4 mt-2 bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(245,158,11,0.15)] border border-amber-100">
+                              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-amber-50">
+                                <span className="p-1.5 bg-amber-50 text-amber-500 rounded-lg">🌴</span>
+                                <h4 className="font-bold text-gray-800">Leave Requests</h4>
+                                <span className="ml-auto text-xs font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full">{result.totalFound ?? 0}</span>
+                              </div>
+                              <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
+                                {(result.leaves ?? []).slice(0, 5).map((leave: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between items-start p-2 bg-gray-50 border border-gray-100 rounded-lg text-xs">
+                                    <div>
+                                      <span className="font-semibold text-gray-800">{leave.employee}</span>
+                                      <span className="text-gray-400 ml-1">— {leave.type}</span>
+                                      <p className="text-gray-400 text-[11px] mt-0.5">{leave.startDate} → {leave.endDate} ({leave.totalDays}d)</p>
+                                    </div>
+                                    <span className={`ml-2 shrink-0 px-1.5 py-0.5 rounded-md font-semibold ${
+                                      leave.status === 'Pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                      leave.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                                      'bg-red-100 text-red-700 border border-red-200'
+                                    }`}>{leave.status}</span>
                                   </div>
                                 ))}
                               </div>

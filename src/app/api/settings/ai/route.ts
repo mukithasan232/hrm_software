@@ -31,9 +31,9 @@ export async function GET() {
     let maskedApiKey: string | null = null;
     if (settings?.aiApiKey) {
       const key = settings.aiApiKey;
-      maskedApiKey = key.length > 7 
-        ? key.substring(0, 3) + '...' + key.substring(key.length - 4)
-        : '***';
+      maskedApiKey = key.length > 4 
+        ? '••••••••••••' + key.substring(key.length - 4)
+        : '••••••••••••';
     }
 
     return NextResponse.json({
@@ -50,10 +50,10 @@ export async function GET() {
   }
 }
 
-// ── PUT /api/settings/ai ──────────────────────────────────────────────────────
+// ── POST /api/settings/ai ──────────────────────────────────────────────────────
 // Saves aiProvider + aiApiKey to TenantSettings. Admin only.
 
-export async function PUT(req: NextRequest) {
+export async function POST(req: NextRequest) {
   const user = resolveToken(req);
   if (!user) {
     return NextResponse.json({ message: 'Not authorized' }, { status: 401 });
@@ -117,3 +117,48 @@ export async function PUT(req: NextRequest) {
     );
   }
 }
+
+// ── DELETE /api/settings/ai ───────────────────────────────────────────────────
+// Removes the aiApiKey from TenantSettings. Admin only.
+
+export async function DELETE(req: NextRequest) {
+  const user = resolveToken(req);
+  if (!user) {
+    return NextResponse.json({ message: 'Not authorized' }, { status: 401 });
+  }
+
+  const ADMIN_ROLES = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
+  const desigName = typeof user.designation === 'object' ? (user.designation as any)?.name : user.designation;
+  const userRole = (desigName || '').toLowerCase().trim();
+  let isAdmin = ADMIN_ROLES.includes(userRole);
+
+  if (!isAdmin) {
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    if (dbUser?.userType === 'SUPER_ADMIN' || dbUser?.email === 'dev@fixanyphoto.com') {
+      isAdmin = true;
+    }
+  }
+
+  if (!isAdmin) {
+    return NextResponse.json({ message: 'Admin access required' }, { status: 403 });
+  }
+
+  try {
+    const existing = await prisma.tenantSettings.findFirst();
+    if (existing) {
+      await prisma.tenantSettings.update({
+        where: { id: existing.id },
+        data: { aiApiKey: null },
+      });
+    }
+
+    return NextResponse.json({ message: 'API Key removed successfully' });
+  } catch (error: any) {
+    console.error('[AI-Settings DELETE]', error);
+    return NextResponse.json(
+      { message: 'Failed to remove API key', error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
