@@ -53,7 +53,7 @@ export default function LateTodayWidget() {
         <h3 className="text-lg font-bold text-slate-900 dark:text-white">Late Today ({lateEmployees.length})</h3>
       </div>
       
-      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+      <div className="flex-1 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
         {lateEmployees.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center opacity-70 mt-4">
             <AlertCircle className="w-8 h-8 text-emerald-500 mb-2" />

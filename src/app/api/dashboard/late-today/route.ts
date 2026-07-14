@@ -28,6 +28,7 @@ export async function GET() {
             name: true,
             profileImage: true,
             designation: true,
+            employeeType: true,
             customDesignation: { select: { name: true } },
             shiftStartTime: true,
             remoteShiftStartTime: true,
@@ -41,8 +42,6 @@ export async function GET() {
 
     const lateEmployees = [];
     const processedEmployees = new Set();
-    const gracePeriodMs = 10 * 60 * 1000; // 10 minutes
-
     for (const log of checkIns) {
       if (!log.user) continue;
       
@@ -53,7 +52,11 @@ export async function GET() {
       processedEmployees.add(log.employeeId);
 
       let expectedShiftStart = log.user.shift?.startTime || log.user.shiftStartTime || log.user.customDepartment?.shiftStartTime || '09:00';
-      if (log.workMode === 'REMOTE' || log.deviceId === 'MANUAL_WEB') {
+      if (log.user.employeeType === 'Hybrid') {
+        if (log.deviceId === 'MANUAL_WEB' || log.isManualIn) {
+          expectedShiftStart = log.user.shift?.remoteShiftStartTime || log.user.remoteShiftStartTime || log.user.customDepartment?.remoteShiftStartTime || expectedShiftStart;
+        }
+      } else if (log.workMode === 'REMOTE' || log.deviceId === 'MANUAL_WEB') {
         expectedShiftStart = log.user.shift?.remoteShiftStartTime || log.user.remoteShiftStartTime || log.user.customDepartment?.remoteShiftStartTime || expectedShiftStart;
       }
 
@@ -61,9 +64,10 @@ export async function GET() {
       const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;
       const shiftStartUTC = new Date(shiftStartLocalStr);
       
+      const diffMs = log.timestamp.getTime() - shiftStartUTC.getTime();
       let lateMins = 0;
-      if (log.timestamp.getTime() > shiftStartUTC.getTime() + gracePeriodMs) {
-        lateMins = Math.floor((log.timestamp.getTime() - shiftStartUTC.getTime()) / 60000);
+      if (diffMs >= 60000) { // strictly 1 minute or more
+        lateMins = Math.floor(diffMs / 60000);
       }
 
       if (lateMins > 0) {

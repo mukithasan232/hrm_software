@@ -433,13 +433,14 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
             select: { 
               name: true, 
               employeeId: true, 
+              employeeType: true,
               department: true, 
               shiftStartTime: true, 
               shiftEndTime: true,
               remoteShiftStartTime: true,
               remoteShiftEndTime: true,
-              shift: { select: { startTime: true, endTime: true } },
-              customDepartment: { select: { shiftStartTime: true, shiftEndTime: true } }
+              shift: { select: { startTime: true, endTime: true, remoteShiftStartTime: true, remoteShiftEndTime: true } },
+              customDepartment: { select: { shiftStartTime: true, shiftEndTime: true, remoteShiftStartTime: true, remoteShiftEndTime: true } }
             } 
           } 
         }
@@ -564,17 +565,20 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         
         const isAutoCheckout = outTime && (outTime.getTime() === inTime.getTime() + 12 * 60 * 60 * 1000);
         
+        const isManualIn = session.isManualIn || (session.deviceId || '').includes('Manual');
+        const isManualOut = outTime ? (session.isManualOut || (session.checkOutDeviceId || '').includes('Manual')) : false;
+
         sessionsByEmpAndDate[k].sessions.push({
           id: session.id,
           inTime: inTime,
-          inSource: session.deviceId || 'Machine',
-          isManualIn: session.isManualIn || false,
+          inSource: isManualIn ? '[Manual]' : (session.deviceId || '[Machine]'),
+          isManualIn: isManualIn,
           inLatitude: session.latitude,
           inLongitude: session.longitude,
           inAddress: session.locationAddress,
           outTime: outTime,
-          outSource: outTime ? (isAutoCheckout ? 'System Auto-Checkout' : (session.checkOutDeviceId || 'Machine')) : null,
-          isManualOut: outTime ? (session.isManualOut || false) : false,
+          outSource: outTime ? (isAutoCheckout ? '[Auto]' : (isManualOut ? '[Manual]' : (session.checkOutDeviceId || '[Machine]'))) : null,
+          isManualOut: isManualOut,
           outLatitude: outTime ? session.latitude : null,
           outLongitude: outTime ? session.longitude : null,
           outAddress: outTime ? session.locationAddress : null,
@@ -599,12 +603,19 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
          if (s.isMissingOut) isMissingOut = true;
       }
 
-      let shiftStartTime = log.user?.shiftStartTime || log.user?.customDepartment?.shiftStartTime || '09:00';
-      let shiftEndTime = log.user?.shiftEndTime || log.user?.customDepartment?.shiftEndTime || '17:00';
+      let shiftStartTime = log.user?.shift?.startTime || log.user?.shiftStartTime || log.user?.customDepartment?.shiftStartTime || '09:00';
+      let shiftEndTime = log.user?.shift?.endTime || log.user?.shiftEndTime || log.user?.customDepartment?.shiftEndTime || '17:00';
       
-      if (log.workMode === 'REMOTE') {
-        shiftStartTime = log.user?.remoteShiftStartTime || shiftStartTime;
-        shiftEndTime = log.user?.remoteShiftEndTime || shiftEndTime;
+      const firstPunch = sessions.length > 0 ? sessions[0] : null;
+
+      if (log.user?.employeeType === 'Hybrid' && firstPunch) {
+        if (firstPunch.isManualIn) {
+          shiftStartTime = log.user?.remoteShiftStartTime || log.user?.shift?.remoteShiftStartTime || log.user?.customDepartment?.remoteShiftStartTime || shiftStartTime;
+          shiftEndTime = log.user?.remoteShiftEndTime || log.user?.shift?.remoteShiftEndTime || log.user?.customDepartment?.remoteShiftEndTime || shiftEndTime;
+        }
+      } else if (log.workMode === 'REMOTE') {
+        shiftStartTime = log.user?.remoteShiftStartTime || log.user?.shift?.remoteShiftStartTime || log.user?.customDepartment?.remoteShiftStartTime || shiftStartTime;
+        shiftEndTime = log.user?.remoteShiftEndTime || log.user?.shift?.remoteShiftEndTime || log.user?.customDepartment?.remoteShiftEndTime || shiftEndTime;
       }
       
       const checkInRaw = sessions.length > 0 ? sessions[0].inTime : null;

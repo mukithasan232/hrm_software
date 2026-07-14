@@ -30,11 +30,11 @@ if [ -n "$DB_HOST" ]; then
   fi
 fi
 
-# 1. Apply database migrations (production-safe)
-echo "🚀 [1/3] Applying Prisma migrations..."
-if ! pnpm exec prisma migrate deploy; then
-  echo "⚠️  Prisma migrate deploy failed. This is non-fatal — server will still start."
-  echo "    Check DATABASE_URL and DB connectivity in Coolify environment variables."
+# 1. Sync database schema using db push
+echo "🚀 [1/3] Syncing Prisma schema..."
+if ! npx prisma generate || ! npx prisma db push --accept-data-loss --skip-generate; then
+  echo "⚠️  Prisma db push failed. This is non-fatal — server will still start."
+  echo "    Check DATABASE_URL and DB connectivity."
 fi
 
 # 2. Seed default admin account
