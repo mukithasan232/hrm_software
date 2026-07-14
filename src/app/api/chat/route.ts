@@ -336,7 +336,7 @@ CRITICAL RULES:
       } as any,
     });
 
-    return result.toUIMessageStreamResponse();
+    return (await result).toDataStreamResponse();
   } catch (error: any) {
     return NextResponse.json(
       { error: 'The chat service encountered an unexpected error. Please try again.' },

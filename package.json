@@ -20,9 +20,9 @@
     "db:clean-db-dry": "DRY_RUN=true npx tsx prisma/clean-db.ts"
   },
   "dependencies": {
-    "@ai-sdk/google": "^4.0.14",
-    "@ai-sdk/openai": "^4.0.13",
-    "@ai-sdk/react": "^4.0.27",
+    "@ai-sdk/google": "^0.0.55",
+    "@ai-sdk/openai": "^0.0.66",
+    "@ai-sdk/react": "^0.0.70",
     "@hello-pangea/dnd": "^18.0.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@prisma/adapter-mariadb": "^7.8.0",
@@ -39,7 +39,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "ai": "^7.0.26",
+    "ai": "^3.4.33",
     "axios": "^1.16.1",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
