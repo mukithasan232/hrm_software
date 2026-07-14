@@ -74,36 +74,30 @@ export async function POST(req: NextRequest) {
 
     // ── Step 4: Initialize LLM provider ──────────────────────────────────────
     let model;
-    try {
-      if (dbProvider === 'openai') {
-        const openai = createOpenAI({ apiKey: resolvedApiKey });
-        model = openai('gpt-4o-mini');
-      } else {
-        const google = createGoogleGenerativeAI({ apiKey: resolvedApiKey });
-        // 👇 ঠিক এই লাইনটা পরিবর্তন করে gemini-flash-latest করে দিন 👇
-        model = google('gemini-flash-latest');
-      }
-    } catch (providerError: any) {
-      console.error('[Chat API] Failed to initialize provider:', providerError);
-      return NextResponse.json(
-        { error: 'Failed to initialize AI provider.', details: providerError.message },
-        { status: 500 }
-      );
-    }
-
+try {
+  if (dbProvider === 'openai') {
+    const openai = createOpenAI({ apiKey: resolvedApiKey });
+    model = openai('gpt-4o-mini');
+  } else {
+    const google = createGoogleGenerativeAI({ apiKey: resolvedApiKey });
+    // 👇 ২০২৬ সালের লেটেস্ট এবং ফাস্টেস্ট মডেল 👇
+    model = google('gemini-3.1-flash-lite'); 
+  }
+} catch (providerError: any) {
+  console.error('[Chat API] Failed to initialize provider:', providerError);
+  return NextResponse.json(
+    { error: 'Failed to initialize AI provider.', details: providerError.message },
+    { status: 500 }
+  );
+}
     // ── Step 5: Define HR tools (matches server.ts MCP tool definitions) ─────
     const result = streamText({
       model,
-      system: `You are an intelligent HR Management Assistant for a company's HRM portal.
+      system: `You are a highly intelligent HR Management Assistant for a company's HRM portal.
 You are currently assisting: ${userName || 'an employee'}. Address them professionally by name when relevant.
-You have direct access to real-time HR data through tools.
 
-Guidelines:
-- Always use tools when asked about employees, attendance, leaves, or statistics.
-- Present data in a clear, concise, human-friendly format.
-- Use bullet points or short paragraphs — avoid overly long responses.
-- Be professional yet friendly.
-- Never fabricate data — always fetch it from tools.
+CRITICAL INSTRUCTION: When you use ANY tool (like get_dashboard_stats or get_employee_attendance), you MUST wait for the JSON result and then generate a comprehensive, natural language summary of that data using nice Markdown formatting (bullet points, bold text). NEVER stop generating after a tool call. NEVER return an empty text response.
+
 - Today's date is: ${new Date().toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -111,10 +105,14 @@ Guidelines:
         day: 'numeric',
       })}.`,
       messages: normalizedMessages, // ✅ Fixed: Using the sanitized messages array
+      // @ts-ignore — maxSteps is valid at runtime in ai@7 but missing from types
+      maxSteps: 5, // Allow follow-up LLM step after tool execution
       // @ts-ignore
-      maxSteps: 5,
       onError: (error) => {
         console.error('\n🔴 [Vercel AI SDK Real Error]:', error);
+      },
+      onStepFinish: (event) => {
+        console.log("Step finished:", event.toolResults);
       },
       tools: {
         // ── Tool: get_dashboard_stats ──────────────────────────────────────
@@ -178,23 +176,30 @@ Guidelines:
           parameters: z.object({
             employeeIdentifier: z
               .string()
+              .optional()
               .describe(
                 'The database UUID, employee ID (e.g. "EMP-1001"), or email of the employee.'
               ),
+            employee_id: z.string().optional(),
           }),
-          execute: async ({ employeeIdentifier }: any) => {
+          execute: async ({ employeeIdentifier, employee_id }: any) => {
+            const searchId = employeeIdentifier || employee_id;
             try {
-              if (!employeeIdentifier || typeof employeeIdentifier !== 'string') {
+              if (!searchId || typeof searchId !== 'string') {
                 return { error: 'Invalid employee identifier provided.' };
               }
 
               const user = await prisma.user.findFirst({
                 where: {
                   OR: [
-                    { id: employeeIdentifier },
-                    { employeeId: employeeIdentifier },
-                    { email: employeeIdentifier },
-                    { name: { contains: employeeIdentifier } },
+                    { id: searchId },
+                    { employeeId: searchId },
+                    { email: searchId },
+                    {
+                      name: {
+                        contains: searchId.replace(' TEST', '').trim()
+                      }
+                    },
                   ],
                 },
                 select: {
@@ -208,7 +213,7 @@ Guidelines:
 
               if (!user) {
                 return {
-                  error: `No employee found with identifier "${employeeIdentifier}". Try using their full email, employee ID (e.g. EMP-1001), or database ID.`,
+                  error: `No employee found with identifier "${searchId}". Try using their full email, employee ID (e.g. EMP-1001), or database ID.`,
                 };
               }
 
@@ -263,7 +268,7 @@ Guidelines:
               };
             } catch (error: any) {
               console.error('[Tool Error - get_employee_attendance]:', error);
-              return { error: `Failed to fetch attendance for ${employeeIdentifier}`, details: error.message };
+              return { error: `Failed to fetch attendance for ${searchId}`, details: error.message };
             }
           },
         } as any),
@@ -330,7 +335,7 @@ Guidelines:
     });
 
     // ── Step 6: Return as a streaming data response ───────────────────────────
-    // @ts-ignore
+    // ai@7.0.26 — toDataStreamResponse/toAIStreamResponse don't exist in this version
     return result.toUIMessageStreamResponse();
   } catch (error: any) {
     console.error('[Chat API] Unhandled error:', error);
