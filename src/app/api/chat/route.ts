@@ -1,3 +1,4 @@
+export const maxDuration = 60; // Allow up to 60 seconds for the AI stream
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -6,6 +7,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { pingDevice } from '@/services/zkService';
 
 // ── POST /api/chat ─────────────────────────────────────────────────────────────
 // Consumed by the useChat hook in AIChatWidget.tsx via the Vercel AI SDK.
@@ -96,6 +98,34 @@ CRITICAL RULES:
       // @ts-ignore — maxSteps exists at runtime in ai@7
       maxSteps: 5,
       tools: {
+        // ── Tool: get_live_device_status ──────────────────────────────────────
+        get_live_device_status: tool({
+          description: 'Checks the real-time connectivity of the ZKTeco fingerprint attendance device. Returns if the device is online or offline.',
+          parameters: z.object({}),
+          execute: async () => {
+            const timeoutPromise = new Promise((resolve) =>
+              setTimeout(() => resolve({ error: 'DEVICE_UNREACHABLE', message: 'The fingerprint device is currently offline or unreachable.' }), 8000)
+            );
+
+            try {
+              const deviceData = await Promise.race([pingDevice(), timeoutPromise]);
+
+              if ((deviceData as any)?.error === 'DEVICE_UNREACHABLE') {
+                return "The fingerprint device seems to be offline; I couldn't reach it. Please check its network connection and power.";
+              }
+
+              const result = deviceData as { reachable: boolean; error?: string };
+              if (result.reachable) {
+                return "The fingerprint device is online and connected.";
+              } else {
+                return `The fingerprint device is unreachable. The specific error is: ${result.error || 'Unknown error'}.`;
+              }
+            } catch (error: any) {
+              return `An unexpected error occurred while checking the device: ${error.message}`;
+            }
+          },
+        } as any),
+
         // ── Tool: get_dashboard_stats ─────────────────────────────────────────
         get_dashboard_stats: tool({
           description: 'Fetches today\'s high-level HR dashboard metrics: total active employees, total present, absent, and on leave.',
