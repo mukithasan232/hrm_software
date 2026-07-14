@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       model = openai('gpt-4o-mini');
     } else {
       const google = createGoogleGenerativeAI({ apiKey: resolvedApiKey });
-      model = google('gemini-3.1-flash-lite');
+      model = google('gemini-2.0-flash');
     }
 
     // ── Step 5: Stream with HR tools ─────────────────────────────────────────
