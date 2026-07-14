@@ -12,6 +12,7 @@ import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateU
 import { calculateWorkingHours } from '@/lib/timeUtils';
 import { exportToExcel, exportToPDF } from '@/lib/exportUtils';
 import { io as socketIO } from 'socket.io-client';
+import Cookies from 'js-cookie';
 import { useAuth } from '@/context/AuthContext';
 import { formatInTimeZone } from 'date-fns-tz';
 
@@ -239,7 +240,14 @@ function AttendancePageContent() {
     }, 15000);
 
     // Socket.IO: instant table refresh when any punch or sync fires
-    const socket = socketIO({ path: '/socket.io', transports: ['websocket', 'polling'] });
+    const socket = socketIO({ 
+      path: '/socket.io', 
+      transports: ['websocket', 'polling'],
+      auth: { token: Cookies.get('token') },
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+    });
     socket.on('attendanceUpdate', () => {
       fetchLogs(true);
     });

@@ -48,15 +48,30 @@ app.prepare()
       },
     });
 
+    const jwt = require('jsonwebtoken');
+    io.use((socket, next) => {
+      const token = socket.handshake.auth?.token;
+      if (!token) return next(new Error('Authentication required'));
+      jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret', (err, decoded) => {
+        if (err) return next(new Error('Invalid token'));
+        socket.user = decoded;
+        next();
+      });
+    });
+
     try {
       const { connectDB }              = require('./src/config/db');
       const { initCronJobs }           = require('./src/jobs/cronJob');
+      const { initRealtimeAttendance } = require('./src/services/realtimeService');
 
       await connectDB();
 
       // Start the 1-minute ZKTeco auto-sync cron job.
       // This replaces the need for an admin to click "Sync Device" manually.
       initCronJobs();
+
+      // Start the realtime ZKTeco UDP listener to push punches instantly to the UI
+      initRealtimeAttendance(io);
     } catch (err) {
       console.error('[Server Startup] Failed to load backend modules:', err);
       // Non-fatal: HTTP server still starts and serves the Next.js app

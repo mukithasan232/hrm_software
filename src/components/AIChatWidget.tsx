@@ -171,21 +171,7 @@ export default function AIChatWidget() {
               const textContent: string = m.content || getMessageText(m);
               const hasText = textContent.trim().length > 0;
 
-              // ── CONFIRMED from console log:
-              // ai@7 ToolUIPart format: { type: 'tool-{toolName}', state: 'output-available', output: {...}, toolCallId: '...' }
-              // type encodes toolName — e.g., 'tool-get_dashboard_stats' → toolName = 'get_dashboard_stats'
-              const toolInvocations: any[] = (() => {
-                if (!m.parts || !Array.isArray(m.parts)) return [];
-                return m.parts
-                  .filter((p: any) => typeof p.type === 'string' && p.type.startsWith('tool-'))
-                  .map((p: any) => ({
-                    toolName: p.toolName ?? p.type.slice(5),
-                    toolCallId: p.toolCallId ?? p.id,
-                    state: p.state === 'output-available' ? 'result' : 'loading',
-                    args: p.input ?? p.args,
-                    result: p.output ?? p.result,
-                  }));
-              })();
+              const toolInvocations: any[] = m.toolInvocations || [];
 
               const hasTools = toolInvocations.length > 0;
 

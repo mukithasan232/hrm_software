@@ -124,6 +124,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         appointmentLetter: true,
         // @ts-ignore
         salaryAccount: true,
+        roles: { select: { id: true, name: true, permissions: true } }
       }
     });
     if (!user) {

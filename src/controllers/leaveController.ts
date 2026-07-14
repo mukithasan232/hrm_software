@@ -120,22 +120,38 @@ export const getLeaves = async (req: Request, res: Response) => {
     let leaves;
 
     if (['HR', 'Manager', 'HRM Manager', 'Admin', 'Super Admin', 'System Administrator'].includes(userRole)) {
-      leaves = await (prisma.leave as any).findMany({
+      // Admin/HR: fetch ALL leaves and include user relation for employee name
+      const rawLeaves = await (prisma.leave as any).findMany({
         include: {
           user: {
-            select: { name: true, employeeId: true, department: true }
+            select: { name: true, employeeId: true, department: true, designation: true }
           }
         },
         orderBy: { createdAt: 'desc' }
       });
+
+      // Remap `user` → `employee` so the frontend's l.employee?.name works correctly
+      leaves = rawLeaves.map((leave: any) => {
+        const { user, ...rest } = leave;
+        console.log('[getLeaves] leave id:', leave.id, '| user object:', JSON.stringify(user));
+        return {
+          ...rest,
+          employee: user
+            ? { ...user, name: user.name ?? 'Unknown Employee' }
+            : { name: 'Unknown Employee', employeeId: null, department: null, designation: null },
+        };
+      });
     } else {
+      // Employee: fetch only their own leaves (no user relation needed)
       leaves = await (prisma.leave as any).findMany({
         where: { employeeId },
         orderBy: { createdAt: 'desc' }
       });
     }
+
     return res.status(200).json(leaves);
   } catch (error: any) {
+    console.error('[getLeaves] Error:', error);
     return res.status(500).json({ message: 'Error fetching leaves', error: error.message });
   }
 };

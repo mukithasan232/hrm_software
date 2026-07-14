@@ -38,6 +38,7 @@ import toast from "react-hot-toast";
 import { useTranslation } from "@/context/LanguageContext";
 import { toBDDisplay, getBDToday } from "@/lib/dateUtils";
 import { io as socketIO } from "socket.io-client";
+import Cookies from "js-cookie";
 import { usePermissions } from "@/hooks/usePermissions";
 import dynamic from 'next/dynamic';
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -294,6 +295,10 @@ export default function DashboardOverview() {
       const socket = socketIO({
         path: "/socket.io",
         transports: ["websocket", "polling"],
+        auth: { token: Cookies.get('token') },
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
       });
       socket.on("attendanceUpdate", () => pollLiveActivity());
       socket.on("new-attendance", () => pollLiveActivity());

@@ -5,28 +5,16 @@ import { LanguageProvider } from '@/context/LanguageContext';
 import { ToasterProvider } from '@/components/ToasterProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { BrandProvider } from '@/context/BrandContext';
-import { prisma } from '@/lib/prisma';
+import { getAppSettings } from '@/actions/getAppSettings';
 
 export async function generateMetadata(): Promise<Metadata> {
-  let faviconUrl = '/favicon.ico';
-  let companyName = 'FIX ANY PHOTO';
-  try {
-    if (process.env.SKIP_DB_ON_BUILD !== 'true') {
-      const settings = await prisma.tenantSettings.findFirst();
-      if (settings) {
-        if (settings.faviconUrl) faviconUrl = settings.faviconUrl;
-        if (settings.companyName) companyName = settings.companyName;
-      }
-    }
-  } catch (e) {
-    console.error('Failed to fetch initial tenant settings for metadata', e);
-  }
+  const settings = await getAppSettings();
 
   return {
-    title: companyName,
+    title: settings.companyName,
     description: 'Manage attendance and payroll seamlessly.',
     icons: {
-      icon: faviconUrl,
+      icon: settings.faviconUrl || '/favicon.ico',
     },
     other: {
       google: 'notranslate',
@@ -46,19 +34,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let primaryColor = '#8b5cf6';
-  let secondaryColor = '#06b6d4';
-  try {
-    if (process.env.SKIP_DB_ON_BUILD !== 'true') {
-      const settings = await prisma.tenantSettings.findFirst();
-      if (settings) {
-        if (settings.primaryColor) primaryColor = settings.primaryColor;
-        if (settings.secondaryColor) secondaryColor = settings.secondaryColor;
-      }
-    }
-  } catch (e) {
-    console.error('Failed to fetch initial tenant settings', e);
-  }
+  const settings = await getAppSettings();
+  const primaryColor   = settings.primaryColor;
+  const secondaryColor = settings.secondaryColor;
 
   const customStyle = {
     '--brand-primary': primaryColor,

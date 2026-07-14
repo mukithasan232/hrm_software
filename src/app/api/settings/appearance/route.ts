@@ -10,6 +10,13 @@ import path from 'path';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+/** Validates and normalises a HEX colour — returns null if invalid */
+function sanitiseHex(value: string | undefined, fallback: string): string {
+  if (!value) return fallback;
+  const trimmed = value.trim();
+  return /^#[0-9a-fA-F]{6}$/.test(trimmed) ? trimmed : fallback;
+}
+
 function resolveToken(req: NextRequest): { id: string; designation: string } | null {
   const auth = req.headers.get('authorization');
   if (!auth?.startsWith('Bearer ')) return null;
@@ -196,11 +203,12 @@ export async function PUT(req: NextRequest) {
     }
 
     // Build partial update (only provided fields)
+    // Colours are validated with sanitiseHex — strips whitespace and checks #rrggbb format
     const data: Record<string, any> = {};
     if (companyName    !== undefined) data.companyName    = companyName.trim() || 'HRM Portal';
     if (companyAddress !== undefined) data.companyAddress = companyAddress.trim() || null;
-    if (primaryColor   !== undefined) data.primaryColor   = primaryColor.trim() || '#8b5cf6';
-    if (secondaryColor !== undefined) data.secondaryColor = secondaryColor.trim() || '#06b6d4';
+    if (primaryColor   !== undefined) data.primaryColor   = sanitiseHex(primaryColor, '#8b5cf6');
+    if (secondaryColor !== undefined) data.secondaryColor = sanitiseHex(secondaryColor, '#06b6d4');
     if (logoUrl        !== undefined) data.logoUrl        = logoUrl || null;
     if (faviconUrl     !== undefined) data.faviconUrl     = faviconUrl || null;
 
@@ -225,5 +233,63 @@ export async function PUT(req: NextRequest) {
   } catch (error: any) {
     console.error('[AppearancePUT]', error);
     return NextResponse.json({ message: 'Failed to save appearance settings', error: error.message }, { status: 500 });
+  }
+}
+
+// ── POST /api/settings/appearance (upsert — preferred idempotent save) ─────────────────
+// Accepts JSON body with the same fields as PUT.
+// Uses prisma upsert so the row is always created-or-updated atomically.
+export async function POST(req: NextRequest) {
+  const user = resolveToken(req);
+  if (!user) return NextResponse.json({ message: 'Not authorized' }, { status: 401 });
+
+  try {
+    const body = await req.json().catch(() => ({}));
+
+    const companyName    = typeof body.companyName    === 'string' ? body.companyName.trim()    || 'HRM Portal'  : undefined;
+    const companyAddress = typeof body.companyAddress === 'string' ? body.companyAddress.trim() || null          : undefined;
+    const primaryColor   = sanitiseHex(body.primaryColor,   '#8b5cf6');
+    const secondaryColor = sanitiseHex(body.secondaryColor, '#06b6d4');
+    const logoUrl        = typeof body.logoUrl    === 'string' ? body.logoUrl    || null : undefined;
+    const faviconUrl     = typeof body.faviconUrl === 'string' ? body.faviconUrl || null : undefined;
+
+    // Upsert: find the existing single-row or create it.
+    const existing = await prisma.tenantSettings.findFirst();
+
+    const updateData: Record<string, any> = { primaryColor, secondaryColor };
+    if (companyName    !== undefined) updateData.companyName    = companyName;
+    if (companyAddress !== undefined) updateData.companyAddress = companyAddress;
+    if (logoUrl        !== undefined) updateData.logoUrl        = logoUrl;
+    if (faviconUrl     !== undefined) updateData.faviconUrl     = faviconUrl;
+
+    let result;
+    if (existing) {
+      result = await prisma.tenantSettings.update({
+        where: { id: existing.id },
+        data: updateData,
+      });
+    } else {
+      result = await prisma.tenantSettings.create({
+        data: {
+          companyName:    companyName    ?? 'HRM Portal',
+          companyAddress: companyAddress ?? null,
+          primaryColor,
+          secondaryColor,
+          logoUrl:        logoUrl        ?? null,
+          faviconUrl:     faviconUrl     ?? null,
+        },
+      });
+    }
+
+    revalidatePath('/', 'layout');
+    console.log('[AppearancePOST] Settings saved:', result.id);
+
+    return NextResponse.json({ message: 'Appearance settings saved', settings: result });
+  } catch (error: any) {
+    console.error('[AppearancePOST] Full error:', error);
+    return NextResponse.json(
+      { message: 'Failed to save appearance settings', error: error.message },
+      { status: 500 }
+    );
   }
 }

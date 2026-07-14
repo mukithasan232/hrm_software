@@ -299,10 +299,16 @@ export default function AppearancePage() {
       refreshBrand(); // propagate new colors to all dashboard components instantly
       router.refresh(); // bust Next.js cache and refresh layout
     } catch (err: any) {
-      toast.error(`Upload failed: ${err.response?.data?.message || 'Unknown error'}`);
+      // Show both the user-facing message and the raw server error so we can debug failures
+      const serverMsg   = err.response?.data?.message || 'Unknown error';
+      const serverError = err.response?.data?.error   || '';
+      const toastMsg    = serverError ? `${serverMsg}: ${serverError}` : serverMsg;
+      console.error('[AppearanceSave] Error response:', err.response?.data);
+      toast.error(`Save failed — ${toastMsg}`);
     } finally {
       setSaving(false);
     }
+
   };
 
   const p = settings.primaryColor;
