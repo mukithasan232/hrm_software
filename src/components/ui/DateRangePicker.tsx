@@ -8,6 +8,7 @@ interface DateRangePickerProps {
   value: { range: string; start: string; end: string };
   onChange: (value: { range: string; start: string; end: string }) => void;
   disabled?: boolean;
+  className?: string;
 }
 
 export function DateRangePicker({ value, onChange, disabled }: DateRangePickerProps) {

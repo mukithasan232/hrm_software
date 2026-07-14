@@ -259,6 +259,7 @@ export default function LeavesPage() {
 
   const buildLeaveType = (): string => {
     if (paymentType === 'Unpaid Leave') return 'Unpaid';
+    if (paymentType === 'Emergency Leave') return 'EMERGENCY';
     if (paymentType === 'Paid Leave' && leaveCategory === 'Sick Leave') return 'Sick';
     if (paymentType === 'Paid Leave' && leaveCategory === 'Casual Leave') return 'Casual';
     return '';
@@ -432,6 +433,7 @@ export default function LeavesPage() {
                     options={[
                       { value: 'Paid Leave',   label: 'Paid Leave',   color: 'bg-emerald-500', description: 'Deducted from annual balance' },
                       { value: 'Unpaid Leave', label: 'Unpaid Leave', color: 'bg-red-500',     description: 'Affects payroll only' },
+                      { value: 'Emergency Leave', label: 'Emergency Leave', color: 'bg-orange-500', description: 'For urgent situations, bypasses some checks' },
                     ]}
                   />
                   {errMsg('paymentType')}

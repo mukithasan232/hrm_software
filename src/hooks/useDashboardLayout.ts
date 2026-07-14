@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
 
 type LayoutState = {
   summaryZone: string[];
@@ -6,6 +8,8 @@ type LayoutState = {
 };
 
 export const useDashboardLayout = (isAdmin: boolean) => {
+  const { user, updateUser } = useAuth();
+
   const DEFAULT_LAYOUT: LayoutState = isAdmin ? {
     summaryZone: ['punch-status', 'absent-days', 'leaves-remaining', 'break-countdown'],
     detailZone: ['global-stream', 'notice-board', 'weekly-attendance', 'late-today', 'checked-out']
@@ -14,51 +18,44 @@ export const useDashboardLayout = (isAdmin: boolean) => {
     detailZone: ['global-stream', 'notice-board', 'my-punches', 'weekly-attendance']
   };
 
-  const STORAGE_KEY = `dashboard_layout_${isAdmin ? 'admin' : 'emp'}`;
-
   // The persisted "source of truth" layout
   const [savedLayout, setSavedLayout] = useState<LayoutState>(DEFAULT_LAYOUT);
   // The in-progress draft layout (only active while editing)
   const [draftLayout, setDraftLayout] = useState<LayoutState>(DEFAULT_LAYOUT);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
+  // Load from user context on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.summaryZone && parsed.detailZone) {
-          // Inject checked-out for existing admin layouts if missing
-          if (isAdmin && !parsed.summaryZone.includes('checked-out') && !parsed.detailZone.includes('checked-out')) {
-             parsed.detailZone.push('checked-out');
-             localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-          }
-          setSavedLayout(parsed);
-          setDraftLayout(parsed);
+    if (user) {
+      try {
+        const userConfig = (user as any).dashboardConfig;
+        if (userConfig && typeof userConfig === 'object' && userConfig.summaryZone && userConfig.detailZone) {
+          setSavedLayout(userConfig);
+          setDraftLayout(userConfig);
         } else {
           setSavedLayout(DEFAULT_LAYOUT);
           setDraftLayout(DEFAULT_LAYOUT);
         }
-      } else {
+      } catch (e) {
+        console.warn('Failed to parse user dashboard layout', e);
         setSavedLayout(DEFAULT_LAYOUT);
         setDraftLayout(DEFAULT_LAYOUT);
       }
-    } catch (e) {
-      console.warn('Failed to load dashboard layout', e);
     }
     setIsLoaded(true);
-  }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
-   * Persist the draft to localStorage and promote it to savedLayout.
+   * Persist the draft to the database via API and promote it to savedLayout.
    * Called when the user clicks "Save Layout".
    */
-  const persistLayout = (layout: LayoutState) => {
+  const persistLayout = async (layout: LayoutState) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+      await api.patch('/user/preferences', { dashboardConfig: layout });
+      // Update user in context so we don't need a page reload
+      updateUser({ dashboardConfig: layout } as any);
     } catch (e) {
-      console.warn('Failed to persist dashboard layout', e);
+      console.error('Failed to persist dashboard layout via API', e);
     }
     setSavedLayout(layout);
     setDraftLayout(layout);

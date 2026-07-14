@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/config/db';
 import { formatInTimeZone } from 'date-fns-tz';
+import { prisma } from '@/lib/prisma';
 
 const BD_TZ = 'Asia/Dhaka';
 export const dynamic = 'force-dynamic';
@@ -44,7 +44,7 @@ export async function GET() {
     const processedEmployees = new Set();
     for (const log of checkIns) {
       if (!log.user) continue;
-      
+
       // FIX: Only calculate late minutes for the FIRST session of the day
       if (processedEmployees.has(log.employeeId)) {
         continue;
@@ -52,7 +52,7 @@ export async function GET() {
       processedEmployees.add(log.employeeId);
 
       let expectedShiftStart = log.user.shift?.startTime || log.user.shiftStartTime || log.user.customDepartment?.shiftStartTime || '09:00';
-      if (log.user.employeeType === 'Hybrid') {
+      if ((log.user.employeeType as string) === 'Hybrid') {
         if (log.deviceId === 'MANUAL_WEB' || log.isManualIn) {
           expectedShiftStart = log.user.shift?.remoteShiftStartTime || log.user.remoteShiftStartTime || log.user.customDepartment?.remoteShiftStartTime || expectedShiftStart;
         }
@@ -63,7 +63,7 @@ export async function GET() {
       const checkInLocalStr = formatInTimeZone(log.timestamp, BD_TZ, 'yyyy-MM-dd');
       const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;
       const shiftStartUTC = new Date(shiftStartLocalStr);
-      
+
       const diffMs = log.timestamp.getTime() - shiftStartUTC.getTime();
       let lateMins = 0;
       if (diffMs >= 60000) { // strictly 1 minute or more
@@ -73,17 +73,20 @@ export async function GET() {
       if (lateMins > 0) {
         lateEmployees.push({
           id: log.id,
-          name: log.user.name || 'Unknown',
+          name: log.user.name,
           avatar: log.user.profileImage || null,
           designation: log.user.customDesignation?.name || log.user.designation || 'Employee',
-          lateMinutes: lateMins
+          lateMinutes: lateMins,
+          // PHASE 2 FIX: Format times to 12-hour AM/PM format for the frontend
+          checkInTime: formatInTimeZone(log.timestamp, BD_TZ, 'hh:mm a'),
+          shiftStartTime: formatInTimeZone(shiftStartUTC, BD_TZ, 'hh:mm a'),
         });
       }
     }
 
     lateEmployees.sort((a, b) => b.lateMinutes - a.lateMinutes);
 
-    return NextResponse.json({ success: true, data: lateEmployees });
+    return NextResponse.json(lateEmployees);
   } catch (error: any) {
     console.error("Error fetching late today:", error);
     return NextResponse.json({ success: false, error: 'Failed to fetch late employees' }, { status: 500 });

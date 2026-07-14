@@ -40,7 +40,7 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
     }
 
     // Validate ENUM-like leaveType to ensure frontend consistency
-    const validLeaveTypes = ['Sick', 'Casual', 'Annual'];
+    const validLeaveTypes = ['Sick', 'Casual', 'Annual', 'EMERGENCY'];
     if (!validLeaveTypes.includes(type)) {
       return res.status(400).json({ message: 'Invalid leave type requested' });
     }
@@ -50,6 +50,32 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
     const parsedEndDate = new Date(endDate);
     if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
       return res.status(400).json({ message: 'Invalid start or end date provided' });
+    }
+
+    // ─── Punch Conflict Validation ───────────────────────────────────────────
+    const leaveDayStart = new Date(parsedStartDate);
+    leaveDayStart.setHours(0, 0, 0, 0);
+    const leaveDayEnd = new Date(parsedStartDate);
+    leaveDayEnd.setHours(23, 59, 59, 999);
+
+    const existingCheckIn = await prisma.attendanceLog.findFirst({
+      where: {
+        employeeId,
+        punchType: 'Check-In',
+        timestamp: {
+          gte: leaveDayStart,
+          lte: leaveDayEnd,
+        },
+      },
+    });
+
+    if (existingCheckIn) {
+      if (type === 'Sick' || type === 'Casual') {
+        return res.status(400).json({
+          message: 'You are already checked in today. Please apply for Emergency Leave instead.',
+        });
+      }
+      // If type is EMERGENCY or others, allow it to proceed
     }
 
     const attachment = req.file ? `/uploads/leaves/${req.file.filename}` : undefined;

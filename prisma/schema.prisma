@@ -126,7 +126,7 @@ model Leave {
   startDate  DateTime
   status     String   @default("Pending")
   totalDays  Int
-  type       String
+  type       String // "Sick" | "Casual" | "Annual" | "EMERGENCY"
   attachment String?
   updatedAt  DateTime @updatedAt
 }
@@ -243,6 +243,9 @@ model User {
   githubUrl    String?
   portfolioUrl String?
   signatureUrl String?
+  language        String?  @default("en")
+  dashboardConfig Json?    // To store widget layout, order, and visibility
+  taskView        String?  @default("list") // "list" | "kanban"
 
   attendanceLogs AttendanceLog[] @relation("UserAttendance")
   leaves         Leave[]         @relation("UserLeaves")

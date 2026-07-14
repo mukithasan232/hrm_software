@@ -2,6 +2,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { useTranslation } from '@/context/LanguageContext';
 import { Languages } from 'lucide-react';
+import api from '@/services/api';
 
 export default function LanguageSwitcher() {
   const { language, setLanguage } = useTranslation();
@@ -23,6 +24,17 @@ export default function LanguageSwitcher() {
   ];
 
   const active = options.find(o => o.code === language) ?? options[0];
+
+  const handleLanguageChange = async (code: 'en' | 'bn') => {
+    setLanguage(code);
+    setOpen(false);
+    try {
+      await api.patch('/user/preferences', { language: code });
+    } catch (error) {
+      console.error('Failed to save language preference', error);
+      // Optionally, add a toast notification here to inform the user of the failure.
+    }
+  };
 
   return (
     <div className="relative" ref={ref}>
@@ -68,7 +80,7 @@ export default function LanguageSwitcher() {
               key={code}
               role="option"
               aria-selected={language === code}
-              onClick={() => { setLanguage(code); setOpen(false); }}
+              onClick={() => handleLanguageChange(code)}
               className={`
                 flex items-center gap-2.5 px-3 py-2.5 cursor-pointer text-sm transition-colors
                 ${language === code

@@ -66,15 +66,24 @@ const getAnalytics = async (req: any, res: any) => {
         select: { employeeId: true }
       });
 
+      const onLeaveRecords = await prisma.leave.count({
+        where: {
+          status: 'Approved',
+          startDate: { lte: endUTC },
+          endDate: { gte: startUTC },
+        }
+      });
+
       const present = presentRecords.length;
-      const absent = totalEmployees - present;
+      const absent = totalEmployees - present - onLeaveRecords;
 
       analytics.push({
         date: formatInTimeZone(targetDate, BD_TZ, 'EEE'), // Mon, Tue … Sat
         fullDate: dateStr,
         dayOfWeek: targetDate.getDay(),
         present,
-        absent: absent > 0 ? absent : 0
+        absent: absent > 0 ? absent : 0,
+        onLeave: onLeaveRecords
       });
     }
 

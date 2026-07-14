@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { translations, Language, TranslationKey } from '@/i18n/translations';
+import { useAuth } from './AuthContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LanguageContextValue {
@@ -11,38 +12,39 @@ interface LanguageContextValue {
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 const LanguageContext = createContext<LanguageContextValue>({
-  language: 'bn',
+  language: 'en',
   setLanguage: () => {},
   t: (key) => key,
 });
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'hrm_language';
-
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('bn');
+  const { user } = useAuth();
+  const [language, setLanguageState] = useState<Language>('en');
   const [mounted, setMounted] = useState(false);
 
-  // Hydrate from localStorage after mount (avoids SSR mismatch)
+  // Hydrate from user profile or browser settings after mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Language | null;
-      if (stored && (stored === 'en' || stored === 'bn')) {
-        setLanguageState(stored);
+    if (user?.language && (user.language === 'en' || user.language === 'bn')) {
+      setLanguageState(user.language as Language);
+    } else {
+      // Fallback to browser language if no user preference is set
+      const browserLang = navigator.language.split('-')[0];
+      if (browserLang === 'bn') {
+        setLanguageState('bn');
+      } else {
+        setLanguageState('en');
       }
-    } catch (_) {}
+    }
     setMounted(true);
-  }, []);
+  }, [user]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
-    try {
-      localStorage.setItem(STORAGE_KEY, lang);
-    } catch (_) {}
+    // The actual persistence is handled by the LanguageSwitcher component
   }, []);
 
-  // Translation lookup — returns the string for the current language,
-  // falls back to English if a key is somehow missing from BN dictionary.
+  // Translation lookup
   const t = useCallback(
     (key: TranslationKey): string => {
       return (translations[language] as Record<string, string>)[key]
@@ -54,8 +56,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   // Prevent flash of wrong language during SSR hydration
   if (!mounted) {
+    // Render with a default (e.g., 'en') and let the useEffect correct it client-side
     return (
-      <LanguageContext.Provider value={{ language: 'bn', setLanguage, t: (k) => (translations.bn as Record<string, string>)[k] ?? k }}>
+      <LanguageContext.Provider value={{ language: 'en', setLanguage, t: (k) => (translations.en as Record<string, string>)[k] ?? k }}>
         {children}
       </LanguageContext.Provider>
     );

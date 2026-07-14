@@ -629,7 +629,25 @@ export default function TasksPage() {
   const canEditTasks = checkPermission(user, 'Tasks', 'edit');
   const canDeleteTasks = checkPermission(user, 'Tasks', 'delete');
 
-  const [view, setView]             = useState<'list' | 'kanban'>('list');
+  const [view, setView]             = useState<'list' | 'kanban'>(user?.taskView === 'kanban' ? 'kanban' : 'list');
+
+  useEffect(() => {
+    if (user?.taskView) {
+      setView(user.taskView as 'list' | 'kanban');
+    }
+  }, [user]);
+
+  // Sync view preference with DB
+  const handleSetView = async (newView: 'list' | 'kanban') => {
+    if (view === newView) return;
+    setView(newView);
+    try {
+      await api.patch('/user/preferences', { taskView: newView });
+    } catch (error) {
+      // Non-critical, so we don't show a toast
+      console.error('Failed to save task view preference', error);
+    }
+  };
   const [tasks, setTasks]           = useState<Task[]>([]);
   const [employees, setEmployees]   = useState<any[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -908,7 +926,7 @@ export default function TasksPage() {
           {/* View toggle */}
           <div className="flex items-center bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-1">
             <button 
-              onClick={() => setView('list')}
+              onClick={() => handleSetView('list')}
               title="List View"
               className={`p-2 rounded-md transition-all ${view === 'list' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-white'}`}
             >
@@ -917,7 +935,7 @@ export default function TasksPage() {
               </svg>
             </button>
             <button 
-              onClick={() => setView('kanban')}
+              onClick={() => handleSetView('kanban')}
               title="Kanban View"
               className={`p-2 rounded-md transition-all ${view === 'kanban' ? 'bg-white dark:bg-white/10 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-white'}`}
             >

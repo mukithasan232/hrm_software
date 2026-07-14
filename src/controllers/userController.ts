@@ -270,6 +270,48 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
   }
 };
 
+export const updateUserPreferences = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const { language, dashboardConfig } = req.body;
+
+    if (!language && !dashboardConfig) {
+      res.status(400).json({ message: 'At least one preference field (language, dashboardConfig) is required.' });
+      return;
+    }
+
+    const dataToUpdate: { language?: string; dashboardConfig?: any } = {};
+
+    if (language) {
+      dataToUpdate.language = language;
+    }
+
+    if (dashboardConfig) {
+      // Basic validation to ensure it's an object or array
+      if (typeof dashboardConfig !== 'object' || dashboardConfig === null) {
+        res.status(400).json({ message: 'dashboardConfig must be a valid JSON object or array.' });
+        return;
+      }
+      dataToUpdate.dashboardConfig = dashboardConfig;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: dataToUpdate,
+      select: {
+        id: true,
+        language: true,
+        dashboardConfig: true,
+      }
+    });
+
+    res.status(200).json(updatedUser);
+  } catch (error: any) {
+    console.error('Error updating user preferences:', error);
+    res.status(500).json({ message: 'Failed to update preferences.' });
+  }
+};
+
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };

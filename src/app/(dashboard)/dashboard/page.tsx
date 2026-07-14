@@ -421,8 +421,8 @@ export default function DashboardOverview() {
     setIsEditing(false);
   };
 
-  const handleSaveLayout = () => {
-    persistLayout(layout);
+  const handleSaveLayout = async () => {
+    await persistLayout(layout);
     setIsEditing(false);
     toast.success("Dashboard layout saved successfully!");
   };

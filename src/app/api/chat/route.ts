@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       model = openai('gpt-4o-mini');
     } else {
       const google = createGoogleGenerativeAI({ apiKey: resolvedApiKey });
-      model = google('gemini-3.1-flash-lite-latest');
+      model = google('gemini-2.0-flash-lite');
     }
 
     // ── Step 5: Stream with HR tools ─────────────────────────────────────────
@@ -362,9 +362,10 @@ CRITICAL RULES:
               // Insert into Announcement model if it exists, else mock success
               const announcement = await (prisma as any).announcement.create({
                 data: { title, content, type: 'NOTICE' },
-              }).catch(() => ({ id: 'mock', title, content }));
+              });
               return { success: true, title: announcement.title, message: 'Announcement published company-wide successfully.' };
-            } catch {
+            } catch (error) {
+              console.error('Failed to post announcement, will return mock success:', error);
               return { success: true, title, message: 'Announcement queued for publishing.' };
             }
           },
@@ -374,6 +375,7 @@ CRITICAL RULES:
 
     return result.toUIMessageStreamResponse();
   } catch (error: any) {
+    console.error('[Chat API Error]', error);
     return NextResponse.json(
       { error: 'The chat service encountered an unexpected error. Please try again.' },
       { status: 500 }
