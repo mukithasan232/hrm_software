@@ -970,7 +970,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       const shiftStartLocalStr = `${checkInLocalStr}T${expectedShiftStart}:00+06:00`;
       const shiftStartUTC = new Date(shiftStartLocalStr);
 
-      const gracePeriodMs = 10 * 60 * 1000; // 10 minutes
+      const gracePeriodMs = 15 * 60 * 1000; // 15 minutes
 
       if (parsedDate.getTime() > shiftStartUTC.getTime() + gracePeriodMs) {
         // Employee is late

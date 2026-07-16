@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
-  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare, Volume2, BarChart, Activity
+  X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare, Volume2, BarChart, Activity, FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -18,10 +18,11 @@ const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_UR
 // Nav item keys (translated at render time via t())
 const NAV_ITEM_DEFS = [
   { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard, module: 'Dashboard' },
-  { key: 'attendance', href: '/attendance', icon: Clock, module: 'Attendance' },
+  { key: 'attendance', href: '/attendance?range=today', icon: Clock, module: 'Attendance' },
   { key: 'leaves', href: '/leaves', icon: CalendarRange, module: 'Leaves' },
   { key: 'announcements', href: '/announcements', icon: Megaphone, module: 'Announcements' },
   { key: 'tasks', href: '/tasks', icon: CheckSquare, module: 'Tasks' },
+  { key: 'documents', label: 'Document Review', href: '/admin/documents', icon: FileText, module: 'Documents', adminOnly: true },
   { key: 'globalStream', href: '/global-stream', icon: Activity, module: 'GlobalStream', adminOnly: true },
   { key: 'myProfile', href: '/profile', icon: User, module: 'Profile' },
 ];
@@ -68,9 +69,14 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     (user as any)?.userType === 'SUPER_ADMIN' ||
     user?.roles?.some((r: any) => ['super admin', 'superadmin'].includes((r?.name || r)?.toLowerCase()?.trim()));
 
+  const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'];
+  const userDesig = (typeof user?.designation === 'string' ? user.designation : (user?.designation as any)?.name || '')?.toLowerCase()?.trim();
+  const hasAdminRole = user?.roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
+  const isAdmin = isSuperAdmin || ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
+
   const filteredItems = NAV_ITEM_DEFS.filter(item => {
     if (isSuperAdmin) return true;
-    if ((item as any).adminOnly && !isSuperAdmin) return false; // Simplified admin check
+    if ((item as any).adminOnly && !isAdmin) return false; // Allowed for all Admins
     if (item.module === 'Dashboard' || item.module === 'Profile') return true;
     return checkPermission(user, item.module.toLowerCase(), 'access');
   });

@@ -25,7 +25,7 @@ const getNotificationLink = (n: any) => {
   const title = (n.titleEn || n.titleBn || n.title || '').toLowerCase();
   
   if (type === 'ATTENDANCE' || title.includes('late')) {
-    return '/attendance';
+    return '/attendance?range=today';
   }
 
   const idParam = n.referenceId ? `?id=${n.referenceId}` : '';

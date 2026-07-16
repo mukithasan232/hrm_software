@@ -529,8 +529,9 @@ const STALE_SESSION_MS = 14 * 60 * 60 * 1000; // 14 hours
 async function processBiometricPunch(
   employeeId: string,
   punchTime: Date,
-  deviceIp: string
-): Promise<{ result: 'debounced' | 'checked_out' | 'missing_out_closed' | 'checked_in'; detail?: string }> {
+  deviceIp: string,
+  punchType?: string | null
+): Promise<{ result: 'debounced' | 'checked_out' | 'missing_out_closed' | 'checked_in' | 'ignored_missing_in'; detail?: string }> {
   try {
     return await prisma.$transaction(async (tx) => {
 
@@ -597,30 +598,37 @@ async function processBiometricPunch(
         orderBy: { timestamp: 'desc' }, // The most recent open session
       });
 
+      let resolvedPunchType: 'CheckIn' | 'CheckOut' = 'CheckIn'; // fallback
+      if (punchType) {
+        const p = punchType.toString().toUpperCase();
+        if (['1', 'CHECKOUT', 'CHECK-OUT', 'OUT', 'C/OUT', '4', '5'].includes(p)) resolvedPunchType = 'CheckOut';
+      } else {
+        // If no punchType provided (e.g. legacy fallback), use the old toggle logic
+        resolvedPunchType = openSession ? 'CheckOut' : 'CheckIn';
+      }
+
       if (openSession) {
         const sessionAgeMs = punchTime.getTime() - openSession.timestamp.getTime();
 
-        // ── [Task 3] Stale session guard ────────────────────────────────────
-        // If the session is older than 14 hours the employee almost certainly
-        // forgot to punch out. Mark it as incomplete and start a new CheckIn.
-        if (sessionAgeMs > STALE_SESSION_MS) {
+        // ── [Task 3] Stale session guard or Forced CheckIn ──────────────────
+        // If the session is older than 14 hours OR the device explicitly says this is a new CheckIn
+        if (sessionAgeMs > STALE_SESSION_MS || resolvedPunchType === 'CheckIn') {
           await tx.attendanceLog.update({
             where: { id: openSession.id },
             data: {
-              // Soft-close: set checkOut to exactly 14 hours after checkIn
-              // so duration is bounded and the UI does not show infinity.
-              checkOut: new Date(openSession.timestamp.getTime() + STALE_SESSION_MS),
+              checkOut: new Date(openSession.timestamp.getTime() + Math.min(STALE_SESSION_MS, sessionAgeMs)),
               isMissingOut: true,
             },
           });
 
           console.log(
-            `[ZKService] ⚠️  MISSING_OUT: Stale session for employee ${employeeId} ` +
-            `(open since ${openSession.timestamp.toISOString()}) auto-closed. ` +
-            `New CheckIn started at ${punchTime.toISOString()}.`
+            `[ZKService] ⚠️  MISSING_OUT: Session for employee ${employeeId} auto-closed (Stale or forced CheckIn).`
           );
 
-          // Fall through to create a fresh CheckIn below
+          if (resolvedPunchType === 'CheckOut') {
+            return { result: 'ignored_missing_in', detail: 'CheckOut arrived but previous session was stale.' };
+          }
+          // Else (CheckIn), fall through to create a fresh CheckIn below
         } else {
           // ── [Task 2 + Task 4] Normal CheckOut with early-leave calc ─────
           //
@@ -670,6 +678,11 @@ async function processBiometricPunch(
           );
 
           return { result: 'checked_out', detail };
+        }
+      } else {
+        // No open session exists
+        if (resolvedPunchType === 'CheckOut') {
+          return { result: 'ignored_missing_in', detail: 'CheckOut arrived but no open session found. Ignored.' };
         }
       }
 
@@ -822,6 +835,7 @@ export const syncZkTecoData = async (isDeepSync: boolean = false): Promise<{ syn
         newLogsToProcess.push({
           employeeId,
           recordTime: rawTimestamp,
+          punchType: log.punchType !== undefined && log.punchType !== null ? String(log.punchType) : null,
         });
       }
       
@@ -897,7 +911,8 @@ export const syncZkTecoData = async (isDeepSync: boolean = false): Promise<{ syn
         const { result } = await processBiometricPunch(
           log.employeeId,
           log.recordTime,
-          currentZkIp
+          currentZkIp,
+          log.punchType
         );
 
         if (result === 'debounced') {

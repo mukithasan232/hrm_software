@@ -36,12 +36,7 @@ export const GET = wrapHandler(async (req: any, res: any) => {
 
     const where: any = { 
       userType: 'Employee',
-      employeeId: { not: 'UNMAPPED_FALLBACK' },
-      customDesignation: {
-        name: {
-          notIn: ['Admin', 'Super Admin', 'System Administrator']
-        }
-      }
+      employeeId: { not: 'UNMAPPED_FALLBACK' }
     };
 
     if (!isAdmin) {

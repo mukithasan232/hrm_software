@@ -66,7 +66,7 @@ export async function GET(request: Request) {
 
     const lateRecords = [];
     const processedMap = new Set(); 
-    const gracePeriodMs = 10 * 60 * 1000; // 10 minutes
+    const gracePeriodMs = 15 * 60 * 1000; // 15 minutes
 
     for (const log of checkIns) {
       if (!log.user) continue;

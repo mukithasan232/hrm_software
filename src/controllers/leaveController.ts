@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express-serve-static-core';
 import { prisma } from '../lib/prisma';
-import { sendLeaveUpdateEmail } from '../services/emailService';
+import { sendLeaveUpdateEmail, sendNewLeaveRequestEmail } from '../services/emailService';
 import { eventEmitter } from '../lib/eventEmitter';
 
 // 💡 Multer-এর জন্য এক্সপ্রেস Request টাইপকে সম্পূর্ণ টাইপসেফ করা হলো
@@ -120,7 +120,6 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
         data: notifications
       });
       // Broadcast the notifications in real-time
-      // Note: createMany doesn't return the IDs, but for real-time we mainly need the payload to show in the dropdown
       notifications.forEach((n) => eventEmitter.emit('new-notification', { ...n, id: Math.random().toString(36).substring(7), createdAt: new Date() }));
 
       // Native Browser Notification Trigger via Socket.io
@@ -130,6 +129,24 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
           body: `${applyingUser?.name || 'An employee'} applied for ${type} leave.`
         });
       }
+      
+      // Email Notification to Admins
+      safeHrAndManagers.forEach((adminUser: any) => {
+        if (adminUser.email) {
+          try {
+            sendNewLeaveRequestEmail(
+              adminUser.email,
+              applyingUser?.name || 'An employee',
+              type,
+              startDate,
+              endDate,
+              reason
+            ).catch(err => console.error('[Nodemailer Warning] Failed to send email to admin:', err.message));
+          } catch (err: any) {
+            console.error('[Nodemailer Warning] Exception triggering email:', err.message);
+          }
+        }
+      });
     }
 
     return res.status(201).json({ message: 'Leave applied successfully', leave });

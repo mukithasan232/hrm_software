@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { formatMinutes } from '@/utils/attendanceUtils';
 
 interface AttendanceReadViewProps {
   id: string | number;
@@ -37,15 +38,29 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
 
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  const handleDeleteSession = async (sessionId: string) => {
+  const handleDeleteSession = async (session: any) => {
     if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) return;
-    setIsDeleting(sessionId);
+    
+    // Extract valid IDs from the session object
+    const idsToDelete = [session.id, session.checkIn?.id, session.checkOut?.id].filter(Boolean);
+    
+    if (idsToDelete.length === 0) return;
+    
+    setIsDeleting(session.id || 'deleting');
     try {
-      await axios.delete(`/api/attendance/${sessionId}`);
+      const response = await fetch(`/api/attendance/delete-logs`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: idsToDelete })
+      });
+
+      if (!response.ok) throw new Error('Failed to delete logs');
+
       toast.success('Session deleted successfully');
       window.location.reload(); 
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to delete session');
+      console.error(error);
+      toast.error('Failed to delete session');
     } finally {
       setIsDeleting(null);
     }
@@ -63,77 +78,35 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
     punchTimeline
   } = initialData;
 
-  // --- DYNAMIC PAIRING LOGIC ---
-  // 1. Flatten punchTimeline into raw timestamps
-  const rawPunches: any[] = [];
-  (punchTimeline || []).forEach((session: any) => {
-    if (session.inTime) rawPunches.push({ 
-      timestamp: session.inTime, 
-      source: session.inSource, 
-      isManual: session.isManualIn, 
-      id: session.id,
-      latitude: session.inLatitude,
-      longitude: session.inLongitude,
-      address: session.inAddress
-    });
-    // In case the DB had an actual outTime, we extract it as a raw punch too
-    if (session.outTime) rawPunches.push({ 
-      timestamp: session.outTime, 
-      source: session.outSource, 
-      isManual: session.isManualOut, 
-      id: session.id + '_out',
-      latitude: session.outLatitude,
-      longitude: session.outLongitude,
-      address: session.outAddress
-    });
+  // --- NATIVE DATABASE PAIRING (Using True Device States) ---
+  const pairedSessions = (punchTimeline || []).map((session: any) => ({
+    id: session.id, // Explicitly pass the main DB record ID
+    checkIn: { timestamp: session.inTime, id: session.id },
+    checkOut: session.outTime ? { timestamp: session.outTime } : null,
+    inSource: session.inSource,
+    outSource: session.outSource,
+    isManualIn: session.isManualIn,
+    isManualOut: session.isManualOut,
+    inLatitude: session.inLatitude,
+    inLongitude: session.inLongitude,
+    inAddress: session.inAddress,
+    outLatitude: session.outLatitude,
+    outLongitude: session.outLongitude,
+    outAddress: session.outAddress
+  }));
+
+  let totalValidMinutes = 0;
+  pairedSessions.forEach((s: any) => {
+    if (s.checkIn && s.checkOut) {
+       totalValidMinutes += Math.floor((new Date(s.checkOut).getTime() - new Date(s.checkIn).getTime()) / 60000);
+    }
   });
 
-  // 1b. Sort strictly by time
-  const sortedLogs = rawPunches.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-  // 2. Pair them dynamically: Odd = IN, Even = OUT
-  const pairedSessions: any[] = [];
-  let newTotalValidMs = 0;
-
-  for (let i = 0; i < sortedLogs.length; i += 2) {
-    const checkIn = sortedLogs[i];
-    const checkOut = sortedLogs[i + 1] || null;
-    
-    let durationStr = '--';
-    if (checkOut) {
-      const durationMs = new Date(checkOut.timestamp).getTime() - new Date(checkIn.timestamp).getTime();
-      newTotalValidMs += durationMs;
-      const mins = Math.floor(durationMs / 60000);
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      durationStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
-    }
-
-    pairedSessions.push({
-      sessionNumber: Math.floor(i / 2) + 1,
-      checkIn, 
-      checkOut,
-      duration: durationStr
-    });
-  }
-
-  // 3. Update Summary Variables
-  const checkInRaw = sortedLogs.length > 0 ? sortedLogs[0].timestamp : null;
-  const checkOutRaw = sortedLogs.length > 1 ? sortedLogs[sortedLogs.length - 1].timestamp : null;
-  const isMissingOut = sortedLogs.length % 2 !== 0;
-  const totalValidMs = newTotalValidMs;
-
-
-  const formatMinutes = (mins: number) => {
-    if (!mins || mins <= 0) return '0m';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if (h > 0 && m > 0) return `${h}h ${m}m`;
-    if (h > 0) return `${h}h`;
-    return `${m}m`;
-  };
-
-  const totalHours = totalValidMs > 0 ? (totalValidMs / 3600000).toFixed(2) : '0';
+  const checkInRaw = pairedSessions[0]?.checkIn;
+  const checkOutRaw = pairedSessions[pairedSessions.length - 1]?.checkOut;
+  const isMissingOut = pairedSessions.length > 0 && !pairedSessions[pairedSessions.length - 1].checkOut;
+  const totalValidMs = totalValidMinutes * 60000;
+  const totalHours = formatMinutes(totalValidMinutes);
 
   const handleOtAction = async (actionStatus: 'APPROVED' | 'REJECTED' | 'PENDING') => {
     try {
@@ -348,7 +321,7 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
             {showDetails && (
               <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex flex-col gap-3">
                 {pairedSessions.map((session: any, index: number) => (
-                  <div key={session.checkIn.id || index} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-md mb-2">
+                  <div key={session.checkIn?.id || index} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-md mb-2">
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Session {session.sessionNumber}</span>
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-2">
@@ -396,10 +369,12 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <div className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">{session.duration || '--'}</div>
-                      {session.checkIn.id && isAdmin && (
+                      <div className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        {session.checkOut ? formatMinutes(session.durationMinutes) : '--'}
+                      </div>
+                      {session.checkIn?.id && isAdmin && (
                         <button 
-                          onClick={() => handleDeleteSession(session.checkIn.id)}
+                          onClick={() => handleDeleteSession(session)}
                           disabled={isDeleting === session.checkIn.id}
                           className="text-red-400 hover:text-red-600 transition-colors p-1 disabled:opacity-50"
                           title="Delete this session"

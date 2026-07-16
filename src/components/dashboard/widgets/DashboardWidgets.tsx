@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/context/LanguageContext';
-import { LogIn, LogOut, Clock, UserMinus, CalendarRange, CalendarCheck2, Megaphone, Trash2, X, BarChart3, PieChart as PieChartIcon, RefreshCw } from 'lucide-react';
+import { LogIn, LogOut, Clock, UserMinus, CalendarRange, CalendarCheck2, Megaphone, Trash2, X, BarChart3, PieChart as PieChartIcon, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toBDDisplay, getBDToday } from '@/lib/dateUtils';
 import { useLiveOfficeHour } from '@/hooks/useLiveOfficeHour';
 import dynamic from 'next/dynamic';
@@ -201,7 +201,18 @@ export const AbsentDaysWidget = ({ isCompact, data }: { isCompact: boolean, data
                            {emp.name?.charAt(0) || '?'}
                          </div>
                        )}
-                       <span className="font-medium text-slate-800 dark:text-slate-200 relative z-10">{emp.name}</span>
+                       <div className="flex flex-col min-w-0 relative z-10">
+                         <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{emp.name}</span>
+                         <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                           Shift: {(() => {
+                             const t = emp.shift?.startTime || emp.shiftStartTime || emp.department?.shiftStartTime || emp.customDepartment?.shiftStartTime || '09:00';
+                             const [h, m] = t.split(':');
+                             const hr = parseInt(h, 10);
+                             const ampm = hr >= 12 ? 'PM' : 'AM';
+                             return `${hr % 12 || 12}:${m || '00'} ${ampm}`;
+                           })()}
+                         </span>
+                       </div>
                      </td>
                      <td className="py-3 text-slate-500 dark:text-slate-400 relative z-10">
                        <span className="bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-md text-xs border border-slate-200 dark:border-white/10 group-hover:bg-orange-50 dark:group-hover:bg-orange-500/10 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
@@ -245,8 +256,8 @@ export const LeavesRemainingWidget = ({ isCompact, data }: { isCompact: boolean,
   const { isAdmin, stats, loading, ANNUAL_LEAVE_QUOTA } = data;
 
   if (isCompact) {
-    return (
-      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-between hover:border-purple-500/50 transition-all shadow-sm dark:shadow-md h-full">
+    const cardContent = (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-between hover:border-purple-500/50 transition-all shadow-sm dark:shadow-md h-full hover:-translate-y-1 hover:shadow-md cursor-pointer">
         <div className="flex items-center justify-between">
            <p className="text-[10px] text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider truncate">
              {isAdmin ? t("pendingLeaves") : "Remaining Leaves"}
@@ -257,6 +268,12 @@ export const LeavesRemainingWidget = ({ isCompact, data }: { isCompact: boolean,
         </div>
         <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{loading ? "-" : isAdmin ? stats.pendingLeaves : stats.remainingLeaves}</p>
       </div>
+    );
+    
+    return (
+      <Link href="/leaves" className="block h-full">
+        {cardContent}
+      </Link>
     );
   }
 
@@ -327,8 +344,8 @@ export const LeavesPendingWidget = ({ isCompact, data }: { isCompact: boolean, d
   if (data.isAdmin) return null;
 
   if (isCompact) {
-    return (
-      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-between hover:border-sky-500/50 transition-all shadow-sm dark:shadow-md h-full">
+    const cardContent = (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-between hover:border-sky-500/50 transition-all shadow-sm dark:shadow-md h-full hover:-translate-y-1 hover:shadow-md cursor-pointer">
          <div className="flex items-center justify-between">
            <p className="text-[10px] text-slate-500 dark:text-gray-400 font-semibold uppercase tracking-wider truncate">
              Pending Leaves
@@ -339,6 +356,12 @@ export const LeavesPendingWidget = ({ isCompact, data }: { isCompact: boolean, d
         </div>
         <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{loading ? "-" : stats.pendingLeaves}</p>
       </div>
+    );
+    
+    return (
+      <Link href="/leaves" className="block h-full">
+        {cardContent}
+      </Link>
     );
   }
 
@@ -581,6 +604,112 @@ export const LateTodayWidgetWrapper = ({ isCompact, data }: { isCompact: boolean
   );
 };
 
+export const TopLatePersonsWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  const [topLate, setTopLate] = React.useState<any[]>([]);
+  const [limit, setLimit] = React.useState(3);
+  const [loading, setLoading] = React.useState(false);
+
+  const fetchTopLate = async (currentLimit: number) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/reports/top-late?limit=${currentLimit}`);
+      const json = await res.json();
+      if (json.success) {
+        setTopLate(json.data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  React.useEffect(() => {
+    if (data.isAdmin) {
+      fetchTopLate(limit);
+    }
+  }, [data.isAdmin, limit]);
+
+  if (!data.isAdmin) return null;
+
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm dark:shadow-md h-full flex flex-col justify-between">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-500" />
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Top Late</h3>
+        </div>
+        <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{loading ? "-" : topLate.length}</p>
+        <p className="text-xs text-slate-400 mt-1">Highest late records</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-3xl p-5 md:p-6 shadow-md dark:shadow-2xl h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-red-500/20 rounded-lg text-red-500">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white">Top Late Persons</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500">Show Top:</label>
+          <input 
+            type="number" 
+            min="1" 
+            max="50" 
+            value={limit} 
+            onChange={(e) => setLimit(Number(e.target.value) || 3)}
+            className="w-16 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:border-red-500"
+          />
+        </div>
+      </div>
+      
+      <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+        {loading ? (
+          <div className="flex items-center justify-center h-full min-h-[150px]">
+            <RefreshCw className="w-6 h-6 text-red-500 animate-spin" />
+          </div>
+        ) : topLate.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[150px]">
+            <AlertTriangle className="w-8 h-8 mb-2" />
+            <p className="text-sm">No late records this month.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {topLate.map((emp: any, idx: number) => (
+              <div key={emp.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10 hover:border-red-200 dark:hover:border-red-900/50 transition-colors relative overflow-hidden group">
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${idx === 0 ? 'bg-red-500' : idx === 1 ? 'bg-orange-500' : idx === 2 ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                <div className="flex items-center gap-3 pl-2">
+                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 font-bold text-[10px] flex items-center justify-center">
+                    #{idx + 1}
+                  </div>
+                  {emp.avatar ? (
+                    <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold text-xs flex items-center justify-center">
+                      {emp.name?.charAt(0) || '?'}
+                    </div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-sm text-slate-800 dark:text-white">{emp.name}</span>
+                    <span className="text-[10px] text-slate-500">{emp.department}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-sm font-bold text-red-600">{emp.lateCount} days late</span>
+                  <span className="text-[10px] text-slate-400">{Math.floor(emp.totalLateMinutes / 60)}h {emp.totalLateMinutes % 60}m total</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const CheckedOutWidgetWrapper = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
   if (isCompact) {
     return (
@@ -612,4 +741,5 @@ export const WidgetMap: Record<string, React.FC<any>> = {
   'late-today': LateTodayWidgetWrapper,
   'checked-out': CheckedOutWidgetWrapper,
   'break-countdown': BreakCountdownWidget,
+  'top-late': TopLatePersonsWidget,
 };

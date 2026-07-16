@@ -14,6 +14,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import PageGuard from '@/components/auth/PageGuard';
 import { formatTimeStr12Hour } from '@/lib/timeUtils';
 import { useDetailsStore } from '@/store/useDetailsStore';
+import EmployeeProfileModal from '@/components/team/EmployeeProfileModal';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -138,6 +139,10 @@ export default function EmployeesPage() {
   // ── Delete Modal ───────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  // ── Profile Modal State ────────────────────────────────────────────────────
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // ── Resend Email ───────────────────────────────────────────────────────────
   const [resendingEmailId, setResendingEmailId] = useState<string | null>(null);
@@ -368,7 +373,10 @@ export default function EmployeesPage() {
           {filtered.map(emp => (
             <div
               key={emp.id}
-              onClick={() => openDetails('employee', emp.id, emp)}
+              onClick={() => {
+                setSelectedEmployeeId(emp.id);
+                setIsProfileModalOpen(true);
+              }}
               className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 cursor-pointer transition-all group flex flex-col"
             >
               {/* Top row: avatar + badge */}
@@ -734,6 +742,13 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+
+      {/* ══════════ EMPLOYEE PROFILE MODAL ══════════ */}
+      <EmployeeProfileModal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)} 
+        employeeId={selectedEmployeeId} 
+      />
 
       </div>
     </PageGuard>

@@ -110,12 +110,7 @@ function fmtDate(d?: string) {
 const renderDate = (dateString: string | null | undefined, isCompleted: boolean) => {
   if (!dateString) return '—';
   const dateObj = new Date(dateString);
-  
-  if (isCompleted) {
-      return format(dateObj, 'dd MMM, yyyy'); 
-  } else {
-      return formatDistanceToNow(dateObj, { addSuffix: true });
-  }
+  return format(dateObj, 'MMM d, yyyy, h:mm a');
 };
 
 function isOverdue(dueDate?: string, status?: TaskStatus) {
@@ -386,17 +381,29 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
               onChange={(val) => setForm({ ...form, assignedToId: val })}
               options={[
                 { value: '', label: '— Select employee —', element: <span className="text-slate-500 dark:text-gray-400">— Select employee —</span> },
-                ...employees.map(emp => ({
-                  value: emp.id,
-                  label: emp.name,
-                  element: (
-                    <div className="flex items-center gap-2">
-                      <Avatar user={emp} />
-                      <span className="font-semibold text-slate-800 dark:text-gray-200">{emp.name}</span>
-                      <span className="text-xs text-slate-400 dark:text-gray-500">({emp.employeeId})</span>
-                    </div>
-                  )
-                }))
+                ...employees.map(emp => {
+                  const isCurrent = !isCreating && task?.assignedToId === emp.id;
+                  return {
+                    value: emp.id,
+                    label: isCurrent ? `${emp.name} (Current Assignee)` : emp.name,
+                    element: (
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <Avatar user={emp} />
+                          <span className={`font-semibold ${isCurrent ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-gray-200'}`}>
+                            {emp.name}
+                          </span>
+                          <span className="text-xs text-slate-400 dark:text-gray-500">({emp.employeeId})</span>
+                        </div>
+                        {isCurrent && (
+                          <span className="text-[10px] uppercase font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/20 px-2 py-0.5 rounded ml-2">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                    )
+                  };
+                })
               ]}
               disabled={isReadOnly}
             />
@@ -418,6 +425,11 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
                   </button>
                 )}
               </div>
+            )}
+            {!isReadOnly && !attachment && (
+              <p className="text-xs text-slate-500 dark:text-gray-400 mt-2 ml-1">
+                Click to browse, or press <kbd className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1 font-mono text-[10px]">Ctrl+V</kbd> to paste an image
+              </p>
             )}
             {task?.attachment && task.attachment !== '' && !attachment && (
               <div className="mt-2">
@@ -611,6 +623,11 @@ function KanbanCard({
               </div>
             )}
           </div>
+          
+          {/* Assignment Date */}
+          <div className="mt-1 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+            Assigned: {task.createdAt ? format(new Date(task.createdAt), 'MMM d, yyyy, h:mm a') : '—'}
+          </div>
         </div>
       )}
     </Draggable>
@@ -662,6 +679,20 @@ export default function TasksPage() {
   const [modalMode, setModalMode]   = useState<'view' | 'edit'>('view');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setVisibleCount(prev => prev + 30);
+      }
+    }, { threshold: 0.1 });
+
+    const target = document.getElementById('infinite-scroll-trigger');
+    if (target) observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [loading]);
 
 
   const fetchTasks = useCallback(async () => {
@@ -802,11 +833,13 @@ export default function TasksPage() {
            return priorityWeight[b.priority] - priorityWeight[a.priority];
        }
        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    })
+    .slice(0, visibleCount);
 
   const completedTasks = filtered
     .filter(t => t.status === 'COMPLETED')
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, visibleCount);
 
   const tasksByStatus = (status: TaskStatus) => filtered.filter(t => t.status === status);
 
@@ -1189,6 +1222,15 @@ export default function TasksPage() {
             })}
           </div>
         </DragDropContext>
+      )}
+
+      {/* Infinite Scroll Trigger */}
+      {!loading && (
+        <div id="infinite-scroll-trigger" className="h-10 w-full flex items-center justify-center">
+          {visibleCount < filtered.length && (
+            <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+          )}
+        </div>
       )}
 
       {/* ─── Create / Edit Modal ─── */}
