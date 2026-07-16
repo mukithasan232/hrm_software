@@ -1,11 +1,27 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
-import { Shield, Paintbrush, Link as LinkIcon, Volume2, Puzzle, Settings2, Users } from 'lucide-react';
+import { Shield, Paintbrush, Link as LinkIcon, Volume2, Puzzle, Settings2, Users, Database, Server, BellRing } from 'lucide-react';
 import PageGuard from '@/components/auth/PageGuard';
 import { useTranslation } from '@/context/LanguageContext';
 
 const SETTINGS_CARDS = [
+  {
+    title: 'Database Setup',
+    description: 'Manage database connection and credentials.',
+    icon: Database,
+    href: '/settings/database',
+    color: 'text-purple-500',
+    bg: 'bg-purple-500/10'
+  },
+  {
+    title: 'System Config',
+    description: 'Manage master configurations and super admin.',
+    icon: Server,
+    href: '/settings/system',
+    color: 'text-slate-500',
+    bg: 'bg-slate-500/10'
+  },
   {
     titleKey: 'adminSettings.appearance',
     descKey: 'adminSettings.appearanceDesc',
@@ -37,6 +53,14 @@ const SETTINGS_CARDS = [
     href: '/settings/notifications',
     color: 'text-indigo-500',
     bg: 'bg-indigo-500/10'
+  },
+  {
+    title: 'Notification Preferences',
+    description: 'Manage email alerts and system notifications.',
+    icon: BellRing,
+    href: '/settings/notifications',
+    color: 'text-blue-500',
+    bg: 'bg-blue-500/10'
   },
   {
     titleKey: 'adminSettings.connectedApps',
@@ -75,10 +99,10 @@ export default function SettingsIndexPage() {
                 <card.icon className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">
-                {t((card as any).titleKey)}
+                {(card as any).title || t((card as any).titleKey)}
               </h3>
               <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed">
-                {t((card as any).descKey)}
+                {(card as any).description || t((card as any).descKey)}
               </p>
             </Link>
           ))}

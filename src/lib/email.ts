@@ -1,18 +1,26 @@
 import nodemailer from 'nodemailer';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.zoho.com',
-  port: Number(process.env.SMTP_PORT) || 465,
-  secure: process.env.SMTP_PORT === '587' ? false : true,
+export const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.hostinger.com",
+  port: parseInt(process.env.SMTP_PORT || "465"),
+  secure: true, // true for 465, false for other ports
   auth: {
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    pass: process.env.SMTP_PASSWORD,
   },
+});
+
+transporter.verify(function (error, success) {
+  if (error) {
+    console.error("Nodemailer Global Auth Error:", error);
+  } else {
+    console.log("Global Mailer Utility is ready to send messages.");
+  }
 });
 
 export const sendEmail = async ({ to, bcc, subject, html }: { to?: string; bcc?: string | string[]; subject: string; html: string }) => {
   // If SMTP variables aren't provided, log warning and gracefully bypass
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
     console.warn("SMTP credentials missing. Bypassing email broadcast.");
     return true;
   }

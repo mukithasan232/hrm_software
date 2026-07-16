@@ -42,9 +42,11 @@ async function isAdminUser(user: { id: string; designation?: string; roles?: any
   try {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (
-      dbUser?.email === 'dev@fixanyphoto.com' ||
+      dbUser?.email === 'admin@fixanyphoto.com' ||
       dbUser?.userType === 'SUPER_ADMIN' ||
-      dbUser?.designation === 'Super Admin'
+      dbUser?.userType === 'ADMIN' ||
+      dbUser?.designation === 'Super Admin' ||
+      dbUser?.designation === 'Admin'
     ) {
       return true;
     }

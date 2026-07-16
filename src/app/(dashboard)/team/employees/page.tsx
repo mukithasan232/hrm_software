@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Search, Building2, User, Mail, UploadCloud, X,
-  RefreshCw, Key, Pencil, Trash2, AlertTriangle, Link as LinkIcon, Loader2
+  RefreshCw, Key, Pencil, Trash2, AlertTriangle, Link as LinkIcon, Loader2, Send
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -138,6 +138,26 @@ export default function EmployeesPage() {
   // ── Delete Modal ───────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  // ── Resend Email ───────────────────────────────────────────────────────────
+  const [resendingEmailId, setResendingEmailId] = useState<string | null>(null);
+
+  const handleResendWelcome = async (emp: Employee) => {
+    if (!emp || !emp.id) {
+      return toast.error("User ID is missing!");
+    }
+    setResendingEmailId(emp.id);
+    const loadingToast = toast.loading('Sending email...');
+    try {
+      await api.post(`/employees/${emp.id}/resend-welcome`);
+      toast.success('Welcome email sent successfully!', { id: loadingToast });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to send welcome email', { id: loadingToast });
+    } finally {
+      setResendingEmailId(null);
+    }
+  };
+
 
   // ── Edit Form State (mirrors add) ──────────────────────────────────────────
   const [editName, setEditName] = useState('');
@@ -403,6 +423,14 @@ export default function EmployeesPage() {
                 </span>
 
                 <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleResendWelcome(emp); }}
+                    disabled={resendingEmailId === emp.id}
+                    title="Resend Welcome Email"
+                    className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-emerald-500 transition-colors border border-slate-100 dark:border-white/5 disabled:opacity-50"
+                  >
+                    {resendingEmailId === emp.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  </button>
                   <a
                     href={`mailto:${emp.email}`}
                     onClick={(e) => e.stopPropagation()}

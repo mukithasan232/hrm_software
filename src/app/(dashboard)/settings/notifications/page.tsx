@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/context/LanguageContext';
 import Link from 'next/link';
-import { Volume2, Play, Save, Menu, Lightbulb, ArrowLeft } from 'lucide-react';
+import { Volume2, Play, Save, Menu, Lightbulb, ArrowLeft, Briefcase, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '@/services/api';
 
 type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
@@ -32,6 +33,53 @@ export default function NotificationSettingsPage() {
     }
     setIsLoaded(true);
   }, []);
+
+  // ── Email Notification Preferences State ────────────────────────────────
+  const [emailPrefs, setEmailPrefs] = useState({
+    emailOnLeave: true,
+    emailOnTask: true,
+    emailOnLate: false,
+    emailOnSystemAlert: true
+  });
+  const [emailLoading, setEmailLoading] = useState(true);
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  useEffect(() => {
+    const fetchEmailPrefs = async () => {
+      try {
+        const res = await api.get('/settings/notifications');
+        if (res.data) {
+          setEmailPrefs({
+            emailOnLeave: res.data.emailOnLeave ?? true,
+            emailOnTask: res.data.emailOnTask ?? true,
+            emailOnLate: res.data.emailOnLate ?? false,
+            emailOnSystemAlert: res.data.emailOnSystemAlert ?? true,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load email preferences', error);
+      } finally {
+        setEmailLoading(false);
+      }
+    };
+    fetchEmailPrefs();
+  }, []);
+
+  const toggleEmailPref = (key: keyof typeof emailPrefs) => {
+    setEmailPrefs(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSaveEmail = async () => {
+    setSavingEmail(true);
+    try {
+      await api.post('/settings/notifications', emailPrefs);
+      toast.success('Email preferences saved successfully!');
+    } catch (error) {
+      toast.error('Failed to save email preferences');
+    } finally {
+      setSavingEmail(false);
+    }
+  };
 
   const soundOptions = [
     { label: 'Default Notification', value: 'notification.mp3' },
@@ -180,14 +228,125 @@ export default function NotificationSettingsPage() {
         </div>
       </div>
 
-      {/* ── Save Action Button ───────────────────────────────────────────────── */}
+      {/* ── Email Notification Preferences ─────────────────────────────────── */}
+      <div className="pt-8">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+            Email Notification Preferences
+          </h2>
+          <p className="text-slate-500 dark:text-gray-400 mt-1 text-sm">
+            Manage which system events trigger an email notification to your inbox.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm dark:shadow-2xl space-y-6">
+        {emailLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Leave Requests */}
+            <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] transition-colors">
+              <div className="flex items-start gap-4">
+                <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-600 dark:text-blue-400">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-800 dark:text-white">Leave Requests</h3>
+                  <p className="text-sm text-slate-500 mt-0.5">Receive an email when an employee applies for leave.</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 ${emailPrefs.emailOnLeave ? 'bg-brand-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+                role="switch"
+                aria-checked={emailPrefs.emailOnLeave}
+                onClick={() => toggleEmailPref('emailOnLeave')}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${emailPrefs.emailOnLeave ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* Task Submissions */}
+            <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] transition-colors">
+              <div className="flex items-start gap-4">
+                <div className="p-2.5 bg-purple-100 dark:bg-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-800 dark:text-white">Task Submissions</h3>
+                  <p className="text-sm text-slate-500 mt-0.5">Receive an email when a task is marked for verification.</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 ${emailPrefs.emailOnTask ? 'bg-brand-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+                role="switch"
+                aria-checked={emailPrefs.emailOnTask}
+                onClick={() => toggleEmailPref('emailOnTask')}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${emailPrefs.emailOnTask ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* Late Attendance */}
+            <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] transition-colors">
+              <div className="flex items-start gap-4">
+                <div className="p-2.5 bg-orange-100 dark:bg-orange-900/30 rounded-xl text-orange-600 dark:text-orange-400">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-800 dark:text-white">Late Attendance</h3>
+                  <p className="text-sm text-slate-500 mt-0.5">Receive an email when an employee punches in late.</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 ${emailPrefs.emailOnLate ? 'bg-brand-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+                role="switch"
+                aria-checked={emailPrefs.emailOnLate}
+                onClick={() => toggleEmailPref('emailOnLate')}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${emailPrefs.emailOnLate ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* System Alerts */}
+            <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] transition-colors">
+              <div className="flex items-start gap-4">
+                <div className="p-2.5 bg-rose-100 dark:bg-rose-900/30 rounded-xl text-rose-600 dark:text-rose-400">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-800 dark:text-white">System Alerts</h3>
+                  <p className="text-sm text-slate-500 mt-0.5">Receive crucial system and security alerts.</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 ${emailPrefs.emailOnSystemAlert ? 'bg-brand-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+                role="switch"
+                aria-checked={emailPrefs.emailOnSystemAlert}
+                onClick={() => toggleEmailPref('emailOnSystemAlert')}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${emailPrefs.emailOnSystemAlert ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Save Email Action Button ─────────────────────────────────────────── */}
       <div className="flex justify-end pt-2">
         <button
-          onClick={handleSave}
-          disabled={!isLoaded}
+          onClick={handleSaveEmail}
+          disabled={savingEmail || emailLoading}
           className="flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] bg-brand-primary shadow-lg shadow-brand-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Save className="w-5 h-5" /> Save sound settings
+          {savingEmail ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} 
+          {savingEmail ? 'Saving...' : 'Save Email Preferences'}
         </button>
       </div>
 

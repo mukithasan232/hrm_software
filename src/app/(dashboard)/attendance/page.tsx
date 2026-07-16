@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useTranslation } from '@/context/LanguageContext';
 import { useBrand } from '@/context/BrandContext';
-import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X, Loader2, Lock } from 'lucide-react';
+import { Search, Download, RefreshCw, Plus, Clock, User as UserIcon, X, Loader2, Lock, LogIn, LogOut, Fingerprint, UserX, FileText } from 'lucide-react';
 import api from '@/services/api';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { CustomDropdown } from '@/components/ui/CustomDropdown';
@@ -27,7 +27,8 @@ import { checkPermission } from '@/utils/checkPermission';
 import { useDetailsStore } from '@/store/useDetailsStore';
 import MetricDetailsModal from '@/components/attendance/MetricDetailsModal';
 
-import { MonitorSmartphone, Globe, UserCog } from 'lucide-react';
+import { MonitorSmartphone, Globe, UserCog, Settings2 } from 'lucide-react';
+import HeaderCustomizationModal, { HeaderItemKey } from '@/components/attendance/HeaderCustomizationModal';
 
 const PunchSourceBadge = ({ record }: { record?: any }) => {
   if (!record) return null;
@@ -62,6 +63,27 @@ function AttendancePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Customization State
+  const [headerOrder, setHeaderOrder] = useState<HeaderItemKey[]>(['departments', 'date', 'sync', 'export']);
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('attendance_header_layout');
+    if (saved) {
+      try {
+        setHeaderOrder(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse header layout', e);
+      }
+    }
+  }, []);
+
+  const handleSaveLayout = (newOrder: HeaderItemKey[]) => {
+    setHeaderOrder(newOrder);
+    localStorage.setItem('attendance_header_layout', JSON.stringify(newOrder));
+  };
+
   const [logs, setLogs] = useState<any[]>([]);
   const [serverSummaries, setServerSummaries] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -470,71 +492,68 @@ function AttendancePageContent() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">{t('attendanceLogs')}</h1>
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+      {/* ================= HEADER START ================= */}
+      <div className="flex w-full items-center justify-between mb-8">
+        
+        {/* --- LEFT SIDE: Title Area --- */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+              {t('attendanceLogs') || 'Attendance Logs'}
+            </h1>
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              {t('live') || 'LIVE'}
             </span>
-            <span className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">{t('live') || 'Live'}</span>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-slate-500 dark:text-gray-400 text-sm">{filteredLogs.length} {t('total')} {t('attendanceLogs')}.</p>
-          </div>
+          <p className="text-sm font-medium text-slate-500">
+            {filteredLogs.length} Total Attendance Logs
+          </p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-3 w-full md:w-auto">
-          <button
-            onClick={handleOpenModal}
-            className="flex h-10 items-center justify-center gap-2 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white rounded-xl transition-all border border-slate-200 dark:border-white/10 font-medium"
-          >
-            <Plus className="w-4 h-4" /> {t('manualEntry')}
-          </button>
 
-          <CustomDropdown
-            value={departmentFilter}
-            onChange={(val) => setDepartmentFilter(val)}
-            placeholder={departmentsLoading ? 'Loading...' : 'All Departments'}
-            options={[
-              { value: 'all', label: 'All Departments' },
-              ...departments.map((dept) => ({ value: dept.id, label: dept.name })),
-            ]}
-            className="h-10 min-w-[150px] w-full md:w-auto bg-slate-100 dark:bg-white/10 border-slate-200 dark:border-white/10"
-          />
+        {/* --- RIGHT SIDE: Action Buttons Group --- */}
+        {/* CRITICAL: ALL 6 elements MUST be direct children of this exact div */}
+        <div className="flex items-center gap-3">
+          
+          {/* 1. All Departments Dropdown */}
+          <div className="w-[180px]">
+            <CustomDropdown
+              value={departmentFilter}
+              onChange={(val) => setDepartmentFilter(val)}
+              placeholder={departmentsLoading ? 'Loading...' : 'All Departments'}
+              options={[
+                { value: 'all', label: 'All Departments' },
+                ...departments.map((dept) => ({ value: dept.id, label: dept.name })),
+              ]}
+              className="h-10 w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shrink-0 shadow-sm"
+            />
+          </div>
 
-          <DateRangePicker
-            value={{ range: dateRange, start: customStartDate, end: customEndDate }}
-            onChange={(val) => {
-              const params = new URLSearchParams(searchParams.toString());
-              if (val.range) params.set('range', val.range);
-              if (val.start) params.set('startDate', val.start);
-              if (val.end) params.set('endDate', val.end);
-              router.push(`?${params.toString()}`, { scroll: false });
-            }}
-            disabled={syncing}
-            className="h-10 min-w-[200px]"
-          />
-
-          {isAdminUser && (
-            <button
-              onClick={handleManualSync}
+          {/* 2. Today Date Picker */}
+          <div className="w-[150px]">
+            <DateRangePicker
+              value={{ range: dateRange, start: customStartDate, end: customEndDate }}
+              onChange={(val) => {
+                const params = new URLSearchParams(searchParams.toString());
+                if (val.range) params.set('range', val.range);
+                if (val.start) params.set('startDate', val.start);
+                if (val.end) params.set('endDate', val.end);
+                router.push(`?${params.toString()}`, { scroll: false });
+              }}
               disabled={syncing}
-              className="flex h-10 items-center justify-center gap-2 whitespace-nowrap px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-md shadow-indigo-500/10"
-            >
-              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              {syncing ? 'Syncing Live...' : (t('sync_data') || 'Sync Data')}
-            </button>
-          )}
+              className="h-10 w-full shrink-0 bg-white dark:bg-slate-800 shadow-sm"
+            />
+          </div>
 
-          <div className="relative">
+          {/* 3. Export Button */}
+          <div className="relative shrink-0">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={isExporting}
-              className="flex h-10 items-center justify-center gap-2 whitespace-nowrap px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-medium disabled:opacity-50"
+              className="flex h-10 items-center justify-center gap-2 whitespace-nowrap px-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl shadow-sm transition-all border border-slate-200 dark:border-slate-700 font-medium disabled:opacity-50"
             >
-              {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              {isExporting ? 'Exporting...' : t('export')}
+              {isExporting ? <RefreshCw className="w-4 h-4 animate-spin shrink-0" /> : <Download className="w-4 h-4 shrink-0" />}
+              {isExporting ? 'Exporting...' : t('export') || 'Export'}
             </button>
             {showExportMenu && (
               <div className="absolute right-0 mt-2 w-full md:w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
@@ -553,58 +572,104 @@ function AttendancePageContent() {
               </div>
             )}
           </div>
+
+          {/* 4. Sync Data Button */}
+          {isAdminUser && (
+            <button
+              onClick={handleManualSync}
+              disabled={syncing}
+              className="flex h-10 items-center justify-center gap-2 whitespace-nowrap px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50 font-medium shadow-sm shrink-0"
+            >
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <RefreshCw className="w-4 h-4 shrink-0" />}
+              {syncing ? 'Syncing Live...' : (t('sync_data') || 'Sync Data')}
+            </button>
+          )}
+
+          {/* 5. Filter Icon Button */}
+          <button
+            onClick={() => setIsCustomizeOpen(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-xl transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+            title="Customize Layout"
+          >
+            <Settings2 className="w-4 h-4 shrink-0" />
+          </button>
+          
+          {/* 6. Manual Punch Button */}
+          <button
+            onClick={handleOpenModal}
+            className="flex h-10 items-center justify-center gap-2 px-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-700 font-medium whitespace-nowrap shrink-0 shadow-sm"
+          >
+            <Plus className="w-4 h-4 shrink-0" /> {t('manualEntry') || 'Manual Punch'}
+          </button>
+
         </div>
       </div>
+      {/* ================= HEADER END ================= */}
  
-      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors shadow-sm dark:shadow-md">
-          <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('checkIn')}</p>
-          <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-slate-600 dark:text-slate-400 text-sm font-semibold">Total Check In</p>
+            <div className="p-2 bg-emerald-500/10 rounded-lg"><LogIn className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /></div>
+          </div>
+          <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
             {checkInCount}
           </p>
         </div>
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-orange-500/30 transition-colors shadow-sm dark:shadow-md">
-          <p className="text-orange-600 dark:text-orange-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('checkOut')}</p>
-          <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-slate-600 dark:text-slate-400 text-sm font-semibold">Total Check Out</p>
+            <div className="p-2 bg-orange-500/10 rounded-lg"><LogOut className="w-4 h-4 text-orange-600 dark:text-orange-400" /></div>
+          </div>
+          <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
             {checkOutCount}
           </p>
         </div>
         <div 
-          onClick={() => { setMetricModalTitle(t(getFilterPrefixKey() as any) + ' ' + t('manualEntry')); setMetricModalData(manualDetails); setMetricModalOpen(true); }}
-          className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-blue-500/30 transition-all shadow-sm dark:shadow-md cursor-pointer hover:shadow-lg"
+          onClick={() => { setMetricModalTitle('Total Manual Entry'); setMetricModalData(manualDetails); setMetricModalOpen(true); }}
+          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition-all cursor-pointer"
         >
-          <p className="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">{t(getFilterPrefixKey() as any)} {t('manualEntry')}</p>
-          <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-slate-600 dark:text-slate-400 text-sm font-semibold">Total Manual Entry</p>
+            <div className="p-2 bg-blue-500/10 rounded-lg"><Fingerprint className="w-4 h-4 text-blue-600 dark:text-blue-400" /></div>
+          </div>
+          <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
             {manualCount}
           </p>
         </div>
         <div 
-          onClick={() => { setMetricModalTitle(t('attendance.totalAbsent' as any)); setMetricModalData(absentDetails); setMetricModalOpen(true); }}
-          className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-red-500/30 transition-all shadow-sm dark:shadow-md cursor-pointer hover:shadow-lg"
+          onClick={() => { setMetricModalTitle('Total Absent'); setMetricModalData(absentDetails); setMetricModalOpen(true); }}
+          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition-all cursor-pointer"
         >
-          <p className="text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider">{t('attendance.totalAbsent' as any)}</p>
-          <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-slate-600 dark:text-slate-400 text-sm font-semibold">Total Absent</p>
+            <div className="p-2 bg-red-500/10 rounded-lg"><UserX className="w-4 h-4 text-red-600 dark:text-red-400" /></div>
+          </div>
+          <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
             {absentCount}
           </p>
         </div>
-        <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-colors shadow-sm dark:shadow-md">
-          <p className="text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">{t('device_sync')}</p>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-slate-600 dark:text-slate-400 text-sm font-semibold">Device Sync</p>
+            <div className="p-2 bg-purple-500/10 rounded-lg"><RefreshCw className="w-4 h-4 text-purple-600 dark:text-purple-400" /></div>
+          </div>
           <div className="flex items-center gap-2 mt-1">
              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-             <p className="text-xl font-bold text-slate-900 dark:text-white">{t('active_status')}</p>
+             <p className="text-lg font-bold text-slate-900 dark:text-white">Active</p>
           </div>
         </div>
       </div>
  
       <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm dark:shadow-2xl">
  
-        <div className="p-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
           <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-450 dark:text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
             <input 
               type="text" 
-              placeholder={t('search_id_name')}
-              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
+              placeholder={t('search_id_name') || 'Search logs...'}
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -626,7 +691,14 @@ function AttendancePageContent() {
               {loading && logs.length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('loading_logs')}</td></tr>
               ) : dailySummaries.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500 dark:text-gray-400">{t('noRecords')}</td></tr>
+                <tr>
+                  <td colSpan={6} className="px-6 py-8">
+                    <div className="flex flex-col items-center justify-center min-h-[200px] text-slate-500 dark:text-slate-400">
+                      <FileText className="w-12 h-12 mb-3 text-slate-300 dark:text-slate-600" />
+                      <p className="text-lg font-medium">{t('noRecords') || 'No records found'}</p>
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 dailySummaries.map((row: any) => (
                   <tr 
@@ -742,6 +814,14 @@ function AttendancePageContent() {
         </div>
       </div>
   
+      {/* Header Customization Modal */}
+      <HeaderCustomizationModal
+        isOpen={isCustomizeOpen}
+        onClose={() => setIsCustomizeOpen(false)}
+        currentOrder={headerOrder}
+        onSave={handleSaveLayout}
+      />
+
       {/* Manual Entry Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

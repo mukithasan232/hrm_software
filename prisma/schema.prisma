@@ -198,6 +198,7 @@ model User {
   designation           String?
   shiftStartTime        String?
   shiftEndTime          String?
+  notificationPrefs     Json?    @default("{\"emailOnLeave\": true, \"emailOnTask\": true, \"emailOnLate\": false, \"emailOnSystemAlert\": true}")
   remoteShiftStartTime  String?
   remoteShiftEndTime    String?
   joiningDate           DateTime @default(now())

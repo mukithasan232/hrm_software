@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { parseRequest, getCorsHeaders } from '@/lib/adapter';
 import { getPermissionScope } from '@/lib/permissions';
 import { eventEmitter } from '@/lib/eventEmitter';
+import { sendEventEmail } from '@/lib/mail-utils';
 
 const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
 
@@ -153,6 +154,27 @@ export async function POST(req: NextRequest) {
     });
 
     eventEmitter.emit('new-notification', newNotification);
+
+    // ── Email Notification Dispatch ──
+    const assignee = await prisma.user.findUnique({ where: { id: assignedToId }, select: { email: true, name: true, notificationPrefs: true } });
+    if (!assignee?.email) {
+        console.log("No email found for assignee, skipping email notification.");
+    } else {
+        try {
+            console.log(`Attempting to send Task email to ${assignee.email}...`);
+            const isSent = await sendEventEmail(assignedToId, 'emailOnTask', {
+                subject: 'New Task Assigned',
+                html: `<p>Hi ${assignee.name || 'Team Member'},</p><p>You have been assigned a new task: <strong>${task.title}</strong></p>`
+            });
+            if (isSent) {
+                console.log("Task email sent successfully!");
+            } else {
+                console.log("Task email could not be sent (check SMTP logs or preferences).");
+            }
+        } catch (emailError) {
+            console.error("FAILED to send task email. SMTP Error:", emailError);
+        }
+    }
 
     return NextResponse.json(task, { status: 201, headers: getCorsHeaders() });
   } catch (error: any) {

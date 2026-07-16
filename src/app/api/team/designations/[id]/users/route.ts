@@ -19,7 +19,7 @@ async function getDesignationUsers(req: Request, res: any) {
         employeeId: true,
         designationId: true,
         customDesignation: { select: { name: true } },
-        designation: true,
+        customDesignation: true,
         profileImage: true,
       },
       orderBy: { name: 'asc' }

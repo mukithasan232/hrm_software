@@ -56,3 +56,21 @@ export function getBDToday(): string {
 export function getBDNowLocal(): string {
   return formatInTimeZone(new Date(), BD_TZ, "yyyy-MM-dd'T'HH:mm");
 }
+
+/**
+ * Converts a 24-hour time string (e.g., "17:00") to a 12-hour AM/PM format.
+ * Returns the original string if the format is invalid.
+ * @param timeStr "HH:mm" or "HH:mm:ss"
+ * @returns "hh:mm AM/PM" (e.g., "05:00 PM")
+ */
+export function to12Hour(timeStr: string | null | undefined): string {
+  if (!timeStr) return '--';
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return timeStr;
+
+  let hour = parseInt(parts[0], 10);
+  const minute = parts[1];
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12 || 12; // Convert hour to 12-hour format
+  return `${hour.toString().padStart(2, '0')}:${minute} ${ampm}`;
+}

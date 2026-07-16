@@ -8,6 +8,7 @@ import { Parser } from 'json2csv';
 import { eventEmitter } from '../lib/eventEmitter';
 
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { to12Hour } from '../lib/dateUtils';
 
 const BD_TZ = 'Asia/Dhaka';
 
@@ -894,13 +895,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       if (parsedDate.getTime() > shiftStartUTC.getTime() + gracePeriodMs) {
         // Employee is late
 
-        // Format to 12-hour AM/PM
-        const [hourStr, minuteStr] = expectedShiftStart.split(':');
-        let hour = parseInt(hourStr, 10);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        hour = hour % 12 || 12;
-        const formattedShiftStart = `${hour.toString().padStart(2, '0')}:${minuteStr} ${ampm}`;
-
+        const formattedShiftStart = to12Hour(expectedShiftStart);
         const admins = await prisma.user.findMany({
           where: {
             OR: [

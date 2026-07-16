@@ -50,7 +50,7 @@ const saveDevice = async (req: any, res: any) => {
     let hasPermission = false;
     const dbUser = await (prisma as any).user.findUnique({ 
       where: { id: req.user.id },
-      include: { designation: true, roles: true }
+      include: { customDesignation: true, roles: true }
     });
 
     if (dbUser?.email === 'dev@fixanyphoto.com' || dbUser?.userType === 'SUPER_ADMIN' || dbUser?.designation === 'Super Admin' || dbUser?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {

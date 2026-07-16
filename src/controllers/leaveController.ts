@@ -22,7 +22,7 @@ interface MulterRequest extends Omit<Request, 'file' | 'files'> {
 export const applyLeave = async (req: MulterRequest, res: Response) => {
   try {
     const { type, startDate, endDate, reason, targetEmployeeId } = req.body;
-    
+
     // Securely extract the user ID from the session (JWT token)
     let employeeId = (req as any).user.id;
     if (!employeeId) {
@@ -150,7 +150,7 @@ export const getLeaves = async (req: Request, res: Response) => {
       const rawLeaves = await (prisma.leave as any).findMany({
         include: {
           user: {
-            select: { name: true, employeeId: true, department: true, designation: true }
+            select: { name: true, employeeId: true, department: true, customDesignation: { select: { name: true } } }
           }
         },
         orderBy: { createdAt: 'desc' }
@@ -159,12 +159,11 @@ export const getLeaves = async (req: Request, res: Response) => {
       // Remap `user` → `employee` so the frontend's l.employee?.name works correctly
       leaves = rawLeaves.map((leave: any) => {
         const { user, ...rest } = leave;
-        console.log('[getLeaves] leave id:', leave.id, '| user object:', JSON.stringify(user));
         return {
           ...rest,
           employee: user
-            ? { ...user, name: user.name ?? 'Unknown Employee' }
-            : { name: 'Unknown Employee', employeeId: null, department: null, designation: null },
+            ? { ...user, name: user.name ?? 'Unknown Employee', designation: user.customDesignation }
+            : { name: 'Unknown Employee', employeeId: null, department: null, designation: { name: 'N/A' } },
         };
       });
     } else {
@@ -215,7 +214,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
           referenceId: leave.id
         }
       });
-      
+
       eventEmitter.emit('new-notification', newNotification);
 
       if (leave.user?.email && leave.user?.name) {
