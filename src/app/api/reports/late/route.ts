@@ -53,7 +53,6 @@ export async function GET(request: Request) {
           select: {
             name: true,
             employeeId: true,
-            customDesignation: true,
             customDesignation: { select: { name: true } },
             shiftStartTime: true,
             shift: { select: { startTime: true } },

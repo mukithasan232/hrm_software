@@ -646,11 +646,11 @@ export default function TasksPage() {
   const canEditTasks = checkPermission(user, 'Tasks', 'edit');
   const canDeleteTasks = checkPermission(user, 'Tasks', 'delete');
 
-  const [view, setView]             = useState<'list' | 'kanban'>(user?.taskView === 'kanban' ? 'kanban' : 'list');
+  const [view, setView]             = useState<'list' | 'kanban'>((user as any)?.taskView === 'kanban' ? 'kanban' : 'list');
 
   useEffect(() => {
-    if (user?.taskView) {
-      setView(user.taskView as 'list' | 'kanban');
+    if ((user as any)?.taskView) {
+      setView((user as any).taskView as 'list' | 'kanban');
     }
   }, [user]);
 

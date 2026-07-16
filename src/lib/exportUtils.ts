@@ -192,11 +192,11 @@ export const exportToPDF = async (
       const firstSession = summary.punchTimeline[0];
       const lastSession = summary.punchTimeline[summary.punchTimeline.length - 1];
 
-      const checkInTime = firstSession.inTime ? toBDDisplay(firstSession.inTime, 'hh:mm a') : 'Missing';
+      const checkInTime = firstSession.timestamp ? toBDDisplay(firstSession.timestamp, 'hh:mm a') : 'Missing';
       
       let checkOutTime = 'Missing / Working';
-      if (lastSession.outTime) {
-        checkOutTime = toBDDisplay(lastSession.outTime, 'hh:mm a');
+      if (lastSession.checkOut) {
+        checkOutTime = toBDDisplay(lastSession.checkOut, 'hh:mm a');
         if (lastSession.isAutoCheckout) {
           checkOutTime += ' (Auto)';
         }

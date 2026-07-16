@@ -768,7 +768,7 @@ function AttendancePageContent() {
                         </div>
                       ) : (
                         <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-white/10">
-                          {row.isMissingOut ? t('attendance.missingWorking' as any) : 'Missing'}
+                          {t('attendance.missingWorking' as any) || 'Missing / Working'}
                         </span>
                       )}
                     </td>

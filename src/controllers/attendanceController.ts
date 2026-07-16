@@ -662,20 +662,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         const isManualOut = outTime ? (session.isManualOut || (session.checkOutDeviceId || '').includes('Manual')) : false;
 
         sessionsByEmpAndDate[k].sessions.push({
-          id: session.id,
-          inTime: inTime,
-          inSource: isManualIn ? '[Manual]' : (session.deviceId || '[Machine]'),
-          isManualIn: isManualIn,
-          inLatitude: session.latitude,
-          inLongitude: session.longitude,
-          inAddress: session.locationAddress,
-          outTime: outTime,
-          outSource: outTime ? (isAutoCheckout ? '[Auto]' : (isManualOut ? '[Manual]' : (session.checkOutDeviceId || '[Machine]'))) : null,
-          isManualOut: isManualOut,
-          outLatitude: outTime ? session.latitude : null,
-          outLongitude: outTime ? session.longitude : null,
-          outAddress: outTime ? session.locationAddress : null,
-          duration: durationStr,
+          ...session,
           durationMs,
           isMissingOut: !outTime,
           isAutoCheckout
@@ -711,8 +698,8 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         shiftEndTime = log.user?.remoteShiftEndTime || log.user?.shift?.remoteShiftEndTime || log.user?.customDepartment?.remoteShiftEndTime || shiftEndTime;
       }
 
-      const checkInRaw = sessions.length > 0 ? sessions[0].inTime : null;
-      const checkOutRaw = sessions.length > 0 && sessions[sessions.length - 1].outTime ? sessions[sessions.length - 1].outTime : null;
+      const checkInRaw = sessions.length > 0 ? sessions[0].timestamp : null;
+      const checkOutRaw = sessions.length > 0 && sessions[sessions.length - 1].checkOut ? sessions[sessions.length - 1].checkOut : null;
       const isAutoCheckoutSession = sessions.length > 0 && sessions[sessions.length - 1].isAutoCheckout;
 
       let lateMinutes = 0;

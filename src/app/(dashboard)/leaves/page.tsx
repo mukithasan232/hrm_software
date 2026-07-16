@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  CheckCircle, XCircle, Calendar, Send, FileText, Paperclip,
+  CheckCircle, XCircle, Calendar, Send, FileText, Paperclip, Check, X,
   ChevronDown, AlertCircle, User, Clock, TrendingUp, Award,
   Loader2, ShieldCheck, Info
 } from 'lucide-react';
@@ -226,7 +226,9 @@ function PolicyWidget() {
 export default function LeavesPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const canManage = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(user?.designation || '');
+  const isAdminRole = user?.roles?.some((r: any) => ['Admin', 'Super Admin'].includes(r?.name || r)) || false;
+  const isAdminDesignation = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(user?.designation || '');
+  const canManage = isAdminRole || isAdminDesignation;
 
   const [leaves, setLeaves]               = useState<any[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -612,24 +614,24 @@ export default function LeavesPage() {
                         {canManage && (
                           <td className="px-6 py-4 text-right">
                             {l.status === 'Pending' ? (
-                              <div className="flex items-center justify-end gap-1.5">
+                              <div className="flex items-center justify-end gap-2">
                                 <button
                                   onClick={() => updateStatus(l.id, 'Approved')}
-                                  className="p-1.5 text-emerald-500 hover:bg-emerald-500/15 rounded-lg transition-colors"
+                                  className="p-1 text-green-600 bg-green-100 rounded hover:bg-green-200 transition"
                                   title="Approve"
                                 >
-                                  <CheckCircle className="w-4 h-4" />
+                                  <Check size={16} />
                                 </button>
                                 <button
                                   onClick={() => updateStatus(l.id, 'Rejected')}
-                                  className="p-1.5 text-red-500 hover:bg-red-500/15 rounded-lg transition-colors"
+                                  className="p-1 text-red-600 bg-red-100 rounded hover:bg-red-200 transition"
                                   title="Reject"
                                 >
-                                  <XCircle className="w-4 h-4" />
+                                  <X size={16} />
                                 </button>
                               </div>
                             ) : (
-                              <span className="text-slate-300 dark:text-gray-600 italic text-xs">Reviewed</span>
+                              <span className="text-gray-300 dark:text-gray-600">-</span>
                             )}
                           </td>
                         )}

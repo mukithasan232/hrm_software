@@ -310,37 +310,43 @@ export async function processRawDeviceLogs(): Promise<number> {
         }
 
         const logTime = log.recordTime;
+        const rawType = log.punchType?.toString().toUpperCase();
         
-        // 1. Find ANY open session for this employee within the last 24 hours
-        const openSession = await prisma.attendanceLog.findFirst({
-          where: {
-            employeeId: empId,
-            checkOut: null,
-            timestamp: {
-              gte: new Date(logTime.getTime() - 24 * 60 * 60 * 1000)
-            }
-          },
-          orderBy: { timestamp: 'desc' }
-        });
+        let isOutPunch = false;
+        if (rawType && ['1', 'CHECKOUT', 'CHECK-OUT', 'OUT', '4', '5'].includes(rawType)) {
+          isOutPunch = true;
+        }
+        
+        if (isOutPunch) {
+          // Find most recent open session for today where checkOut is null
+          const openSession = await prisma.attendanceLog.findFirst({
+            where: {
+              employeeId: empId,
+              checkOut: null,
+              timestamp: {
+                gte: new Date(logTime.getTime() - 24 * 60 * 60 * 1000)
+              }
+            },
+            orderBy: { timestamp: 'desc' }
+          });
 
-        if (openSession) {
-          // 2. Pair as Check-Out if logically after Check-In
-          if (logTime.getTime() > openSession.timestamp.getTime()) {
+          if (openSession && logTime.getTime() > openSession.timestamp.getTime()) {
             await prisma.attendanceLog.update({
               where: { id: openSession.id },
               data: { 
                 checkOut: logTime,
-              checkOutDeviceId: 'MACHINE',
-              isManualOut: false
-            }
+                checkOutDeviceId: 'MACHINE',
+                isManualOut: false
+              }
             });
+            console.log("SYNC_LOG_TYPE:", { userId: empId, timestamp: logTime, type: 'CheckOut (Machine)' });
             processedCount++;
             rawLogIdsToDelete.push(log.id);
             continue; 
           }
         }
 
-        // 3. Create a NEW Check-In
+        // Create a NEW Check-In
         await prisma.attendanceLog.create({
           data: {
             employeeId: empId,

@@ -73,6 +73,8 @@ export default function DashboardOverview() {
     activeNow: 0,
     totalToday: 0,
     totalAbsent: 0,
+    lateList: [] as any[],
+    absentList: [] as any[],
   });
 
   // For the "Today's Punch Status" card — track the user's latest punch

@@ -39,7 +39,6 @@ export async function GET(request: Request) {
           select: {
             name: true,
             employeeId: true,
-            customDesignation: true,
             customDesignation: { select: { name: true } },
             shiftEndTime: true,
             shift: { select: { endTime: true } },
@@ -91,7 +90,7 @@ export async function GET(request: Request) {
             date: log.timestamp,
             employeeName: user.name || 'Unknown',
             employeeId: user.employeeId || 'N/A',
-            department: user.customDepartment?.name || user.customDesignation?.name || user.designation || 'Unknown',
+            department: user.customDepartment?.name || user.customDesignation?.name || 'Unknown',
             shiftEnd: targetEndTimeStr,
             checkOutTime: log.checkOut,
             calculatedOtMinutes: calculatedMinutes,

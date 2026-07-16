@@ -81,29 +81,29 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
   // --- NATIVE DATABASE PAIRING (Using True Device States) ---
   const pairedSessions = (punchTimeline || []).map((session: any) => ({
     id: session.id, // Explicitly pass the main DB record ID
-    checkIn: { timestamp: session.inTime, id: session.id },
-    checkOut: session.outTime ? { timestamp: session.outTime } : null,
-    inSource: session.inSource,
-    outSource: session.outSource,
-    isManualIn: session.isManualIn,
-    isManualOut: session.isManualOut,
-    inLatitude: session.inLatitude,
-    inLongitude: session.inLongitude,
-    inAddress: session.inAddress,
-    outLatitude: session.outLatitude,
-    outLongitude: session.outLongitude,
-    outAddress: session.outAddress
+    checkIn: { timestamp: session.timestamp, id: session.id },
+    checkOut: session.checkOut ? { timestamp: session.checkOut } : null,
+    inSource: session.deviceId,
+    outSource: session.checkOutDeviceId,
+    isManualIn: session.isManualIn || (session.deviceId || '').includes('Manual'),
+    isManualOut: session.isManualOut || (session.checkOutDeviceId || '').includes('Manual'),
+    inLatitude: session.latitude,
+    inLongitude: session.longitude,
+    inAddress: session.locationAddress,
+    outLatitude: session.checkOut ? session.latitude : null,
+    outLongitude: session.checkOut ? session.longitude : null,
+    outAddress: session.checkOut ? session.locationAddress : null
   }));
 
   let totalValidMinutes = 0;
   pairedSessions.forEach((s: any) => {
     if (s.checkIn && s.checkOut) {
-       totalValidMinutes += Math.floor((new Date(s.checkOut).getTime() - new Date(s.checkIn).getTime()) / 60000);
+       totalValidMinutes += Math.floor((new Date(s.checkOut.timestamp).getTime() - new Date(s.checkIn.timestamp).getTime()) / 60000);
     }
   });
 
-  const checkInRaw = pairedSessions[0]?.checkIn;
-  const checkOutRaw = pairedSessions[pairedSessions.length - 1]?.checkOut;
+  const checkInRaw = pairedSessions[0]?.checkIn?.timestamp;
+  const checkOutRaw = pairedSessions[pairedSessions.length - 1]?.checkOut?.timestamp;
   const isMissingOut = pairedSessions.length > 0 && !pairedSessions[pairedSessions.length - 1].checkOut;
   const totalValidMs = totalValidMinutes * 60000;
   const totalHours = formatMinutes(totalValidMinutes);

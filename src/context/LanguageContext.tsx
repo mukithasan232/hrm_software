@@ -25,8 +25,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   // Hydrate from user profile or browser settings after mount
   useEffect(() => {
-    if (user?.language && (user.language === 'en' || user.language === 'bn')) {
-      setLanguageState(user.language as Language);
+    if ((user as any)?.language && ((user as any).language === 'en' || (user as any).language === 'bn')) {
+      setLanguageState((user as any).language as Language);
     } else {
       // Fallback to browser language if no user preference is set
       const browserLang = navigator.language.split('-')[0];
