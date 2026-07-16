@@ -313,7 +313,7 @@ export const updateUserPreferences = async (req: Request, res: Response): Promis
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
-    const { name, designationId, shiftId, shiftStartTime, shiftEndTime, remoteShiftStartTime, remoteShiftEndTime, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions, salaryAccount } = req.body as any;
+    const { name, email, designationId, shiftId, shiftStartTime, shiftEndTime, remoteShiftStartTime, remoteShiftEndTime, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions, salaryAccount } = req.body as any;
     let finalDesignationId = designationId !== undefined ? (designationId || null) : undefined;
     if (finalDesignationId && !finalDesignationId.includes('-')) {
       let desig = await prisma.designation.findFirst({
@@ -349,6 +349,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       where: { id: id as string },
       data: {
         name,
+        email,
         designationId: finalDesignationId,
         shiftId: shiftId === '' || shiftId === 'null' ? null : (shiftId !== undefined ? shiftId : undefined),
         shiftStartTime: shiftStartTime === '' || shiftStartTime === 'null' ? null : (shiftStartTime !== undefined ? shiftStartTime : undefined),
@@ -412,6 +413,10 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
 
     res.status(200).json({ message: 'Employee updated', user: { ...user, designation: (user as any).customDesignation } });
   } catch (error: any) {
+    if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
+       res.status(400).json({ success: false, message: "This email is already in use by another user." });
+       return;
+    }
     res.status(500).json({ message: 'Failed to update employee', error: error.message });
   }
 };

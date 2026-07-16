@@ -839,32 +839,51 @@ export const syncZkTecoData = async (isDeepSync: boolean = false): Promise<{ syn
     }
 
     // --- NEW LOGIC FOR STEP 2: REPROCESS UNMAPPED RAW LOGS ---
-    console.log('[ZKService] 🔄 Reprocessing missing AttendanceLogs from existing RawDeviceLogs...');
-    const allRawLogs = await prisma.rawDeviceLog.findMany();
-    const existingAttendance = await prisma.attendanceLog.findMany({
-      select: { employeeId: true, timestamp: true }
-    });
-    const existingAttSet = new Set(existingAttendance.map(a => `${a.employeeId}_${a.timestamp.getTime()}`));
+    console.log('[ZKService] 🔄 Reprocessing missing AttendanceLogs from existing RawDeviceLogs (Retroactive Sync)...');
     
-    // Create a Set of already queued logs to prevent duplicates in the same run
-    const queuedLogsSet = new Set(newLogsToProcess.map(l => `${l.employeeId}_${l.recordTime.getTime()}`));
+    // 1. Fetch all users who currently have a ZKTeco ID assigned
+    const mappedUsers = await prisma.user.findMany({
+      where: { zktecoId: { not: null } },
+      select: { id: true, zktecoId: true }
+    });
 
-    for (const rawLog of allRawLogs) {
-      const deviceEmpIdStr = String(rawLog.deviceUserId);
-      const employeeId = userIdMap.get(deviceEmpIdStr);
-      
-      if (employeeId) {
-        const key = `${employeeId}_${rawLog.recordTime.getTime()}`;
-        if (!existingAttSet.has(key) && !queuedLogsSet.has(key)) {
-          newLogsToProcess.push({
-            employeeId,
-            recordTime: rawLog.recordTime
+    let newRecordsAdded = 0;
+
+    for (const user of mappedUsers) {
+      // Convert ID to string because RawDeviceLog.deviceUserId might be stored as a string/undefined format
+      const machineIdString = String(user.zktecoId);
+
+      // 2. Find all Raw Logs for this specific machine ID
+      const rawLogs = await prisma.rawDeviceLog.findMany({
+        where: { deviceUserId: machineIdString }
+      });
+
+      for (const rawLog of rawLogs) {
+        // 3. Check if this exact punch already exists in AttendanceLog to prevent duplicates
+        const existingLog = await prisma.attendanceLog.findFirst({
+          where: {
+            employeeId: user.id,
+            timestamp: rawLog.recordTime // Ensure this matches the date field from raw logs
+          }
+        });
+
+        // 4. If it doesn't exist, create it! (This catches all newly added employees)
+        if (!existingLog) {
+          await prisma.attendanceLog.create({
+            data: {
+              employeeId: user.id,
+              deviceId: rawLog.ip || "SYNC_RECOVERY",
+              punchType: "CheckIn", // Default or derive from rawLog if available
+              timestamp: rawLog.recordTime,
+              workMode: "IN_HOUSE"
+            }
           });
-          queuedLogsSet.add(key);
+          newRecordsAdded++;
         }
       }
     }
-    console.log(`[ZKService] 📝 Total logs queued for atomic pairing: ${newLogsToProcess.length}`);
+
+    console.log(`✅ RETROACTIVE SYNC COMPLETE: ${newRecordsAdded} new attendance logs recovered for newly mapped users.`);
 
     // ── 4. Atomic Auto-Pairing Logic ──────────────────────────────────────────
     // Each punch is evaluated by processBiometricPunch which handles all 5 tasks

@@ -234,6 +234,7 @@ export default function EmployeesPage() {
     try {
       const payload: any = {
         name: editName,
+        email: editEmail,
         department: editDepartment,
         employeeType: editType,
         leaveConfig: {
@@ -490,6 +491,12 @@ export default function EmployeesPage() {
                 <div className="space-y-1.5">
                   <label className={labelCls}>Full Name *</label>
                   <input required type="text" value={editName} onChange={e => setEditName(e.target.value)} className={fieldCls} />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <label className={labelCls}>Email Address *</label>
+                  <input required type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} className={fieldCls} />
                 </div>
 
                 {/* Department */}
