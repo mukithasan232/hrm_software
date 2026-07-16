@@ -27,7 +27,7 @@ export async function GET() {
           select: {
             name: true,
             profileImage: true,
-            customDesignation: true,
+            designation: true,
             customDesignation: { select: { name: true } }
           }
         }

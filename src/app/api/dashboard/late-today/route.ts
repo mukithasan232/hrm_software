@@ -27,7 +27,7 @@ export async function GET() {
           select: {
             name: true,
             profileImage: true,
-            customDesignation: true,
+            designation: true,
             employeeType: true,
             customDesignation: { select: { name: true } },
             shiftStartTime: true,

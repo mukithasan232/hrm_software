@@ -33,7 +33,7 @@ export async function POST(req: Request, context: any) {
       undefined,
       designationName,
       undefined,
-      user.deviceId,
+      user.zktecoId,
       user.employeeId || undefined
     );
 
