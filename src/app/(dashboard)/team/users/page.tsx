@@ -323,7 +323,12 @@ export default function TeamUsersPage() {
         }
         formData.append('department', form.department);
         formData.append('employeeType', form.employeeType);
-        if (form.zktecoId) formData.append('zktecoId', form.zktecoId);
+        
+        // Bulletproof numeric conversion as requested
+        if (form.zktecoId) {
+          formData.append('zktecoId', String(Number(form.zktecoId)));
+        }
+        
         formData.append('roles', JSON.stringify(form.roleIds));
         formData.append('permissions', JSON.stringify(form.permissions));
         formData.append('leaveConfig', JSON.stringify({
@@ -334,6 +339,18 @@ export default function TeamUsersPage() {
 
         const res = await api.post('/employees', formData);
         toast.success(form.sendEmail ? 'User created & email sent!' : 'User created successfully!');
+
+        // 🔥 NEW: Auto-Trigger Device Sync in the Background
+        if (form.zktecoId) {
+          toast.promise(
+            api.post('/attendance/sync'),
+            {
+              loading: 'Syncing punch data from device...',
+              success: 'Attendance logs updated!',
+              error: 'Could not reach device, sync failed.',
+            }
+          ).catch(() => {});
+        }
 
         // Post-Creation Permission Trigger
         if (form.designationId) {
