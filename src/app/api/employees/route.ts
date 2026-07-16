@@ -94,13 +94,17 @@ export async function POST(req: Request) {
     const employeeType = formData.get('employeeType') as 'REMOTE' | 'IN_HOUSE';
     const department = formData.get('department') as string;
     const zktecoId_str = formData.get('zktecoId') as string;
-    const zktecoId = zktecoId_str && zktecoId_str.trim() !== '' ? parseInt(zktecoId_str, 10) : null;
+    const zktecoId = zktecoId_str && zktecoId_str.trim() !== '' ? zktecoId_str : null;
     const baseSalaryStr = formData.get('baseSalary') as string;
     const baseSalary = baseSalaryStr ? parseFloat(baseSalaryStr) : 0;
     const leaveConfigStr = formData.get('leaveConfig') as string;
     const leaveConfig = leaveConfigStr ? JSON.parse(leaveConfigStr) : undefined;
     const permissionsStr = formData.get('permissions') as string;
     const permissions = permissionsStr ? JSON.parse(permissionsStr) : undefined;
+    
+    // Add Debug Console Log as requested
+    const debugBody = Object.fromEntries(formData as any);
+    console.log("INCOMING NEW EMPLOYEE DATA:", debugBody);
     
     console.log("DEBUG_REQUEST_BODY:", { name, email, roleIds, designationId, department, employeeType, zktecoId });
     console.log("ROLES_PAYLOAD:", roleIds);
@@ -211,7 +215,8 @@ export async function POST(req: Request) {
             departmentId: finalDepartmentId,
             employeeType: employeeType || 'IN_HOUSE',
             baseSalary: baseSalary || 0,
-            zktecoId: zktecoId || null,
+            // CRITICAL FIX: Parse the ID safely for Prisma
+            zktecoId: zktecoId ? parseInt(zktecoId.toString(), 10) : null,
             documents: documentPaths,
             leaveConfig: leaveConfig || {},
             permissions: permissions || {},
