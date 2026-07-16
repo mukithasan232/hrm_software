@@ -736,7 +736,7 @@ export const syncZkTecoData = async (isDeepSync: boolean = false): Promise<{ syn
     // Load existing users in database into the userIdMap
     const dbUsers = await prisma.user.findMany({});
     for (const user of dbUsers) {
-      if (user.employeeId) userIdMap.set(user.employeeId, user.id);
+      if (user.employeeId) userIdMap.set(String(user.employeeId), user.id);
       if (user.zktecoId) userIdMap.set(String(user.zktecoId), user.id);
     }
 
@@ -835,7 +835,36 @@ export const syncZkTecoData = async (isDeepSync: boolean = false): Promise<{ syn
         skipDuplicates: true // Prisma's batch upsert behavior based on @@unique
       });
       console.log(`[ZKService] 🛡️ Upserted ${result.count} raw punches into RawDeviceLog.`);
+      console.log(`SUCCESSFULLY SAVED ${result.count} PUNCHES TO DATABASE.`);
     }
+
+    // --- NEW LOGIC FOR STEP 2: REPROCESS UNMAPPED RAW LOGS ---
+    console.log('[ZKService] 🔄 Reprocessing missing AttendanceLogs from existing RawDeviceLogs...');
+    const allRawLogs = await prisma.rawDeviceLog.findMany();
+    const existingAttendance = await prisma.attendanceLog.findMany({
+      select: { employeeId: true, timestamp: true }
+    });
+    const existingAttSet = new Set(existingAttendance.map(a => `${a.employeeId}_${a.timestamp.getTime()}`));
+    
+    // Create a Set of already queued logs to prevent duplicates in the same run
+    const queuedLogsSet = new Set(newLogsToProcess.map(l => `${l.employeeId}_${l.recordTime.getTime()}`));
+
+    for (const rawLog of allRawLogs) {
+      const deviceEmpIdStr = String(rawLog.deviceUserId);
+      const employeeId = userIdMap.get(deviceEmpIdStr);
+      
+      if (employeeId) {
+        const key = `${employeeId}_${rawLog.recordTime.getTime()}`;
+        if (!existingAttSet.has(key) && !queuedLogsSet.has(key)) {
+          newLogsToProcess.push({
+            employeeId,
+            recordTime: rawLog.recordTime
+          });
+          queuedLogsSet.add(key);
+        }
+      }
+    }
+    console.log(`[ZKService] 📝 Total logs queued for atomic pairing: ${newLogsToProcess.length}`);
 
     // ── 4. Atomic Auto-Pairing Logic ──────────────────────────────────────────
     // Each punch is evaluated by processBiometricPunch which handles all 5 tasks

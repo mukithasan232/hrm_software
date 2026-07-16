@@ -14,7 +14,7 @@ const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_UR
 
 const EMPTY_FORM = {
   employeeId: '', name: '', email: '', password: 'password123',
-  department: 'Engineering', designationId: '', baseSalary: '', employeeType: 'IN_HOUSE'
+  department: 'Engineering', designationId: '', baseSalary: '', employeeType: 'IN_HOUSE', zktecoId: ''
 };
 
 const DESIGNATION_COLORS: Record<string, string> = {
@@ -85,6 +85,7 @@ export default function EmployeesPage() {
       department: emp.department || 'Engineering',
       employeeType: emp.employeeType || 'IN_HOUSE',
       baseSalary: emp.baseSalary?.toString() || '',
+      zktecoId: emp.zktecoId?.toString() || '',
     });
     setShowModal(true);
   };
@@ -93,15 +94,33 @@ export default function EmployeesPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const finalPayload = {
+        ...form,
+        baseSalary: Number(form.baseSalary),
+        zktecoId: form.zktecoId ? Number(form.zktecoId) : null,
+      };
+
       if (editTarget) {
         // Update existing
-        const { password, employeeId, ...updateData } = form;
-        await api.put(`/users/${editTarget.id}`, { ...updateData, baseSalary: Number(form.baseSalary) });
+        const { password, employeeId, ...updateData } = finalPayload;
+        await api.put(`/users/${editTarget.id}`, updateData);
         toast.success('Employee updated!');
       } else {
         // Create new
-        await api.post('/users', { ...form, baseSalary: Number(form.baseSalary) });
+        await api.post('/users', finalPayload);
         toast.success('Employee added successfully!');
+        
+        // Auto-Trigger Device Sync in the Background
+        if (finalPayload.zktecoId) {
+          toast.promise(
+            api.post('/attendance/sync'),
+            {
+              loading: 'Syncing punch data from device...',
+              success: 'Attendance logs updated!',
+              error: 'Could not reach device, sync failed.',
+            }
+          );
+        }
       }
       setShowModal(false);
       fetchEmployees();
@@ -422,7 +441,7 @@ export default function EmployeesPage() {
                 </div>
 
                 {/* Base Salary */}
-                <div className="space-y-1 sm:col-span-2">
+                <div className="space-y-1">
                   <label className="text-xs text-slate-600 dark:text-gray-400 font-medium">Base Salary (per month)</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">৳</span>
@@ -435,6 +454,18 @@ export default function EmployeesPage() {
                       className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl pl-7 pr-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-medium"
                     />
                   </div>
+                </div>
+
+                {/* ZKTeco Device ID */}
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-600 dark:text-gray-400 font-medium">Device ID (ZKTeco)</label>
+                  <input
+                    type="number"
+                    value={form.zktecoId}
+                    onChange={e => setForm({ ...form, zktecoId: e.target.value })}
+                    placeholder="e.g. 5"
+                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-medium"
+                  />
                 </div>
               </div>
 

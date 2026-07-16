@@ -540,7 +540,7 @@ export default function EmployeesPage() {
                     <select value={editZkEnroll} onChange={e => setEditZkEnroll(e.target.value)} className={fieldCls}>
                       <option value="">--- Select Unregistered Device ---</option>
                       {deviceUsers.map((user: any, index: number) => (
-                        <option key={index} value={user.userId}>
+                        <option key={index} value={String(user.userId)}>
                           {user.name || 'Unknown User'} (ID: {user.userId})
                         </option>
                       ))}

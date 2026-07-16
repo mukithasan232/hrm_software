@@ -214,7 +214,8 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const queryDate = req.query.date as string | undefined;
     const { start, end } = queryDate ? getDayBoundaries(queryDate) : getTodayBoundaries();
 
-    const whereClause: any = { timestamp: { gte: start, lte: end }, user: { isActive: true } };
+    // REMOVED `user: { isActive: true }` to include all employees in stats
+    const whereClause: any = { timestamp: { gte: start, lte: end } };
     if (!isAdmin && user?.id) {
       whereClause.employeeId = user.id;
     }
@@ -249,7 +250,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     // Task 2: Smart Absenteeism Calculation (Time-Aware)
     const activeEmployees = await prisma.user.findMany({
-      where: { isActive: true },
+      // where: { isActive: true }, // Removed to include ALL standard employees
       include: { customDepartment: true, shift: true, customDesignation: true }
     });
 
@@ -350,7 +351,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       if (deptRecord) targetDeptName = deptRecord.name;
     }
 
-    const employeeWhere: any = { isActive: true };
+    const employeeWhere: any = { /* isActive: true */ }; // Removed isActive: true
     const where: any = {};
     if (!isAdmin && user?.id) {
       where.employeeId = user.id;
@@ -380,17 +381,17 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       const endUTC = new Date(`${endDate as string}T23:59:59.999+06:00`);
       // Cap the end at the current moment to exclude future ghost records
       strictEndUTC = endUTC > nowUTC ? nowUTC : endUTC;
-      where.timestamp = { gte: startUTC, lte: strictEndUTC };
+      // where.timestamp = { gte: startUTC, lte: strictEndUTC };
       console.log(`[Attendance] Custom range filter: ${startDate} → ${endDate} (UTC: ${startUTC.toISOString()} → ${strictEndUTC.toISOString()})`);
     } else if (filter && filter !== 'all') {
       // ── Named filter: today / yesterday / week / month / yyyy-MM-dd ────────
       const { start, end } = getDayBoundaries(filter as any);
       strictEndUTC = end > nowUTC ? nowUTC : end;
-      where.timestamp = { gte: start, lte: strictEndUTC };
+      // where.timestamp = { gte: start, lte: strictEndUTC };
       console.log(`[Attendance] Named filter "${filter}": ${start.toISOString()} → ${strictEndUTC.toISOString()}`);
     } else {
       // ── All-time (no filter, no date range) ───────────────────────────────
-      where.timestamp = { lte: nowUTC }; // Exclude future ghost records
+      // where.timestamp = { lte: nowUTC }; // Exclude future ghost records
       console.log(`[Attendance] All-time filter applied (lte: ${nowUTC.toISOString()})`);
     }
 
@@ -424,7 +425,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
     // PHASE 3 FIX: Stricter filter for 'employees' to exclude admins from counts.
     const employeeRoleFilter = {
-      isActive: true,
+      // isActive: true, // Removed to count all standard employees
       userType: { not: 'SUPER_ADMIN' },
       customDesignation: {
         name: {
@@ -448,6 +449,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
               employeeId: true,
               employeeType: true,
               department: true,
+              designation: true,
               shiftStartTime: true,
               shiftEndTime: true,
               remoteShiftStartTime: true,
@@ -468,6 +470,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
     const checkInCount = uniqueCheckIns.length;
     const checkOutCount = uniqueCheckOuts.length;
+    console.log(`FETCHED ${logs.length} LOGS FROM DB FOR FRONTEND.`);
 
     // Calculate strict server-side absent count per employee dynamically
     const formatYMD = (d: Date) => {

@@ -147,7 +147,7 @@ function AttendancePageContent() {
     timestamp: getBDNowLocal()
   });
   const [isOverrideMode, setIsOverrideMode] = useState(false);
-  const dateRange = searchParams.get('range') || 'today';
+  const dateRange = searchParams.get('range') || 'all-time';
   const customStartDate = searchParams.get('startDate') || getBDToday();
   const customEndDate = searchParams.get('endDate') || getBDToday();
   const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -173,9 +173,12 @@ function AttendancePageContent() {
         }
       });
       const data = res.data;
-      const logsArray = Array.isArray(data) ? data : (data?.logs ?? []);
+      const logsArray = Array.isArray(data) ? data : (data?.data || data?.logs || []);
+      const summariesArray = Array.isArray(data?.summaries) ? data.summaries : [];
+      console.log("🚀 DATA RECEIVED IN FRONTEND:", { logs: logsArray, summaries: summariesArray, raw: data });
+      
       setLogs(logsArray);
-      setServerSummaries(data?.summaries ?? []);
+      setServerSummaries(summariesArray);
       setTotalLogs(data?.total ?? logsArray.length);
 
       const calculatedCheckIns = logsArray.filter((log: any) => log.checkInTime !== null).length;
@@ -708,7 +711,13 @@ function AttendancePageContent() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-slate-900 dark:text-white font-bold">{row?.employeeName}</span>
+                        {row?.employeeName && row?.employeeName !== 'Unmapped' ? (
+                          <span className="text-slate-900 dark:text-white font-bold">{row.employeeName}</span>
+                        ) : (
+                          <span className="text-red-500 font-medium text-sm">
+                            Unknown Employee (Device ID: {row?.employeeId || 'N/A'})
+                          </span>
+                        )}
                         <PunchSourceBadge record={row} />
                       </div>
                     </td>
