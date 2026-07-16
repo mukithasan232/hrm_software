@@ -739,10 +739,10 @@ function AttendancePageContent() {
                       <span className="font-semibold">{row.date}</span>
                     </td>
                     <td className="px-6 py-4">
-                      {row.checkInRaw ? (
+                      {row.checkIn ? (
                         <div>
                           <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                            {toBDDisplay(row.checkInRaw, 'hh:mm a')}
+                            {toBDDisplay(row.checkIn, 'hh:mm a')}
                           </span>
                           {row.lateMinutes > 0 && (
                             <span className="block mt-1 text-xs font-medium text-red-600 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded w-max">
@@ -755,10 +755,10 @@ function AttendancePageContent() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {row.checkOutRaw ? (
+                      {row.checkOut ? (
                         <div className="flex flex-col gap-1 items-start">
                           <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">
-                            {toBDDisplay(row.checkOutRaw, 'hh:mm a')}
+                            {toBDDisplay(row.checkOut, 'hh:mm a')}
                           </span>
                           {row.isAutoCheckout && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-white/20 uppercase tracking-wider">

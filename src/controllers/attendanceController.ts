@@ -761,8 +761,10 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         employeeId: log.employeeId,
         employeeName: log.user?.name || 'Unmapped',
         date: dateStr,
-        checkInRaw,
-        checkOutRaw,
+        checkIn: checkInRaw,
+        checkOut: checkOutRaw,
+        checkInRaw, // Keeping for backward compatibility just in case
+        checkOutRaw, // Keeping for backward compatibility
         isMissingOut,
         totalValidMs: validWorkedMs,
         lateMinutes,
