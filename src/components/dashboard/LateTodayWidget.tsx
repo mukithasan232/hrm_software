@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import api from '@/services/api';
+import React from 'react';
 import { Clock, AlertCircle } from 'lucide-react';
 
 interface LateEmployee {
@@ -12,37 +11,30 @@ interface LateEmployee {
   lateMinutes: number;
 }
 
-export default function LateTodayWidget() {
-  const [lateEmployees, setLateEmployees] = useState<LateEmployee[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchLateToday = async () => {
-      try {
-        const res = await api.get('/dashboard/late-today');
-        if (res.data?.success) {
-          const allLate = res.data.data || [];
-          setLateEmployees(allLate.filter((emp: any) => emp.lateMinutes && emp.lateMinutes > 0));
-        }
-      } catch (error) {
-        console.error("Failed to fetch late employees:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchLateToday();
-  }, []);
-
+export default function LateTodayWidget({ lateList = [] }: { lateList?: any[] }) {
   const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
-  if (loading) {
-    return (
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-white/10 flex items-center justify-center h-48">
-        <p className="text-slate-400 text-sm animate-pulse">Loading late data...</p>
-      </div>
-    );
-  }
+  // Map the raw backend logs (which includes user object) to the expected LateEmployee interface format
+  const lateEmployees: LateEmployee[] = lateList.map(log => {
+    const shiftStr = log.user?.shift?.startTime || log.user?.shiftStartTime || log.user?.customDepartment?.shiftStartTime;
+    let lateMins = 0;
+    if (shiftStr) {
+      const [hours, minutes] = shiftStr.split(':').map(Number);
+      const shiftStartMins = hours * 60 + minutes;
+      const checkInDate = new Date(log.timestamp);
+      const bdTime = new Date(checkInDate.getTime() + (6 * 60 * 60 * 1000));
+      const checkInMins = bdTime.getUTCHours() * 60 + bdTime.getUTCMinutes();
+      lateMins = Math.max(0, checkInMins - shiftStartMins);
+    }
+    
+    return {
+      id: log.employeeId || log.id,
+      name: log.user?.name || log.employeeName || "Unknown",
+      avatar: log.user?.profileImage || log.user?.avatar || null,
+      designation: log.user?.designation,
+      lateMinutes: lateMins
+    };
+  });
 
   return (
     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-white/10 h-full flex flex-col">

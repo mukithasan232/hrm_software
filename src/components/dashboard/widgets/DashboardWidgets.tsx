@@ -576,7 +576,7 @@ export const LateTodayWidgetWrapper = ({ isCompact, data }: { isCompact: boolean
   }
   return (
     <div className="h-96 w-full">
-      <LateTodayWidget />
+      <LateTodayWidget lateList={data.stats?.lateList || []} />
     </div>
   );
 };

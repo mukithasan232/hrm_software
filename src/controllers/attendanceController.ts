@@ -223,8 +223,19 @@ export const getActivePresence = async (req: Request, res: Response) => {
     // 1. Fetch attendance logs for the period, ordered by latest first
     const todaysLogs = await prisma.attendanceLog.findMany({
       where: whereClause,
-      include: { user: { select: { name: true } } },
-      orderBy: { timestamp: 'desc' }
+      include: { 
+        user: { 
+          select: { 
+            name: true, 
+            profileImage: true,
+            designation: true,
+            shift: true, 
+            customDepartment: true, 
+            shiftStartTime: true 
+          } 
+        } 
+      },
+      orderBy: { timestamp: 'asc' } // Ascending to find the very first Check-In for late calculation
     });
 
     // 2. Filter: Find employees whose MOST RECENT punch is a "Check In"
@@ -233,7 +244,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const seenEmployees = new Set();
     let totalUniqueEmployeesToday = 0;
 
-    for (const log of todaysLogs) {
+    for (const log of [...todaysLogs].reverse()) { // Reverse to find the latest punch
       if (!seenEmployees.has(log.employeeId)) {
         seenEmployees.add(log.employeeId);
         totalUniqueEmployeesToday++;
@@ -278,6 +289,8 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const todayName = dayNames[currentTime.getDay()];
 
+    const absentEmployeesList: any[] = [];
+
     regularEmployees.forEach((user: any) => {
       if (presentUserIds.has(user.id) || leaveUserIds.has(user.id)) return; // Skip if present or on leave
 
@@ -293,6 +306,9 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
       if (weekendDays.includes(todayName)) return; // Strictly exclude if today is their weekend
 
+      // Push to absent array
+      absentEmployeesList.push(user);
+
       const shiftStr = user.shift?.startTime || user.shiftStartTime || user.customDepartment?.shiftStartTime || '09:00';
       const [hours, minutes] = shiftStr.split(':').map(Number);
 
@@ -307,6 +323,33 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     const calculatedAbsent = trueAbsentCount;
 
+    // --- NEW: Late Calculation ---
+    const lateEmployees: any[] = [];
+    const seenForLate = new Set();
+
+    for (const log of todaysLogs) {
+      if (!seenForLate.has(log.employeeId) && log.punchType?.toLowerCase().includes('in')) {
+        seenForLate.add(log.employeeId); // Only evaluate the first Check-In of the day
+
+        const user = (log as any).user;
+        const shiftStr = user?.shift?.startTime || user?.shiftStartTime || user?.customDepartment?.shiftStartTime;
+        if (shiftStr) {
+          const [hours, minutes] = shiftStr.split(':').map(Number);
+          const shiftStartMins = hours * 60 + minutes;
+          
+          const checkInDate = new Date(log.timestamp);
+          // Shift to BD time for accurate hour comparison
+          const bdTime = new Date(checkInDate.getTime() + (6 * 60 * 60 * 1000));
+          const checkInMins = bdTime.getUTCHours() * 60 + bdTime.getUTCMinutes();
+          
+          const gracePeriod = 15; // 15 mins grace period
+          if (checkInMins > (shiftStartMins + gracePeriod)) {
+            lateEmployees.push(log);
+          }
+        }
+      }
+    }
+
     // 3. Absolute Latest for Current User (Cross-Midnight Bug Fix)
     let myAbsoluteLatest = null;
     if (user?.id) {
@@ -320,6 +363,9 @@ export const getActivePresence = async (req: Request, res: Response) => {
       totalToday: totalUniqueEmployeesToday,
       activeNow: currentlyPresentLogs.length,
       totalAbsent: calculatedAbsent,
+      absentList: absentEmployeesList,
+      lateCount: lateEmployees.length,
+      lateList: lateEmployees,
       recent: currentlyPresentLogs.map(mapLog),
       recentAll: allLatestPunchLogs.map(mapLog),
       myAbsoluteLatest
@@ -370,30 +416,61 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       };
     }
 
+    const range = filter || (req as any).nextUrl?.searchParams?.get('range') || req.query?.range || 'all';
+
+    let filterStartDate = new Date();
+    let filterEndDate = new Date();
     const nowUTC = new Date(); // For Ghost Record Mitigation
 
-    let strictEndUTC = nowUTC;
-
     if (startDate && endDate) {
-      // ── Custom date range (from DateRangePicker) ───────────────────────────
-      // Use strict BD timezone boundaries: start-of-day and end-of-day in +06:00
-      const startUTC = new Date(`${startDate as string}T00:00:00+06:00`);
-      const endUTC = new Date(`${endDate as string}T23:59:59.999+06:00`);
-      // Cap the end at the current moment to exclude future ghost records
-      strictEndUTC = endUTC > nowUTC ? nowUTC : endUTC;
-      // where.timestamp = { gte: startUTC, lte: strictEndUTC };
-      console.log(`[Attendance] Custom range filter: ${startDate} → ${endDate} (UTC: ${startUTC.toISOString()} → ${strictEndUTC.toISOString()})`);
-    } else if (filter && filter !== 'all') {
-      // ── Named filter: today / yesterday / week / month / yyyy-MM-dd ────────
-      const { start, end } = getDayBoundaries(filter as any);
-      strictEndUTC = end > nowUTC ? nowUTC : end;
-      // where.timestamp = { gte: start, lte: strictEndUTC };
-      console.log(`[Attendance] Named filter "${filter}": ${start.toISOString()} → ${strictEndUTC.toISOString()}`);
+        // Custom Date Range
+        filterStartDate = new Date(`${startDate as string}T00:00:00+06:00`);
+        filterEndDate = new Date(`${endDate as string}T23:59:59.999+06:00`);
     } else {
-      // ── All-time (no filter, no date range) ───────────────────────────────
-      // where.timestamp = { lte: nowUTC }; // Exclude future ghost records
-      console.log(`[Attendance] All-time filter applied (lte: ${nowUTC.toISOString()})`);
+        filterStartDate.setHours(0, 0, 0, 0); // Default to start of today
+        filterEndDate.setHours(23, 59, 59, 999); // Default to end of today
+
+        switch (range) {
+            case 'yesterday':
+                filterStartDate.setDate(filterStartDate.getDate() - 1);
+                filterEndDate = new Date(filterStartDate);
+                filterEndDate.setHours(23, 59, 59, 999);
+                break;
+            case 'last7days':
+            case 'week':
+                filterStartDate.setDate(filterStartDate.getDate() - 7);
+                filterEndDate = new Date(); // Up to right now
+                break;
+            case 'last1month':
+            case 'last30days':
+            case 'month':
+                filterStartDate.setMonth(filterStartDate.getMonth() - 1);
+                filterEndDate = new Date();
+                break;
+            case 'today':
+                break;
+            case 'all':
+            case 'all-time':
+            default:
+                filterStartDate = new Date(0); // Beginning of time
+                filterEndDate = new Date();
+                break;
+        }
     }
+
+    // Cap the end at the current moment to exclude future ghost records
+    let strictEndUTC = filterEndDate > nowUTC ? nowUTC : filterEndDate;
+
+    // Create the exact Prisma filter
+    const dateFilter = {
+        timestamp: {
+            gte: filterStartDate,
+            lte: strictEndUTC
+        }
+    };
+
+    // 🔥 CRITICAL: Must be applied here!
+    where.timestamp = dateFilter.timestamp;
 
     let skip: number | undefined;
     let take: number | undefined;

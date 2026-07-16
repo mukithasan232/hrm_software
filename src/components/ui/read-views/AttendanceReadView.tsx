@@ -55,17 +55,74 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
     employeeName,
     employeeId,
     date,
-    checkInRaw,
-    checkOutRaw,
-    totalValidMs,
     lateMinutes,
     overtimeMinutes,
     systemCalculatedOtMinutes,
     otBadge,
-    isMissingOut,
     status,
     punchTimeline
   } = initialData;
+
+  // --- DYNAMIC PAIRING LOGIC ---
+  // 1. Flatten punchTimeline into raw timestamps
+  const rawPunches: any[] = [];
+  (punchTimeline || []).forEach((session: any) => {
+    if (session.inTime) rawPunches.push({ 
+      timestamp: session.inTime, 
+      source: session.inSource, 
+      isManual: session.isManualIn, 
+      id: session.id,
+      latitude: session.inLatitude,
+      longitude: session.inLongitude,
+      address: session.inAddress
+    });
+    // In case the DB had an actual outTime, we extract it as a raw punch too
+    if (session.outTime) rawPunches.push({ 
+      timestamp: session.outTime, 
+      source: session.outSource, 
+      isManual: session.isManualOut, 
+      id: session.id + '_out',
+      latitude: session.outLatitude,
+      longitude: session.outLongitude,
+      address: session.outAddress
+    });
+  });
+
+  // 1b. Sort strictly by time
+  const sortedLogs = rawPunches.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  // 2. Pair them dynamically: Odd = IN, Even = OUT
+  const pairedSessions: any[] = [];
+  let newTotalValidMs = 0;
+
+  for (let i = 0; i < sortedLogs.length; i += 2) {
+    const checkIn = sortedLogs[i];
+    const checkOut = sortedLogs[i + 1] || null;
+    
+    let durationStr = '--';
+    if (checkOut) {
+      const durationMs = new Date(checkOut.timestamp).getTime() - new Date(checkIn.timestamp).getTime();
+      newTotalValidMs += durationMs;
+      const mins = Math.floor(durationMs / 60000);
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      durationStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    }
+
+    pairedSessions.push({
+      sessionNumber: Math.floor(i / 2) + 1,
+      checkIn, 
+      checkOut,
+      duration: durationStr
+    });
+  }
+
+  // 3. Update Summary Variables
+  const checkInRaw = sortedLogs.length > 0 ? sortedLogs[0].timestamp : null;
+  const checkOutRaw = sortedLogs.length > 1 ? sortedLogs[sortedLogs.length - 1].timestamp : null;
+  const isMissingOut = sortedLogs.length % 2 !== 0;
+  const totalValidMs = newTotalValidMs;
+
 
   const formatMinutes = (mins: number) => {
     if (!mins || mins <= 0) return '0m';
@@ -283,55 +340,55 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
             >
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-indigo-500" />
-                View Shift Details ({punchTimeline.length} Sessions)
+                View Shift Details ({pairedSessions.length} Sessions)
               </span>
               {showDetails ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
             </button>
             
             {showDetails && (
               <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex flex-col gap-3">
-                {punchTimeline.map((session: any, index: number) => (
-                  <div key={session.id || index} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-md mb-2">
+                {pairedSessions.map((session: any, index: number) => (
+                  <div key={session.checkIn.id || index} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-md mb-2">
                     <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Session {index + 1}</span>
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Session {session.sessionNumber}</span>
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-2">
                         <div className="flex items-center gap-1">
                           <span className="text-emerald-600 dark:text-emerald-400 font-medium">IN:</span> 
-                          {new Date(session.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
-                          {renderPunchSource(session.inSource, session.inSource, session.isManualIn)}
-                          {session.inLatitude && session.inLongitude && (
+                          {new Date(session.checkIn.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                          {renderPunchSource(session.checkIn.source, session.checkIn.source, session.checkIn.isManual)}
+                          {session.checkIn.latitude && session.checkIn.longitude && (
                             <a 
-                              href={`https://www.google.com/maps/search/?api=1&query=${session.inLatitude},${session.inLongitude}`} 
+                              href={`https://www.google.com/maps/search/?api=1&query=${session.checkIn.latitude},${session.checkIn.longitude}`} 
                               target="_blank" 
                               rel="noreferrer"
                               className="text-[10px] text-blue-600 underline ml-1 flex items-center"
                             >
-                              📍 {session.inAddress ? `${session.inAddress.substring(0, 20)}...` : "View Map"}
+                              📍 {session.checkIn.address ? `${session.checkIn.address.substring(0, 20)}...` : "View Map"}
                             </a>
                           )}
                         </div>
                         {'➔'}
-                        {session.isMissingOut ? (
+                        {!session.checkOut ? (
                           <span className="text-red-500 font-medium bg-red-100 dark:bg-red-900/30 px-1 rounded">⚠️ Missing Punch-Out</span>
                         ) : (
                           <div className="flex items-center gap-1">
                             <span className="text-amber-600 dark:text-amber-400 font-medium">OUT:</span> 
-                            {new Date(session.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                            {new Date(session.checkOut.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
                             {(() => {
-                              const checkInDate = new Date(session.inTime);
-                              const checkOutDate = new Date(session.outTime);
+                              const checkInDate = new Date(session.checkIn.timestamp);
+                              const checkOutDate = new Date(session.checkOut.timestamp);
                               const isNextDay = checkOutDate.getDate() !== checkInDate.getDate() || checkOutDate.getMonth() !== checkInDate.getMonth() || checkOutDate.getFullYear() !== checkInDate.getFullYear();
                               return isNextDay ? <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold ml-0.5">(+1 Day)</span> : null;
                             })()}
-                            {renderPunchSource(session.outSource, session.outSource, session.isManualOut)}
-                            {session.outLatitude && session.outLongitude && (
+                            {renderPunchSource(session.checkOut.source, session.checkOut.source, session.checkOut.isManual)}
+                            {session.checkOut.latitude && session.checkOut.longitude && (
                               <a 
-                                href={`https://www.google.com/maps/search/?api=1&query=${session.outLatitude},${session.outLongitude}`} 
+                                href={`https://www.google.com/maps/search/?api=1&query=${session.checkOut.latitude},${session.checkOut.longitude}`} 
                                 target="_blank" 
                                 rel="noreferrer"
                                 className="text-[10px] text-blue-600 underline ml-1 flex items-center"
                               >
-                                📍 {session.outAddress ? `${session.outAddress.substring(0, 20)}...` : "View Map"}
+                                📍 {session.checkOut.address ? `${session.checkOut.address.substring(0, 20)}...` : "View Map"}
                               </a>
                             )}
                           </div>
@@ -340,10 +397,10 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-300">{session.duration || '--'}</div>
-                      {session.id && isAdmin && (
+                      {session.checkIn.id && isAdmin && (
                         <button 
-                          onClick={() => handleDeleteSession(session.id)}
-                          disabled={isDeleting === session.id}
+                          onClick={() => handleDeleteSession(session.checkIn.id)}
+                          disabled={isDeleting === session.checkIn.id}
                           className="text-red-400 hover:text-red-600 transition-colors p-1 disabled:opacity-50"
                           title="Delete this session"
                         >

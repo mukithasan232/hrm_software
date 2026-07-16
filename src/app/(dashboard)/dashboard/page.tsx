@@ -206,7 +206,9 @@ export default function DashboardOverview() {
         remainingLeaves,
         activeNow: presentCount,
         totalToday: presenceRes.data.totalToday || 0,
-        totalAbsent: presenceRes.data.totalAbsent ?? Math.max(0, employeeCount - presentCount),
+        totalAbsent: presenceRes.data.totalAbsent ?? presenceRes.data.absentCount ?? 0,
+        lateList: presenceRes.data.lateList || [],
+        absentList: presenceRes.data.absentList || [],
       });
 
       const allLogs = presenceRes.data.recentAll || presenceRes.data.recent || [];
@@ -226,28 +228,7 @@ export default function DashboardOverview() {
       setPresentEmployees(presentEmps);
 
       const presentUserIds = new Set(allLogs.map((l: any) => l.employeeId));
-      const absentEmps = allUsers.filter((u: any) => {
-        if (!u.isActive || u.employeeId === "UNMAPPED_FALLBACK") return false;
-        const desigName = typeof u.designation === 'object' ? u.designation?.name : u.designation;
-        const desig = (desigName || '').toLowerCase();
-        if (['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'].includes(desig) || u.email === 'dev@fixanyphoto.com') return false;
-        
-        let weekendDays = ['Sunday'];
-        if (u.customDesignation?.weekendDays) {
-          try {
-            const parsed = typeof u.customDesignation.weekendDays === 'string' 
-              ? JSON.parse(u.customDesignation.weekendDays) 
-              : u.customDesignation.weekendDays;
-            if (Array.isArray(parsed) && parsed.length > 0) weekendDays = parsed;
-          } catch(e) {}
-        }
-        
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const todayName = dayNames[new Date().getDay()];
-        if (weekendDays.includes(todayName)) return false; // Exclude if today is their weekend
-
-        return !presentUserIds.has(u.id) && !presentUserIds.has(u.employeeId);
-      });
+      const absentEmps = presenceRes.data.absentList || [];
       setAbsentEmployees(absentEmps);
 
       setPendingLeavesList(allLeaves.filter((l: any) => l.status === "Pending"));
@@ -272,8 +253,14 @@ export default function DashboardOverview() {
         ...prev,
         activeNow: res.data.activeNow || 0,
         totalToday: res.data.totalToday || 0,
-        totalAbsent: res.data.totalAbsent ?? Math.max(0, prev.employees - (res.data.activeNow || 0)),
+        totalAbsent: res.data.totalAbsent ?? res.data.absentCount ?? prev.totalAbsent,
+        lateList: res.data.lateList || prev.lateList || [],
+        absentList: res.data.absentList || prev.absentList || [],
       }));
+      
+      if (res.data.absentList) {
+        setAbsentEmployees(res.data.absentList);
+      }
       const allLogs = res.data.recentAll || res.data.recent || [];
       setRecentAttendance(allLogs);
       if (!isAdmin && user?.id) {
