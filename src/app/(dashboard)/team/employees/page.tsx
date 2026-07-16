@@ -249,7 +249,7 @@ export default function EmployeesPage() {
         remoteShiftEndTime: editType === 'HYBRID' ? shift2End : null,
       };
       if (editDesignation) payload.designationId = editDesignation;
-      payload.zktecoId = editZkEnroll || null;
+      payload.zktecoId = editZkEnroll ? parseInt(editZkEnroll, 10) : null;
 
       const res = await api.put(`/users/${editTarget.id}`, payload);
       toast.success('Employee updated successfully!');

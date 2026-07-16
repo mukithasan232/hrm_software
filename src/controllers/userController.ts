@@ -100,7 +100,6 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         customDesignation: { select: { id: true, name: true, permissions: true } },
         department: true,
         customDepartment: { select: { id: true, name: true, shiftStartTime: true, shiftEndTime: true, lunchStartTime: true, lunchEndTime: true, snacksStartTime: true, snacksEndTime: true } },
-        customDesignation: true,
         shiftId: true,
         shift: { select: { id: true, name: true, startTime: true, endTime: true } },
         shiftStartTime: true,
@@ -155,7 +154,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
     res.status(200).json({ 
       ...user, 
       permissions: finalPerms,
-      designation: user.designation || (user as any).customDesignation?.name 
+      designation: (user as any).designation || (user as any).customDesignation?.name 
     });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to fetch profile', error: error.message });
@@ -213,7 +212,6 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
           name: true,
           email: true,
           department: true,
-          customDesignation: true,
           customDesignation: { select: { id: true, name: true } },
           profileImage: true,
           phone: true,
@@ -228,7 +226,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
           verificationStatus: true,
         }
       });
-      res.status(200).json({ message: 'Profile updated successfully', user: { ...user, designation: user.designation || (user as any).customDesignation?.name } });
+      res.status(200).json({ message: 'Profile updated successfully', user: { ...user, designation: (user as any).designation || (user as any).customDesignation?.name } });
     } catch (dbError: any) {
       console.error('[Profile Update Error]: ', dbError);
       res.status(500).json({ error: 'Database update failed', details: dbError.message });
@@ -362,7 +360,7 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
         employeeType: employeeType || undefined,
         baseSalary: baseSalary ? Number(baseSalary) : undefined,
         leaveConfig: leaveConfig !== undefined ? (typeof leaveConfig === 'string' ? JSON.parse(leaveConfig) : leaveConfig) : undefined,
-        zktecoId: zktecoId !== undefined ? (zktecoId && zktecoId !== 'null' ? parseInt(zktecoId, 10) : null) : undefined,
+        zktecoId: zktecoId !== undefined ? (zktecoId === null || zktecoId === 'null' || zktecoId === '' ? null : parseInt(zktecoId as any, 10)) : undefined,
         casualLeaveAdjustment: casualLeaveAdjustment !== undefined ? Number(casualLeaveAdjustment) : undefined,
         sickLeaveAdjustment: sickLeaveAdjustment !== undefined ? Number(sickLeaveAdjustment) : undefined,
         permissions: permissions !== undefined ? (typeof permissions === 'string' ? JSON.parse(permissions) : permissions) : undefined,

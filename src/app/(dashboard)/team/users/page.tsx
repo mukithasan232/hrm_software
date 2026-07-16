@@ -289,7 +289,7 @@ export default function TeamUsersPage() {
         if (password) updatePayload.password = password;
         updatePayload.roles = form.roleIds;
         updatePayload.employeeType = employeeType;
-        updatePayload.zktecoId = zktecoId;
+        updatePayload.zktecoId = zktecoId ? parseInt(zktecoId, 10) : null;
         updatePayload.leaveConfig = JSON.stringify({
           casual: casualLeave !== '' ? Number(casualLeave) : null,
           sick: sickLeave !== '' ? Number(sickLeave) : null,
