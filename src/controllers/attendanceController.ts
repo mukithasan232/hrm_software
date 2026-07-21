@@ -864,9 +864,10 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     const CROSS_MIDNIGHT_WINDOW_MS = 18 * 60 * 60 * 1000;
     const windowStart = new Date(parsedDate.getTime() - CROSS_MIDNIGHT_WINDOW_MS);
 
-    const lastRecord = await prisma.attendanceLog.findFirst({
+    const lastOpenSession = await prisma.attendanceLog.findFirst({
       where: {
         employeeId: user.id,
+        checkOut: null,
         timestamp: {
           gte: windowStart,
           lte: parsedDate
@@ -875,16 +876,13 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       orderBy: { timestamp: 'desc' }
     });
 
-    const isActiveShift = lastRecord && (lastRecord.punchType?.toLowerCase().includes('in') || !lastRecord.punchType) && !(lastRecord as any).checkOut;
     let log: any;
     let created = false;
 
     // 🚀 STRICT COOLDOWN PREVENTION (1 MINUTE)
-    if (lastRecord && lastRecord.timestamp && !isOverride) {
+    if (lastOpenSession && lastOpenSession.timestamp && !isOverride) {
       const COOLDOWN_MS = 60 * 1000;
-      const lastActionTime = (lastRecord as any).checkOut
-        ? new Date((lastRecord as any).checkOut).getTime()
-        : new Date(lastRecord.timestamp).getTime();
+      const lastActionTime = new Date(lastOpenSession.timestamp).getTime();
 
       if (Date.now() - lastActionTime < COOLDOWN_MS) {
         res.status(429).json({ message: 'Please wait at least 1 minute before punching again to prevent duplicate entries.' });
@@ -892,22 +890,10 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       }
     }
 
-    // 🚀 SAFE OUT IGNORANCE (Task 3)
-    if (punchType?.toLowerCase().includes('out') && !isActiveShift && !isOverride) {
-      res.status(200).json({ message: 'Session already checked out. Ignored duplicate request.', data: lastRecord });
-      return;
-    }
-
-    // 🚀 STRICT OVERLAP PREVENTION
-    if (punchType?.toLowerCase().includes('in') && isActiveShift && !isOverride) {
-      res.status(400).json({ message: 'You are already checked in. Please check out before starting a new session.' });
-      return;
-    }
-
-    if (isActiveShift && (!isOverride || punchType?.toLowerCase().includes('out'))) {
-      // 🚀 FORCE CHECKOUT ON PREVIOUS RECORD
+    if (lastOpenSession) {
+      // 🚀 THIS INCOMING PUNCH IS A CHECK-OUT
       log = await prisma.attendanceLog.update({
-        where: { id: lastRecord.id },
+        where: { id: lastOpenSession.id },
         data: {
           checkOut: parsedDate,
           latitude,
@@ -918,24 +904,18 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
         } as any,
         include: { user: { select: { name: true } } },
       });
-      // Override punchType so late notifications or responses know it was a checkout
+      // Override punchType so downstream logic (like late detection/websocket) knows what happened
       punchType = 'CheckOut';
     } else {
-      // FRESH CHECK IN OR NORMAL PUNCH
+      // 🚀 THIS INCOMING PUNCH IS A CHECK-IN
+      punchType = 'CheckIn';
       let sessionWorkMode = 'REMOTE'; // Any manual punch via web portal is inherently remote
 
-      log = await prisma.attendanceLog.upsert({
-        where: {
-          employeeId_timestamp: {
-            employeeId: user.id,
-            timestamp: parsedDate,
-          },
-        },
-        update: { punchType, latitude, longitude, locationAddress, workMode: sessionWorkMode } as any,
-        create: {
+      log = await prisma.attendanceLog.create({
+        data: {
           employeeId: user.id,
           timestamp: parsedDate,
-          punchType,
+          punchType: 'CheckIn',
           deviceId: isAdmin ? 'Manual Entry' : 'MANUAL_WEB',
           isManualIn: true,
           latitude,
@@ -945,7 +925,7 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
         } as any,
         include: { user: { select: { name: true } } },
       });
-      created = log.createdAt.getTime() === log.updatedAt.getTime();
+      created = true;
     }
 
     // --- Late Detection ---
