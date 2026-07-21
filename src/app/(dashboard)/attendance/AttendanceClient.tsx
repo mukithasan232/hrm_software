@@ -249,7 +249,7 @@ function AttendancePageContent() {
       userLogsToday.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       const lastAction = userLogsToday[0];
 
-      if (lastAction && (lastAction.punchType === 'CheckIn' || lastAction.punchType?.toLowerCase().includes('in'))) {
+      if (lastAction && (lastAction.punchType === 'CheckIn' || lastAction.punchType?.toLowerCase().includes('in')) && !lastAction.checkOutTime && !lastAction.checkOut) {
         calculatedPunchType = 'CheckOut';
       }
     }

@@ -860,23 +860,22 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const startOfDay = new Date(parsedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(parsedDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Look back 18 hours to find the open session, correctly handling timezone and cross-midnight shifts
+    const CROSS_MIDNIGHT_WINDOW_MS = 18 * 60 * 60 * 1000;
+    const windowStart = new Date(parsedDate.getTime() - CROSS_MIDNIGHT_WINDOW_MS);
 
     const lastRecord = await prisma.attendanceLog.findFirst({
       where: {
         employeeId: user.id,
         timestamp: {
-          gte: startOfDay,
-          lte: endOfDay
+          gte: windowStart,
+          lte: parsedDate
         }
       },
       orderBy: { timestamp: 'desc' }
     });
 
-    const isActiveShift = lastRecord && lastRecord.punchType?.toLowerCase().includes('in') && !(lastRecord as any).checkOut;
+    const isActiveShift = lastRecord && (lastRecord.punchType?.toLowerCase().includes('in') || !lastRecord.punchType) && !(lastRecord as any).checkOut;
     let log: any;
     let created = false;
 
