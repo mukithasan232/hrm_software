@@ -887,18 +887,20 @@ export const syncZkTecoData = async (isDeepSync: boolean = false): Promise<{ syn
           }
         });
 
-        // 4. If it doesn't exist, create it! (This catches all newly added employees)
+        // 4. If it doesn't exist, process it via the same atomic punch handler
+        // used by the main sync — this respects CheckIn/CheckOut toggling.
         if (!existingLog) {
-          await prisma.attendanceLog.create({
-            data: {
-              employeeId: user.id,
-              deviceId: rawLog.ip || "SYNC_RECOVERY",
-              punchType: "CheckIn", // Default or derive from rawLog if available
-              timestamp: rawLog.recordTime,
-              workMode: "IN_HOUSE"
-            }
-          });
-          newRecordsAdded++;
+          try {
+            await processBiometricPunch(
+              user.id,
+              rawLog.recordTime,
+              rawLog.ip || 'SYNC_RECOVERY',
+              rawLog.punchType ?? null, // pass the device type so the pairing logic is correct
+            );
+            newRecordsAdded++;
+          } catch (retryErr: any) {
+            console.warn(`[ZKService] Retroactive sync failed for user ${user.id}:`, retryErr.message);
+          }
         }
       }
     }

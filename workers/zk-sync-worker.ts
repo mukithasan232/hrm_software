@@ -50,6 +50,20 @@ const checkUdpPort = async (ip: string, port: number): Promise<boolean> => {
   });
 };
 
+const notifyDashboard = async () => {
+  try {
+    const url = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    await fetch(`${url}/api/internal/punch-notify`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.API_SECRET_TOKEN || 'local_fallback_token'}`
+      }
+    });
+  } catch (err: any) {
+    console.warn('[Worker] Failed to notify dashboard:', err.message);
+  }
+};
+
 async function safeDisconnect(zk: any) {
   try {
     if (zk && (zk.socket || (zk.zudp && zk.zudp.socket) || (zk.ztcp && zk.ztcp.socket))) {
@@ -324,12 +338,12 @@ const connectAndListen = async () => {
           const resolvedPunchType = await resolvePunchType(user.id, parsedTimestamp, data);
           if (!resolvedPunchType) return;
 
-          await prisma.attendanceLog.upsert({
-            where: { employeeId_timestamp: { employeeId: user.id, timestamp: parsedTimestamp } },
-            update: { punchType: resolvedPunchType as any },
-            create: { employeeId: user.id, timestamp: parsedTimestamp, punchType: resolvedPunchType as any, deviceId: device.ipAddress! },
-          });
+          // Process the biometric punch securely instead of raw upsert
+          await processBiometricPunch(user.id, parsedTimestamp, device.ipAddress || 'Unknown IP');
           console.log(`[Worker] Processed live punch for ${user.name} at ${parsedTimestamp.toISOString()}`);
+          
+          // Emit socket update to dashboard
+          notifyDashboard();
         } catch (err: any) {
           console.error(`[Worker] Live punch error:`, err.message);
         }

@@ -78,7 +78,7 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
       // If type is EMERGENCY or others, allow it to proceed
     }
 
-    const attachment = req.file ? `/uploads/leaves/${req.file.filename}` : undefined;
+    const attachment = (req as any).file?.attachment?.path;
 
     // ০ থেকে দিন সংখ্যা হিসাব কনফ্লিক্ট এড়াতে গ্যারান্টিড ম্যাথ অপারেশন
     const totalDays = Math.ceil((parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;

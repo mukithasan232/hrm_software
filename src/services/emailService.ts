@@ -52,24 +52,42 @@ const getTransporter = async () => {
   };
 };
 
-export const sendMail = async ({ to, subject, html, attachments }: { to: string; subject: string; html: string; attachments?: any[] }) => {
+export const sendMail = async ({
+  to,
+  bcc,
+  subject,
+  html,
+  attachments,
+}: {
+  to?: string;
+  bcc?: string | string[];
+  subject: string;
+  html: string;
+  attachments?: any[];
+}) => {
   try {
     const { transporter, fromUser } = await getTransporter();
-    
+
     if (!fromUser) {
-      console.warn('[EmailService] SMTP credentials not configured (DB or ENV). Skipping email to', to);
+      console.warn('[EmailService] SMTP credentials not configured (DB or ENV). Skipping email.');
       throw new Error('SMTP credentials not configured');
     }
 
+    const fromAddress = process.env.SMTP_FROM_EMAIL || `"HRM Portal" <${fromUser}>`;
+    // When only bcc is used (e.g. bulk announcements), fall back to the sender
+    // so Nodemailer always has a valid primary recipient.
+    const toAddress = to && to.length > 0 ? to : fromUser;
+
     await transporter.verify(); // Check connection
     await transporter.sendMail({
-      from: process.env.SMTP_FROM_EMAIL || `"HRM Portal" <${fromUser}>`,
-      to,
+      from: fromAddress,
+      to: toAddress,
+      bcc,
       subject,
       html,
       attachments,
     });
-    console.log(`[EmailService] Email sent to ${to}`);
+    console.log(`[EmailService] Email sent to ${toAddress}${bcc ? ` (bcc: ${Array.isArray(bcc) ? bcc.length : 1} recipients)` : ''}`);
     return { success: true };
   } catch (error: any) {
     console.error('[EmailService] Failed to send email:', error);

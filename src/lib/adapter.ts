@@ -78,7 +78,7 @@ export async function parseRequest(
             const fileEntry = val as unknown as File;
             let uploadSubdir = 'documents';
             if (key === 'avatar') uploadSubdir = 'avatars';
-            else if (key === 'attachment') uploadSubdir = 'leaves';
+            else if (key === 'attachment') uploadSubdir = req.url.includes('/tasks') ? 'tasks' : 'leaves';
             else if (key === 'signature') uploadSubdir = 'signatures';
             
             const uploadDir = path.join(process.cwd(), 'public', 'uploads', uploadSubdir);
