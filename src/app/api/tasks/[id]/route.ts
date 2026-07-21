@@ -87,6 +87,7 @@ export async function PATCH(
           status,
           ...(status === 'COMPLETED' ? { completedAt: new Date() } : { completedAt: null }),
           ...(description !== undefined && { description: description || null }),
+          ...(mockReq.file?.attachment?.path && { attachment: mockReq.file.attachment.path }),
           ...(uploadedFiles.length > 0 && { outputFiles: finalOutputFiles }),
         } as any,
         include: TASK_INCLUDE,
