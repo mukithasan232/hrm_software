@@ -135,6 +135,22 @@ function AttendancePageContent() {
     });
   }, [serverSummaries, searchTerm]);
 
+  const dynamicCheckInCount = useMemo(() => dailySummaries.length, [dailySummaries]);
+  
+  const dynamicCheckOutCount = useMemo(() => {
+    return dailySummaries.filter((row: any) => row.checkOut !== null && row.checkOut !== undefined).length;
+  }, [dailySummaries]);
+
+  const dynamicManualCount = useMemo(() => {
+    return logs.filter((log: any) => log.deviceId === 'Manual Entry' || log.isManual === true || log.punchMethod === 'WEB' || log.punchMethod === 'MANUAL').length;
+  }, [logs]);
+
+  const dynamicAbsentCount = useMemo(() => {
+    const totalEmployees = employees.length;
+    if (totalEmployees === 0) return absentCount; // fallback
+    return Math.max(0, totalEmployees - dynamicCheckInCount);
+  }, [employees, dynamicCheckInCount, absentCount]);
+
   const formatMinutes = (mins: number) => {
     if (!mins || mins <= 0) return '';
     const h = Math.floor(mins / 60);
@@ -645,7 +661,7 @@ function AttendancePageContent() {
             <div className="p-2 bg-emerald-500/10 rounded-lg"><LogIn className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /></div>
           </div>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
-            {checkInCount}
+            {dynamicCheckInCount}
           </p>
         </div>
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition-all">
@@ -654,7 +670,7 @@ function AttendancePageContent() {
             <div className="p-2 bg-orange-500/10 rounded-lg"><LogOut className="w-4 h-4 text-orange-600 dark:text-orange-400" /></div>
           </div>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
-            {checkOutCount}
+            {dynamicCheckOutCount}
           </p>
         </div>
         <div 
@@ -666,7 +682,7 @@ function AttendancePageContent() {
             <div className="p-2 bg-blue-500/10 rounded-lg"><Fingerprint className="w-4 h-4 text-blue-600 dark:text-blue-400" /></div>
           </div>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
-            {manualCount}
+            {dynamicManualCount}
           </p>
         </div>
         <div 
@@ -678,7 +694,7 @@ function AttendancePageContent() {
             <div className="p-2 bg-red-500/10 rounded-lg"><UserX className="w-4 h-4 text-red-600 dark:text-red-400" /></div>
           </div>
           <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
-            {absentCount}
+            {dynamicAbsentCount}
           </p>
         </div>
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition-all">
