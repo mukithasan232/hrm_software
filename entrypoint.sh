@@ -39,7 +39,7 @@ fi
 
 # 2. Seed default admin account
 echo "🌱 [2/3] Running Admin Seed..."
-if ! pnpm exec tsx src/scripts/seedAdmins.ts; then
+if ! tsx src/scripts/seedAdmins.ts; then
   echo "⚠️  Seed failed. This is non-fatal — server will still start."
   echo "    Admin account may need to be seeded manually if the DB was just created."
 fi
