@@ -14,6 +14,7 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
 
   const [isApproving, setIsApproving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isChangingRole, setIsChangingRole] = useState(false);
   const [employeeData, setEmployeeData] = useState(initialData);
   const [baseSalary, setBaseSalary] = useState(initialData?.baseSalary || '');
 
@@ -58,6 +59,20 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
     }
   };
 
+  const handleRoleChange = async (newRole: string) => {
+    if (!window.confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
+    setIsChangingRole(true);
+    try {
+      const res = await api.patch(`/employees/${employeeData.id}/role`, { role: newRole });
+      setEmployeeData((prev: any) => ({ ...prev, userType: res.data.user.userType, designation: res.data.user.designation?.name || res.data.user.designation || prev.designation }));
+      toast.success("Employee role updated successfully");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update role");
+    } finally {
+      setIsChangingRole(false);
+    }
+  };
+
 
 
   const emp = employeeData;
@@ -94,6 +109,19 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
             </span>
           </div>
         </div>
+
+        {isAdmin && !isSelf && (
+          <div className="mt-4 sm:mt-0 flex flex-col gap-2 justify-center">
+             <button
+               onClick={() => handleRoleChange(emp.userType?.toUpperCase().includes('ADMIN') ? 'Employee' : 'Admin')}
+               disabled={isChangingRole}
+               className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
+             >
+               {isChangingRole && <Loader2 className="w-4 h-4 animate-spin" />}
+               {emp.userType?.toUpperCase().includes('ADMIN') ? 'Revoke Admin' : 'Promote to Admin'}
+             </button>
+          </div>
+        )}
       </div>
 
       {/* Pending Verification Section */}

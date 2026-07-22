@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Search, Building2, User, Mail, UploadCloud, X,
-  RefreshCw, Key, Pencil, Trash2, AlertTriangle, Link as LinkIcon, Loader2, Send
+  RefreshCw, Key, Pencil, Trash2, AlertTriangle, Link as LinkIcon, Loader2, Send, Shield
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -139,6 +139,31 @@ export default function EmployeesPage() {
   // ── Delete Modal ───────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  // ── Role Management ────────────────────────────────────────────────────────
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+
+  const isAdmin = authUser?.role?.toUpperCase().includes('ADMIN') || 
+                  (authUser as any)?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN')) || 
+                  String((authUser as any)?.designation || '').toUpperCase().includes('ADMIN') ||
+                  (authUser as any)?.userType?.toUpperCase().includes('ADMIN');
+
+  const handleRoleChange = async (emp: any) => {
+    const isCurrentlyAdmin = (emp as any).userType?.toUpperCase().includes('ADMIN');
+    const newRole = isCurrentlyAdmin ? 'Employee' : 'Admin';
+    if (!window.confirm(`Are you sure you want to change ${emp.name}'s role to ${newRole}?`)) return;
+    
+    setUpdatingRole(emp.id);
+    try {
+      const res = await api.patch(`/employees/${emp.id}/role`, { role: newRole });
+      setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, userType: res.data.user.userType, designation: res.data.user.designation?.name || res.data.user.designation || e.designation } : e));
+      toast.success("Employee role updated successfully");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update role");
+    } finally {
+      setUpdatingRole(null);
+    }
+  };
 
   // ── Profile Modal State ────────────────────────────────────────────────────
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
@@ -448,6 +473,16 @@ export default function EmployeesPage() {
                   >
                     <Mail className="w-3.5 h-3.5" />
                   </a>
+                  {isAdmin && authUser?.id !== emp.id && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRoleChange(emp); }}
+                      disabled={updatingRole === emp.id}
+                      title={(emp as any).userType?.toUpperCase().includes('ADMIN') ? 'Revoke Admin' : 'Make Admin'}
+                      className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-500 transition-colors border border-slate-100 dark:border-white/5 disabled:opacity-50"
+                    >
+                      {updatingRole === emp.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-4 h-4" />}
+                    </button>
+                  )}
                   {canEditUser && (
                       <>
                         <button

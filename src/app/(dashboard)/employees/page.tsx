@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import {
   Plus, Search, Mail, Briefcase, Building2, Edit2,
-  UserX, UserCheck, X, Save, ChevronDown, Trash2
+  UserX, UserCheck, X, Save, ChevronDown, Trash2, Loader2, Shield
 } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -38,6 +38,7 @@ export default function EmployeesPage() {
   const [editTarget, setEditTarget] = useState<any | null>(null); // null = Add new
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
   const fetchEmployees = async () => {
     try {
@@ -138,6 +139,23 @@ export default function EmployeesPage() {
       setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, isActive: res.data.isActive } : e));
     } catch {
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleRoleChange = async (emp: any) => {
+    const isCurrentlyAdmin = emp.userType?.toUpperCase().includes('ADMIN');
+    const newRole = isCurrentlyAdmin ? 'Employee' : 'Admin';
+    if (!window.confirm(`Are you sure you want to change ${emp.name}'s role to ${newRole}?`)) return;
+    
+    setUpdatingRole(emp.id);
+    try {
+      const res = await api.patch(`/employees/${emp.id}/role`, { role: newRole });
+      setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, userType: res.data.user.userType, designation: res.data.user.designation?.name || res.data.user.designation || e.designation } : e));
+      toast.success("Employee role updated successfully");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update role");
+    } finally {
+      setUpdatingRole(null);
     }
   };
 
@@ -304,6 +322,16 @@ export default function EmployeesPage() {
                       {emp.isActive ? <><UserX className="w-3 h-3" /> Deactivate</> : <><UserCheck className="w-3 h-3" /> Activate</>}
                     </button>
                   </div>
+                  {user?.id !== emp.id && (
+                    <button
+                      onClick={() => handleRoleChange(emp)}
+                      disabled={updatingRole === emp.id}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-lg transition-all hover:shadow-[0_0_10px_rgba(99,102,241,0.15)] disabled:opacity-50"
+                    >
+                      {updatingRole === emp.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                      {emp.userType?.toUpperCase().includes('ADMIN') ? 'Revoke Admin' : 'Make Admin'}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDeleteEmployee(emp)}
                     className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all hover:shadow-[0_0_10px_rgba(239,68,68,0.15)]"
