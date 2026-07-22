@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
   DragDropContext, Droppable, Draggable, DropResult,
@@ -315,28 +316,38 @@ function TaskModal({ task, employees, onClose, onSaved, isAdmin: admin, mode = '
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={label}>Start Date</label>
-              <input 
-                type="date" 
-                className={field} 
-                value={form.startDate} 
-                min={task?.startDate ? undefined : todayStr}
-                onChange={e => setForm({ ...form, startDate: e.target.value })} 
-                disabled={isReadOnly}
-              />
-            </div>
-            <div>
-              <label className={label}>Due Date</label>
-              <input 
-                type="date" 
-                className={field} 
-                value={form.dueDate} 
-                min={form.startDate || (task?.dueDate ? undefined : todayStr)}
-                onChange={e => setForm({ ...form, dueDate: e.target.value })} 
-                disabled={isReadOnly}
-              />
+          <div className="flex flex-col">
+            {!isReadOnly && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Due:</span>
+                <button type="button" onClick={() => setForm({ ...form, dueDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10) })} className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded transition-colors">Tomorrow</button>
+                <button type="button" onClick={() => setForm({ ...form, dueDate: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10) })} className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded transition-colors">2 Days</button>
+                <button type="button" onClick={() => setForm({ ...form, dueDate: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10) })} className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded transition-colors">3 Days</button>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={label}>Start Date</label>
+                <input 
+                  type="date" 
+                  className={field} 
+                  value={form.startDate} 
+                  min={task?.startDate ? undefined : todayStr}
+                  onChange={e => setForm({ ...form, startDate: e.target.value })} 
+                  disabled={isReadOnly}
+                />
+              </div>
+              <div>
+                <label className={label}>Due Date</label>
+                <input 
+                  type="date" 
+                  className={field} 
+                  value={form.dueDate} 
+                  min={form.startDate || (task?.dueDate ? undefined : todayStr)}
+                  onChange={e => setForm({ ...form, dueDate: e.target.value })} 
+                  disabled={isReadOnly}
+                />
+              </div>
             </div>
           </div>
 
@@ -645,14 +656,25 @@ export default function TasksPage() {
   const canCreateTasks = checkPermission(user, 'Tasks', 'create');
   const canEditTasks = checkPermission(user, 'Tasks', 'edit');
   const canDeleteTasks = checkPermission(user, 'Tasks', 'delete');
+  const router = useRouter();
 
   const [view, setView]             = useState<'list' | 'kanban'>((user as any)?.taskView === 'kanban' ? 'kanban' : 'list');
+  const [moduleConfig, setModuleConfig] = useState<any>(null);
 
   useEffect(() => {
     if ((user as any)?.taskView) {
       setView((user as any).taskView as 'list' | 'kanban');
     }
   }, [user]);
+
+  useEffect(() => {
+    api.get('/settings/modules').then(res => {
+      setModuleConfig(res.data);
+      if (res.data?.isTaskModuleEnabled === false) {
+        router.replace('/dashboard');
+      }
+    }).catch(() => {});
+  }, [router]);
 
   // Sync view preference with DB
   const handleSetView = async (newView: 'list' | 'kanban') => {

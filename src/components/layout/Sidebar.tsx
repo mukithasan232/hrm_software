@@ -6,12 +6,13 @@ import {
   Users, Clock, LayoutDashboard, LogOut, CalendarRange,
   X, User, UsersRound, Shield, ChevronDown, Smartphone, Megaphone, ChevronLeft, ChevronRight, HardDrive, Building2, Mail, CheckSquare, Volume2, BarChart, Activity, FileText
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBrand } from '@/context/BrandContext';
 import { useTranslation } from '@/context/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { checkPermission } from '@/utils/checkPermission';
+import api from '@/services/api';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -62,6 +63,37 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const collapsed = !mobileOpen && isCollapsed;
 
+  const [hasUnreadLeaves, setHasUnreadLeaves] = useState(false);
+  const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
+  const [moduleConfig, setModuleConfig] = useState<any>(null);
+
+  useEffect(() => {
+    api.get('/settings/modules').then(res => setModuleConfig(res.data)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      const checkNotifications = async () => {
+        try {
+          const res = await api.get('/notifications');
+          setHasUnreadLeaves(res.data.some((n: any) => !n.read && (n.type?.toUpperCase() === 'LEAVE' || n.type?.toUpperCase() === 'LEAVE_REQUEST')));
+          setHasUnreadTasks(res.data.some((n: any) => !n.read && n.type?.toUpperCase() === 'TASK'));
+        } catch (e) {}
+      };
+      checkNotifications();
+
+      const eventSource = new EventSource('/api/sse/notifications');
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setHasUnreadLeaves(data.some((n: any) => !n.read && (n.type?.toUpperCase() === 'LEAVE' || n.type?.toUpperCase() === 'LEAVE_REQUEST')));
+          setHasUnreadTasks(data.some((n: any) => !n.read && n.type?.toUpperCase() === 'TASK'));
+        } catch (e) {}
+      };
+      return () => eventSource.close();
+    }
+  }, [user]);
+
   // Centralized "God Mode" / Super Admin check
   const isSuperAdmin = user?.email === 'dev@fixanyphoto.com' ||
     user?.email === 'admin@fixanyphoto.com' ||
@@ -75,6 +107,11 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const isAdmin = isSuperAdmin || ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
 
   const filteredItems = NAV_ITEM_DEFS.filter(item => {
+    // Module Feature Flags
+    if (item.key === 'attendance' && moduleConfig && moduleConfig.isAttendanceEnabled === false) return false;
+    if (item.key === 'leaves' && moduleConfig && moduleConfig.isLeaveModuleEnabled === false) return false;
+    if (item.key === 'tasks' && moduleConfig && moduleConfig.isTaskModuleEnabled === false) return false;
+
     if (isSuperAdmin) return true;
     if ((item as any).adminOnly && !isAdmin) return false; // Allowed for all Admins
     if (item.module === 'Dashboard' || item.module === 'Profile') return true;
@@ -99,8 +136,15 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const hasSettingsPermission = isSuperAdmin || checkPermission(user, 'manage_system_settings', 'view');
 
-  // 🚀 FOOLPROOF GOD MODE OVERRIDE
-  const menusToRender = isSuperAdmin ? NAV_ITEM_DEFS : filteredItems;
+  // 🚀 FOOLPROOF GOD MODE OVERRIDE (but still respect Feature Flags)
+  let menusToRender = isSuperAdmin ? NAV_ITEM_DEFS : filteredItems;
+  menusToRender = menusToRender.filter(item => {
+    if (item.key === 'attendance' && moduleConfig && moduleConfig.isAttendanceEnabled === false) return false;
+    if (item.key === 'leaves' && moduleConfig && moduleConfig.isLeaveModuleEnabled === false) return false;
+    if (item.key === 'tasks' && moduleConfig && moduleConfig.isTaskModuleEnabled === false) return false;
+    return true;
+  });
+
   const teamMenusToRender = isSuperAdmin ? TEAM_SUB_DEFS : filteredTeamItems;
   const reportsMenusToRender = isSuperAdmin ? REPORTS_SUB_DEFS : filteredReportsItems;
   const canSeeTeamRender = isSuperAdmin || canSeeTeam;
@@ -176,6 +220,12 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                     }`}
                 />
                 {!collapsed && <span className="capitalize">{t(item.key as any)}</span>}
+                {item.key === 'leaves' && hasUnreadLeaves && (
+                  <span className="w-2 h-2 rounded-full bg-red-500 absolute top-2.5 right-2 shadow-sm animate-pulse" />
+                )}
+                {item.key === 'tasks' && hasUnreadTasks && (
+                  <span className="w-2 h-2 rounded-full bg-red-500 absolute top-2.5 right-2 shadow-sm animate-pulse" />
+                )}
                 {!collapsed && isActive && (
                   <span className="ml-auto h-1.5 w-1.5 rounded-full flex-shrink-0 bg-brand-primary" />
                 )}

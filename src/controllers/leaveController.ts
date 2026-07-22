@@ -208,7 +208,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       data: { status },
       include: {
         user: {
-          select: { name: true, id: true }
+          select: { name: true, id: true, email: true }
         }
       }
     });
@@ -235,7 +235,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       eventEmitter.emit('new-notification', newNotification);
 
       if (leave.user?.email && leave.user?.name) {
-        await sendLeaveUpdateEmail((leave.user as any).email, leave.user.name, leave.type, statusEn);
+        await sendLeaveUpdateEmail((leave.user as any).email, leave.user.name, leave.type, statusEn, leave.startDate, leave.endDate);
       }
     } catch (notificationError) {
       console.error("[LEAVE_NOTIFICATION_ERROR]:", notificationError);

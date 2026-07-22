@@ -126,17 +126,23 @@ export async function PATCH(
     // Admin: can update all fields
     const { title, description, startDate, dueDate, status, priority, assignedToId } = mockReq.body;
 
+    const safeDate = (d: any) => {
+      if (!d || d === 'null' || d === 'undefined') return null;
+      const date = new Date(d);
+      return isNaN(date.getTime()) ? null : date;
+    };
+
     const updated = await prisma.task.update({
       where: { id },
       data: {
         ...(title !== undefined       && { title: title.trim() }),
-        ...(description !== undefined && { description: description || null }),
-        ...(startDate !== undefined   && { startDate: startDate ? new Date(startDate) : null }),
-        ...(dueDate !== undefined     && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(description !== undefined && { description: (description === 'null' || description === '') ? null : description }),
+        ...(startDate !== undefined   && { startDate: safeDate(startDate) }),
+        ...(dueDate !== undefined     && { dueDate: safeDate(dueDate) }),
         ...(status !== undefined      && { status }),
         ...(status !== undefined      && { completedAt: status === 'COMPLETED' ? new Date() : null }),
         ...(priority !== undefined    && { priority }),
-        ...(assignedToId !== undefined && { assignedToId }),
+        ...(assignedToId !== undefined && assignedToId !== 'null' && { assignedToId }),
         ...(mockReq.file?.attachment?.path && { attachment: mockReq.file.attachment.path }),
         ...(uploadedFiles.length > 0 && { outputFiles: finalOutputFiles }),
       } as any,
@@ -145,8 +151,8 @@ export async function PATCH(
 
     return NextResponse.json(updated, { headers: getCorsHeaders() });
   } catch (error: any) {
-    console.error('[Tasks PATCH]', error);
-    return NextResponse.json({ message: error.message }, { status: 500, headers: getCorsHeaders() });
+    console.error('[Tasks PATCH] Error updating task:', error, 'Payload:', mockReq?.body);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500, headers: getCorsHeaders() });
   }
 }
 

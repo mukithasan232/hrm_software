@@ -34,6 +34,18 @@ export const GET = wrapHandler(async (req: any, res: any) => {
       }
     }
 
+    // If fetching for leave management, evaluate leave scope or manager role
+    if (!isAdmin && req.query?.purpose === 'leave_management') {
+      const leaveScope = getPermissionScopeSync(user, 'Leaves', 'read');
+      const isManager = ['manager', 'team lead', 'lead'].some(d => userDesig.includes(d));
+      
+      if (leaveScope === 'all' || leaveScope === 'department') {
+        readScope = leaveScope;
+      } else if (isManager) {
+        readScope = 'department';
+      }
+    }
+
     const where: any = { 
       userType: 'Employee',
       employeeId: { not: 'UNMAPPED_FALLBACK' }

@@ -67,6 +67,16 @@ function AttendancePageContent() {
   // Customization State
   const [headerOrder, setHeaderOrder] = useState<HeaderItemKey[]>(['departments', 'date', 'sync', 'export']);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [moduleConfig, setModuleConfig] = useState<any>(null);
+
+  useEffect(() => {
+    api.get('/settings/modules').then(res => {
+      setModuleConfig(res.data);
+      if (res.data?.isAttendanceEnabled === false) {
+        router.replace('/dashboard');
+      }
+    }).catch(() => {});
+  }, [router]);
 
   useEffect(() => {
     const saved = localStorage.getItem('attendance_header_layout');
@@ -232,6 +242,8 @@ function AttendancePageContent() {
       setDepartmentsLoading(false);
     }
   };
+
+  if (moduleConfig?.isAttendanceEnabled === false) return null;
 
   useEffect(() => {
     fetchLogs();

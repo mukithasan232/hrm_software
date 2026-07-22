@@ -703,10 +703,15 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       const isAutoCheckoutSession = sessions.length > 0 && sessions[sessions.length - 1].isAutoCheckout;
 
       let lateMinutes = 0;
+      let earlyMinutes = 0;
       if (checkInRaw) {
         const shiftStartUTC = new Date(`${dateStr}T${shiftStartTime}:00+06:00`);
-        const lateMs = Math.max(0, new Date(checkInRaw).getTime() - shiftStartUTC.getTime());
-        lateMinutes = Math.floor(lateMs / 60000);
+        const timeDiffMs = new Date(checkInRaw).getTime() - shiftStartUTC.getTime();
+        if (timeDiffMs > 0) {
+          lateMinutes = Math.floor(timeDiffMs / 60000);
+        } else {
+          earlyMinutes = Math.floor(Math.abs(timeDiffMs) / 60000);
+        }
       }
 
       const standardShiftMs = 8 * 60 * 60 * 1000;
@@ -768,6 +773,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         isMissingOut,
         totalValidMs: validWorkedMs,
         lateMinutes,
+        earlyMinutes,
         overtimeMinutes,
         systemCalculatedOtMinutes,
         otBadge,

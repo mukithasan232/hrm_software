@@ -23,6 +23,14 @@ const SETTINGS_CARDS = [
     bg: 'bg-slate-500/10'
   },
   {
+    title: 'Modules Config',
+    description: 'Enable or disable core system modules dynamically.',
+    icon: Settings2,
+    href: '/settings/modules',
+    color: 'text-blue-500',
+    bg: 'bg-blue-500/10'
+  },
+  {
     titleKey: 'adminSettings.appearance',
     descKey: 'adminSettings.appearanceDesc',
     icon: Paintbrush,

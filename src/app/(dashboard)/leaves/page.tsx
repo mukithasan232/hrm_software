@@ -234,6 +234,16 @@ export default function LeavesPage() {
   const [loading, setLoading]             = useState(true);
   const [employees, setEmployees]         = useState<any[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [moduleConfig, setModuleConfig] = useState<any>(null);
+
+  useEffect(() => {
+    api.get('/settings/modules').then(res => {
+      setModuleConfig(res.data);
+      if (res.data?.isLeaveModuleEnabled === false) {
+        router.replace('/dashboard');
+      }
+    }).catch(() => {});
+  }, [router]);
 
   // Form state
   const [paymentType, setPaymentType]       = useState('');
@@ -296,7 +306,7 @@ export default function LeavesPage() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await api.get('/employees');
+      const res = await api.get('/employees?purpose=leave_management');
       setEmployees(Array.isArray(res.data) ? res.data : res.data.data || []);
     } catch { console.error('Failed to load employees'); }
   };
@@ -364,6 +374,8 @@ export default function LeavesPage() {
       <AlertCircle className="w-3 h-3 flex-shrink-0" /> {errors[key]}
     </p>
   ) : null;
+
+  if (moduleConfig?.isLeaveModuleEnabled === false) return null;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -471,33 +483,41 @@ export default function LeavesPage() {
               )}
 
               {/* Dates */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={label}>
-                    <Calendar className="w-3 h-3 inline mr-1" />Start Date *
-                  </label>
-                  <div className="relative">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Select:</span>
+                  <button type="button" onClick={() => { const d = new Date(Date.now() + 86400000).toISOString().slice(0, 10); setStartDate(d); setEndDate(d); setErrors(p => ({ ...p, startDate: '', endDate: '' })); }} className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded transition-colors">Tomorrow</button>
+                  <button type="button" onClick={() => { const start = new Date(Date.now() + 86400000).toISOString().slice(0, 10); const end = new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10); setStartDate(start); setEndDate(end); setErrors(p => ({ ...p, startDate: '', endDate: '' })); }} className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded transition-colors">2 Days</button>
+                  <button type="button" onClick={() => { const start = new Date(Date.now() + 86400000).toISOString().slice(0, 10); const end = new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10); setStartDate(start); setEndDate(end); setErrors(p => ({ ...p, startDate: '', endDate: '' })); }} className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded transition-colors">3 Days</button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={label}>
+                      <Calendar className="w-3 h-3 inline mr-1" />Start Date *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => { setStartDate(e.target.value); setErrors(p => ({ ...p, startDate: '' })); }}
+                        className={`${field} ${errors.startDate ? fieldError : ''}`}
+                      />
+                    </div>
+                    {errMsg('startDate')}
+                  </div>
+                  <div>
+                    <label className={label}>
+                      <Calendar className="w-3 h-3 inline mr-1" />End Date *
+                    </label>
                     <input
                       type="date"
-                      value={startDate}
-                      onChange={(e) => { setStartDate(e.target.value); setErrors(p => ({ ...p, startDate: '' })); }}
-                      className={`${field} ${errors.startDate ? fieldError : ''}`}
+                      value={endDate}
+                      min={startDate || undefined}
+                      onChange={(e) => { setEndDate(e.target.value); setErrors(p => ({ ...p, endDate: '' })); }}
+                      className={`${field} ${errors.endDate ? fieldError : ''}`}
                     />
+                    {errMsg('endDate')}
                   </div>
-                  {errMsg('startDate')}
-                </div>
-                <div>
-                  <label className={label}>
-                    <Calendar className="w-3 h-3 inline mr-1" />End Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    min={startDate || undefined}
-                    onChange={(e) => { setEndDate(e.target.value); setErrors(p => ({ ...p, endDate: '' })); }}
-                    className={`${field} ${errors.endDate ? fieldError : ''}`}
-                  />
-                  {errMsg('endDate')}
                 </div>
               </div>
 

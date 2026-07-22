@@ -450,3 +450,12 @@ model TaskComment {
   @@index([taskId])
   @@index([userId])
 }
+
+// Module Configuration (Feature Flags)
+model ModuleConfig {
+  id                  String   @id @default(uuid())
+  isLeaveModuleEnabled Boolean @default(true)
+  isTaskModuleEnabled  Boolean @default(true)
+  isAttendanceEnabled  Boolean @default(true)
+  updatedAt           DateTime @updatedAt
+}

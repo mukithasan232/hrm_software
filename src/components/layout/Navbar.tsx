@@ -30,9 +30,10 @@ const getNotificationLink = (n: any) => {
 
   const idParam = n.referenceId ? `?id=${n.referenceId}` : '';
   switch (type) {
-    case 'TASK': return `/dashboard/tasks${idParam}`;
-    case 'LEAVE': return `/dashboard/leaves${idParam}`;
-    case 'USER_MANAGEMENT': return '/employees';
+    case 'TASK': return `/tasks${idParam}`;
+    case 'LEAVE':
+    case 'LEAVE_REQUEST': return `/leaves${idParam}`;
+    case 'USER_MANAGEMENT': return '/team/employees';
     case 'ANNOUNCEMENT': return '/announcements';
     case 'PERFORMANCE': return '/performance';
     case 'PAYROLL': return '/payroll';
