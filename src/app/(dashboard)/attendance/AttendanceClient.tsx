@@ -23,7 +23,7 @@ const getLocalDatetimeLocal = (utcDateString: Date | string) => {
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
-import { checkPermission } from '@/utils/checkPermission';
+import { checkPermission, getPermissionScopeSync } from '@/utils/checkPermission';
 import { useDetailsStore } from '@/store/useDetailsStore';
 import MetricDetailsModal from '@/components/attendance/MetricDetailsModal';
 
@@ -149,6 +149,7 @@ function AttendancePageContent() {
   ) || user?.roles?.some((r: any) => ['admin', 'super admin', 'system administrator', 'hrm manager'].includes((r?.name || r)?.toLowerCase()));
   
   const canCreateAll = isAdminUser || checkPermission(user, 'Attendance', 'create');
+  const canViewAll = checkPermission(user, 'Attendance', 'edit') || checkPermission(user, 'Attendance', 'create') || getPermissionScopeSync(user, 'Attendance', 'read') === 'all';
 
   const [manualEntry, setManualEntry] = useState({
     employeeId: user?.employeeId || user?.id || '',
@@ -285,10 +286,10 @@ function AttendancePageContent() {
     fetchEmployees();
     fetchDepartments();
 
-    // Polling every 15s as a fallback (Socket.IO is the primary real-time path)
+    // Polling every 10s as a fallback (Socket.IO is the primary real-time path)
     const intervalId = setInterval(() => {
       fetchLogs(true);
-    }, 15000);
+    }, 10000);
 
     // Socket.IO: instant table refresh when any punch or sync fires
     const socket = socketIO({ 
@@ -545,18 +546,20 @@ function AttendancePageContent() {
         <div className="flex items-center gap-3">
           
           {/* 1. All Departments Dropdown */}
-          <div className="w-[180px]">
-            <CustomDropdown
-              value={departmentFilter}
-              onChange={(val) => setDepartmentFilter(val)}
-              placeholder={departmentsLoading ? 'Loading...' : 'All Departments'}
-              options={[
-                { value: 'all', label: 'All Departments' },
-                ...departments.map((dept) => ({ value: dept.id, label: dept.name })),
-              ]}
-              className="h-10 w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shrink-0 shadow-sm"
-            />
-          </div>
+          {canViewAll && (
+            <div className="w-[180px]">
+              <CustomDropdown
+                value={departmentFilter}
+                onChange={(val) => setDepartmentFilter(val)}
+                placeholder={departmentsLoading ? 'Loading...' : 'All Departments'}
+                options={[
+                  { value: 'all', label: 'All Departments' },
+                  ...departments.map((dept) => ({ value: dept.id, label: dept.name })),
+                ]}
+                className="h-10 w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shrink-0 shadow-sm"
+              />
+            </div>
+          )}
 
           {/* 2. Today Date Picker */}
           <div className="w-[150px]">

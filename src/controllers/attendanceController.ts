@@ -395,15 +395,16 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const employeeWhere: any = {};
     const where: any = {};
 
-    if (scope === 'own' && user?.id) {
+    const canViewAll = checkPermission(user, 'attendance', 'edit') || checkPermission(user, 'attendance', 'create') || getPermissionScopeSync(user, 'attendance', 'read') === 'all';
+
+    if (canViewAll) {
+      if (employeeId) {
+        where.employeeId = employeeId as string;
+        employeeWhere.id = employeeId as string;
+      }
+    } else {
       where.employeeId = user.id;
       employeeWhere.id = user.id;
-    } else if (scope === 'department' && user?.department) {
-      where.user = { department: user.department };
-      employeeWhere.department = user.department;
-    } else if (employeeId) {
-      where.employeeId = employeeId as string;
-      employeeWhere.id = employeeId as string;
     }
 
     if (department && department !== 'all') {
