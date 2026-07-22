@@ -149,15 +149,16 @@ export default function EmployeesPage() {
                   (authUser as any)?.userType?.toUpperCase().includes('ADMIN');
 
   const handleRoleChange = async (emp: any) => {
-    const isCurrentlyAdmin = (emp as any).userType?.toUpperCase().includes('ADMIN');
+    const isCurrentlyAdmin = String(emp.userType || emp.designation?.name || '').toUpperCase().includes('ADMIN');
     const newRole = isCurrentlyAdmin ? 'Employee' : 'Admin';
     if (!window.confirm(`Are you sure you want to change ${emp.name}'s role to ${newRole}?`)) return;
     
     setUpdatingRole(emp.id);
     try {
       const res = await api.patch(`/employees/${emp.id}/role`, { role: newRole });
-      setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, userType: res.data.user.userType, designation: res.data.user.designation?.name || res.data.user.designation || e.designation } : e));
-      toast.success("Employee role updated successfully");
+      setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, userType: res.data.user?.userType || newRole, designation: res.data.user?.designation?.name || res.data.user?.designation || e.designation } : e));
+      toast.success(`User role updated to ${newRole}`);
+      router.refresh();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update role");
     } finally {
@@ -477,8 +478,12 @@ export default function EmployeesPage() {
                     <button
                       onClick={(e) => { e.stopPropagation(); handleRoleChange(emp); }}
                       disabled={updatingRole === emp.id}
-                      title={(emp as any).userType?.toUpperCase().includes('ADMIN') ? 'Revoke Admin' : 'Make Admin'}
-                      className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-500 transition-colors border border-slate-100 dark:border-white/5 disabled:opacity-50"
+                      title={String((emp as any).userType || emp.designation?.name || '').toUpperCase().includes('ADMIN') ? 'Revoke Admin' : 'Make Admin'}
+                      className={`p-1.5 rounded-lg transition-colors border disabled:opacity-50 ${
+                        String((emp as any).userType || emp.designation?.name || '').toUpperCase().includes('ADMIN')
+                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20'
+                          : 'bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-500 border-slate-100 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10'
+                      }`}
                     >
                       {updatingRole === emp.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-4 h-4" />}
                     </button>

@@ -32,7 +32,7 @@ export const PATCH = wrapHandler(async (req: any, res: any) => {
     }
 
     const designation = await prisma.designation.findFirst({
-      where: { name: role }
+      where: { name: { equals: role, mode: 'insensitive' } }
     });
 
     const updateData: any = {

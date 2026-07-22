@@ -11,6 +11,7 @@ import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidat
 import toast from 'react-hot-toast';
 import { formatTimeStr12Hour } from '@/lib/timeUtils';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import QuickAddDialog from '@/components/ui/QuickAddDialog';
 import { useInView } from 'react-intersection-observer';
 import PageGuard from '@/components/auth/PageGuard';
@@ -76,6 +77,7 @@ function StatusBadge({ isActive }: { isActive: boolean }) {
 
 export default function TeamUsersPage() {
   const { user: authUser } = useAuth();
+  const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
   const [designations, setDesignations] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -114,6 +116,32 @@ export default function TeamUsersPage() {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Role Toggle
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+
+  const isAdminUser = authUser?.role?.toUpperCase().includes('ADMIN') || 
+                  (authUser as any)?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN')) || 
+                  String((authUser as any)?.designation || '').toUpperCase().includes('ADMIN') ||
+                  (authUser as any)?.userType?.toUpperCase().includes('ADMIN');
+
+  const handleRoleChangeToggle = async (emp: any) => {
+    const isCurrentlyAdmin = String(emp.userType || emp.designation?.name || '').toUpperCase().includes('ADMIN');
+    const newRole = isCurrentlyAdmin ? 'Employee' : 'Admin';
+    if (!window.confirm(`Are you sure you want to change ${emp.name}'s role to ${newRole}?`)) return;
+    
+    setUpdatingRole(emp.id);
+    try {
+      const res = await api.patch(`/employees/${emp.id}/role`, { role: newRole });
+      setUsers(prev => prev.map(e => e.id === emp.id ? { ...e, userType: res.data.user?.userType || newRole, designation: res.data.user?.designation?.name ? res.data.user.designation : { id: res.data.user?.designationId, name: res.data.user?.userType || newRole } } : e));
+      toast.success(`User role updated to ${newRole}`);
+      router.refresh();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update role");
+    } finally {
+      setUpdatingRole(null);
+    }
+  };
 
   // ZKTeco & Files
   const [unregisteredUsers, setUnregisteredUsers] = useState<{deviceUserId: number, name: string}[]>([]);
@@ -611,10 +639,24 @@ export default function TeamUsersPage() {
                       <div><StatusBadge isActive={u.isActive} /></div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-1.5 justify-end w-28">
+                      <div className="flex items-center gap-1.5 justify-end w-36">
+                        {isAdminUser && authUser?.id !== u.id && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleRoleChangeToggle(u); }}
+                            disabled={updatingRole === u.id}
+                            title={String((u as any).userType || u.designation?.name || '').toUpperCase().includes('ADMIN') ? 'Revoke Admin' : 'Make Admin'}
+                            className={`p-1.5 rounded-lg transition-colors border disabled:opacity-50 ${
+                              String((u as any).userType || u.designation?.name || '').toUpperCase().includes('ADMIN')
+                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20'
+                                : 'bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-500 border-slate-100 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10'
+                            }`}
+                          >
+                            {updatingRole === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
                         <button
                           onClick={(e) => { e.stopPropagation(); openEdit(u); }}
-                          className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-lg transition-all"
+                          className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 rounded-lg transition-all border border-transparent"
                           title="Edit User"
                         >
                           <Pencil className="w-3.5 h-3.5" />
