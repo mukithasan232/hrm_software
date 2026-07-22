@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseRequest } from '@/lib/adapter';
-
-const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin', 'hrm manager'];
-
-function isAdmin(user: any): boolean {
-  if (!user) return false;
-  const designName =
-    typeof user?.designation === 'string'
-      ? user.designation
-      : (user?.designation as any)?.name || '';
-  const userDesig = designName.toLowerCase().trim();
-  const hasAdminRole = user?.roles?.some((r: any) =>
-    ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim())
-  );
-  return ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
-}
+import { checkPermission } from '@/utils/checkPermission';
 
 export async function DELETE(req: NextRequest) {
     try {
@@ -27,11 +13,13 @@ export async function DELETE(req: NextRequest) {
         }
 
         const mockReq = await parseRequest(req);
-        let admin = isAdmin(mockReq.user);
+        
+        const hasAccess = checkPermission(mockReq.user, 'Attendance', 'delete');
+        let admin = hasAccess;
         
         if (!admin && mockReq.user?.id) {
            const dbUser = await prisma.user.findUnique({ where: { id: mockReq.user.id } });
-           if (dbUser?.email === 'dev@fixanyphoto.com' || dbUser?.userType === 'SUPER_ADMIN' || dbUser?.designation === 'Super Admin') {
+           if (dbUser?.email === 'dev@fixanyphoto.com' || dbUser?.userType === 'SUPER_ADMIN' || dbUser?.designation === 'Super Admin' || dbUser?.userType === 'ADMIN') {
              admin = true;
            }
         }
@@ -48,8 +36,8 @@ export async function DELETE(req: NextRequest) {
         });
 
         return NextResponse.json({ message: 'Logs deleted successfully' }, { status: 200 });
-    } catch (error) {
-        console.error('Delete logs error:', error);
-        return NextResponse.json({ error: 'Failed to delete logs' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Delete logs error:', error.message || error);
+        return NextResponse.json({ error: error.message || 'Failed to delete logs' }, { status: 500 });
     }
 }

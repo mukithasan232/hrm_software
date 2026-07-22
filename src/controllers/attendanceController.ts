@@ -380,9 +380,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const scope = getPermissionScopeSync(user, 'attendance', 'read');
 
-    if (scope === 'no') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    // 403 block removed to allow fallback to own records
 
     const { page, limit, employeeId, filter, department, startDate, endDate } = req.query;
 

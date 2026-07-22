@@ -54,14 +54,17 @@ export default function AttendanceReadView({ id, initialData }: AttendanceReadVi
           body: JSON.stringify({ ids: idsToDelete })
       });
 
-      if (!response.ok) throw new Error('Failed to delete logs');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || 'Failed to delete logs');
+      }
 
-      toast.success('Session deleted successfully');
-      window.location.reload(); 
-    } catch (error: any) {
-      console.error(error);
-      toast.error('Failed to delete session');
-    } finally {
+    toast.success('Session deleted successfully');
+    window.location.reload(); 
+  } catch (error: any) {
+    console.error('Delete Session Error:', error);
+    toast.error(error.message || 'Failed to delete session');
+  } finally {
       setIsDeleting(null);
     }
   };
