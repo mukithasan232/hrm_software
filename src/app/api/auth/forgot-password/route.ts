@@ -14,11 +14,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Email is required' }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { employeeId: email }
+        ]
+      }
+    });
+
+    if (!user || !user.email) {
       // We still return 200 to prevent email enumeration
-      return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' });
+      return NextResponse.json({ message: 'If that account exists, a reset link has been sent.' });
     }
+
+    const actualEmail = user.email;
 
     // Generate token
     const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -26,12 +36,12 @@ export async function POST(req: Request) {
 
     // Clean up old tokens for this email and create a new one
     await prisma.passwordResetToken.deleteMany({
-      where: { email }
+      where: { email: actualEmail }
     });
 
     await prisma.passwordResetToken.create({
       data: {
-        email,
+        email: actualEmail,
         token,
         expires
       }
@@ -54,7 +64,7 @@ export async function POST(req: Request) {
 
     try {
       await sendMail({
-        to: email,
+        to: actualEmail,
         subject: 'Password Reset',
         html: emailHtml
       });
@@ -63,7 +73,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Failed to send email. Please check SMTP settings.', error: emailError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' });
+    return NextResponse.json({ message: 'If that account exists, a reset link has been sent.' });
   } catch (error: any) {
     console.error('Forgot password error:', error);
     return NextResponse.json({ message: 'An error occurred', error: error.message }, { status: 500 });

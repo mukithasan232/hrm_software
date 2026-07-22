@@ -90,14 +90,9 @@ export default function EmployeesPage() {
   const openDetails = useDetailsStore(state => state.openDetails);
   const { can, loading: permsLoading } = usePermissions();
 
-  // Legacy fallback if permissions are not set up yet
-  const legacyAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(
-    (authUser as any)?.designation || ''
-  );
-
-  const canCreate = can('Users', 'canCreate') || legacyAdmin;
-  const canEditUser = can('Users', 'canEdit') || legacyAdmin;
-  const canDelete = can('Users', 'canDelete') || legacyAdmin;
+  const canCreate = can('Employees', 'canCreate');
+  const canEditUser = can('Employees', 'canEdit');
+  const canDelete = can('Employees', 'canDelete');
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
@@ -143,10 +138,7 @@ export default function EmployeesPage() {
   // ── Role Management ────────────────────────────────────────────────────────
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
-  const isAdmin = authUser?.role?.toUpperCase().includes('ADMIN') || 
-                  (authUser as any)?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN')) || 
-                  String((authUser as any)?.designation || '').toUpperCase().includes('ADMIN') ||
-                  (authUser as any)?.userType?.toUpperCase().includes('ADMIN');
+  const isAdmin = can('Employees', 'canEdit');
 
   const handleRoleChange = async (emp: any) => {
     const isCurrentlyAdmin = String(emp.userType || emp.designation?.name || '').toUpperCase().includes('ADMIN');

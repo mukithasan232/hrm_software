@@ -2,22 +2,16 @@ export const checkPermission = (user: any, moduleName: string, action: string = 
   if (!user) return false;
 
   // 🚀 GOD MODE BYPASS FOR DEVELOPER
-  if (user.email === 'dev@fixanyphoto.com' || user.email === 'admin@fixanyphoto.com' || user.role === 'SUPER_ADMIN' || user.userType === 'SUPER_ADMIN' || user.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+  if (user.email === 'dev@fixanyphoto.com') {
     return true;
   }
 
-  // 1. Check if user is Admin / Super Admin via designation or string role
-  const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hrm manager'];
-  const designName = typeof user.designation === 'object' ? user.designation?.name : user.designation;
-  const userDesig = (designName || '').toLowerCase().trim();
-  const userRoleStr = typeof user.role === 'string' ? user.role.toLowerCase().trim() : '';
-
-  // 2. Check if user has an Admin role in roles array
-  const hasAdminRole = user.roles?.some((r: any) =>
-    ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim())
-  );
-
-  if (ADMIN_DESIGNATIONS.includes(userDesig) || ADMIN_DESIGNATIONS.includes(userRoleStr) || hasAdminRole) {
+  // 👑 SUPER ADMIN BYPASS
+  if (
+    user.userType === 'SUPER_ADMIN' ||
+    user.userType === 'ADMIN' ||
+    String(user.designation?.name || user.designation || '').toLowerCase().includes('super admin')
+  ) {
     return true;
   }
 
@@ -46,7 +40,7 @@ export const checkPermission = (user: any, moduleName: string, action: string = 
   const deleteScope = getScope(modPerms.delete || modPerms.Delete);
 
   const isAccessAllowed = (scope: string) => ['enabled', 'own', 'all', 'true'].includes(scope);
-  const isCrudAllowed = (scope: string) => ['own', 'all', 'true'].includes(scope);
+  const isCrudAllowed = (scope: string) => ['enabled', 'own', 'all', 'true'].includes(scope);
 
   if ((action === 'access' || action === 'read' || action === 'view') && (isAccessAllowed(accessScope) || isAccessAllowed(readScope))) return true;
   if (action === 'create' && isCrudAllowed(createScope)) return true;
@@ -60,17 +54,16 @@ export const getPermissionScopeSync = (user: any, moduleName: string, action: st
   if (!user) return 'no';
 
   // 🚀 GOD MODE BYPASS FOR DEVELOPER
-  if (user.email === 'dev@fixanyphoto.com' || user.email === 'admin@fixanyphoto.com' || user.role === 'SUPER_ADMIN' || user.userType === 'SUPER_ADMIN' || user.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
+  if (user.email === 'dev@fixanyphoto.com') {
     return 'all';
   }
 
-  const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hrm manager'];
-  const designName = typeof user.designation === 'object' ? user.designation?.name : user.designation;
-  const userDesig = (designName || '').toLowerCase().trim();
-  const userRoleStr = typeof user.role === 'string' ? user.role.toLowerCase().trim() : '';
-  const hasAdminRole = user.roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
-
-  if (ADMIN_DESIGNATIONS.includes(userDesig) || ADMIN_DESIGNATIONS.includes(userRoleStr) || hasAdminRole) {
+  // 👑 SUPER ADMIN BYPASS
+  if (
+    user.userType === 'SUPER_ADMIN' ||
+    user.userType === 'ADMIN' ||
+    String(user.designation?.name || user.designation || '').toLowerCase().includes('super admin')
+  ) {
     return 'all';
   }
 

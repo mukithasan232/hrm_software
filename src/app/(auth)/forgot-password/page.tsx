@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
         <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-md dark:shadow-2xl space-y-4 backdrop-blur-sm">
           <div className="text-center mb-6">
             <h1 className="text-xl font-bold text-slate-800 dark:text-white">Forgot Password?</h1>
-            <p className="text-sm text-slate-500 dark:text-gray-400 mt-2">Enter your email address and we will send you a link to reset your password.</p>
+            <p className="text-sm text-slate-500 dark:text-gray-400 mt-2">Enter your email address or employee ID and we will send you a link to reset your password.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -77,10 +77,10 @@ export default function ForgotPasswordPage() {
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-gray-500" />
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Email Address"
+                placeholder="Email or Employee ID"
                 className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all font-semibold"
                 required
               />

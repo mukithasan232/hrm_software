@@ -18,10 +18,10 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
     if (search) {
       const q = (search as string).toLowerCase();
       where.OR = [
-        { name: { contains: q, mode: 'insensitive' } },
-        { email: { contains: q, mode: 'insensitive' } },
-        { employeeId: { contains: q, mode: 'insensitive' } },
-        { department: { contains: q, mode: 'insensitive' } },
+        { name: { contains: q } },
+        { email: { contains: q } },
+        { employeeId: { contains: q } },
+        { department: { contains: q } },
       ];
     }
     if (departmentId && departmentId !== 'All') {
@@ -97,6 +97,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         employeeId: true,
         name: true,
         email: true,
+        userType: true,
         customDesignation: { select: { id: true, name: true, permissions: true } },
         department: true,
         customDepartment: { select: { id: true, name: true, shiftStartTime: true, shiftEndTime: true, lunchStartTime: true, lunchEndTime: true, snacksStartTime: true, snacksEndTime: true } },

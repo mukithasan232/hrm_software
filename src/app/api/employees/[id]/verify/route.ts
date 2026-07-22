@@ -11,7 +11,7 @@ import path from 'path';
 import { toTitleCase } from '@/lib/utils';
 import { revalidatePath } from 'next/cache';
 import { eventEmitter } from '@/lib/eventEmitter';
-
+import { checkPermission } from '@/utils/checkPermission';
 
 
 export const POST = wrapHandler(async (req: any, res: any) => {
@@ -21,12 +21,7 @@ export const POST = wrapHandler(async (req: any, res: any) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const userRoleStr = (user as any)?.role?.toUpperCase() || '';
-    const hasAdminRoleArray = user?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN'));
-    const isDesignationAdmin = String((user as any)?.designation || '').toUpperCase().includes('ADMIN');
-    const isUserTypeAdmin = String((user as any)?.userType || '').toUpperCase().includes('ADMIN');
-
-    const isAdmin = userRoleStr.includes('ADMIN') || hasAdminRoleArray || isDesignationAdmin || isUserTypeAdmin;
+    const isAdmin = checkPermission(user, 'employees', 'edit');
 
     if (!isAdmin) {
       console.log(`Forbidden Error: User attempted admin verification action. User data: `, { id: user.id, userType: user.userType });

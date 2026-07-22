@@ -3,12 +3,12 @@ import { User, Mail, Building2, Briefcase, KeyRound, CalendarDays, Hash, CheckCi
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function EmployeeReadView({ id, initialData }: { id: string | number | null, initialData: any }) {
   const { user: currentUser } = useAuth();
-  const isAdmin = (currentUser as any)?.role?.toUpperCase().includes('ADMIN') || 
-                  currentUser?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN')) || 
-                  String((currentUser as any)?.designation || '').toUpperCase().includes('ADMIN');
+  const { can } = usePermissions();
+  const isAdmin = can('Employees', 'canEdit');
   const isSelf = currentUser?.id === String(id);
   const canEditBankInfo = isAdmin || isSelf;
 

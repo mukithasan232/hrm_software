@@ -170,6 +170,7 @@ export const loginUser = async (req: Request, res: Response) => {
       employeeId: user.employeeId,
       name: user.name,
       email: user.email,
+      userType: user.userType,
       designation: designationName,
       department: user.department,
       customDepartment: user.customDepartment,

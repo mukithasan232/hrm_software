@@ -13,12 +13,7 @@ export const GET = wrapHandler(async (req: any, res: any) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const userRoleStr = (user as any)?.role?.toUpperCase() || '';
-    const hasAdminRoleArray = user?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN'));
-    const isDesignationAdmin = String((user as any)?.designation || '').toUpperCase().includes('ADMIN');
-    const isUserTypeAdmin = String((user as any)?.userType || '').toUpperCase().includes('ADMIN');
-
-    const isAdmin = userRoleStr.includes('ADMIN') || hasAdminRoleArray || isDesignationAdmin || isUserTypeAdmin;
+    const isAdmin = checkPermission(user, 'documents', 'access');
 
     if (!isAdmin) {
       return res.status(403).json({ message: 'Forbidden: Admin access required' });
@@ -68,12 +63,7 @@ export const DELETE = wrapHandler(async (req: any, res: any) => {
     const user = req.user;
     if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
-    const userRoleStr = (user as any)?.role?.toUpperCase() || '';
-    const hasAdminRoleArray = user?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN'));
-    const isDesignationAdmin = String((user as any)?.designation || '').toUpperCase().includes('ADMIN');
-    const isUserTypeAdmin = String((user as any)?.userType || '').toUpperCase().includes('ADMIN');
-
-    const isAdmin = userRoleStr.includes('ADMIN') || hasAdminRoleArray || isDesignationAdmin || isUserTypeAdmin;
+    const isAdmin = checkPermission(user, 'documents', 'access');
 
     if (!isAdmin) return res.status(403).json({ message: 'Forbidden: Admin access required' });
 

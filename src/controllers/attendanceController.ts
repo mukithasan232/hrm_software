@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express-serve-static-core'
 import { getDeviceAttendance, getDeviceUsers, pingDevice, fetchDeviceLogs, syncZkTecoData } from '../services/zkService';
 import { runWithDeviceLock, startRealtimeListener } from '../services/realtimeService';
 import { prisma } from '../lib/prisma';
-import { checkPermission } from '../utils/checkPermission';
+import { checkPermission, getPermissionScopeSync } from '../utils/checkPermission';
 import bcrypt from 'bcryptjs';
 import { Parser } from 'json2csv';
 import { eventEmitter } from '../lib/eventEmitter';
@@ -155,17 +155,17 @@ export const fetchDeviceUsers = async (req: Request, res: Response) => {
 export const exportAttendanceLogs = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const userRole = user?.designation || '';
-    let isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'HR'].includes(userRole);
+    const scope = getPermissionScopeSync(user, 'attendance', 'read');
 
-    if (!isAdmin && user?.id) {
-      const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-      if (dbUser?.email === 'dev@fixanyphoto.com' || dbUser?.userType === 'SUPER_ADMIN' || dbUser?.designation === 'Super Admin') isAdmin = true;
+    if (scope === 'no') {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     const where: any = {};
-    if (!isAdmin && user?.id) {
+    if (scope === 'own' && user?.id) {
       where.employeeId = user.id;
+    } else if (scope === 'department' && user?.department) {
+      where.user = { department: user.department };
     }
 
     const logs = await prisma.attendanceLog.findMany({
@@ -203,21 +203,20 @@ export const exportAttendanceLogs = async (req: Request, res: Response) => {
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const userRole = user?.designation || '';
-    let isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'HR'].includes(userRole);
+    const scope = getPermissionScopeSync(user, 'attendance', 'read');
 
-    if (!isAdmin && user?.id) {
-      const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-      if (dbUser?.email === 'dev@fixanyphoto.com' || dbUser?.userType === 'SUPER_ADMIN' || dbUser?.designation === 'Super Admin') isAdmin = true;
+    if (scope === 'no') {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     const queryDate = req.query.date as string | undefined;
     const { start, end } = queryDate ? getDayBoundaries(queryDate) : getTodayBoundaries();
 
-    // REMOVED `user: { isActive: true }` to include all employees in stats
     const whereClause: any = { timestamp: { gte: start, lte: end } };
-    if (!isAdmin && user?.id) {
+    if (scope === 'own' && user?.id) {
       whereClause.employeeId = user.id;
+    } else if (scope === 'department' && user?.department) {
+      whereClause.user = { department: user.department };
     }
 
     // 1. Fetch attendance logs for the period, ordered by latest first
@@ -379,14 +378,10 @@ export const getActivePresence = async (req: Request, res: Response) => {
 export const getAttendanceLogs = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const userRole = user?.designation || '';
-    let isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HRM Manager', 'HR'].includes(userRole);
+    const scope = getPermissionScopeSync(user, 'attendance', 'read');
 
-    if (!isAdmin && user?.id) {
-      const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-      if (dbUser?.email === 'dev@fixanyphoto.com' || dbUser?.userType === 'SUPER_ADMIN' || dbUser?.designation === 'Super Admin') {
-        isAdmin = true;
-      }
+    if (scope === 'no') {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     const { page, limit, employeeId, filter, department, startDate, endDate } = req.query;
@@ -397,11 +392,15 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       if (deptRecord) targetDeptName = deptRecord.name;
     }
 
-    const employeeWhere: any = { /* isActive: true */ }; // Removed isActive: true
+    const employeeWhere: any = {};
     const where: any = {};
-    if (!isAdmin && user?.id) {
+
+    if (scope === 'own' && user?.id) {
       where.employeeId = user.id;
       employeeWhere.id = user.id;
+    } else if (scope === 'department' && user?.department) {
+      where.user = { department: user.department };
+      employeeWhere.department = user.department;
     } else if (employeeId) {
       where.employeeId = employeeId as string;
       employeeWhere.id = employeeId as string;

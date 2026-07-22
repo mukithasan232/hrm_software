@@ -17,13 +17,13 @@ export function usePermissions() {
   const loading = false;
   
   const can = useCallback((moduleName: string, action: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete') => {
-    const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-    const designName = typeof user?.designation === 'string' ? user.designation : (user?.designation as any)?.name || '';
-    const userDesig = designName.toLowerCase().trim();
-    
-    const hasAdminRole = user?.roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
-
-    if (ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole) {
+    // 👑 SUPER ADMIN BYPASS
+    const u = user as any;
+    if (
+      u?.userType === 'SUPER_ADMIN' ||
+      u?.userType === 'ADMIN' ||
+      String(u?.designation?.name || u?.designation || '').toLowerCase().includes('super admin')
+    ) {
       return true;
     }
 
@@ -53,10 +53,10 @@ export function usePermissions() {
           return false;
         };
 
-        if (action === 'canRead' && (checkValue(modPerms.Read) || checkValue(modPerms.Access) || checkValue(modPerms.canRead))) return true;
-        if (action === 'canCreate' && (checkValue(modPerms.Create) || checkValue(modPerms.canCreate))) return true;
-        if (action === 'canEdit' && (checkValue(modPerms.Edit) || checkValue(modPerms.canEdit))) return true;
-        if (action === 'canDelete' && (checkValue(modPerms.Delete) || checkValue(modPerms.canDelete))) return true;
+        if (action === 'canRead' && (checkValue(modPerms.Read) || checkValue(modPerms.read) || checkValue(modPerms.Access) || checkValue(modPerms.access) || checkValue(modPerms.canRead) || checkValue(modPerms.view))) return true;
+        if (action === 'canCreate' && (checkValue(modPerms.Create) || checkValue(modPerms.create) || checkValue(modPerms.canCreate))) return true;
+        if (action === 'canEdit' && (checkValue(modPerms.Edit) || checkValue(modPerms.edit) || checkValue(modPerms.canEdit))) return true;
+        if (action === 'canDelete' && (checkValue(modPerms.Delete) || checkValue(modPerms.delete) || checkValue(modPerms.canDelete))) return true;
       }
     }
 
@@ -68,12 +68,15 @@ export function usePermissions() {
    * Admins always get 'All'. Falls back to 'No' if no permission found.
    */
   const scope = useCallback((moduleName: string, action: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete'): 'No' | 'Own' | 'Department' | 'All' => {
-    const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-    const designName = typeof user?.designation === 'string' ? user.designation : (user?.designation as any)?.name || '';
-    const userDesig = designName.toLowerCase().trim();
-    const hasAdminRole = user?.roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
-
-    if (ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole) return 'All';
+    // 👑 SUPER ADMIN BYPASS
+    const u = user as any;
+    if (
+      u?.userType === 'SUPER_ADMIN' ||
+      u?.userType === 'ADMIN' ||
+      String(u?.designation?.name || u?.designation || '').toLowerCase().includes('super admin')
+    ) {
+      return 'All';
+    }
 
     const actionMap: Record<string, string> = { canRead: 'Read', canCreate: 'Create', canEdit: 'Edit', canDelete: 'Delete' };
     const jsonAction = actionMap[action] || action;
@@ -82,7 +85,7 @@ export function usePermissions() {
       const exactKey = Object.keys(user.permissions).find(k => k.toLowerCase() === moduleName.toLowerCase());
       if (exactKey) {
         const modPerms = user.permissions[exactKey];
-        const val = modPerms[jsonAction] || modPerms[action];
+        const val = modPerms[jsonAction] || modPerms[action] || modPerms[jsonAction.toLowerCase()];
         if (typeof val === 'string') {
           const lower = val.toLowerCase().trim();
           if (lower === 'all') return 'All';
@@ -94,7 +97,7 @@ export function usePermissions() {
         if (val === true) return 'Own';
         // Fallback: check Access for canRead
         if (action === 'canRead') {
-          const accessVal = modPerms.Access || modPerms.canRead;
+          const accessVal = modPerms.Access || modPerms.access || modPerms.canRead || modPerms.view || modPerms.read;
           if (accessVal === true) return 'Own';
           if (typeof accessVal === 'string') {
             const lA = accessVal.toLowerCase().trim();

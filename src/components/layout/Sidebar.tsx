@@ -95,16 +95,9 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   }, [user]);
 
   // Centralized "God Mode" / Super Admin check
-  const isSuperAdmin = user?.email === 'dev@fixanyphoto.com' ||
-    user?.email === 'admin@fixanyphoto.com' ||
-    (user as any)?.role === 'SUPER_ADMIN' ||
-    (user as any)?.userType === 'SUPER_ADMIN' ||
-    user?.roles?.some((r: any) => ['super admin', 'superadmin'].includes((r?.name || r)?.toLowerCase()?.trim()));
-
-  const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'hrm manager', 'hr'];
-  const userDesig = (typeof user?.designation === 'string' ? user.designation : (user?.designation as any)?.name || '')?.toLowerCase()?.trim();
-  const hasAdminRole = user?.roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
-  const isAdmin = isSuperAdmin || ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
+  const isSuperAdmin = user?.email === 'dev@fixanyphoto.com';
+  
+  const isAdmin = isSuperAdmin;
 
   const filteredItems = NAV_ITEM_DEFS.filter(item => {
     // Module Feature Flags

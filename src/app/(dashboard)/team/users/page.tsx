@@ -16,6 +16,7 @@ import QuickAddDialog from '@/components/ui/QuickAddDialog';
 import { useInView } from 'react-intersection-observer';
 import PageGuard from '@/components/auth/PageGuard';
 import { useDetailsStore } from '@/store/useDetailsStore';
+import { usePermissions } from '@/hooks/usePermissions';
 
 
 
@@ -120,10 +121,8 @@ export default function TeamUsersPage() {
   // Role Toggle
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
-  const isAdminUser = authUser?.role?.toUpperCase().includes('ADMIN') || 
-                  (authUser as any)?.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN')) || 
-                  String((authUser as any)?.designation || '').toUpperCase().includes('ADMIN') ||
-                  (authUser as any)?.userType?.toUpperCase().includes('ADMIN');
+  const { can } = usePermissions();
+  const isAdminUser = can('Users', 'canEdit');
 
   const handleRoleChangeToggle = async (emp: any) => {
     const isCurrentlyAdmin = String(emp.userType || emp.designation?.name || '').toUpperCase().includes('ADMIN');

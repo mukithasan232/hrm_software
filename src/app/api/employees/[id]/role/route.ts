@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { wrapHandler } from '@/lib/adapter';
-
+import { checkPermission } from '@/utils/checkPermission';
 export const PATCH = wrapHandler(async (req: any, res: any) => {
   try {
     const authUser = req.user;
@@ -9,10 +9,7 @@ export const PATCH = wrapHandler(async (req: any, res: any) => {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    const isAdmin = authUser.role?.toUpperCase().includes('ADMIN') || 
-                    authUser.roles?.some((r: any) => r.name?.toUpperCase().includes('ADMIN')) || 
-                    String(authUser.designation || '').toUpperCase().includes('ADMIN') ||
-                    authUser.userType?.toUpperCase().includes('ADMIN');
+    const isAdmin = checkPermission(authUser, 'employees', 'edit');
 
     if (!isAdmin) {
       return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
@@ -31,9 +28,8 @@ export const PATCH = wrapHandler(async (req: any, res: any) => {
       return NextResponse.json({ success: false, message: 'Role is required' }, { status: 400 });
     }
 
-    const designation = await prisma.designation.findFirst({
-      where: { name: { equals: role, mode: 'insensitive' } }
-    });
+    const designations = await prisma.designation.findMany();
+    const designation = designations.find((d: any) => d.name?.toLowerCase() === role?.toLowerCase());
 
     const updateData: any = {
       userType: role

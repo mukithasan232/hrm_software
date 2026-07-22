@@ -123,7 +123,7 @@ export const sendWelcomeEmail = async (
   const variables = {
     name,
     email: toEmail,
-    password: password || '********',
+    password: password || 'Not Provided',
     designation: designation || 'Employee',
     url,
     deviceId: deviceId ? deviceId.toString() : 'Not Assigned',
@@ -155,7 +155,7 @@ export const sendWelcomeEmail = async (
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 25px 0;">
             <p style="margin: 0 0 10px 0; color: #475569; font-size: 14px;"><strong>Email:</strong> <span style="color: #0f172a;">${toEmail}</span></p>
             ${employeeId ? `<p style="margin: 0 0 10px 0; color: #475569; font-size: 14px;"><strong>Employee ID:</strong> <span style="color: #0f172a; font-weight: bold;">${employeeId}</span></p>` : ''}
-            <p style="margin: 0 0 10px 0; color: #475569; font-size: 14px;"><strong>Password:</strong> <span style="color: #0f172a; font-family: monospace; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${password || '********'}</span></p>
+            <p style="margin: 0 0 10px 0; color: #475569; font-size: 14px;"><strong>Password:</strong> <strong>${password}</strong></p>
             ${deviceId ? `<p style="margin: 0; color: #475569; font-size: 14px;"><strong>Attendance Device ID:</strong> <span style="color: #0f172a; font-weight: bold;">${deviceId}</span></p>` : ''}
           </div>
 

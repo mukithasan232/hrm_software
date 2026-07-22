@@ -36,24 +36,18 @@ export async function getPermissionScope(
   if (!dbUser) return 'No';
 
   // 🚀 GLOBAL GOD MODE BYPASS FOR API ROUTES
-  if (
-    dbUser.email === 'dev@fixanyphoto.com' || 
-    dbUser.userType === 'SUPER_ADMIN' || 
-    dbUser.designation === 'Super Admin'
-  ) {
+  if (dbUser.email === 'dev@fixanyphoto.com') {
     return 'All'; // Immediately authorize any action for any module
   }
 
-  // --- ADMIN BYPASS ---
-  const ADMIN_DESIGNATIONS = ['admin', 'super admin', 'system administrator', 'superadmin', 'ultra admin'];
-  const designName = typeof (dbUser as any).customDesignation?.name === 'string' ? (dbUser as any).customDesignation.name : '';
-  const userDesig = designName.toLowerCase().trim();
-  const hasAdminRole = (dbUser as any).roles?.some((r: any) => ADMIN_DESIGNATIONS.includes((r?.name || r)?.toLowerCase()?.trim()));
-
-  if (ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole) {
-    return 'All'; // Admins bypass all permission checks and have full access
+  // 👑 SUPER ADMIN BYPASS
+  if (
+    dbUser.userType === 'SUPER_ADMIN' ||
+    dbUser.userType === 'ADMIN' ||
+    String((dbUser as any).customDesignation?.name || dbUser.designation || '').toLowerCase().includes('super admin')
+  ) {
+    return 'All';
   }
-  // --------------------
 
   const actionMap: Record<string, string> = {
     canRead: 'Read',
