@@ -8,6 +8,7 @@ import { Parser } from 'json2csv';
 import { eventEmitter } from '../lib/eventEmitter';
 
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { startOfDay, endOfDay, subDays, subWeeks, subMonths } from 'date-fns';
 import { to12Hour } from '../lib/dateUtils';
 
 const BD_TZ = 'Asia/Dhaka';
@@ -436,29 +437,33 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         filterStartDate = new Date(`${startDate as string}T00:00:00+06:00`);
         filterEndDate = new Date(`${endDate as string}T23:59:59.999+06:00`);
     } else {
-        const todayStr = formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd');
-        filterStartDate = new Date(`${todayStr}T00:00:00+06:00`); 
-        filterEndDate = new Date(`${todayStr}T23:59:59.999+06:00`);
-
         switch (range) {
-            case 'yesterday':
-                filterStartDate.setDate(filterStartDate.getDate() - 1);
-                filterEndDate = new Date(filterStartDate);
-                filterEndDate.setHours(23, 59, 59, 999);
+            case 'yesterday': {
+                const yesterdayDate = subDays(new Date(), 1);
+                filterStartDate = startOfDay(yesterdayDate);
+                filterEndDate = endOfDay(yesterdayDate);
                 break;
+            }
             case 'last7days':
-            case 'week':
-                filterStartDate.setDate(filterStartDate.getDate() - 7);
+            case 'week': {
+                const weekDate = subDays(new Date(), 7);
+                filterStartDate = startOfDay(weekDate);
                 filterEndDate = new Date(); // Up to right now
                 break;
+            }
             case 'last1month':
             case 'last30days':
-            case 'month':
-                filterStartDate.setMonth(filterStartDate.getMonth() - 1);
+            case 'month': {
+                const monthDate = subDays(new Date(), 30);
+                filterStartDate = startOfDay(monthDate);
                 filterEndDate = new Date();
                 break;
-            case 'today':
+            }
+            case 'today': {
+                filterStartDate = startOfDay(new Date());
+                filterEndDate = endOfDay(new Date());
                 break;
+            }
             case 'all':
             case 'all-time':
             default:
