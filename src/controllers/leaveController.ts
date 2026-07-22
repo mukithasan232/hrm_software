@@ -248,3 +248,72 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Error updating leave', error: error.message });
   }
 };
+
+export const getLeaveBalance = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user?.id) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const employeeId = (req.query.employeeId as string) || user.id;
+
+    // Fetch user and designation to get totals
+    const dbUser = await prisma.user.findUnique({
+      where: { id: employeeId },
+      include: { customDesignation: true }
+    });
+
+    const totalCasual = dbUser?.customDesignation?.totalCasualLeaves || 0;
+    const totalSick = dbUser?.customDesignation?.totalSickLeaves || 0;
+    const totalAnnual = 0; // Annual isn't explicitly in schema, maybe we can assume 0 or derive from a generic 'totalLeaves' if we had one. Wait, in page.tsx ANNUAL_LEAVE_QUOTA is hardcoded to 24.
+    const grandTotal = totalCasual + totalSick + totalAnnual || 24; 
+
+    // Fetch approved leaves
+    const currentYear = new Date().getFullYear();
+    const approvedLeaves = await prisma.leave.findMany({
+      where: {
+        employeeId: employeeId,
+        status: 'Approved',
+        startDate: {
+          gte: new Date(`${currentYear}-01-01T00:00:00.000Z`)
+        },
+        endDate: {
+          lte: new Date(`${currentYear}-12-31T23:59:59.999Z`)
+        }
+      }
+    });
+
+    let usedCasual = 0;
+    let usedSick = 0;
+    let usedAnnual = 0;
+    let usedEmergency = 0;
+
+    approvedLeaves.forEach(leave => {
+      const days = leave.totalDays || 1;
+      if (leave.type === 'Casual') usedCasual += days;
+      else if (leave.type === 'Sick') usedSick += days;
+      else if (leave.type === 'Annual') usedAnnual += days;
+      else if (leave.type === 'EMERGENCY') usedEmergency += days;
+    });
+
+    const usedTotal = usedCasual + usedSick + usedAnnual + usedEmergency;
+    const actualGrandTotal = Math.max(grandTotal, 24); // fallback if it's 0
+
+    return res.status(200).json({
+      totalBalance: { 
+        total: actualGrandTotal, 
+        used: usedTotal, 
+        left: Math.max(0, actualGrandTotal - usedTotal) 
+      },
+      breakdown: {
+        casual: { total: totalCasual || 10, used: usedCasual, left: Math.max(0, (totalCasual || 10) - usedCasual) },
+        sick: { total: totalSick || 14, used: usedSick, left: Math.max(0, (totalSick || 14) - usedSick) },
+        annual: { total: totalAnnual, used: usedAnnual, left: Math.max(0, totalAnnual - usedAnnual) }
+      }
+    });
+  } catch (error: any) {
+    console.error("[GET_LEAVE_BALANCE_ERROR]:", error);
+    return res.status(500).json({ message: 'Error fetching leave balance', error: error.message });
+  }
+};

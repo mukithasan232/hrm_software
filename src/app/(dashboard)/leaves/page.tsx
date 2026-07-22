@@ -83,9 +83,26 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ─── Leave Balance Widget ─────────────────────────────────────────────────────
-function LeaveBalanceWidget({ used, total }: { used: number; total: number }) {
-  const remaining = Math.max(0, total - used);
-  const pct = Math.min(100, (used / total) * 100);
+function LeaveBalanceWidget({ employeeId }: { employeeId?: string }) {
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const url = employeeId ? `/leaves/balance?employeeId=${employeeId}` : '/leaves/balance';
+        const res = await api.get(url);
+        setData(res.data);
+      } catch (err) { console.error('Failed to fetch leave balance'); }
+    };
+    fetchBalance();
+  }, [employeeId]);
+
+  if (!data) return <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 h-64 animate-pulse shadow-sm dark:shadow-2xl" />;
+
+  const { totalBalance, breakdown } = data;
+  const { total, used, left: remaining } = totalBalance;
+
+  const pct = Math.min(100, total > 0 ? (used / total) * 100 : 0);
   const bars = [
     { label: 'Total', value: total, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-500/20' },
     { label: 'Used',  value: used,  color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-100 dark:bg-amber-500/20' },
@@ -137,17 +154,36 @@ function LeaveBalanceWidget({ used, total }: { used: number; total: number }) {
         ))}
       </div>
 
-      {/* Progress Bar */}
-      <div className="mt-4">
-        <div className="flex justify-between text-[11px] text-slate-400 font-medium mb-1.5">
-          <span>Usage</span>
-          <span>{Math.round(pct)}%</span>
-        </div>
-        <div className="h-2 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-700"
-            style={{ width: `${pct}%` }}
-          />
+      {/* Leave Breakdown Section */}
+      <div className="mt-6 pt-5 border-t border-slate-100 dark:border-white/10">
+        <h4 className="text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-3">Leave Breakdown</h4>
+        <div className="space-y-3">
+          {[
+            { label: 'Casual Leave', data: breakdown.casual, bgClass: 'bg-emerald-500' },
+            { label: 'Sick Leave', data: breakdown.sick, bgClass: 'bg-rose-500' },
+            { label: 'Annual Leave', data: breakdown.annual, bgClass: 'bg-blue-500' }
+          ].map(item => {
+            const itemPct = Math.min(100, item.data.total > 0 ? (item.data.used / item.data.total) * 100 : 0);
+            return (
+              <div key={item.label} className="bg-slate-50 dark:bg-black/20 rounded-xl p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.label}</span>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-gray-400">
+                    {item.data.used} / {item.data.total} Used
+                  </span>
+                </div>
+                <div className="h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${item.bgClass} rounded-full transition-all duration-700`}
+                    style={{ width: `${itemPct}%` }}
+                  />
+                </div>
+                <div className="mt-2 text-[10px] font-semibold text-slate-400 text-right">
+                  <span className="text-slate-700 dark:text-slate-300">{item.data.left}</span> Days Left
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -697,7 +733,7 @@ export default function LeavesPage() {
             </div>
           )}
 
-          <LeaveBalanceWidget used={getUsedLeaves()} total={ANNUAL_LEAVE_QUOTA} />
+          <LeaveBalanceWidget employeeId={viewEmployeeId || undefined} />
           <RecentActivityWidget leaves={displayLeaves} canManage={canManage} />
           <PolicyWidget />
         </div>
