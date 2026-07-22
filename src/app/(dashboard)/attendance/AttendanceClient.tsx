@@ -151,6 +151,15 @@ function AttendancePageContent() {
     return Math.max(0, totalEmployees - dynamicCheckInCount);
   }, [employees, dynamicCheckInCount, absentCount]);
 
+  const dynamicAbsentDetails = useMemo(() => {
+    if (employees.length === 0) return absentDetails;
+    const presentEmpIds = new Set(dailySummaries.map((s: any) => s.employeeId || s.user?.employeeId || s.id));
+    return employees.filter(e => !presentEmpIds.has(e.employeeId) && !presentEmpIds.has(e.id)).map(e => ({
+      userName: e.name,
+      date: getBDToday()
+    }));
+  }, [employees, dailySummaries, absentDetails]);
+
   const formatMinutes = (mins: number) => {
     if (!mins || mins <= 0) return '';
     const h = Math.floor(mins / 60);
@@ -686,7 +695,7 @@ function AttendancePageContent() {
           </p>
         </div>
         <div 
-          onClick={() => { setMetricModalTitle('Total Absent'); setMetricModalData(absentDetails); setMetricModalOpen(true); }}
+          onClick={() => { setMetricModalTitle('Total Absent'); setMetricModalData(dynamicAbsentDetails); setMetricModalOpen(true); }}
           className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition-all cursor-pointer"
         >
           <div className="flex items-center justify-between mb-2">

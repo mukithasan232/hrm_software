@@ -393,7 +393,18 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     const employeeWhere: any = {};
     const where: any = {};
 
-    const canViewAll = checkPermission(user, 'attendance', 'edit') || checkPermission(user, 'attendance', 'create') || getPermissionScopeSync(user, 'attendance', 'read') === 'all';
+    const role = user?.role?.toUpperCase();
+    const userType = user?.userType?.toUpperCase();
+    const designationName = typeof user?.designation === 'string' ? user.designation.toUpperCase() : user?.designation?.name?.toUpperCase();
+
+    const isAdminOrSuperAdmin = 
+      role === 'ADMIN' || 
+      role === 'SUPER_ADMIN' || 
+      userType === 'ADMIN' || 
+      userType === 'SUPER_ADMIN' ||
+      designationName?.includes('ADMIN');
+
+    const canViewAll = isAdminOrSuperAdmin || checkPermission(user, 'attendance', 'edit') || checkPermission(user, 'attendance', 'create') || getPermissionScopeSync(user, 'attendance', 'read') === 'all';
 
     if (canViewAll) {
       if (employeeId) {
@@ -425,8 +436,9 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         filterStartDate = new Date(`${startDate as string}T00:00:00+06:00`);
         filterEndDate = new Date(`${endDate as string}T23:59:59.999+06:00`);
     } else {
-        filterStartDate.setHours(0, 0, 0, 0); // Default to start of today
-        filterEndDate.setHours(23, 59, 59, 999); // Default to end of today
+        const todayStr = formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd');
+        filterStartDate = new Date(`${todayStr}T00:00:00+06:00`); 
+        filterEndDate = new Date(`${todayStr}T23:59:59.999+06:00`);
 
         switch (range) {
             case 'yesterday':
