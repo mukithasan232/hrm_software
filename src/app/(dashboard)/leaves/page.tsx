@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle, XCircle, Calendar, Send, FileText, Paperclip, Check, X,
@@ -233,7 +233,8 @@ export default function LeavesPage() {
   const [leaves, setLeaves]               = useState<any[]>([]);
   const [loading, setLoading]             = useState(true);
   const [employees, setEmployees]         = useState<any[]>([]);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(''); // For applying on behalf of
+  const [viewEmployeeId, setViewEmployeeId] = useState<string>(''); // For viewing leaves (filters table & widgets)
   const [moduleConfig, setModuleConfig] = useState<any>(null);
 
   useEffect(() => {
@@ -288,13 +289,19 @@ export default function LeavesPage() {
   };
 
   const getUsedLeaves = () => {
-    const targetUserId = canManage && selectedEmployeeId ? selectedEmployeeId : user?.id;
+    // If admin is viewing a specific employee, show their balance. Otherwise show admin's own balance.
+    const targetUserId = viewEmployeeId || user?.id;
     if (!targetUserId) return 0;
     const approved = leaves.filter((l: any) =>
       (l.employeeId === targetUserId || l.userId === targetUserId) && l.status === 'Approved'
     );
     return approved.reduce((sum: number, l: any) => sum + (l.totalDays || 1), 0);
   };
+
+  const displayLeaves = useMemo(() => {
+    if (!viewEmployeeId) return leaves;
+    return leaves.filter((l: any) => l.employeeId === viewEmployeeId || l.userId === viewEmployeeId);
+  }, [leaves, viewEmployeeId]);
 
   const fetchLeaves = async () => {
     try {
@@ -594,10 +601,10 @@ export default function LeavesPage() {
                     <tr><td colSpan={6} className="py-12 text-center">
                       <Loader2 className="w-5 h-5 animate-spin text-indigo-500 mx-auto" />
                     </td></tr>
-                  ) : leaves.length === 0 ? (
+                  ) : displayLeaves.length === 0 ? (
                     <tr><td colSpan={6} className="py-12 text-center text-slate-400 dark:text-gray-500">No leave records found.</td></tr>
                   ) : (
-                    leaves.map((l: any) => (
+                    displayLeaves.map((l: any) => (
                       <tr
                         id={`leave-${l.id}`}
                         key={l.id}
@@ -668,8 +675,30 @@ export default function LeavesPage() {
             RIGHT: Widgets sidebar  (col-span-4)
             ═══════════════════════════════════════════════════════════════════ */}
         <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-6">
+          {canManage && (
+            <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm dark:shadow-2xl">
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">
+                View Employee Leaves
+              </label>
+              <SmoothDropdown
+                icon={User}
+                value={viewEmployeeId}
+                onChange={setViewEmployeeId}
+                placeholder="Select an employee..."
+                options={[
+                  { value: '', label: 'All Employees (or Self)' },
+                  ...employees.map((emp: any) => ({
+                    value: emp.id,
+                    label: `${emp.name}`,
+                    description: `ID: ${emp.employeeId}`
+                  }))
+                ]}
+              />
+            </div>
+          )}
+
           <LeaveBalanceWidget used={getUsedLeaves()} total={ANNUAL_LEAVE_QUOTA} />
-          <RecentActivityWidget leaves={leaves} canManage={canManage} />
+          <RecentActivityWidget leaves={displayLeaves} canManage={canManage} />
           <PolicyWidget />
         </div>
 
