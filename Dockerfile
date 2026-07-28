@@ -22,24 +22,24 @@ RUN npm run build
 # Stage 2: retain production dependencies from builder; no second network install.
 FROM node:22-alpine AS runner
 
+# ts-node is required by server.cjs to transpile TypeScript at runtime
 RUN apk add --no-cache openssl libc6-compat netcat-openbsd \
-    && npm install -g pm2 tsx \
+    && npm install -g pm2 tsx ts-node \
     && addgroup -S appgroup \
     && adduser -S appuser -G appgroup
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+# Keep ALL node_modules — ts-node is a devDep needed by server.cjs at runtime
 COPY --from=builder /app/node_modules ./node_modules
-RUN npm prune --omit=dev --ignore-scripts \
-    && npm cache clean --force
 
-# Copy only runtime files and set ownership during copy; avoid slow chown -R.
+# Copy runtime files
 COPY --chown=appuser:appgroup --from=builder /app/.next ./.next
 COPY --chown=appuser:appgroup --from=builder /app/dist ./dist
 COPY --chown=appuser:appgroup --from=builder /app/prisma ./prisma
 COPY --chown=appuser:appgroup --from=builder /app/public ./public
-COPY --chown=appuser:appgroup --from=builder /app/src/scripts ./src/scripts
-COPY --chown=appuser:appgroup --from=builder /app/src/lib ./src/lib
+# Copy full src/ — server.cjs loads TypeScript source files at runtime via ts-node
+COPY --chown=appuser:appgroup --from=builder /app/src ./src
 COPY --chown=appuser:appgroup --from=builder /app/ecosystem.config.js ./
 COPY --chown=appuser:appgroup --from=builder /app/server.cjs ./
 COPY --chown=appuser:appgroup --from=builder /app/entrypoint.sh ./
