@@ -393,7 +393,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
 
     // Fetch security scope from unified utility
     const { getScopedWhereClause } = await import('../utils/checkPermission');
-    const securityScope = getScopedWhereClause(user, 'attendance', 'read');
+    const securityScope = await getScopedWhereClause(user, 'attendance', 'read');
 
     const frontendFilters: any = {};
     const frontendEmployeeFilters: any = {};
@@ -492,12 +492,6 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       skip = page ? (parseInt(page as string) - 1) * take : 0;
     }
 
-    if (department && department !== 'all') {
-      employeeWhere.OR = [
-        { departmentId: department as string },
-        ...(targetDeptName ? [{ department: targetDeptName }] : [])
-      ];
-    }
 
     // PHASE 3 FIX: Stricter filter for 'employees' to exclude admins from counts.
     const employeeRoleFilter = {

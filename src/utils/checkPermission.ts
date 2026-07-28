@@ -97,50 +97,57 @@ export const getPermissionScopeSync = (user: any, moduleName: string, action: st
   return 'no';
 };
 
+import { prisma } from '@/lib/prisma';
+
 /**
  * Universal backend utility to dynamically scope Prisma queries across ALL modules
  * based on exact matrix values (Own, Department, All).
+ * ASYNC DB-DRIVEN PERMISSIONS FIX
  */
-export const getScopedWhereClause = (
-  user: any,
+export const getScopedWhereClause = async (
+  sessionUser: any,
   moduleName: string,
-  action: 'read' | 'edit' | 'delete' = 'read',
+  action: 'read' | 'edit' | 'delete' | 'access' | 'view' = 'read',
   overrideEmployeeIdField?: string
 ) => {
-  if (!user) return { id: 'UNAUTHORIZED_BLOCK' };
-  
-  const userRole = String(user?.role || '').toLowerCase();
-  const userType = String(user?.userType || '').toLowerCase();
-  const designationName = String(user?.designation?.name || user?.designation || '').toLowerCase();
+  if (!sessionUser?.email) return { id: 'UNAUTHORIZED_NO_EMAIL' };
 
-  // 1. God mode bypass
+  // 1. Fetch the REAL user data from DB directly
+  const dbUser = await prisma.user.findUnique({
+    where: { email: sessionUser.email },
+    include: {
+      customDesignation: true,
+      roles: true
+    }
+  });
+
+  if (!dbUser) return { id: 'UNAUTHORIZED_NO_DB_USER' };
+  
+  const userType = String(dbUser.userType || '').toLowerCase();
+  const designationName = String(dbUser.customDesignation?.name || '').toLowerCase();
+  const hasAdminRole = dbUser.roles?.some((r: any) => r.name.toLowerCase() === 'admin' || r.name.toLowerCase() === 'super admin');
+
   if (
     userType === 'super_admin' || 
     userType === 'admin' || 
-    userRole === 'admin' || 
+    hasAdminRole || 
     designationName.includes('super admin') ||
-    user.email === 'dev@fixanyphoto.com'
+    dbUser.email === 'dev@fixanyphoto.com'
   ) {
-    return {};
+    return {}; // God mode
   }
 
-  const perms = user?.permissions || user?.designation?.permissions || {};
+  const perms = (dbUser.permissions as any) || (dbUser.customDesignation?.permissions as any) || {};
   
-  // 2. Handle Case-Sensitivity Dynamically
   const exactKey = Object.keys(perms).find(k => k.toLowerCase() === moduleName.toLowerCase());
   const permissionObj = exactKey ? perms[exactKey] : {};
   
-  // Try to find the action (read, access, view) case-insensitively
   const actionLower = action.toLowerCase();
   let permissionLevel = 'Own';
   
   if (actionLower === 'read' || actionLower === 'access' || actionLower === 'view') {
     const rawVal = permissionObj.read || permissionObj.Read || permissionObj.access || permissionObj.Access || permissionObj.view || permissionObj.View;
-    if (typeof rawVal === 'string') {
-      permissionLevel = rawVal;
-    } else if (rawVal === true) {
-      permissionLevel = 'Own';
-    }
+    if (typeof rawVal === 'string') permissionLevel = rawVal; else if (rawVal === true) permissionLevel = 'Own';
   } else if (actionLower === 'create') {
     const rawVal = permissionObj.create || permissionObj.Create;
     if (typeof rawVal === 'string') permissionLevel = rawVal; else if (rawVal) permissionLevel = 'Own';
@@ -152,28 +159,25 @@ export const getScopedWhereClause = (
     if (typeof rawVal === 'string') permissionLevel = rawVal; else if (rawVal) permissionLevel = 'Own';
   }
 
-  // Normalize string for comparison
   const normalizedLevel = typeof permissionLevel === 'string' ? permissionLevel.toLowerCase().trim() : 'own';
 
-  // 3. Global Access
-  if (normalizedLevel === 'all' || normalizedLevel === 'global' || normalizedLevel === 'enabled') {
-    return {};
-  }
+  if (normalizedLevel === 'all' || normalizedLevel === 'global' || normalizedLevel === 'enabled') return {};
 
   const isEmployeeModel = moduleName.toLowerCase() === 'employees' || moduleName.toLowerCase() === 'team';
   const isTaskModel = moduleName.toLowerCase() === 'tasks';
-  const employeeIdField = overrideEmployeeIdField || (isTaskModel ? 'assignedToId' : 'employeeId'); 
+  const employeeIdField = overrideEmployeeIdField || (isTaskModel ? 'assignedToId' : 'employeeId');
   const userRelationName = isTaskModel ? 'assignedTo' : (isEmployeeModel ? '' : 'user');
 
-  // 4. Department Access
+  // 2. Safely apply Department Scope using REAL DB departmentId
   if (normalizedLevel === 'department') {
-    if (!user.departmentId) return { id: 'NO_DEPT_FALLBACK' }; // Prevent full table scan
-    if (isEmployeeModel) return { departmentId: user.departmentId };
-    return { [userRelationName]: { departmentId: user.departmentId } };
+    if (!dbUser.departmentId) return { id: 'BLOCK_NO_DEPT_ASSIGNED' };
+    if (isEmployeeModel) return { departmentId: dbUser.departmentId };
+    return { [userRelationName]: { departmentId: dbUser.departmentId } };
   }
 
-  // 5. Own Access (Strict Default)
-  if (isEmployeeModel) return { id: user.id };
-  return { [employeeIdField]: user.id };
+  // 3. Apply Own Scope
+  if (isEmployeeModel) return { id: dbUser.id };
+  return { [employeeIdField]: dbUser.id };
 };
+
 

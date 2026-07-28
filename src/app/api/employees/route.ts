@@ -53,7 +53,7 @@ export const GET = wrapHandler(async (req: any, res: any) => {
     };
 
     if (!isAdmin) {
-      const securityScope = getScopedWhereClause(user, 'Employees', 'read');
+      const securityScope = await getScopedWhereClause(user, 'Employees', 'read');
       
       const employees = await prisma.user.findMany({
         where: {

@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { getScopedWhereClause } = await import('@/utils/checkPermission');
-    const securityScope = getScopedWhereClause(mockReq.user, 'Tasks', 'read', 'assignedToId');
+    const securityScope = await getScopedWhereClause(mockReq.user, 'Tasks', 'read', 'assignedToId');
 
     const frontendFilters = {}; // Future frontend filters go here
     

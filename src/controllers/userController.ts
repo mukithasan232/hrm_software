@@ -314,6 +314,35 @@ export const updateUserPreferences = async (req: Request, res: Response): Promis
 export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).params as { id: string };
+    const sessionUser = (req as any).user;
+
+    const { getScopedWhereClause } = await import('../utils/checkPermission');
+    const editScope = await getScopedWhereClause(sessionUser, 'Employees', 'edit');
+
+    if (editScope.id && (String(editScope.id).includes('UNAUTHORIZED') || editScope.id === 'BLOCK_NO_DEPT_ASSIGNED')) {
+      res.status(403).json({ message: 'Forbidden: Edit permission denied by scope' });
+      return;
+    }
+
+    const targetEmp = await prisma.user.findUnique({ where: { id: id as string } });
+    if (!targetEmp) {
+      res.status(404).json({ message: 'Employee not found' });
+      return;
+    }
+
+    if (Object.keys(editScope).length > 0) {
+      if (editScope.departmentId && targetEmp.departmentId !== sessionUser.departmentId) {
+        res.status(403).json({ message: 'Forbidden: Cannot edit employee from another department' });
+        return;
+      }
+      if (editScope.id && editScope.id !== 'BLOCK_NO_DEPT_ASSIGNED' && !String(editScope.id).includes('UNAUTHORIZED')) {
+        if (targetEmp.id !== sessionUser.id) {
+          res.status(403).json({ message: 'Forbidden: You can only edit your own profile' });
+          return;
+        }
+      }
+    }
+
     const { name, email, designationId, shiftId, shiftStartTime, shiftEndTime, remoteShiftStartTime, remoteShiftEndTime, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions, salaryAccount } = req.body as any;
     let finalDesignationId = designationId !== undefined ? (designationId || null) : undefined;
     if (finalDesignationId && !finalDesignationId.includes('-')) {

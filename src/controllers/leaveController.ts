@@ -175,7 +175,7 @@ export const getLeaves = async (req: Request, res: Response) => {
       }
     };
 
-    const securityScope = getScopedWhereClause(user, 'Leaves', 'read');
+    const securityScope = await getScopedWhereClause(user, 'Leaves', 'read');
     
     const frontendFilters = {}; // Future frontend filters go here
     
