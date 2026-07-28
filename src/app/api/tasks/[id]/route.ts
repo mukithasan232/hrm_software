@@ -31,10 +31,11 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let mockReq: any;
   try {
     const { id } = await params;
     const reqClone = req.clone();
-    const mockReq = await parseRequest(req, { id });
+    mockReq = await parseRequest(req, { id });
 
     let uploadedFiles: { name: string; url: string }[] = [];
     try {

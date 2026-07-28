@@ -52,7 +52,7 @@ export default function ModulesSettingsPage() {
   }
 
   return (
-    <PageGuard requireAdmin={true}>
+    <PageGuard moduleName="Settings">
       <div className="max-w-4xl mx-auto space-y-6 animate-enter">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
