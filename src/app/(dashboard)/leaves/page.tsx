@@ -7,6 +7,7 @@ import {
   Loader2, ShieldCheck, Info
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -262,9 +263,9 @@ function PolicyWidget() {
 export default function LeavesPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const isAdminRole = user?.roles?.some((r: any) => ['Admin', 'Super Admin'].includes(r?.name || r)) || false;
-  const isAdminDesignation = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(user?.designation || '');
-  const canManage = isAdminRole || isAdminDesignation;
+  const { scope: getScope } = usePermissions();
+  const leaveScope = getScope('Leaves', 'canRead');
+  const canManage = leaveScope === 'All' || leaveScope === 'Department';
 
   const [leaves, setLeaves]               = useState<any[]>([]);
   const [loading, setLoading]             = useState(true);

@@ -158,38 +158,56 @@ export const applyLeave = async (req: MulterRequest, res: Response) => {
 
 export const getLeaves = async (req: Request, res: Response) => {
   try {
-    const userRole = (req as any).user.designation;
-    const employeeId = (req as any).user.id;
-    let leaves;
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
-    if (['HR', 'Manager', 'HRM Manager', 'Admin', 'Super Admin', 'System Administrator'].includes(userRole)) {
-      // Admin/HR: fetch ALL leaves and include user relation for employee name
-      const rawLeaves = await (prisma.leave as any).findMany({
-        include: {
-          user: {
-            select: { name: true, employeeId: true, department: true, customDesignation: { select: { name: true } } }
-          }
-        },
+    // Use our new dynamic utility
+    const { getPermissionScopeSync, getScopedWhereClause } = await import('../utils/checkPermission');
+    const scope = getPermissionScopeSync(user, 'Leaves', 'read');
+
+    if (scope === 'no') {
+       return res.status(403).json({ message: 'Forbidden: No permission to read leaves' });
+    }
+
+    const baseInclude = {
+      user: {
+        select: { name: true, employeeId: true, department: true, customDesignation: { select: { name: true } } }
+      }
+    };
+
+    let rawLeaves;
+
+    if (scope === 'all') {
+      rawLeaves = await (prisma.leave as any).findMany({
+        include: baseInclude,
         orderBy: { createdAt: 'desc' }
       });
-
-      // Remap `user` → `employee` so the frontend's l.employee?.name works correctly
-      leaves = rawLeaves.map((leave: any) => {
-        const { user, ...rest } = leave;
-        return {
-          ...rest,
-          employee: user
-            ? { ...user, name: user.name ?? 'Unknown Employee', designation: user.customDesignation }
-            : { name: 'Unknown Employee', employeeId: null, department: null, designation: { name: 'N/A' } },
-        };
+    } else if (scope === 'department') {
+      const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { department: true } });
+      rawLeaves = await (prisma.leave as any).findMany({
+        where: { user: { department: dbUser?.department || '' } },
+        include: baseInclude,
+        orderBy: { createdAt: 'desc' }
       });
     } else {
-      // Employee: fetch only their own leaves (no user relation needed)
-      leaves = await (prisma.leave as any).findMany({
-        where: { employeeId },
+      // 'own'
+      rawLeaves = await (prisma.leave as any).findMany({
+        where: { employeeId: user.id },
+        include: baseInclude,
         orderBy: { createdAt: 'desc' }
       });
     }
+
+    // Remap `user` → `employee` so the frontend's l.employee?.name works correctly
+    const leaves = rawLeaves.map((leave: any) => {
+      const { user, ...rest } = leave;
+      return {
+        ...rest,
+        employee: user
+          ? { ...user, name: user.name ?? 'Unknown Employee', designation: user.customDesignation }
+          : { name: 'Unknown Employee', employeeId: null, department: null, designation: { name: 'N/A' } },
+      };
+    });
 
     return res.status(200).json(leaves);
   } catch (error: any) {

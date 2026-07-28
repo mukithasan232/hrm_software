@@ -7,6 +7,7 @@ import {
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const DEPARTMENTS = ['Engineering', 'Finance', 'Operations', 'Sales', 'Marketing', 'HR', 'Product', 'Legal'];
 const DESIGNATIONS = ['Executive', 'Manager', 'HR', 'Admin'];
@@ -26,7 +27,8 @@ const DESIGNATION_COLORS: Record<string, string> = {
 
 export default function EmployeesPage() {
   const { user } = useAuth();
-  const canEdit = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(user?.designation || '');
+  const { can } = usePermissions();
+  const canEdit = can('Employees', 'canEdit');
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

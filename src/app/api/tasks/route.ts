@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseRequest, getCorsHeaders } from '@/lib/adapter';
-import { getPermissionScope } from '@/lib/permissions';
+import { getPermissionScopeSync } from '@/utils/checkPermission';
 import { eventEmitter } from '@/lib/eventEmitter';
 import { sendEventEmail } from '@/lib/mail-utils';
 
@@ -41,10 +41,10 @@ export async function GET(req: NextRequest) {
     }
 
     // ── 2. Build Prisma filter ────────────────────────────────────────────────
-    const scope = await getPermissionScope(mockReq.user.id, 'Tasks', 'canRead');
+    const scope = getPermissionScopeSync(mockReq.user, 'Tasks', 'read');
     console.log(`[Tasks GET] user=${mockReq.user.id} scope=${scope}`);
 
-    if (scope === 'No') {
+    if (scope === 'no') {
       return NextResponse.json(
         { message: 'Permission denied for Tasks module' },
         { status: 403, headers: getCorsHeaders() }
@@ -52,21 +52,15 @@ export async function GET(req: NextRequest) {
     }
 
     let where: any = {};
-    if (scope === 'All') {
+    if (scope === 'all') {
       where = {};
-    } else if (scope === 'Department') {
+    } else if (scope === 'department') {
       const dbUser = await prisma.user.findUnique({ where: { id: mockReq.user.id } });
-      const depId = dbUser?.departmentId;
       const depName = dbUser?.department;
       
-      if (depId || depName) {
+      if (depName) {
         where = {
-          assignedTo: {
-            OR: [
-              ...(depId ? [{ departmentId: depId }] : []),
-              ...(depName ? [{ department: depName }] : []),
-            ]
-          }
+          assignedTo: { department: depName }
         };
       } else {
         where = { assignedToId: mockReq.user.id };
@@ -110,8 +104,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const scope = await getPermissionScope(mockReq.user.id, 'Tasks', 'canCreate');
-    if (!isAdmin(mockReq.user) && scope === 'No') {
+    const scope = getPermissionScopeSync(mockReq.user, 'Tasks', 'create');
+    if (scope === 'no') {
       return NextResponse.json({ message: 'Permission denied to create tasks' }, { status: 403, headers: getCorsHeaders() });
     }
 

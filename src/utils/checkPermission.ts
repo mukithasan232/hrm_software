@@ -96,3 +96,37 @@ export const getPermissionScopeSync = (user: any, moduleName: string, action: st
 
   return 'no';
 };
+
+/**
+ * Universal backend utility to dynamically scope Prisma queries across ALL modules
+ * based on exact matrix values (Own, Department, All).
+ */
+export const getScopedWhereClause = (
+  user: any,
+  moduleName: string,
+  action: 'read' | 'edit' | 'delete' = 'read',
+  employeeIdField: string = 'employeeId' // some modules might use 'authorId', etc.
+) => {
+  // 1. Get the specific permission level for the module and action
+  const permissionLevel = getPermissionScopeSync(user, moduleName, action);
+
+  // 2. Return dynamic Prisma 'where' constraints
+  if (permissionLevel === 'all') {
+    return {}; 
+  } else if (permissionLevel === 'department') {
+    return { 
+      // Most relations to department are via the user/employee relation.
+      // This assumes we can filter by the user's department string or ID.
+      // E.g., for Tasks: assignedTo: { department: user.department }
+      // This might need module-specific mapping in the API if the relation name differs,
+      // but providing a generic structure here.
+      department_placeholder: user.department 
+    }; 
+  } else if (permissionLevel === 'own') {
+    return { [employeeIdField]: user.id }; 
+  } else {
+    // If 'no' or unrecognized, restrict heavily (return something that likely yields no results or strictly their own)
+    return { [employeeIdField]: user.id }; 
+  }
+};
+

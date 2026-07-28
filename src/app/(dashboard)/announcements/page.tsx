@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Megaphone, Search, Send, Loader2, Mailbox, Clock, Building2, User, ChevronDown } from 'lucide-react';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import dynamic from 'next/dynamic';
 // @ts-ignore - types are currently unavailable for react-quill
 import 'react-quill-new/dist/quill.snow.css';
@@ -39,9 +40,8 @@ export default function AnnouncementsPage() {
   const [comboboxSearch, setComboboxSearch] = useState('');
   const comboboxRef = useRef<HTMLDivElement>(null);
 
-  const isAdmin = ['Admin', 'Super Admin', 'System Administrator', 'HR Manager'].includes(
-    (user as any)?.designation || ''
-  );
+  const { can } = usePermissions();
+  const isAdmin = can('Announcements', 'canCreate');
 
   const [formData, setFormData] = useState({
     title: '',

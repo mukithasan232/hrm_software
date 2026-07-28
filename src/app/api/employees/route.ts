@@ -24,6 +24,7 @@ export const GET = wrapHandler(async (req: any, res: any) => {
     const isAdmin = ADMIN_DESIGNATIONS.includes(userDesig) || hasAdminRole;
     
     // Instead of boolean checkPermission, get the exact scope level
+    const { getPermissionScopeSync, getScopedWhereClause } = await import('@/utils/checkPermission');
     let readScope = isAdmin ? 'all' : getPermissionScopeSync(user, 'Employees', 'read');
     
     // If fetching for task assignment, evaluate task scope as a fallback
@@ -46,18 +47,17 @@ export const GET = wrapHandler(async (req: any, res: any) => {
       }
     }
 
-    const where: any = { 
+    let where: any = { 
       userType: 'Employee',
       employeeId: { not: 'UNMAPPED_FALLBACK' }
     };
 
     if (!isAdmin) {
       if (readScope === 'all') {
-        // can view all, do nothing
-      } else if (readScope === 'department' && user.department) {
-        where.department = user.department;
+        // can view all
+      } else if (readScope === 'department') {
+        where.department = user.department || '';
       } else {
-        // default to 'own' or 'no' (if 'no', they shouldn't even be here, but restrict to self just in case)
         where.id = user.id;
       }
     }

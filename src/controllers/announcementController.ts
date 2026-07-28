@@ -69,20 +69,36 @@ export const getAnnouncements = async (req: Request, res: Response) => {
     const user = (req as any).user;
     if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
+    // Use our new dynamic utility
+    const { getPermissionScopeSync } = await import('../utils/checkPermission');
+    const scope = getPermissionScopeSync(user, 'Announcements', 'read');
+
+    if (scope === 'no') {
+       return res.status(403).json({ message: 'Forbidden: No permission to read announcements' });
+    }
+
     // Ensure we have fresh user data for department checking if it might have changed
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: { department: true }
     });
 
-    const announcements = await prisma.announcement.findMany({
-      where: {
+    let where: any = {};
+    if (scope === 'all') {
+      // Can view all announcements
+      where = {};
+    } else {
+      where = {
         OR: [
           { targetType: 'GLOBAL' },
           { targetType: 'DEPARTMENT', targetDepartment: dbUser?.department || '' },
           { targetType: 'INDIVIDUAL', targetUserId: user.id }
         ]
-      },
+      };
+    }
+
+    const announcements = await prisma.announcement.findMany({
+      where,
       include: { author: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
       take: 20

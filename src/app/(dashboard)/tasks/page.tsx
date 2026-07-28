@@ -914,7 +914,7 @@ export default function TasksPage() {
           </div>
 
           {/* Employee filter */}
-          {(canEditTasks || isAdminUser) && (
+          {(taskScope === 'All' || taskScope === 'Department') && (
             <div className="relative w-48">
               <CustomDropdown
                 value={employeeFilter}
