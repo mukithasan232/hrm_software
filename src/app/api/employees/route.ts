@@ -47,22 +47,40 @@ export const GET = wrapHandler(async (req: any, res: any) => {
       }
     }
 
-    let where: any = { 
+    const frontendFilters: any = { 
       userType: 'Employee',
       employeeId: { not: 'UNMAPPED_FALLBACK' }
     };
 
     if (!isAdmin) {
-      const scopeWhere = getScopedWhereClause(user, 'Employees', 'read');
-      Object.assign(where, scopeWhere);
+      const securityScope = getScopedWhereClause(user, 'Employees', 'read');
+      
+      const employees = await prisma.user.findMany({
+        where: {
+          AND: [
+            securityScope,
+            frontendFilters
+          ]
+        },
+        include: {
+          customDesignation: { select: { name: true } },
+          shift: true,
+          customDepartment: true
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const mappedEmployees = employees.map((emp: any) => ({
+        ...emp,
+        designation: (emp as any).customDesignation
+      }));
+      return res.status(200).json(mappedEmployees);
     }
 
     const employees = await prisma.user.findMany({
-      where,
+      where: frontendFilters,
       include: {
-        customDesignation: {
-          select: { name: true }
-        },
+        customDesignation: { select: { name: true } },
         shift: true,
         customDepartment: true
       },

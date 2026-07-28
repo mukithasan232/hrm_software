@@ -175,28 +175,20 @@ export const getLeaves = async (req: Request, res: Response) => {
       }
     };
 
-    let rawLeaves;
-
-    if (scope === 'all') {
-      rawLeaves = await (prisma.leave as any).findMany({
-        include: baseInclude,
-        orderBy: { createdAt: 'desc' }
-      });
-    } else if (scope === 'department') {
-      const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { department: true } });
-      rawLeaves = await (prisma.leave as any).findMany({
-        where: { user: { department: dbUser?.department || '' } },
-        include: baseInclude,
-        orderBy: { createdAt: 'desc' }
-      });
-    } else {
-      // 'own'
-      rawLeaves = await (prisma.leave as any).findMany({
-        where: { employeeId: user.id },
-        include: baseInclude,
-        orderBy: { createdAt: 'desc' }
-      });
-    }
+    const securityScope = getScopedWhereClause(user, 'Leaves', 'read');
+    
+    const frontendFilters = {}; // Future frontend filters go here
+    
+    const rawLeaves = await (prisma.leave as any).findMany({
+      where: {
+        AND: [
+          securityScope,
+          frontendFilters
+        ]
+      },
+      include: baseInclude,
+      orderBy: { createdAt: 'desc' }
+    });
 
     // Remap `user` → `employee` so the frontend's l.employee?.name works correctly
     const leaves = rawLeaves.map((leave: any) => {

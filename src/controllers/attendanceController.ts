@@ -391,61 +391,29 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       if (deptRecord) targetDeptName = deptRecord.name;
     }
 
-    const employeeWhere: any = {};
-    const where: any = {};
+    // Fetch security scope from unified utility
+    const { getScopedWhereClause } = await import('../utils/checkPermission');
+    const securityScope = getScopedWhereClause(user, 'attendance', 'read');
 
-    const role = user?.role?.toUpperCase();
-    const userType = user?.userType?.toUpperCase();
-    const designationName = typeof user?.designation === 'string' ? user.designation.toUpperCase() : user?.designation?.name?.toUpperCase();
+    const frontendFilters: any = {};
+    const frontendEmployeeFilters: any = {};
 
-    const isAdminOrSuperAdmin = 
-      role === 'ADMIN' || 
-      role === 'SUPER_ADMIN' || 
-      userType === 'ADMIN' || 
-      userType === 'SUPER_ADMIN' ||
-      designationName?.includes('ADMIN');
-
-    // Determine the read scope for this user on Attendance
-    const attendanceReadScope = getPermissionScopeSync(user, 'attendance', 'read');
-
-    // canViewAll: only true admins or users with explicit 'all' read scope can see everyone's records
-    const canViewAll = isAdminOrSuperAdmin || attendanceReadScope === 'all';
-
-    // canViewDepartment: users with 'department' scope can see their own department
-    const canViewDepartment = !canViewAll && attendanceReadScope === 'department';
-
-    if (canViewAll) {
-      // Admin / all-scope: optionally filter by a specific employee
-      if (employeeId) {
-        where.employeeId = employeeId as string;
-        employeeWhere.id = employeeId as string;
-      }
-    } else if (canViewDepartment && user?.departmentId) {
-      // Department-scope: restrict to the user's own department
-      where.user = {
-        ...where.user,
-        OR: [
-          { departmentId: user.departmentId },
-          ...(user.department ? [{ department: user.department }] : [])
-        ]
-      };
-      employeeWhere.OR = [
-        { departmentId: user.departmentId },
-        ...(user.department ? [{ department: user.department }] : [])
-      ];
-    } else {
-      // 'own' scope or no permission: only the logged-in user's own records
-      where.employeeId = user.id;
-      employeeWhere.id = user.id;
+    if (employeeId) {
+      frontendFilters.employeeId = employeeId as string;
+      frontendEmployeeFilters.id = employeeId as string;
     }
 
     if (department && department !== 'all') {
-      where.user = {
+      frontendFilters.user = {
         OR: [
           { departmentId: department as string },
           ...(targetDeptName ? [{ department: targetDeptName }] : [])
         ]
       };
+      frontendEmployeeFilters.OR = [
+        { departmentId: department as string },
+        ...(targetDeptName ? [{ department: targetDeptName }] : [])
+      ];
     }
 
     const range = filter || (req as any).nextUrl?.searchParams?.get('range') || req.query?.range || 'all';
@@ -499,15 +467,9 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     let strictEndUTC = filterEndDate > nowUTC ? nowUTC : filterEndDate;
 
     // Create the exact Prisma filter
-    const dateFilter = {
-        timestamp: {
-            gte: filterStartDate,
-            lte: strictEndUTC
-        }
-    };
-
-    // 🔥 CRITICAL: Must be applied here!
-    where.timestamp = dateFilter.timestamp;
+    if (filterStartDate && filterEndDate) {
+        frontendFilters.timestamp = { gte: filterStartDate, lte: strictEndUTC };
+    }
 
     let skip: number | undefined;
     let take: number | undefined;
@@ -549,12 +511,19 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
     };
 
     // Apply the employee filter to the main query and the separate active employee query
-    where.user = { ...where.user, ...employeeRoleFilter };
-    const activeEmployeeWhere = { ...employeeWhere, ...employeeRoleFilter };
+    frontendFilters.user = { ...frontendFilters.user, ...employeeRoleFilter };
+    const activeEmployeeWhere = { ...frontendEmployeeFilters, ...employeeRoleFilter };
+
+    const finalWhere = {
+      AND: [
+        securityScope,
+        frontendFilters
+      ]
+    };
 
     const [logs, total, uniqueCheckIns, uniqueCheckOuts, manualPunches, activeEmployees, allPunchesInRange] = await Promise.all([
       prisma.attendanceLog.findMany({
-        where, skip, take,
+        where: finalWhere, skip, take,
         orderBy: { timestamp: 'desc' },
         include: {
           user: {
@@ -574,12 +543,12 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
           }
         }
       }),
-      prisma.attendanceLog.count({ where }), // This total is now correctly filtered
-      prisma.attendanceLog.findMany({ where: { ...where, punchType: 'CheckIn' }, distinct: ['employeeId'], select: { employeeId: true } }),
-      prisma.attendanceLog.findMany({ where: { ...where, punchType: 'CheckOut' }, distinct: ['employeeId'], select: { employeeId: true } }),
-      prisma.attendanceLog.findMany({ where: { ...where, deviceId: 'Manual Entry' }, select: { timestamp: true, user: { select: { name: true } } } }),
+      prisma.attendanceLog.count({ where: finalWhere }), // This total is now correctly filtered
+      prisma.attendanceLog.findMany({ where: { ...finalWhere, punchType: 'CheckIn' }, distinct: ['employeeId'], select: { employeeId: true } }),
+      prisma.attendanceLog.findMany({ where: { ...finalWhere, punchType: 'CheckOut' }, distinct: ['employeeId'], select: { employeeId: true } }),
+      prisma.attendanceLog.findMany({ where: { ...finalWhere, deviceId: 'Manual Entry' }, select: { timestamp: true, user: { select: { name: true } } } }),
       prisma.user.findMany({ where: activeEmployeeWhere, select: { id: true, createdAt: true, name: true } }),
-      prisma.attendanceLog.findMany({ where, select: { employeeId: true, timestamp: true } })
+      prisma.attendanceLog.findMany({ where: finalWhere, select: { employeeId: true, timestamp: true } })
     ]);
 
     const checkInCount = uniqueCheckIns.length;
@@ -599,7 +568,7 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       daysPresentPerEmployee[p.employeeId].add(formatYMD(p.timestamp));
     }
 
-    const globalStart = where.timestamp?.gte || new Date(0);
+    const globalStart = frontendFilters.timestamp?.gte || new Date(0);
     // 🚀 CRITICAL: Stop counting at yesterday to avoid false absences for today/future
     const now = new Date();
     // Get yesterday at 23:59:59.999

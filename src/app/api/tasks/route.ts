@@ -52,11 +52,18 @@ export async function GET(req: NextRequest) {
     }
 
     const { getScopedWhereClause } = await import('@/utils/checkPermission');
-    const where = getScopedWhereClause(mockReq.user, 'Tasks', 'read', 'assignedToId');
+    const securityScope = getScopedWhereClause(mockReq.user, 'Tasks', 'read', 'assignedToId');
 
+    const frontendFilters = {}; // Future frontend filters go here
+    
     // ── 3. Query ──────────────────────────────────────────────────────────────
     const tasks = await prisma.task.findMany({
-      where,
+      where: {
+        AND: [
+          securityScope,
+          frontendFilters
+        ]
+      },
       include: TASK_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
