@@ -2,14 +2,13 @@ module.exports = {
   apps: [
     {
       name: 'next-web',
-      script: 'node_modules/next/dist/bin/next',
-      args: 'start -H 0.0.0.0 -p 3000',
+      script: 'server.cjs',          // ✅ Uses server.cjs so initCronJobs() + initRealtimeAttendance() run
       instances: 1,
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
-        HOSTNAME: '0.0.0.0' // <--- This is required for Docker external access
+        HOSTNAME: '0.0.0.0'
       }
     },
     {
@@ -20,7 +19,8 @@ module.exports = {
       autorestart: true,
       max_memory_restart: '256M',
       env: {
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
       }
     }
   ]

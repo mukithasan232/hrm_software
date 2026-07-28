@@ -2,9 +2,9 @@ import { Server } from 'socket.io';
 // @ts-ignore
 import ZKLib from 'zkteco-js';
 import { prisma } from '../lib/prisma';
-import { resolvePunchType, parseDeviceTime, getDeviceAttendance } from './zkService';
+import { resolvePunchType, parseDeviceTime } from './zkService';
 import dgram from 'dgram';
-import cron from 'node-cron';
+
 
 // ─── Connection Constants ────────────────────────────────────────────────────
 const ZK_TIMEOUT = 40000; // Increased to 40s to prevent TIMEOUT_ON_WRITING_MESSAGE for slow networks
@@ -79,21 +79,12 @@ export const initRealtimeAttendance = (socketIo: Server): void => {
   io = socketIo;
   (global as any).io = socketIo;
   console.log('[RealtimeService] ✅ Initialized (socket.io ready). Starting ZKTeco realtime listener...');
+  
+  // Note: Bulk cron sync is handled exclusively by the standalone zk-worker PM2 process.
+  // This service only manages the realtime UDP listener for instant socket.io punch notifications.
   startRealtimeListener();
-
-  // ─── BACKGROUND SYNC: Centralized inside Next.js to prevent race conditions ───
-  cron.schedule('*/5 * * * *', async () => {
-    console.log('[RealtimeService] 🕒 Running 5-minute background bulk sync...');
-    try {
-      await runWithDeviceLock(async () => {
-        await getDeviceAttendance();
-      });
-      console.log('[RealtimeService] ✅ Background bulk sync completed successfully.');
-    } catch (err: any) {
-      console.error('[RealtimeService] ❌ Background sync failed:', err.message);
-    }
-  });
 };
+
 
 // ─── PUBLIC: Mutex-wrapped operation runner ──────────────────────────────────
 /**

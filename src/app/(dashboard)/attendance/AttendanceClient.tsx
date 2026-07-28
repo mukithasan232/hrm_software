@@ -174,7 +174,9 @@ function AttendancePageContent() {
   ) || user?.roles?.some((r: any) => ['admin', 'super admin', 'system administrator', 'hrm manager'].includes((r?.name || r)?.toLowerCase()));
   
   const canCreateAll = isAdminUser || checkPermission(user, 'Attendance', 'create');
-  const canViewAll = checkPermission(user, 'Attendance', 'edit') || checkPermission(user, 'Attendance', 'create') || getPermissionScopeSync(user, 'Attendance', 'read') === 'all';
+  // canViewAll: only admins or users with explicit 'all' read scope should see all employees' attendance
+  const attendanceReadScope = getPermissionScopeSync(user, 'Attendance', 'read');
+  const canViewAll = isAdminUser || attendanceReadScope === 'all';
 
   const [manualEntry, setManualEntry] = useState({
     employeeId: user?.employeeId || user?.id || '',

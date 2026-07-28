@@ -61,21 +61,18 @@ app.prepare()
 
     try {
       const { connectDB }              = require('./src/config/db');
-      const { initCronJobs }           = require('./src/jobs/cronJob');
       const { initRealtimeAttendance } = require('./src/services/realtimeService');
 
       await connectDB();
 
-      // Start the 1-minute ZKTeco auto-sync cron job.
-      // This replaces the need for an admin to click "Sync Device" manually.
-      initCronJobs();
-
-      // Start the realtime ZKTeco UDP listener to push punches instantly to the UI
+      // Note: Cron-based bulk sync is handled exclusively by the zk-worker PM2 process.
+      // server.cjs only starts the realtime UDP listener for instant punch notifications via socket.io.
       initRealtimeAttendance(io);
     } catch (err) {
       console.error('[Server Startup] Failed to load backend modules:', err);
       // Non-fatal: HTTP server still starts and serves the Next.js app
     }
+
 
     httpServer.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {

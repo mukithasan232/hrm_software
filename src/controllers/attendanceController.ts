@@ -405,14 +405,36 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
       userType === 'SUPER_ADMIN' ||
       designationName?.includes('ADMIN');
 
-    const canViewAll = isAdminOrSuperAdmin || checkPermission(user, 'attendance', 'edit') || checkPermission(user, 'attendance', 'create') || getPermissionScopeSync(user, 'attendance', 'read') === 'all';
+    // Determine the read scope for this user on Attendance
+    const attendanceReadScope = getPermissionScopeSync(user, 'attendance', 'read');
+
+    // canViewAll: only true admins or users with explicit 'all' read scope can see everyone's records
+    const canViewAll = isAdminOrSuperAdmin || attendanceReadScope === 'all';
+
+    // canViewDepartment: users with 'department' scope can see their own department
+    const canViewDepartment = !canViewAll && attendanceReadScope === 'department';
 
     if (canViewAll) {
+      // Admin / all-scope: optionally filter by a specific employee
       if (employeeId) {
         where.employeeId = employeeId as string;
         employeeWhere.id = employeeId as string;
       }
+    } else if (canViewDepartment && user?.departmentId) {
+      // Department-scope: restrict to the user's own department
+      where.user = {
+        ...where.user,
+        OR: [
+          { departmentId: user.departmentId },
+          ...(user.department ? [{ department: user.department }] : [])
+        ]
+      };
+      employeeWhere.OR = [
+        { departmentId: user.departmentId },
+        ...(user.department ? [{ department: user.department }] : [])
+      ];
     } else {
+      // 'own' scope or no permission: only the logged-in user's own records
       where.employeeId = user.id;
       employeeWhere.id = user.id;
     }
