@@ -39,7 +39,9 @@ COPY --chown=appuser:appgroup --from=builder /app/dist ./dist
 COPY --chown=appuser:appgroup --from=builder /app/prisma ./prisma
 COPY --chown=appuser:appgroup --from=builder /app/public ./public
 COPY --chown=appuser:appgroup --from=builder /app/src/scripts ./src/scripts
+COPY --chown=appuser:appgroup --from=builder /app/src/lib ./src/lib
 COPY --chown=appuser:appgroup --from=builder /app/ecosystem.config.js ./
+COPY --chown=appuser:appgroup --from=builder /app/server.cjs ./
 COPY --chown=appuser:appgroup --from=builder /app/entrypoint.sh ./
 COPY --chown=appuser:appgroup --from=builder /app/next.config.ts ./next.config.ts
 COPY --chown=appuser:appgroup --from=builder /app/tsconfig.json ./tsconfig.json

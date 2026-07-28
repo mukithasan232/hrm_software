@@ -46,7 +46,7 @@ fi
 
 # 2.5. Sync biometric data on boot
 echo "🔄 [Boot Sync] Syncing Biometric Data..."
-if ! pnpm exec tsx src/scripts/sync-on-boot.ts; then
+if ! tsx src/scripts/sync-on-boot.ts; then
   echo "⚠️  Biometric sync failed. This is non-fatal — server will still start."
 fi
 
