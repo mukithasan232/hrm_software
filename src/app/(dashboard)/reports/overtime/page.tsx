@@ -195,7 +195,8 @@ function OvertimeReportContent() {
       {/* Data Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-sm text-left min-w-max">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
               <tr>
                 <th className="px-6 py-4 rounded-tl-2xl">Date</th>
@@ -280,6 +281,7 @@ function OvertimeReportContent() {
               )}
             </tbody>
           </table>
+</div>
         </div>
       </div>
     </div>

@@ -550,7 +550,7 @@ function AttendancePageContent() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* ================= HEADER START ================= */}
-      <div className="flex w-full items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
         
         {/* --- LEFT SIDE: Title Area --- */}
         <div className="flex flex-col gap-1.5">
@@ -665,7 +665,7 @@ function AttendancePageContent() {
       </div>
       {/* ================= HEADER END ================= */}
  
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-2">
             <p className="text-slate-600 dark:text-slate-400 text-sm font-semibold">Total Check In</p>
@@ -735,7 +735,8 @@ function AttendancePageContent() {
           </div>
         </div>
         <div id="pdf-export-content" className="w-full overflow-x-auto whitespace-nowrap scrollbar-hide bg-white dark:bg-slate-900 rounded-lg">
-          <table className="w-full text-left border-collapse">
+          <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-left border-collapse min-w-max">
             <thead>
               <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
                 <th className="px-6 py-4 font-bold">{t('employee')}</th>
@@ -876,6 +877,7 @@ function AttendancePageContent() {
               )}
             </tbody>
           </table>
+</div>
           
           {/* Infinite Scroll Trigger */}
           {!loading && (

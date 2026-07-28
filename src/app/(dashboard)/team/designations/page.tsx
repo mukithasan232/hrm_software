@@ -701,7 +701,8 @@ export default function DesignationsPage() {
 
                   <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
                     <div className="w-full overflow-x-auto">
-                      <table className="w-full border-collapse">
+                      <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full border-collapse min-w-max">
                         <thead>
                           <tr className="bg-slate-50 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/10">
                             <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 min-w-[130px]">
@@ -790,6 +791,7 @@ export default function DesignationsPage() {
                           })}
                         </tbody>
                       </table>
+</div>
                     </div>
                   </div>
 

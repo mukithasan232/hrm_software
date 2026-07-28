@@ -272,7 +272,8 @@ export default function PayrollPage() {
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Salary Summary (Generated)</h2>
           </div>
           <div className="w-full overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-left border-collapse min-w-max">
               <thead>
                 <tr className="bg-slate-50 dark:bg-black/40 text-slate-800 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-slate-200 dark:border-white/10 font-bold">
                   <th className="px-6 py-4 font-bold">Employee</th>
@@ -325,6 +326,7 @@ export default function PayrollPage() {
                 ))}
               </tbody>
             </table>
+</div>
           </div>
         </div>
       )}

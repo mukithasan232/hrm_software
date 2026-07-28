@@ -54,7 +54,7 @@ export default function SystemSettingsPage() {
         <p className="text-slate-500 dark:text-slate-400 mt-1">Manage master configurations and super admin.</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10 p-8 space-y-8">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10 p-4 md:p-6 lg:p-8 space-y-8">
         
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-700 pb-2">Super Admin Account</h2>

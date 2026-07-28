@@ -724,7 +724,7 @@ export default function TeamUsersPage() {
 
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-4 md:p-6 lg:p-8">
                 <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4">
 
                   {/* Employee ID - Only show on edit */}

@@ -504,7 +504,7 @@ export default function DashboardOverview() {
             <div
               {...provided.droppableProps}
               ref={provided.innerRef}
-              className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 transition-all duration-200 ${
+              className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 transition-all duration-200 ${
                 isEditing
                   ? "rounded-2xl p-2 border-2 border-dashed border-indigo-300/60 dark:border-indigo-600/50 bg-indigo-50/30 dark:bg-indigo-950/20"
                   : ""

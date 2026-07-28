@@ -46,7 +46,7 @@ export default function DatabaseSettingsPage() {
         <p className="text-slate-500 dark:text-slate-400 mt-1">Manage database connection and credentials.</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10 p-8 space-y-6">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10 p-4 md:p-6 lg:p-8 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InputField label="DB Host" name="host" value={dbConfig.host} onChange={handleDbChange} />
           <InputField label="DB Port" name="port" value={dbConfig.port} onChange={handleDbChange} />

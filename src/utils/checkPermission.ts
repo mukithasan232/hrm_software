@@ -105,7 +105,7 @@ export const getScopedWhereClause = (
   user: any,
   moduleName: string,
   action: 'read' | 'edit' | 'delete' = 'read',
-  employeeIdField: string = 'employeeId' // some modules might use 'authorId', etc.
+  overrideEmployeeIdField?: string
 ) => {
   // 1. Get the specific permission level for the module and action
   const permissionLevel = getPermissionScopeSync(user, moduleName, action);
@@ -113,20 +113,33 @@ export const getScopedWhereClause = (
   // 2. Return dynamic Prisma 'where' constraints
   if (permissionLevel === 'all') {
     return {}; 
-  } else if (permissionLevel === 'department') {
-    return { 
-      // Most relations to department are via the user/employee relation.
-      // This assumes we can filter by the user's department string or ID.
-      // E.g., for Tasks: assignedTo: { department: user.department }
-      // This might need module-specific mapping in the API if the relation name differs,
-      // but providing a generic structure here.
-      department_placeholder: user.department 
-    }; 
-  } else if (permissionLevel === 'own') {
-    return { [employeeIdField]: user.id }; 
-  } else {
-    // If 'no' or unrecognized, restrict heavily (return something that likely yields no results or strictly their own)
-    return { [employeeIdField]: user.id }; 
   }
+  
+  const isEmployeeModel = moduleName.toLowerCase() === 'employees' || moduleName.toLowerCase() === 'team';
+  const isTaskModel = moduleName.toLowerCase() === 'tasks';
+  
+  const employeeIdField = overrideEmployeeIdField || (isTaskModel ? 'assignedToId' : 'employeeId');
+  const userRelationName = isTaskModel ? 'assignedTo' : (isEmployeeModel ? '' : 'user');
+
+  if (permissionLevel === 'department') {
+    if (isEmployeeModel) {
+      // For Employee table, query departmentId directly
+      return user.departmentId 
+        ? { departmentId: user.departmentId } 
+        : { department: user.department };
+    }
+    // For other tables, query through the user relation
+    return { 
+      [userRelationName]: user.departmentId
+        ? { departmentId: user.departmentId }
+        : { department: user.department }
+    }; 
+  }
+  
+  // Default to 'Own' or restricted access
+  if (isEmployeeModel) {
+    return { id: user.id }; 
+  }
+  return { [employeeIdField]: user.id }; 
 };
 

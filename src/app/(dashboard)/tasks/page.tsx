@@ -1036,7 +1036,8 @@ export default function TasksPage() {
                   <span className={`text-xs py-0.5 px-2 rounded-full ${section.countClass}`}>{section.tasks.length}</span>
                 </h3>
                 <div className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-sm overflow-x-auto ${section.isCompleted ? 'opacity-75 grayscale-[20%]' : ''}`}>
-                  <table className="w-full text-left border-collapse min-w-[900px]">
+                  <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-left border-collapse min-w-[900px]">
                     <thead className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold tracking-wider">
                       <tr>
                         <th className="p-4 rounded-tl-xl">Task Name</th>
@@ -1169,6 +1170,7 @@ export default function TasksPage() {
                       )}
                     </tbody>
                   </table>
+</div>
                 </div>
               </div>
             );

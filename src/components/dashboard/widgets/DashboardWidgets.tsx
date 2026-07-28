@@ -54,7 +54,8 @@ export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, dat
         </h3>
         <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
           {data.presentEmployees && data.presentEmployees.length > 0 ? (
-            <table className="w-full text-left text-sm">
+            <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-left text-sm min-w-max">
                <thead>
                  <tr className="text-slate-400 text-xs uppercase tracking-wider">
                    <th className="pb-3 font-semibold">Employee</th>
@@ -83,6 +84,7 @@ export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, dat
                  ))}
                </tbody>
             </table>
+</div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[150px]">
               <Clock className="w-8 h-8 mb-2" />
@@ -182,7 +184,8 @@ export const AbsentDaysWidget = ({ isCompact, data }: { isCompact: boolean, data
         </h3>
         <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
           {data.absentEmployees && data.absentEmployees.length > 0 ? (
-            <table className="w-full text-left text-sm">
+            <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-left text-sm min-w-max">
                <thead>
                  <tr className="text-slate-400 text-xs uppercase tracking-wider">
                    <th className="pb-3 font-semibold">Employee</th>
@@ -223,6 +226,7 @@ export const AbsentDaysWidget = ({ isCompact, data }: { isCompact: boolean, data
                  ))}
                </tbody>
             </table>
+</div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[150px]">
               <UserMinus className="w-8 h-8 mb-2" />
@@ -419,7 +423,7 @@ export const NoticeBoardWidget = ({ isCompact, data }: { isCompact: boolean, dat
 
   return (
     <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-indigo-200 dark:border-indigo-500/20 rounded-3xl p-6 shadow-md dark:shadow-2xl h-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-400">
             <Megaphone className="w-5 h-5" />

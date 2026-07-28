@@ -60,10 +60,10 @@ export default function EmployeeProfileModal({ isOpen, onClose, employeeId }: Em
             <p className="text-slate-500 font-medium">Loading profile...</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 space-y-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-4 md:p-6 lg:p-8 space-y-6">
             
             {/* Top Profile Card */}
-            <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-6 shadow-sm">
+            <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-6 md:p-4 md:p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center gap-6 shadow-sm">
               <div className="relative shrink-0">
                 {data.employee.profileImage || data.employee.avatar ? (
                   <img src={data.employee.profileImage || data.employee.avatar} alt={data.employee.name} className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-indigo-50 dark:border-indigo-500/20 shadow-md" />
@@ -133,7 +133,7 @@ export default function EmployeeProfileModal({ isOpen, onClose, employeeId }: Em
 
               {/* Tasks List */}
               <div className="lg:col-span-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-6 shadow-sm h-[400px] flex flex-col">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-indigo-500" />
                     <h2 className="text-lg font-bold text-slate-800 dark:text-white">Active Tasks ({data.employee.assignedTasks?.length || 0})</h2>

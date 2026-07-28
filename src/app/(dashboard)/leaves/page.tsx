@@ -622,7 +622,8 @@ export default function LeavesPage() {
               </h2>
             </div>
             <div className="w-full overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-left border-collapse min-w-max">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-black/30 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-gray-400 border-b border-slate-200 dark:border-white/10">
                     {canManage && <th className="px-6 py-3">Employee</th>}
@@ -704,6 +705,7 @@ export default function LeavesPage() {
                   )}
                 </tbody>
               </table>
+</div>
             </div>
           </div>
         </div>

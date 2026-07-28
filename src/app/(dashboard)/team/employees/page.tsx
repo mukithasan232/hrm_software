@@ -42,6 +42,7 @@ interface Employee {
   remoteShiftStartTime?: string | null;
   remoteShiftEndTime?: string | null;
   verificationStatus?: string;
+  customDepartment?: { id: string; name: string } | null;
 }
 
 interface Designation {
@@ -308,10 +309,14 @@ export default function EmployeesPage() {
   };
 
   // ── Filtered list ──────────────────────────────────────────────────────────
-  const filtered = employees.filter(emp =>
-    emp.name.toLowerCase().includes(search.toLowerCase()) ||
-    emp.employeeId.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = employees.filter(emp => {
+    const matchesSearch = emp.name.toLowerCase().includes(search.toLowerCase()) ||
+                          emp.employeeId.toLowerCase().includes(search.toLowerCase());
+    const matchesDept = departmentFilter === 'All' || 
+                        emp.department === departmentFilter || 
+                        emp.customDepartment?.name === departmentFilter;
+    return matchesSearch && matchesDept;
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
@@ -387,7 +392,7 @@ export default function EmployeesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {filtered.map(emp => (
             <div
               key={emp.id}

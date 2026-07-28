@@ -51,23 +51,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    let where: any = {};
-    if (scope === 'all') {
-      where = {};
-    } else if (scope === 'department') {
-      const dbUser = await prisma.user.findUnique({ where: { id: mockReq.user.id } });
-      const depName = dbUser?.department;
-      
-      if (depName) {
-        where = {
-          assignedTo: { department: depName }
-        };
-      } else {
-        where = { assignedToId: mockReq.user.id };
-      }
-    } else {
-      where = { assignedToId: mockReq.user.id };
-    }
+    const { getScopedWhereClause } = await import('@/utils/checkPermission');
+    const where = getScopedWhereClause(mockReq.user, 'Tasks', 'read', 'assignedToId');
 
     // ── 3. Query ──────────────────────────────────────────────────────────────
     const tasks = await prisma.task.findMany({

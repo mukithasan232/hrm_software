@@ -53,13 +53,8 @@ export const GET = wrapHandler(async (req: any, res: any) => {
     };
 
     if (!isAdmin) {
-      if (readScope === 'all') {
-        // can view all
-      } else if (readScope === 'department') {
-        where.department = user.department || '';
-      } else {
-        where.id = user.id;
-      }
+      const scopeWhere = getScopedWhereClause(user, 'Employees', 'read');
+      Object.assign(where, scopeWhere);
     }
 
     const employees = await prisma.user.findMany({

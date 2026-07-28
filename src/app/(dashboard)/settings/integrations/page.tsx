@@ -115,7 +115,7 @@ function DeviceTab() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center animate-pulse">Loading settings...</div>;
+  if (loading) return <div className="p-4 md:p-6 lg:p-8 text-center animate-pulse">Loading settings...</div>;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -749,7 +749,7 @@ function AiConfigTab() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center animate-pulse">Loading AI configuration...</div>;
+  if (loading) return <div className="p-4 md:p-6 lg:p-8 text-center animate-pulse">Loading AI configuration...</div>;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">

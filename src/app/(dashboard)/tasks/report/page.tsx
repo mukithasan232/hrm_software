@@ -94,7 +94,8 @@ export default function TaskReportPage() {
 
             {analyticsData.tasks.length > 0 && (
               <div className="overflow-x-auto border border-slate-100 dark:border-white/5 rounded-xl mt-4">
-                <table className="w-full text-left text-sm whitespace-nowrap">
+                <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-left text-sm whitespace-nowrap min-w-max">
                   <thead className="bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Employee</th>
@@ -112,6 +113,7 @@ export default function TaskReportPage() {
                     ))}
                   </tbody>
                 </table>
+</div>
               </div>
             )}
           </div>

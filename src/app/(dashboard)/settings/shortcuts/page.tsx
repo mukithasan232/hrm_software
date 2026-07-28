@@ -112,7 +112,7 @@ export default function ShortcutsSettingsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {apps.length === 0 && (
-              <div className="col-span-full p-8 text-center text-slate-500 dark:text-gray-400 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-white/10">
+              <div className="col-span-full p-4 md:p-6 lg:p-8 text-center text-slate-500 dark:text-gray-400 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-white/10">
                 No connected apps found. Click "Add App" to create one.
               </div>
             )}

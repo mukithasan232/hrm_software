@@ -233,7 +233,8 @@ export default function RolesPage() {
         </div>
 
         <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[600px] text-left border-collapse">
+          <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full min-w-[600px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
                 <th className="py-3 px-4 text-xs font-bold text-slate-600 dark:text-gray-400 uppercase tracking-wider">Module</th>
@@ -268,6 +269,7 @@ export default function RolesPage() {
               ))}
             </tbody>
           </table>
+</div>
         </div>
       </div>
     </div>

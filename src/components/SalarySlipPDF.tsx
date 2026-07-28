@@ -23,7 +23,7 @@ export const SalarySlipPDF: React.FC<SalarySlipPDFProps> = ({ payroll, monthName
   return (
     <div 
       id={`payslip-${payroll.id}`}
-      className="bg-white text-slate-800 p-8 font-sans w-[800px] border border-slate-200"
+      className="bg-white text-slate-800 p-4 md:p-6 lg:p-8 font-sans w-[800px] border border-slate-200"
       style={{ boxSizing: 'border-box' }}
     >
       {/* Header */}
@@ -83,7 +83,8 @@ export const SalarySlipPDF: React.FC<SalarySlipPDFProps> = ({ payroll, monthName
 
       {/* Salary Details Table */}
       <div className="border border-slate-200 rounded-xl overflow-hidden mb-8">
-        <table className="w-full text-left border-collapse">
+        <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-left border-collapse min-w-max">
           <thead>
             <tr className="bg-slate-100 text-slate-600 text-xs font-bold uppercase border-b border-slate-200">
               <th className="px-5 py-3 font-semibold">Earnings & Allowances</th>
@@ -109,6 +110,7 @@ export const SalarySlipPDF: React.FC<SalarySlipPDFProps> = ({ payroll, monthName
             </tr>
           </tbody>
         </table>
+</div>
       </div>
 
       {/* Footer Details */}

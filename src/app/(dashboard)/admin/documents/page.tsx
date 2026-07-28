@@ -130,7 +130,8 @@ export default function DocumentReviewPage() {
           </div>
         ) : (
           <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-sm whitespace-nowrap">
+            <div className="w-full overflow-x-auto rounded-lg shadow-sm">
+<table className="w-full text-left text-sm whitespace-nowrap min-w-max">
               <thead className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
                 <tr className="text-slate-500 dark:text-slate-400 font-semibold tracking-wide">
                   <th className="px-6 py-4">Employee</th>
@@ -226,6 +227,7 @@ export default function DocumentReviewPage() {
                 )}
               </tbody>
             </table>
+</div>
           </div>
         )}
       </div>

@@ -104,7 +104,7 @@ export default function GlobalStreamPage() {
 
         <div className="space-y-4">
           {loading && stream.length === 0 ? (
-            <div className="flex justify-center p-8">
+            <div className="flex justify-center p-4 md:p-6 lg:p-8">
               <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
             </div>
           ) : stream.length === 0 ? (
