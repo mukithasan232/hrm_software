@@ -16,7 +16,7 @@ import { useTranslation } from '@/context/LanguageContext';
 import { getDisplayRole } from '@/utils/formatRole';
 import { useBreakTimer, BreakDepartment } from '@/hooks/useBreakTimer';
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
-import { io as socketIO } from 'socket.io-client';
+import { socket } from '@/lib/socket';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '') : '';
 
@@ -184,8 +184,6 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
       };
 
       // Add a universal socket listener for native browser notifications
-      const socket = socketIO({ path: '/socket.io', transports: ['websocket', 'polling'] });
-      
       socket.on('global_notification', (data: { title: string; body: string }) => {
         triggerNotification(data.title, data.body);
       });
@@ -193,7 +191,6 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
       return () => {
         eventSource.close();
         socket.off('global_notification');
-        socket.disconnect();
       };
     }
   }, [user, triggerNotification]);

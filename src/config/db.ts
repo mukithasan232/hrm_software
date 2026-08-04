@@ -1,19 +1,18 @@
 import { PrismaClient } from '@prisma/client';
-// ─── Persistence Guard ────────────────────────────────────────────────────────
-// Warn loudly at startup if DATABASE_URL is missing or looks like a local/temp
-// path that would be wiped on container restart (e.g. SQLite, in-memory).
-const rawDbUrl = process.env.DATABASE_URL || '';
-if (!rawDbUrl) {
-  console.error('🚨 [DB] CRITICAL: DATABASE_URL is not set! All data will be lost on restart.');
-} else if (rawDbUrl.startsWith('file:') || rawDbUrl.includes(':memory:') || rawDbUrl.includes('sqlite')) {
-  console.error('🚨 [DB] CRITICAL: DATABASE_URL appears to be a local SQLite/in-memory database.');
-  console.error('    On Coolify/Docker, the container filesystem is ephemeral.');
-  console.error('    ACTION REQUIRED: Configure a persistent MariaDB/MySQL/PostgreSQL volume');
-  console.error('    and point DATABASE_URL to it. Example:');
-  console.error('    DATABASE_URL="mysql://user:pass@mariadb-host:3306/hrm_database"');
+const rawDatabaseUrlString = process.env.DATABASE_URL || '';
+if (typeof window === 'undefined') {
+  if (!rawDatabaseUrlString) {
+    console.error('🚨 [DB] CRITICAL: DATABASE_URL is not set! All data will be lost on restart.');
+  } else if (rawDatabaseUrlString.startsWith('file:') || rawDatabaseUrlString.includes(':memory:') || rawDatabaseUrlString.includes('sqlite')) {
+    console.error('🚨 [DB] CRITICAL: DATABASE_URL appears to be a local SQLite/in-memory database.');
+    console.error('    On Coolify/Docker, the container filesystem is ephemeral.');
+    console.error('    ACTION REQUIRED: Configure a persistent MariaDB/MySQL/PostgreSQL volume');
+    console.error('    and point DATABASE_URL to it. Example:');
+    console.error('    DATABASE_URL="mysql://user:pass@mariadb-host:3306/hrm_database"');
+  }
 }
 
-const dbUrl = new URL(rawDbUrl || 'mysql://username:password@localhost:3306/hrm_database');
+const dbUrl = new URL(rawDatabaseUrlString || 'mysql://username:password@localhost:3306/hrm_database');
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 

@@ -8,7 +8,7 @@ import { Parser } from 'json2csv';
 import { eventEmitter } from '../lib/eventEmitter';
 
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
-import { startOfDay, endOfDay, subDays, subWeeks, subMonths } from 'date-fns';
+import { startOfDay, endOfDay, subDays, subWeeks, subMonths, differenceInMinutes } from 'date-fns';
 import { to12Hour } from '../lib/dateUtils';
 
 const BD_TZ = 'Asia/Dhaka';
@@ -644,16 +644,20 @@ export const getAttendanceLogs = async (req: Request, res: Response) => {
         }
 
         let durationMs = 0;
-        if (outTime) {
-          durationMs = outTime.getTime() - inTime.getTime();
-        }
-
         let durationStr = '--';
-        if (durationMs > 0) {
-          const mins = Math.floor(durationMs / 60000);
-          const h = Math.floor(mins / 60);
-          const m = mins % 60;
-          durationStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+        
+        if (outTime) {
+          const diffInMinutes = differenceInMinutes(outTime, inTime);
+          if (diffInMinutes > 0) {
+            durationMs = diffInMinutes * 60 * 1000;
+            const h = Math.floor(diffInMinutes / 60);
+            const m = diffInMinutes % 60;
+            durationStr = `${h}h ${m}m`;
+          } else {
+            // Failsafe for invalid chronological order (e.g. outTime is before inTime)
+            durationMs = 0;
+            durationStr = '0h 0m';
+          }
         }
 
         const isAutoCheckout = outTime && (outTime.getTime() === inTime.getTime() + 12 * 60 * 60 * 1000);
@@ -885,13 +889,13 @@ export const createManualLog = async (req: Request, res: Response): Promise<void
     let log: any;
     let created = false;
 
-    // 🚀 STRICT COOLDOWN PREVENTION (1 MINUTE)
+    // 🚀 STRICT COOLDOWN PREVENTION (5 MINUTES)
     if (lastOpenSession && lastOpenSession.timestamp && !isOverride) {
-      const COOLDOWN_MS = 60 * 1000;
+      const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
       const lastActionTime = new Date(lastOpenSession.timestamp).getTime();
 
       if (Date.now() - lastActionTime < COOLDOWN_MS) {
-        res.status(429).json({ message: 'Please wait at least 1 minute before punching again to prevent duplicate entries.' });
+        res.status(429).json({ message: 'Please wait at least 5 minutes before punching again to prevent duplicate entries.' });
         return;
       }
     }

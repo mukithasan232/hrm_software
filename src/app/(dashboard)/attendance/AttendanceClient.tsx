@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 import { toUTCFromBD, toBDDisplay, getBDNowLocal, getBDToday } from '@/lib/dateUtils';
 import { calculateWorkingHours } from '@/lib/timeUtils';
 import { exportToExcel, exportToPDF } from '@/lib/exportUtils';
-import { io as socketIO } from 'socket.io-client';
+import { socket } from '@/lib/socket';
 import Cookies from 'js-cookie';
 import { useAuth } from '@/context/AuthContext';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -319,14 +319,6 @@ function AttendancePageContent() {
     }, 10000);
 
     // Socket.IO: instant table refresh when any punch or sync fires
-    const socket = socketIO({ 
-      path: '/socket.io', 
-      transports: ['websocket', 'polling'],
-      auth: { token: Cookies.get('token') },
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
-    });
     socket.on('attendanceUpdate', () => {
       fetchLogs(true);
     });
@@ -336,7 +328,8 @@ function AttendancePageContent() {
 
     return () => {
       clearInterval(intervalId);
-      socket.disconnect();
+      socket.off('attendanceUpdate');
+      socket.off('new-attendance');
     };
   }, [dateRange, customStartDate, customEndDate, departmentFilter]);
 

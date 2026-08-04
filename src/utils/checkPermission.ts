@@ -281,6 +281,15 @@ export const getScopedWhereClause = async (
           // User model — filter directly by departmentId
           return { departmentId: dbUser.departmentId };
 
+        case 'announcements':
+        case 'announcement':
+          return {
+            OR: [
+              { targetType: 'GLOBAL' },
+              { targetType: 'DEPARTMENT', targetDepartment: dbUser.department || '' }
+            ]
+          };
+
         case 'tasks':
           // Task model — filter via assignedTo (User) relation
           return { assignedTo: { departmentId: dbUser.departmentId } };
@@ -315,6 +324,16 @@ export const getScopedWhereClause = async (
         case 'team':
           // User model — own record
           return { id: dbUser.id };
+
+        case 'announcements':
+        case 'announcement':
+          return {
+            OR: [
+              { targetType: 'GLOBAL' },
+              { targetType: 'DEPARTMENT', targetDepartment: dbUser.department || '' },
+              { targetType: 'INDIVIDUAL', targetUserId: dbUser.id }
+            ]
+          };
 
         case 'tasks':
           // Task model — own assigned tasks (FK: assignedToId)

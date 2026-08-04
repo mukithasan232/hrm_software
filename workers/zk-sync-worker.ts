@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import ZKLib from 'zkteco-js';
 import cron from 'node-cron';
 import dgram from 'dgram';
+import { fromZonedTime } from 'date-fns-tz';
 
 // Initialize standalone Prisma Client
 const prisma = new PrismaClient();
@@ -11,7 +12,7 @@ const prisma = new PrismaClient();
 const ZK_TIMEOUT = 40000;
 const ZK_INPORT = 0;
 const CONNECT_TIMEOUT_MS = 20000;
-const DEBOUNCE_MS = 10 * 60 * 1000;
+const DEBOUNCE_MS = 5 * 60 * 1000; // 5 minutes debounce
 const CROSS_MIDNIGHT_WINDOW_MS = 18 * 60 * 60 * 1000;
 const STALE_SESSION_MS = 14 * 60 * 60 * 1000;
 
@@ -50,14 +51,18 @@ const checkUdpPort = async (ip: string, port: number): Promise<boolean> => {
   });
 };
 
-const notifyDashboard = async () => {
+const notifyDashboard = async (newRecords?: any[]) => {
   try {
     const url = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    await fetch(`${url}/api/internal/punch-notify`, {
+    await fetch(`${url}/api/webhooks/zkteco-sync`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.API_SECRET_TOKEN || 'local_fallback_token'}`
-      }
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        secret: process.env.ZK_WEBHOOK_SECRET || '',
+        newRecords: newRecords || []
+      })
     });
   } catch (err: any) {
     console.warn('[Worker] Failed to notify dashboard:', err.message);
@@ -89,15 +94,24 @@ async function createZK(): Promise<InstanceType<typeof ZKLib>> {
 // ─── Core Logic ────────────────────────────────────────────────────────────
 export const parseDeviceTime = (deviceDateInput: any): Date => {
   if (!deviceDateInput) return new Date(NaN);
-  const deviceDate = new Date(deviceDateInput);
-  if (isNaN(deviceDate.getTime())) return new Date(NaN);
-  const y = deviceDate.getFullYear();
-  const m = String(deviceDate.getMonth() + 1).padStart(2, '0');
-  const d = String(deviceDate.getDate()).padStart(2, '0');
-  const h = String(deviceDate.getHours()).padStart(2, '0');
-  const min = String(deviceDate.getMinutes()).padStart(2, '0');
-  const s = String(deviceDate.getSeconds()).padStart(2, '0');
-  return new Date(`${y}-${m}-${d}T${h}:${min}:${s}+06:00`);
+  
+  // Format the input properly for date-fns-tz
+  let dateString = '';
+  if (deviceDateInput instanceof Date) {
+    if (isNaN(deviceDateInput.getTime())) return new Date(NaN);
+    const y = deviceDateInput.getFullYear();
+    const m = String(deviceDateInput.getMonth() + 1).padStart(2, '0');
+    const d = String(deviceDateInput.getDate()).padStart(2, '0');
+    const h = String(deviceDateInput.getHours()).padStart(2, '0');
+    const min = String(deviceDateInput.getMinutes()).padStart(2, '0');
+    const s = String(deviceDateInput.getSeconds()).padStart(2, '0');
+    dateString = `${y}-${m}-${d} ${h}:${min}:${s}`;
+  } else {
+    dateString = String(deviceDateInput);
+  }
+  
+  // Enforce Asia/Dhaka (+06:00) timezone safely without manual concatenation
+  return fromZonedTime(dateString, 'Asia/Dhaka');
 };
 
 export async function resolvePunchType(
@@ -267,6 +281,10 @@ const syncZkTecoData = async () => {
         await processBiometricPunch(log.employeeId, log.recordTime, currentZkIp);
       } catch (err) { }
     }
+    
+    if (newLogsToProcess.length > 0) {
+      await notifyDashboard(newLogsToProcess);
+    }
     console.log(`[Worker] Cron Sync Complete. Processed ${newLogsToProcess.length} new punches.`);
   } catch (err: any) {
     console.error('[Worker] Cron Sync Error:', err.message);
@@ -343,7 +361,7 @@ const connectAndListen = async () => {
           console.log(`[Worker] Processed live punch for ${user.name} at ${parsedTimestamp.toISOString()}`);
           
           // Emit socket update to dashboard
-          notifyDashboard();
+          notifyDashboard([{ employeeId: user.id, recordTime: parsedTimestamp }]);
         } catch (err: any) {
           console.error(`[Worker] Live punch error:`, err.message);
         }

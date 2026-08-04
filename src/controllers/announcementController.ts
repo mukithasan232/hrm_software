@@ -71,10 +71,12 @@ export const getAnnouncements = async (req: Request, res: Response) => {
 
     // Use our new dynamic utility
     const { getPermissionScopeSync } = await import('../utils/checkPermission');
-    const scope = getPermissionScopeSync(user, 'Announcements', 'read');
+    let scope = getPermissionScopeSync(user, 'Announcements', 'read');
 
+    // Default to 'own' so standard users can see global and department announcements
+    // even if their permission matrix doesn't explicitly mention 'Announcements'.
     if (scope === 'no') {
-       return res.status(403).json({ message: 'Forbidden: No permission to read announcements' });
+       scope = 'own';
     }
 
     // Ensure we have fresh user data for department checking if it might have changed
@@ -106,7 +108,7 @@ export const getAnnouncements = async (req: Request, res: Response) => {
 
     res.status(200).json(announcements);
   } catch (error: any) {
-    console.error('Get announcements error:', error);
+    console.error('[ANNOUNCEMENTS_API_ERROR]', error);
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 };

@@ -37,7 +37,7 @@ import api from "@/services/api";
 import toast from "react-hot-toast";
 import { useTranslation } from "@/context/LanguageContext";
 import { toBDDisplay, getBDToday } from "@/lib/dateUtils";
-import { io as socketIO } from "socket.io-client";
+import { socket } from "@/lib/socket";
 import Cookies from "js-cookie";
 import { usePermissions } from "@/hooks/usePermissions";
 import dynamic from 'next/dynamic';
@@ -281,20 +281,13 @@ export default function DashboardOverview() {
         pollLiveActivity();
       }, 30000);
 
-      const socket = socketIO({
-        path: "/socket.io",
-        transports: ["websocket", "polling"],
-        auth: { token: Cookies.get('token') },
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 2000,
-      });
       socket.on("attendanceUpdate", () => pollLiveActivity());
       socket.on("new-attendance", () => pollLiveActivity());
 
       return () => {
         clearInterval(intervalId);
-        socket.disconnect();
+        socket.off("attendanceUpdate");
+        socket.off("new-attendance");
       };
     }
   }, [user, selectedDate]);

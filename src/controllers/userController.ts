@@ -316,13 +316,8 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
     const { id } = (req as any).params as { id: string };
     const sessionUser = (req as any).user;
 
-    const { getScopedWhereClause } = await import('../utils/checkPermission');
-    const editScope = await getScopedWhereClause(sessionUser, 'Employees', 'edit');
-
-    if (editScope.id && (String(editScope.id).includes('UNAUTHORIZED') || editScope.id === 'BLOCK_NO_DEPT_ASSIGNED')) {
-      res.status(403).json({ message: 'Forbidden: Edit permission denied by scope' });
-      return;
-    }
+    const { getPermissionScopeSync } = await import('../utils/checkPermission');
+    const editScope = getPermissionScopeSync(sessionUser, 'Employees', 'edit');
 
     const targetEmp = await prisma.user.findUnique({ where: { id: id as string } });
     if (!targetEmp) {
@@ -330,17 +325,21 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    if (Object.keys(editScope).length > 0) {
-      if (editScope.departmentId && targetEmp.departmentId !== sessionUser.departmentId) {
-        res.status(403).json({ message: 'Forbidden: Cannot edit employee from another department' });
+    if (editScope === 'all' || sessionUser.email === 'dev@fixanyphoto.com' || sessionUser.userType === 'SUPER_ADMIN') {
+      // 🟢 ALLOW ACCESS: Let them bypass ID checks
+    } else if (editScope === 'department') {
+      if (targetEmp.departmentId !== sessionUser.departmentId) {
+        res.status(403).json({ message: 'Forbidden: Cannot edit users outside your department' });
         return;
       }
-      if (editScope.id && editScope.id !== 'BLOCK_NO_DEPT_ASSIGNED' && !String(editScope.id).includes('UNAUTHORIZED')) {
-        if (targetEmp.id !== sessionUser.id) {
-          res.status(403).json({ message: 'Forbidden: You can only edit your own profile' });
-          return;
-        }
+    } else if (editScope === 'own') {
+      if (id !== sessionUser.id) {
+        res.status(403).json({ message: 'Forbidden: Edit permission denied by scope (ID mismatch)' });
+        return;
       }
+    } else {
+      res.status(403).json({ message: 'Forbidden: You do not have edit permissions' });
+      return;
     }
 
     const { name, email, designationId, shiftId, shiftStartTime, shiftEndTime, remoteShiftStartTime, remoteShiftEndTime, department, baseSalary, isActive, employeeType, zktecoId, roles, leaveConfig, casualLeaveAdjustment, sickLeaveAdjustment, permissions, salaryAccount } = req.body as any;

@@ -204,7 +204,11 @@ export const exportToPDF = async (
         checkOutTime = 'Missing';
       }
 
-      const totalHours = formatMs(summary.totalValidMs);
+      let totalHours = formatMs(summary.totalValidMs);
+      // STRICT RULE: If checkOutTime is null, undefined, or "Missing", return "0h 0m"
+      if (checkOutTime.includes('Missing')) {
+        totalHours = '0h 0m';
+      }
       
       tableData.push([empName, dateStr, checkInTime, checkOutTime, totalHours]);
     } else {
@@ -224,7 +228,11 @@ export const exportToPDF = async (
         checkOutTime = 'Missing';
       }
 
-      const totalHours = formatMs(summary.totalValidMs);
+      let totalHours = formatMs(summary.totalValidMs);
+      // STRICT RULE: If checkOutTime is null, undefined, or "Missing", return "0h 0m"
+      if (checkOutTime.includes('Missing')) {
+        totalHours = '0h 0m';
+      }
       
       tableData.push([empName, dateStr, checkInTime, checkOutTime, totalHours]);
     }
