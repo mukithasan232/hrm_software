@@ -4,6 +4,7 @@ import {
   Plus, Search, Mail, Briefcase, Building2, Edit2,
   UserX, UserCheck, X, Save, ChevronDown, Trash2, Loader2, Shield
 } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -274,13 +275,12 @@ export default function EmployeesPage() {
               )}
 
               <div className="flex items-start justify-between">
-                {emp.profileImage ? (
-                  <img src={`${BACKEND}${emp.profileImage}`} alt={emp.name} className="h-12 w-12 rounded-full object-cover border-2 border-slate-200 dark:border-white/10" />
-                ) : (
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
-                    {initials(emp.name)}
-                  </div>
-                )}
+                <Avatar 
+                  src={emp.profileImage} 
+                  name={emp.name} 
+                  className="h-12 w-12 rounded-full object-cover border-2 border-slate-200 dark:border-white/10" 
+                  fallbackClassName="h-12 w-12 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-base flex-shrink-0"
+                />
                 <span className="px-2 py-0.5 bg-slate-100 dark:bg-black/30 text-xs rounded-lg text-slate-500 dark:text-gray-400 font-mono font-medium">{emp.employeeId}</span>
               </div>
 

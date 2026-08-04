@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
 import { LogOut, CheckCircle2 } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 import { format } from 'date-fns';
 
 interface CheckedOutEmployee {
@@ -65,13 +66,12 @@ export default function CheckedOutWidget() {
             {checkedOutEmployees.map((emp) => (
               <div key={emp.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors">
                 <div className="flex items-center gap-3">
-                  {emp.avatar ? (
-                    <img src={`${BACKEND}${emp.avatar}`} alt={emp.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-                      {emp.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  <Avatar 
+                    src={emp.avatar} 
+                    name={emp.name} 
+                    className="w-10 h-10 rounded-full object-cover shadow-sm" 
+                    fallbackClassName="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-sm shadow-sm"
+                  />
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white">{emp.name}</p>
                     <p className="text-xs text-slate-500 capitalize">{emp.designation}</p>

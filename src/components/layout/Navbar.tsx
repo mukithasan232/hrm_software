@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useDetailsStore } from '@/store/useDetailsStore';
 import { useAuth } from '@/context/AuthContext';
-import { Menu, Bell, Settings, LogOut, Paintbrush, HardDrive, Plug, Volume2, Clock, LayoutGrid, Plus, ExternalLink, X } from 'lucide-react';
+import { LogOut, Bell, Menu, Sun, Moon, Search, X, CheckCheck, MapPin, Building, Activity, User, Shield, Settings, Paintbrush, HardDrive, Plug, Volume2, Clock, LayoutGrid, Plus, ExternalLink } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 import Link from 'next/link';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
@@ -228,8 +229,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
     ? filteredNotifications.filter(n => !n.read) 
     : filteredNotifications;
 
-  const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
-  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
 
   const handleNotificationClick = (notif: any) => {
     setSelectedNotification(notif);
@@ -437,20 +437,12 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
             onClick={() => setShowProfile(!showProfile)}
             className={`flex items-center gap-2 p-1 rounded-full transition-all ${showProfile ? 'ring-2 ring-brand-primary/60' : ''}`}
           >
-            {avatarSrc && !imgError ? (
-              <img 
-                src={avatarSrc} 
-                alt="avatar" 
-                className="h-8 w-8 rounded-full object-cover border-2 border-slate-200 dark:border-white/20" 
-                onError={() => setImgError(true)}
-              />
-            ) : (
-              <div
-                className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white/20 bg-gradient-to-tr from-brand-primary to-brand-secondary"
-              >
-                {initials}
-              </div>
-            )}
+            <Avatar 
+              src={user?.profileImage} 
+              name={user?.name} 
+              className="h-8 w-8 rounded-full object-cover border-2 border-slate-200 dark:border-white/20" 
+              fallbackClassName="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white/20 bg-gradient-to-tr from-brand-primary to-brand-secondary"
+            />
           </button>
 
           {showProfile && (

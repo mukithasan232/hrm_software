@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useBrand } from '@/context/BrandContext';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/context/LanguageContext';
+import Avatar from '@/components/ui/Avatar';
 import PasswordInputWithValidator from '@/components/ui/PasswordInputWithValidator';
 import VirtualIDCard from '@/components/VirtualIDCard';
 
@@ -297,18 +298,12 @@ export default function ProfilePage() {
         <div className="lg:col-span-1 space-y-6">
           <div className="print-hide bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 text-center space-y-4 shadow-sm dark:shadow-2xl">
             <div className="relative inline-block">
-              {avatarSrc && !imgError ? (
-                <img
-                  src={avatarSrc}
-                  alt="Profile"
-                  onError={() => setImgError(true)}
-                  className="h-28 w-28 rounded-full object-cover object-top border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto"
-                />
-              ) : (
-                <div className="h-28 w-28 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto bg-gradient-to-tr from-brand-primary to-brand-secondary">
-                  {initials}
-                </div>
-              )}
+              <Avatar 
+                src={preview || user?.profileImage} 
+                name={user?.name} 
+                className="h-28 w-28 rounded-full object-cover object-top border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto" 
+                fallbackClassName="h-28 w-28 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-slate-200 dark:border-white/10 shadow-2xl mx-auto bg-gradient-to-tr from-brand-primary to-brand-secondary"
+              />
               <button
                 onClick={() => fileRef.current?.click()}
                 className="absolute bottom-0 right-0 p-2 rounded-full border-2 border-white dark:border-slate-900 transition-colors shadow-md text-white bg-brand-primary"

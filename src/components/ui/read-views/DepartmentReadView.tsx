@@ -1,5 +1,6 @@
 import React from 'react';
-import { Clock, Coffee, Users, Building2, CalendarRange } from 'lucide-react';
+import { Building2, Users, Clock, Coffee, CalendarRange, Loader2, Info } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 
 export default function DepartmentReadView({ id, initialData }: { id: string | number | null, initialData: any }) {
   if (!initialData) {
@@ -86,17 +87,12 @@ export default function DepartmentReadView({ id, initialData }: { id: string | n
                 key={idx}
                 className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
               >
-                {emp.profileImage ? (
-                  <img
-                    src={`${BACKEND}${emp.profileImage}`}
-                    alt={emp.name}
-                    className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-white/10"
-                  />
-                ) : (
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                    {emp.name?.charAt(0)?.toUpperCase()}
-                  </div>
-                )}
+                <Avatar 
+                  src={emp.profileImage} 
+                  name={emp.name} 
+                  className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-white/10 flex-shrink-0" 
+                  fallbackClassName="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{emp.name}</p>
                   <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">

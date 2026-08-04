@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { User, Mail, Building2, Briefcase, KeyRound, CalendarDays, Hash, CheckCircle, Loader2, FileText } from 'lucide-react';
+import { Mail, Phone, MapPin, CalendarDays, Briefcase, Hash, Clock, CreditCard, Building, Building2, User, Key, Lock, ChevronDown, Check, KeyRound, FileText, Loader2, CheckCircle } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -82,17 +83,12 @@ export default function EmployeeReadView({ id, initialData }: { id: string | num
     <div className="space-y-6">
       {/* Profile Header */}
       <div className="flex flex-col items-center sm:flex-row sm:items-start gap-5 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-white/10">
-        {emp.profileImage ? (
-          <img
-            src={`${BACKEND}${emp.profileImage}`}
-            alt={emp.name}
-            className="h-24 w-24 rounded-full object-cover border-4 border-slate-50 dark:border-slate-700 shadow-md"
-          />
-        ) : (
-          <div className="h-24 w-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-3xl shadow-md flex-shrink-0">
-            {emp.name?.charAt(0)?.toUpperCase()}
-          </div>
-        )}
+        <Avatar 
+          src={emp.profileImage} 
+          name={emp.name} 
+          className="h-24 w-24 rounded-full object-cover border-4 border-slate-50 dark:border-slate-700 shadow-md" 
+          fallbackClassName="h-24 w-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-3xl shadow-md flex-shrink-0"
+        />
 
         <div className="text-center sm:text-left flex-1 mt-2 sm:mt-0">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white capitalize">{emp.name}</h2>

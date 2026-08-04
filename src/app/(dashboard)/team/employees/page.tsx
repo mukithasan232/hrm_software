@@ -4,8 +4,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Search, Building2, User, Mail, UploadCloud, X,
-  RefreshCw, Key, Pencil, Trash2, AlertTriangle, Link as LinkIcon, Loader2, Send, Shield
+  RefreshCw, Key,  Building, CreditCard, ChevronDown, Activity, ListFilter, SlidersHorizontal, Loader2, ArrowRight
 } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 import { useDeviceSync } from '@/hooks/useDeviceSync';
@@ -404,17 +405,12 @@ export default function EmployeesPage() {
             >
               {/* Top row: avatar + badge */}
               <div className="flex items-start justify-between">
-                {emp.profileImage ? (
-                  <img
-                    src={`${BACKEND}${emp.profileImage}`}
-                    alt={emp.name}
-                    className="h-12 w-12 rounded-full object-cover border-2 border-slate-100 dark:border-white/10"
-                  />
-                ) : (
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-brand-primary to-brand-secondary flex items-center justify-center text-white font-bold text-base shadow-inner flex-shrink-0">
-                    {emp.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
+                <Avatar 
+                  src={emp.profileImage} 
+                  name={emp.name} 
+                  className="h-12 w-12 rounded-full object-cover border-2 border-slate-100 dark:border-white/10" 
+                  fallbackClassName="h-12 w-12 rounded-full bg-gradient-to-tr from-brand-primary to-brand-secondary flex items-center justify-center text-white font-bold text-base shadow-inner flex-shrink-0"
+                />
                 <div className="flex flex-col items-end gap-1">
                   <span className="px-2.5 py-1 bg-slate-100 dark:bg-black/30 text-[10px] uppercase tracking-wider rounded-lg text-slate-500 dark:text-gray-400 font-bold border border-slate-200 dark:border-white/5">
                     {emp.employeeId}

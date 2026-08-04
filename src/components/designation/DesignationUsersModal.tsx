@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X, Trash2, Plus, Users, Loader2 } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -157,13 +158,12 @@ export default function DesignationUsersModal({
                 {currentUsers.map(user => (
                   <div key={user.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                     <div className="flex items-center gap-3">
-                      {user.profileImage ? (
-                        <img src={`${BACKEND}${user.profileImage}`} alt={user.name} className="w-9 h-9 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm">
-                          {user.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
+                      <Avatar 
+                        src={user.profileImage} 
+                        name={user.name} 
+                        className="w-9 h-9 rounded-full object-cover" 
+                        fallbackClassName="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-sm"
+                      />
                       <div>
                         <p className="text-sm font-bold text-slate-800 dark:text-white">{user.name}</p>
                         <p className="text-xs text-slate-500">{user.employeeId} • {user.email}</p>

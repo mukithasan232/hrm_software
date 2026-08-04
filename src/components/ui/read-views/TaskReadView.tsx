@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, User, Clock, Paperclip, CheckCircle2, AlertCircle, MessageSquare, Send, Activity, Info, MoreHorizontal } from 'lucide-react';
+import { Calendar, User, Clock, Paperclip, CheckCircle2, AlertCircle, MessageSquare, Send, Activity, Info, MoreHorizontal, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
+import Avatar from '@/components/ui/Avatar';
 
 export default function TaskReadView({ id, initialData }: { id: string | number | null, initialData: any }) {
   if (!initialData) {
@@ -204,13 +205,12 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
             {comments && comments.length > 0 ? (
               comments.map((msg: any, idx: number) => (
                 <div key={idx} className="flex gap-3">
-                  <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-sm font-bold text-slate-600 overflow-hidden">
-                    {msg.user?.profileImage ? (
-                      <img src={`${BACKEND}${msg.user.profileImage}`} alt={msg.user.name} className="w-full h-full object-cover" />
-                    ) : (
-                      msg.user?.name ? msg.user.name.substring(0, 2).toUpperCase() : 'U'
-                    )}
-                  </div>
+                  <Avatar 
+                    src={msg.user?.profileImage} 
+                    name={msg.user?.name} 
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0" 
+                    fallbackClassName="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-sm font-bold text-slate-600 overflow-hidden"
+                  />
                   <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl rounded-tl-none w-full shadow-sm">
                     <p className="text-sm text-slate-700">{msg.text}</p>
                     <span className="text-[10px] text-slate-400 mt-2 block">
@@ -226,17 +226,12 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
 
           {/* Chat Input Box */}
           <div className="flex gap-3 items-end">
-            {currentUser?.profileImage || (currentUser as any)?.avatar ? (
-              <img 
-                src={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}${currentUser?.profileImage || (currentUser as any)?.avatar}`} 
-                alt={currentUser?.name || 'User'} 
-                className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm flex-shrink-0" 
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-sm font-bold text-blue-700 shadow-sm border border-blue-200">
-                {currentUser?.name ? currentUser.name.substring(0, 2).toUpperCase() : 'U'}
-              </div>
-            )}
+            <Avatar 
+              src={currentUser?.profileImage || (currentUser as any)?.avatar} 
+              name={currentUser?.name} 
+              className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm flex-shrink-0" 
+              fallbackClassName="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-sm font-bold text-blue-700 shadow-sm border border-blue-200"
+            />
             <div className="relative flex-1 border border-slate-300 rounded-xl bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
               <textarea
                 value={comment}
@@ -285,13 +280,12 @@ export default function TaskReadView({ id, initialData }: { id: string | number 
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Assignee</p>
           <div className="flex items-center gap-3">
-            {task.assignedUser?.profileImage ? (
-              <img src={`${BACKEND}${task.assignedUser.profileImage}`} alt={task.assignedUser.name} className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-600" />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
-                {task.assignedUser?.name?.charAt(0)?.toUpperCase() || '?'}
-              </div>
-            )}
+            <Avatar 
+              src={task.assignedUser?.profileImage} 
+              name={task.assignedUser?.name} 
+              className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-600" 
+              fallbackClassName="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center border border-blue-200 dark:border-blue-800"
+            />
             <div>
               <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
                 {task.assignedUser?.name || 'Unassigned'}

@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </div>
       <GlobalDetailsDrawer />
-      <AIChatWidget />
+      {process.env.NEXT_PUBLIC_ENABLE_CHATBOT === 'true' && <AIChatWidget />}
     </ProtectedRoute>
   );
 }

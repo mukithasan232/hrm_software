@@ -197,10 +197,9 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 
     const reqFile = (req as any).file;
     if (reqFile) {
-      if (reqFile.avatar) {
-        data.profileImage = reqFile.avatar.path;
-      } else if (reqFile.filename) {
-        data.profileImage = `/uploads/avatars/${reqFile.filename}`;
+      const filename = reqFile.avatar?.filename || reqFile.filename || (reqFile.avatar?.path ? reqFile.avatar.path.split('/').pop() : null);
+      if (filename) {
+        data.profileImage = `/uploads/avatars/${filename}`;
       }
     }
 

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Clock, AlertCircle } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 
 interface LateEmployee {
   id: string;
@@ -57,13 +58,12 @@ export default function LateTodayWidget({ lateList = [] }: { lateList?: any[] })
             {lateEmployees.map((emp) => (
               <div key={emp.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors">
                 <div className="flex items-center gap-3">
-                  {emp.avatar ? (
-                    <img src={`${BACKEND}${emp.avatar}`} alt={emp.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-                      {emp.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  <Avatar 
+                    src={emp.avatar} 
+                    name={emp.name} 
+                    className="w-10 h-10 rounded-full object-cover" 
+                    fallbackClassName="w-10 h-10 rounded-full bg-orange-100 text-orange-600 font-bold flex items-center justify-center text-sm"
+                  />
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white">{emp.name}</p>
                     <p className="text-xs text-slate-500 capitalize">{emp?.designation?.name || emp?.designation || 'N/A'}</p>

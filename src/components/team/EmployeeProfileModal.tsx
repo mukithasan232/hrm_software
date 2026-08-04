@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Mail, Briefcase, Clock, CalendarDays, CheckCircle2, MapPin, X, RefreshCw } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
+import Avatar from '@/components/ui/Avatar';
 import api from '@/services/api';
 import Link from 'next/link';
 
@@ -65,13 +66,12 @@ export default function EmployeeProfileModal({ isOpen, onClose, employeeId }: Em
             {/* Top Profile Card */}
             <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-6 md:p-4 md:p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center gap-6 shadow-sm">
               <div className="relative shrink-0">
-                {data.employee.profileImage || data.employee.avatar ? (
-                  <img src={data.employee.profileImage || data.employee.avatar} alt={data.employee.name} className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-indigo-50 dark:border-indigo-500/20 shadow-md" />
-                ) : (
-                  <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center text-4xl md:text-5xl font-bold shadow-md">
-                    {data.employee.name.charAt(0)}
-                  </div>
-                )}
+                <Avatar 
+                  src={data.employee.profileImage || data.employee.avatar} 
+                  name={data.employee.name} 
+                  className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-indigo-50 dark:border-indigo-500/20 shadow-md"
+                  fallbackClassName="w-24 h-24 md:w-32 md:h-32 rounded-full text-white flex items-center justify-center text-4xl md:text-5xl font-bold shadow-md"
+                />
                 <div className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white dark:border-gray-900 ${data.employee.isActive ? 'bg-emerald-500' : 'bg-red-500'}`} title={data.employee.isActive ? 'Active' : 'Inactive'} />
               </div>
               <div className="flex-1 min-w-0">

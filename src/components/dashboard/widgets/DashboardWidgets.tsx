@@ -5,6 +5,7 @@ import { LogIn, LogOut, Clock, UserMinus, CalendarRange, CalendarCheck2, Megapho
 import { toBDDisplay, getBDToday } from '@/lib/dateUtils';
 import { useLiveOfficeHour } from '@/hooks/useLiveOfficeHour';
 import dynamic from 'next/dynamic';
+import Avatar from '@/components/ui/Avatar';
 
 const WeeklyChart = dynamic(() => import('@/components/charts/WeeklyChart'), { ssr: false });
 const LateTodayWidget = dynamic(() => import('@/components/dashboard/LateTodayWidget'), { ssr: false });
@@ -67,13 +68,12 @@ export const PunchStatusWidget = ({ isCompact, data }: { isCompact: boolean, dat
                  {data.presentEmployees.map((emp: any) => (
                    <tr key={emp.id} className="border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                      <td className="py-3 flex items-center gap-3">
-                       {emp.avatar ? (
-                         <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" />
-                       ) : (
-                         <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-200 dark:border-indigo-500/30">
-                           {emp.name.charAt(0)}
-                         </div>
-                       )}
+                       <Avatar 
+                          src={emp.avatar} 
+                          name={emp.name} 
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" 
+                          fallbackClassName="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-xs border border-indigo-200 dark:border-indigo-500/30"
+                        />
                        <span className="font-medium text-slate-800 dark:text-slate-200">{emp.name}</span>
                      </td>
                      <td className="py-3 text-slate-500 dark:text-slate-400 hidden sm:table-cell">{emp?.designation?.name || emp?.designation || 'N/A'}</td>
@@ -197,13 +197,12 @@ export const AbsentDaysWidget = ({ isCompact, data }: { isCompact: boolean, data
                    <tr key={emp.id} className="border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group cursor-pointer relative">
                      <td className="py-3 flex items-center gap-3">
                        <Link href={`/dashboard/team/employees`} className="absolute inset-0 z-0" />
-                       {emp.profileImage || emp.avatar ? (
-                         <img src={emp.profileImage || emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 relative z-10" />
-                       ) : (
-                         <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-xs border border-orange-200 dark:border-orange-500/30 relative z-10">
-                           {emp.name?.charAt(0) || '?'}
-                         </div>
-                       )}
+                       <Avatar 
+                          src={emp.profileImage || emp.avatar} 
+                          name={emp.name} 
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 relative z-10" 
+                          fallbackClassName="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30 relative z-10"
+                        />
                        <div className="flex flex-col min-w-0 relative z-10">
                          <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{emp.name}</span>
                          <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
@@ -710,13 +709,12 @@ export const TopLatePersonsWidget = ({ isCompact, data }: { isCompact: boolean, 
                   <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 font-bold text-[10px] flex items-center justify-center">
                     #{idx + 1}
                   </div>
-                  {emp.avatar ? (
-                    <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold text-xs flex items-center justify-center">
-                      {emp.name?.charAt(0) || '?'}
-                    </div>
-                  )}
+                  <Avatar 
+                    src={emp.avatar} 
+                    name={emp.name} 
+                    className="w-8 h-8 rounded-full object-cover" 
+                    fallbackClassName="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold text-xs flex items-center justify-center"
+                  />
                   <div className="flex flex-col">
                     <span className="font-semibold text-sm text-slate-800 dark:text-white">{emp.name}</span>
                     <span className="text-[10px] text-slate-500">{emp.department}</span>

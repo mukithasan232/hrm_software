@@ -60,6 +60,25 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const [logoError, setLogoError] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const savedState = localStorage.getItem('sidebarCollapsed');
+    if (savedState) {
+      try {
+        setIsCollapsed(JSON.parse(savedState));
+      } catch (e) {}
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsCollapsed(prev => {
+      const newState = !prev;
+      localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
+      return newState;
+    });
+  };
 
   const collapsed = !mobileOpen && isCollapsed;
 
@@ -124,8 +143,6 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   });
   const canSeeReports = filteredReportsItems.length > 0;
 
-  const avatarSrc = user?.profileImage ? `${BACKEND}${user.profileImage}` : null;
-  const initials = user?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
   const hasSettingsPermission = isSuperAdmin || checkPermission(user, 'manage_system_settings', 'view');
 
@@ -176,7 +193,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               onError={() => setLogoError(true)}
             />
           ) : (
-            <span className="text-slate-800 dark:text-white font-extrabold text-2xl tracking-widest block py-2 text-center leading-tight">
+            <span className="text-slate-800 dark:text-white font-extrabold text-lg sm:text-2xl tracking-widest block py-1 sm:py-2 text-center leading-tight truncate w-full max-w-[140px] h-8 flex items-center overflow-hidden">
               {brand?.companyName || 'FIX ANY PHOTO'}
             </span>
           )}
@@ -196,7 +213,8 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       <div className="flex-1 overflow-y-auto w-full">
         <nav className="px-3 mt-4 space-y-1">
           {menusToRender.map(item => {
-            const isActive = pathname === item.href || (item.href !== '/' && (pathname?.startsWith(item.href) ?? false));
+            const basePath = item.href.split('?')[0];
+            const isActive = pathname === basePath || (basePath !== '/' && (pathname?.startsWith(basePath) ?? false));
             const Icon = item.icon;
             return (
               <Link
@@ -439,7 +457,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         {/* Toggle Button for Desktop - Moved to Bottom */}
         {!mobileOpen && (
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={toggleSidebar}
             className="p-2.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-200 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/10 transition-all flex items-center justify-center w-full"
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
@@ -460,7 +478,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     </div>
   );
 
-  if (loading) {
+  if (loading || !isMounted) {
     return (
       <aside className={`hidden md:flex ${isCollapsed ? 'w-20' : 'w-64'} border-r border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-black/40 backdrop-blur-lg flex-col h-screen flex-shrink-0 transition-all duration-300 ease-in-out z-40`}>
         <div className="flex flex-col h-full animate-pulse p-4 space-y-4">

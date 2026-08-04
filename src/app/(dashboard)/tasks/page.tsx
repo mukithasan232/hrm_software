@@ -7,6 +7,7 @@ import {
   DragDropContext, Droppable, Draggable, DropResult,
 } from '@hello-pangea/dnd';
 import { UploadCloud, File, Trash, Edit3, X, Paperclip, MessageSquare, AlertCircle, Clock, CheckCircle2, ChevronDown, Hourglass, Plus, Filter, Search, Circle, LayoutDashboard, LayoutList, Pencil, Trash2, CalendarDays, User as UserIcon, Flag, AlertTriangle, BarChart3, Loader2, CheckSquare } from 'lucide-react';
+import UIAvatar from '@/components/ui/Avatar';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { CustomDropdown } from '@/components/ui/CustomDropdown';
 import api from '@/services/api';
@@ -91,15 +92,13 @@ function PriorityBadge({ priority }: { priority: TaskPriority }) {
 }
 
 function Avatar({ user }: { user: AssignedUser }) {
-  const src = user.profileImage ? `${BACKEND}${user.profileImage}` : null;
-  const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
-  if (src) {
-    return <img src={src} alt={user.name} className="w-7 h-7 rounded-full object-cover border border-white/10 flex-shrink-0" />;
-  }
   return (
-    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold bg-gradient-to-tr from-indigo-500 to-purple-500 flex-shrink-0 border border-white/10">
-      {initials}
-    </div>
+    <UIAvatar 
+      src={user.profileImage} 
+      name={user.name} 
+      className="w-7 h-7 rounded-full object-cover border border-white/10 flex-shrink-0" 
+      fallbackClassName="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold bg-gradient-to-tr from-indigo-500 to-purple-500 flex-shrink-0 border border-white/10"
+    />
   );
 }
 

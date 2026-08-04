@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import api from '@/services/api';
 import { CheckCircle2, Clock, CalendarRange, Activity, LogOut } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 import PageGuard from '@/components/auth/PageGuard';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -125,17 +126,12 @@ export default function GlobalStreamPage() {
                   <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="flex items-center gap-2">
-                        {item.user?.profileImage || (item.user as any)?.avatar ? (
-                          <img
-                            src={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}${item.user.profileImage || (item.user as any).avatar}`}
-                            alt={item.user.name}
-                            className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-600"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                            {item.user?.name ? item.user.name.substring(0, 2).toUpperCase() : 'U'}
-                          </div>
-                        )}
+                        <Avatar 
+                          src={item.user?.profileImage || (item.user as any)?.avatar} 
+                          name={item.user?.name} 
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-600" 
+                          fallbackClassName="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                        />
                         <div>
                           <p className="text-sm font-semibold text-slate-900 dark:text-white leading-none mb-1">
                             {item.user?.name || 'Unknown User'}
