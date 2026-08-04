@@ -15,7 +15,7 @@ const BACKEND = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_UR
 
 const EMPTY_FORM = {
   employeeId: '', name: '', email: '', password: 'password123',
-  department: 'Engineering', designationId: '', baseSalary: '', employeeType: 'IN_HOUSE', zktecoId: ''
+  department: '', designationId: '', baseSalary: '', employeeType: 'IN_HOUSE', zktecoId: ''
 };
 
 const DESIGNATION_COLORS: Record<string, string> = {
@@ -85,7 +85,7 @@ export default function EmployeesPage() {
       email: emp.email || '',
       password: '',
       designationId: emp.designationId || '',
-      department: emp.department || 'Engineering',
+      department: emp.department || '',
       employeeType: emp.employeeType || 'IN_HOUSE',
       baseSalary: emp.baseSalary?.toString() || '',
       zktecoId: emp.zktecoId?.toString() || '',

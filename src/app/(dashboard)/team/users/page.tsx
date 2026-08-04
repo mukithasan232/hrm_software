@@ -54,7 +54,7 @@ const EMPTY_FORM = {
   shiftEndTime: '',
   shift2Start: '',
   shift2End: '',
-  department: 'Engineering',
+  department: '',
   employeeType: 'IN_HOUSE',
   zktecoId: '',
   sendEmail: true,
@@ -287,7 +287,7 @@ export default function TeamUsersPage() {
       shiftEndTime: u.shiftEndTime || '',
       shift2Start: u.remoteShiftStartTime || u.shift2Start || '',
       shift2End: u.remoteShiftEndTime || u.shift2End || '',
-      department: u.department || 'Engineering',
+      department: u.department || '',
       employeeType: u.employeeType || 'IN_HOUSE',
       zktecoId: u.zktecoId?.toString() || '',
       sendEmail: false, // hidden on edit anyway
@@ -875,6 +875,11 @@ export default function TeamUsersPage() {
                             className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-medium pr-8"
                           >
                             <option value="" className="bg-white dark:bg-slate-900">— Select Department —</option>
+                            {form.department && !departments?.some((d: any) => d.name === form.department) && (
+                              <option value={form.department} className="bg-white dark:bg-slate-900 text-red-500">
+                                {form.department} (Invalid/Deleted)
+                              </option>
+                            )}
                             {(departments || []).map((d, idx) => (
                               <option key={d.id || `dept-opt-${idx}`} value={d.name} className="bg-white dark:bg-slate-900">{d.name}</option>
                             ))}

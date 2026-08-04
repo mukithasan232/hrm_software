@@ -549,6 +549,11 @@ export default function EmployeesPage() {
                   <label className={labelCls}>Department</label>
                   <select value={editDepartment} onChange={e => setEditDepartment(e.target.value)} className={fieldCls}>
                     <option value="">— Select Department —</option>
+                    {editDepartment && !departments?.some((d: any) => d.name === editDepartment) && (
+                      <option value={editDepartment} className="text-red-500">
+                        {editDepartment} (Invalid/Deleted)
+                      </option>
+                    )}
                     {departments.map(dept => (
                       <option key={dept.id} value={dept.name}>{dept.name}</option>
                     ))}
