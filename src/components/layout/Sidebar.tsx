@@ -52,10 +52,10 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { can } = usePermissions();
 
   // Keep Team section open if we're on a /team/* route
-  const isTeamActive = pathname.startsWith('/team');
+  const isTeamActive = pathname?.startsWith('/team') ?? false;
   const [teamOpen, setTeamOpen] = useState(isTeamActive);
 
-  const isReportsActive = pathname.startsWith('/reports');
+  const isReportsActive = pathname?.startsWith('/reports') ?? false;
   const [reportsOpen, setReportsOpen] = useState(isReportsActive);
 
   const [logoError, setLogoError] = useState(false);
@@ -196,7 +196,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       <div className="flex-1 overflow-y-auto w-full">
         <nav className="px-3 mt-4 space-y-1">
           {menusToRender.map(item => {
-            const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+            const isActive = pathname === item.href || (item.href !== '/' && (pathname?.startsWith(item.href) ?? false));
             const Icon = item.icon;
             return (
               <Link
@@ -275,7 +275,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               >
                 <div className={`${collapsed ? 'mt-1 space-y-1 mx-2' : 'ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-white/10 pl-3'}`}>
                   {teamMenusToRender.map(sub => {
-                    const isSubActive = pathname === sub.href || pathname.startsWith(sub.href);
+                    const isSubActive = pathname === sub.href || (pathname?.startsWith(sub.href) ?? false);
                     const SubIcon = sub.icon;
                     return (
                       <Link
@@ -342,7 +342,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               >
                 <div className={`${collapsed ? 'mt-1 space-y-1 mx-2' : 'ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-white/10 pl-3'}`}>
                   {reportsMenusToRender.map(sub => {
-                    const isSubActive = pathname === sub.href || pathname.startsWith(sub.href);
+                    const isSubActive = pathname === sub.href || (pathname?.startsWith(sub.href) ?? false);
                     const SubIcon = sub.icon;
                     return (
                       <Link
@@ -379,17 +379,17 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 prefetch={false}
                 href="/settings"
                 onClick={onClose}
-                className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${pathname.startsWith('/settings')
+                className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${pathname?.startsWith('/settings')
                     ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
                     : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                   } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
               >
                 <Volume2
-                  className={`h-5 w-5 flex-shrink-0 transition-colors ${pathname.startsWith('/settings') ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
+                  className={`h-5 w-5 flex-shrink-0 transition-colors ${pathname?.startsWith('/settings') ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
                     }`}
                 />
                 {!collapsed && <span className="capitalize">{t('adminSettings.title' as any)}</span>}
-                {!collapsed && pathname.startsWith('/settings') && (
+                {!collapsed && pathname?.startsWith('/settings') && (
                   <span className="ml-auto h-1.5 w-1.5 rounded-full flex-shrink-0 bg-brand-primary" />
                 )}
                 {collapsed && (
