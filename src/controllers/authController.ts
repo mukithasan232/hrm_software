@@ -3,8 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 
-const generateToken = (id: string, designationName: string, roles: any[] = [], permissions: any = {}) => {
-  return jwt.sign({ id, designation: designationName, roles, permissions }, process.env.JWT_SECRET || 'fallback_secret', {
+const generateToken = (id: string, designationName: string, email: string, userType: string, roles: any[] = [], permissions: any = {}) => {
+  return jwt.sign({ id, designation: designationName, email, userType, roles, permissions }, process.env.JWT_SECRET || 'fallback_secret', {
     expiresIn: '30d',
   });
 };
@@ -50,7 +50,7 @@ export const registerUser = async (req: Request, res: Response) => {
       name: user.name,
       email: user.email,
       designation: user.customDesignation?.name || 'Employee',
-      token: generateToken(user.id, user.customDesignation?.name || 'Employee', [], {}),
+      token: generateToken(user.id, user.customDesignation?.name || 'Employee', user.email || '', user.userType || '', [], {}),
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -183,7 +183,7 @@ export const loginUser = async (req: Request, res: Response) => {
       documents: user.documents,
       appointmentLetter: user.appointmentLetter,
       salaryAccount: user.salaryAccount,
-      token: generateToken(user.id, designationName, roles, user.permissions),
+      token: generateToken(user.id, designationName, user.email, user.userType, roles, user.permissions),
     });
   } catch (error: any) {
     console.error("========================================");

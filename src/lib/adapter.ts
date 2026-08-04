@@ -144,6 +144,8 @@ export async function parseRequest(
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
         user = {
           id: decoded.id,
+          email: decoded.email,
+          userType: decoded.userType,
           designation: decoded.designation,
           roles: decoded.roles || [],
           permissions: decoded.permissions || {},

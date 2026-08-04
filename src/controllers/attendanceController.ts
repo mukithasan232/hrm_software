@@ -197,6 +197,10 @@ export const exportAttendanceLogs = async (req: Request, res: Response) => {
 export const getActivePresence = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
+
+    console.log('🔥 [active-today] DB_URL (masked):', (process.env.DATABASE_URL || '').replace(/:\/\/.*@/, '://***@'));
+    console.log('🔥 [active-today] user from token:', JSON.stringify({ id: user?.id, email: user?.email, userType: user?.userType, designation: user?.designation }));
+
     const scope = getPermissionScopeSync(user, 'attendance', 'read');
 
     if (scope === 'no') {
@@ -206,6 +210,21 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const queryDate = req.query.date as string | undefined;
     const { start, end } = queryDate ? getDayBoundaries(queryDate) : getTodayBoundaries();
 
+    console.log('🔥 [active-today] QueryDate:', queryDate);
+    console.log('🔥 [active-today] Boundaries → START:', start.toISOString(), '| END:', end.toISOString());
+
+    // ── DIAGNOSTIC: Raw SQL count to bypass any Prisma ORM issue ──
+    try {
+      const rawCount: any[] = await prisma.$queryRaw`
+        SELECT COUNT(*) as cnt FROM AttendanceLog 
+        WHERE timestamp >= ${start} AND timestamp <= ${end}
+      `;
+      console.log('🔥 [active-today] RAW SQL count in range:', rawCount[0]?.cnt?.toString?.() ?? rawCount);
+    } catch (rawErr: any) {
+      console.error('🔥 [active-today] RAW SQL error:', rawErr.message);
+    }
+    // ── END DIAGNOSTIC ──
+
     const whereClause: any = { timestamp: { gte: start, lte: end } };
     if (scope === 'own' && user?.id) {
       whereClause.employeeId = user.id;
@@ -213,23 +232,58 @@ export const getActivePresence = async (req: Request, res: Response) => {
       whereClause.user = { department: user.department };
     }
 
+    console.log('🔥 [active-today] Scope:', scope, '| WhereClause:', JSON.stringify(whereClause, null, 2));
+
     // 1. Fetch attendance logs for the period, ordered by latest first
+    // NOTE: We intentionally use only top-level fields in include to avoid
+    // Prisma implicit INNER JOIN behavior on nested relations (shift, customDepartment)
+    // which can return 0 rows when the relation is NULL.
     const todaysLogs = await prisma.attendanceLog.findMany({
       where: whereClause,
-      include: { 
-        user: { 
-          select: { 
-            name: true, 
+      include: {
+        user: {
+          select: {
+            name: true,
             profileImage: true,
             designation: true,
-            shift: true, 
-            customDepartment: true, 
-            shiftStartTime: true 
-          } 
-        } 
+            shiftStartTime: true,
+            // Fetch relations separately to avoid implicit INNER JOIN filtering
+          }
+        }
       },
-      orderBy: { timestamp: 'asc' } // Ascending to find the very first Check-In for late calculation
+      orderBy: { timestamp: 'asc' }
     });
+
+    console.log('🔥 [active-today] todaysLogs FOUND:', todaysLogs.length);
+
+    // 1b. Separately fetch shift/customDepartment for employees found in logs
+    const employeeIdsInLogs = [...new Set(todaysLogs.map((l: any) => l.employeeId))];
+    const employeeShiftMap: Record<string, any> = {};
+    if (employeeIdsInLogs.length > 0) {
+      const employeesWithShifts = await prisma.user.findMany({
+        where: { id: { in: employeeIdsInLogs } },
+        select: {
+          id: true,
+          shift: true,
+          customDepartment: true,
+          shiftStartTime: true,
+        }
+      });
+      for (const emp of employeesWithShifts) {
+        employeeShiftMap[emp.id] = emp;
+      }
+    }
+
+    // Merge shift data back into logs
+    const logsWithShifts = todaysLogs.map((log: any) => ({
+      ...log,
+      user: log.user ? {
+        ...log.user,
+        shift: employeeShiftMap[log.employeeId]?.shift || null,
+        customDepartment: employeeShiftMap[log.employeeId]?.customDepartment || null,
+        shiftStartTime: employeeShiftMap[log.employeeId]?.shiftStartTime || log.user?.shiftStartTime,
+      } : null
+    }));
 
     // 2. Filter: Find employees whose MOST RECENT punch is a "Check In"
     const currentlyPresentLogs: any[] = [];
@@ -237,7 +291,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const seenEmployees = new Set();
     let totalUniqueEmployeesToday = 0;
 
-    for (const log of [...todaysLogs].reverse()) { // Reverse to find the latest punch
+    for (const log of [...logsWithShifts].reverse()) { // Reverse to find the latest punch
       if (!seenEmployees.has(log.employeeId)) {
         seenEmployees.add(log.employeeId);
         totalUniqueEmployeesToday++;
@@ -319,7 +373,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
     const lateEmployees: any[] = [];
     const seenForLate = new Set();
 
-    for (const log of todaysLogs) {
+    for (const log of logsWithShifts) {
       if (!seenForLate.has(log.employeeId) && log.punchType?.toLowerCase().includes('in')) {
         seenForLate.add(log.employeeId); // Only evaluate the first Check-In of the day
 
@@ -350,6 +404,8 @@ export const getActivePresence = async (req: Request, res: Response) => {
         orderBy: { timestamp: 'desc' }
       });
     }
+
+    console.log('🔥 [active-today] todaysLogs count:', logsWithShifts.length, '| presentUserIds:', presentUserIds.size, '| activeNow:', currentlyPresentLogs.length);
 
     res.status(200).json({
       totalToday: totalUniqueEmployeesToday,

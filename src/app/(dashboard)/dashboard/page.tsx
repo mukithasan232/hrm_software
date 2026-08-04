@@ -123,7 +123,7 @@ export default function DashboardOverview() {
           api.get("/employees").catch(() => ({ data: [] })),
           api.get("/leaves/all").catch(() => ({ data: [] })),
           api
-            .get(`/attendance/active-today?date=${selectedDate}`)
+            .get(`/attendance/active-today?date=${selectedDate}&_t=${Date.now()}`)
             .catch(() => ({
               data: { activeNow: 0, totalToday: 0, recent: [], recentAll: [] },
             })),
