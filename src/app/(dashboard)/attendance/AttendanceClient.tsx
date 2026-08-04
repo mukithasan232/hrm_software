@@ -115,25 +115,30 @@ function AttendancePageContent() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(''); // NEW: Employee filter state
   const { user } = useAuth();
   const openDetails = useDetailsStore(state => state.openDetails);
   
   const filteredLogs = useMemo(() => {
-    return logs.filter(log => 
-      log.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (log.employeeName && log.employeeName.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [logs, searchTerm]);
+    return logs.filter(log => {
+      const matchSearch = log.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (log.employeeName && log.employeeName.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchEmp = selectedEmployeeId ? log.employeeId === selectedEmployeeId : true;
+      return matchSearch && matchEmp;
+    });
+  }, [logs, searchTerm, selectedEmployeeId]);
 
   const dailySummaries = useMemo(() => {
-    return serverSummaries.filter(summary => 
-      summary.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (summary.employeeName && summary.employeeName.toLowerCase().includes(searchTerm.toLowerCase()))
-    ).sort((a: any, b: any) => {
+    return serverSummaries.filter(summary => {
+      const matchSearch = summary.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (summary.employeeName && summary.employeeName.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchEmp = selectedEmployeeId ? summary.employeeId === selectedEmployeeId : true;
+      return matchSearch && matchEmp;
+    }).sort((a: any, b: any) => {
       if (a.date !== b.date) return b.date.localeCompare(a.date);
       return (b.checkInRaw || 0) - (a.checkInRaw || 0);
     });
-  }, [serverSummaries, searchTerm]);
+  }, [serverSummaries, searchTerm, selectedEmployeeId]);
 
   const dynamicCheckInCount = useMemo(() => dailySummaries.length, [dailySummaries]);
   
@@ -167,6 +172,37 @@ function AttendancePageContent() {
     if (h > 0 && m > 0) return `${h}h ${m}m`;
     if (h > 0) return `${h}h`;
     return `${m}m`;
+  };
+
+  const calculateEarlyMinutes = (checkInIso: string | Date | null, shiftStartString: string | null) => {
+    if (!checkInIso || !shiftStartString) return 0;
+    
+    try {
+      // 1. Get the check-in time in local format ("HH:mm") safely using formatInTimeZone
+      const bdTimeStr = formatInTimeZone(new Date(checkInIso), 'Asia/Dhaka', 'HH:mm');
+      const [checkInHours, checkInMinutes] = bdTimeStr.split(':').map(Number);
+      const totalCheckInMins = (checkInHours * 60) + checkInMinutes;
+
+      // 2. Parse Shift Start Time (Assumes format "HH:mm" or "hh:mm A")
+      const isPM = shiftStartString.toLowerCase().includes('pm');
+      const timeParts = shiftStartString.replace(/am|pm/i, '').trim().split(':');
+      let shiftHours = parseInt(timeParts[0], 10);
+      const shiftMinutes = parseInt(timeParts[1], 10);
+
+      if (isPM && shiftHours !== 12) shiftHours += 12;
+      if (!isPM && shiftHours === 12) shiftHours = 0; // Midnight edge case
+
+      const totalShiftMins = (shiftHours * 60) + shiftMinutes;
+
+      // 3. Calculate difference
+      const diff = totalShiftMins - totalCheckInMins;
+      
+      // Only return early minutes if they arrived at least 1 minute early
+      return diff > 0 ? diff : 0;
+    } catch (error) {
+      console.error("Early calculation error:", error);
+      return 0;
+    }
   };
 
   const isAdminUser = ['admin', 'super admin', 'system administrator', 'hrm manager'].includes(
@@ -581,6 +617,22 @@ function AttendancePageContent() {
             </div>
           )}
 
+          {/* 1.5. All Employees Dropdown */}
+          {canViewAll && (
+            <div className="w-[180px]">
+              <CustomDropdown
+                value={selectedEmployeeId}
+                onChange={(val) => setSelectedEmployeeId(val)}
+                placeholder={'All Employees'}
+                options={[
+                  { value: '', label: 'All Employees' },
+                  ...employees.map((emp) => ({ value: emp.employeeId, label: emp.name || emp.employeeId })),
+                ]}
+                className="h-10 w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shrink-0 shadow-sm"
+              />
+            </div>
+          )}
+
           {/* 2. Today Date Picker */}
           <div className="w-[150px]">
             <DateRangePicker
@@ -780,6 +832,14 @@ function AttendancePageContent() {
                           <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                             {toBDDisplay(row.checkIn, 'hh:mm a')}
                           </span>
+                          
+                          {/* Early Arrival Badge */}
+                          {calculateEarlyMinutes(row.checkIn, row.user?.shift?.startTime || row.user?.shiftStartTime || row.user?.customDepartment?.shiftStartTime || row.shiftStartTime || "10:00 AM") > 0 && (
+                            <span className="block mt-1 text-xs font-medium text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded w-max">
+                              {calculateEarlyMinutes(row.checkIn, row.user?.shift?.startTime || row.user?.shiftStartTime || row.user?.customDepartment?.shiftStartTime || row.shiftStartTime || "10:00 AM")}m early
+                            </span>
+                          )}
+
                           {row.lateMinutes > 0 && (
                             <span className="block mt-1 text-xs font-medium text-red-600 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded w-max">
                               Late: {formatMinutes(row.lateMinutes)}

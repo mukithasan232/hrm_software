@@ -5,12 +5,13 @@ import Cookies from "js-cookie";
 const SOCKET_URL = process.env.NEXT_PUBLIC_SITE_URL || ""; 
 
 export const socket = io(SOCKET_URL, {
-  path: "/socket.io", // Mapped from server.cjs standard initialization
+  path: "/api/socket/io", // Mapped from server.cjs standard initialization
   addTrailingSlash: false,
   transports: ["polling", "websocket"], // MUST include polling as fallback for proxy issues
   reconnectionAttempts: 5, // STOP THE INFINITE LOOP SPAM
   reconnectionDelay: 3000, // Wait 3 seconds between retries
   timeout: 10000,
+  autoConnect: false, // 🔴 Temporarily disable auto-connect to stop the 404 spam
   auth: (cb) => {
     cb({ token: Cookies.get('token') });
   }

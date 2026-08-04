@@ -42,6 +42,7 @@ app.prepare()
     });
 
     const io = new Server(httpServer, {
+      path: "/api/socket/io",
       cors: {
         origin: process.env.ALLOWED_ORIGIN || '*',
         methods: ['GET', 'POST'],

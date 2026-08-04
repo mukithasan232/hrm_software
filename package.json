@@ -7,7 +7,7 @@
     "build": "npx prisma generate && next build && tsc workers/zk-sync-worker.ts --outDir dist/workers --esModuleInterop --target ES2022 --moduleResolution node",
     "build:next": "next build",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
-    "start": "npx prisma generate && npx prisma db push --accept-data-loss && concurrently --kill-others-on-fail -c \"blue,green\" \"node dist/workers/zk-sync-worker.js\" \"next start\"",
+    "start": "npx prisma generate && npx prisma db push --accept-data-loss && concurrently --kill-others-on-fail -c \"blue,green\" \"node dist/workers/zk-sync-worker.js\" \"NODE_ENV=production node server.cjs\"",
     "start:custom": "npx prisma generate && npx prisma db push --accept-data-loss && concurrently --kill-others-on-fail -c \"blue,green\" \"node dist/workers/zk-sync-worker.js\" \"sh ./entrypoint.sh\"",
     "fetch-zk": "npx tsx scripts/fetch-zk-users.ts",
     "predeploy": "npm run db:push && npm run db:seed --legacy-peer-deps",

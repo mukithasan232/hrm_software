@@ -43,6 +43,7 @@ const getNotificationLink = (n: any) => {
 
 export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggleAction?: () => void }) {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const { brand } = useBrand();
   const { t, language } = useTranslation();
   const { triggerNotification } = useBrowserNotification();
@@ -234,6 +235,18 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
     
     if (notif.type === 'USER_VERIFICATION' && notif.referenceId) {
       useDetailsStore.getState().openDetails('employee', notif.referenceId);
+      setShowNotifications(false);
+      if (!notif.read) {
+        api.patch('/notifications', { id: notif.id }).catch(() => {});
+        setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+      }
+      return;
+    }
+
+    const type = notif.type?.toUpperCase();
+    if (type === 'LEAVE_REQUEST' || type === 'LEAVE') {
+      const idParam = notif.referenceId ? `?highlightId=${notif.referenceId}` : '';
+      router.push(`/leaves${idParam}`);
       setShowNotifications(false);
       if (!notif.read) {
         api.patch('/notifications', { id: notif.id }).catch(() => {});

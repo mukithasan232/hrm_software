@@ -35,15 +35,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   productionBrowserSourceMaps: false,
-  serverActions: {
-    allowedOrigins: ['0.0.0.0:5001', 'localhost:5001'],
-  },
   experimental: {
     serverActions: {
       allowedOrigins: ['0.0.0.0:5001', 'localhost:5001'],
     },
   },
-  allowedDevOrigins: ['0.0.0.0'],
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any;
 

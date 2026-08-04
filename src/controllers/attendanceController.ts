@@ -14,42 +14,35 @@ import { to12Hour } from '../lib/dateUtils';
 const BD_TZ = 'Asia/Dhaka';
 
 function getTodayBoundaries(): { start: Date; end: Date } {
-  const todayStr = formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd');
-  const startUTC = new Date(`${todayStr}T00:00:00+06:00`);
-  const endUTC = new Date(`${todayStr}T23:59:59.999+06:00`);
-  return { start: startUTC, end: endUTC };
+  return { start: startOfDay(new Date()), end: endOfDay(new Date()) };
 }
 
 function getDayBoundaries(filter: string): { start: Date; end: Date } {
   let dateStr = filter;
   if (filter === 'today' || filter === 'yesterday' || filter === 'week' || filter === 'month') {
-    const targetDate = new Date();
+    let targetDate = new Date();
     if (filter === 'yesterday') {
-      targetDate.setDate(targetDate.getDate() - 1);
+      targetDate = subDays(new Date(), 1);
+      return { start: startOfDay(targetDate), end: endOfDay(targetDate) };
     } else if (filter === 'week') {
-      targetDate.setDate(targetDate.getDate() - 7);
+      targetDate = subDays(new Date(), 7);
+      return { start: startOfDay(targetDate), end: endOfDay(new Date()) };
     } else if (filter === 'month') {
-      targetDate.setDate(targetDate.getDate() - 30);
+      targetDate = subDays(new Date(), 30);
+      return { start: startOfDay(targetDate), end: endOfDay(new Date()) };
     }
-    dateStr = formatInTimeZone(targetDate, BD_TZ, 'yyyy-MM-dd');
-
-    const startUTC = new Date(`${dateStr}T00:00:00+06:00`);
-    const targetEndStr = filter === 'today' || filter === 'yesterday' ? dateStr : formatInTimeZone(new Date(), BD_TZ, 'yyyy-MM-dd');
-    const endUTC = new Date(`${targetEndStr}T23:59:59.999+06:00`);
-    return { start: startUTC, end: endUTC };
+    
+    // today
+    return { start: startOfDay(new Date()), end: endOfDay(new Date()) };
   }
 
-  // Handle explicit exact dates (yyyy-MM-dd) or custom ranges (yyyy-MM-dd_yyyy-MM-dd)
   if (dateStr.includes('_')) {
     const [startStr, endStr] = dateStr.split('_');
-    const startUTC = new Date(`${startStr}T00:00:00+06:00`);
-    const endUTC = new Date(`${endStr}T23:59:59.999+06:00`);
-    return { start: startUTC, end: endUTC };
+    return { start: startOfDay(new Date(startStr)), end: endOfDay(new Date(endStr)) };
   }
 
-  const startUTC = new Date(`${dateStr}T00:00:00+06:00`);
-  const endUTC = new Date(`${dateStr}T23:59:59.999+06:00`);
-  return { start: startUTC, end: endUTC };
+  // EXACT synchronization with getAttendanceLogs
+  return { start: startOfDay(new Date(dateStr)), end: endOfDay(new Date(dateStr)) };
 }
 
 export const syncDeviceLogs = async (req: Request, res: Response) => {
@@ -259,9 +252,8 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     const mapLog = (log: any) => ({ ...log, employeeName: log.user?.name || 'Unmapped' });
 
-    // Task 2: Smart Absenteeism Calculation (Time-Aware)
     const activeEmployees = await prisma.user.findMany({
-      // where: { isActive: true }, // Removed to include ALL standard employees
+      where: { isActive: true }, // Strictly fetch active employees as requested
       include: { customDepartment: true, shift: true, customDesignation: true }
     });
 

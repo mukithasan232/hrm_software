@@ -12,7 +12,7 @@ export const useDashboardLayout = (isAdmin: boolean) => {
 
   const DEFAULT_LAYOUT: LayoutState = isAdmin ? {
     summaryZone: ['punch-status', 'absent-days', 'leaves-remaining', 'break-countdown'],
-    detailZone: ['global-stream', 'notice-board', 'weekly-attendance', 'late-today', 'checked-out']
+    detailZone: ['global-stream', 'notice-board', 'weekly-attendance', 'early-today', 'late-today', 'checked-out']
   } : {
     summaryZone: ['punch-status', 'break-countdown', 'absent-days', 'leaves-remaining', 'leaves-pending'],
     detailZone: ['global-stream', 'notice-board', 'my-punches', 'weekly-attendance']

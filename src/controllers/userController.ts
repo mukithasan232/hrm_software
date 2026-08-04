@@ -325,15 +325,21 @@ export const updateEmployee = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    if (editScope === 'all' || sessionUser.email === 'dev@fixanyphoto.com' || sessionUser.userType === 'SUPER_ADMIN') {
+    const isSuperAdmin = sessionUser.email === 'dev@fixanyphoto.com' || 
+                         sessionUser.userType === 'SUPER_ADMIN' || 
+                         sessionUser.role === 'ADMIN' || 
+                         sessionUser.role === 'HR'; // Add whatever roles should have global edit access
+
+    if (editScope === 'all' || isSuperAdmin) {
       // 🟢 ALLOW ACCESS: Let them bypass ID checks
     } else if (editScope === 'department') {
-      if (targetEmp.departmentId !== sessionUser.departmentId) {
+      if (String(targetEmp.departmentId) !== String(sessionUser.departmentId)) {
         res.status(403).json({ message: 'Forbidden: Cannot edit users outside your department' });
         return;
       }
     } else if (editScope === 'own') {
-      if (id !== sessionUser.id) {
+      // 🔴 CRITICAL FIX: Convert both IDs to Strings to prevent type mismatch ('1' !== 1)
+      if (String(id) !== String(sessionUser.id)) {
         res.status(403).json({ message: 'Forbidden: Edit permission denied by scope (ID mismatch)' });
         return;
       }

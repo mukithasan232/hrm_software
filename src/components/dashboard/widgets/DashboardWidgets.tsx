@@ -608,6 +608,27 @@ export const LateTodayWidgetWrapper = ({ isCompact, data }: { isCompact: boolean
   );
 };
 
+import EarlyTodayWidget from '../EarlyTodayWidget';
+
+export const EarlyTodayWidgetWrapper = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
+  if (isCompact) {
+    return (
+      <div className="bg-white dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm dark:shadow-md h-full flex flex-col justify-between">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-green-500" />
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Early Today</h3>
+        </div>
+        <p className="text-xs text-slate-400 mt-2">Expand to view early birds.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="h-96 w-full">
+      <EarlyTodayWidget recentList={data.recentAttendance || []} />
+    </div>
+  );
+};
+
 export const TopLatePersonsWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
   const [topLate, setTopLate] = React.useState<any[]>([]);
   const [limit, setLimit] = React.useState(3);
@@ -743,6 +764,7 @@ export const WidgetMap: Record<string, React.FC<any>> = {
   'my-punches': MyPunchesWidget,
   'weekly-attendance': WeeklyAttendanceWidget,
   'late-today': LateTodayWidgetWrapper,
+  'early-today': EarlyTodayWidgetWrapper,
   'checked-out': CheckedOutWidgetWrapper,
   'break-countdown': BreakCountdownWidget,
   'top-late': TopLatePersonsWidget,
