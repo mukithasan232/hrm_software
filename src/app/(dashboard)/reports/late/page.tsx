@@ -20,12 +20,12 @@ function LateReportContent() {
   const defaultFrom = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const defaultTo = new Date().toISOString().split('T')[0];
 
-  const from = searchParams.get('startDate') || defaultFrom;
-  const to = searchParams.get('endDate') || defaultTo;
-  const range = searchParams.get('range') || 'last-7-days';
+  const from = searchParams?.get('startDate') || defaultFrom;
+  const to = searchParams?.get('endDate') || defaultTo;
+  const range = searchParams?.get('range') || 'last-7-days';
   
-  const deptParam = searchParams.get('departmentId') || 'ALL';
-  const empParam = searchParams.get('employeeId') || 'ALL';
+  const deptParam = searchParams?.get('departmentId') || 'ALL';
+  const empParam = searchParams?.get('employeeId') || 'ALL';
 
   const [customStartDate, setCustomStartDate] = useState(from);
   const [customEndDate, setCustomEndDate] = useState(to);
@@ -81,7 +81,7 @@ function LateReportContent() {
       setCustomStartDate(val.start);
       setCustomEndDate(val.end);
     }
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || '');
     if (val.range) params.set('range', val.range);
     if (val.start) params.set('startDate', val.start);
     if (val.end) params.set('endDate', val.end);
@@ -89,7 +89,7 @@ function LateReportContent() {
   };
 
   const handleFilterChange = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || '');
     if (value === 'ALL') {
       params.delete(key);
     } else {
