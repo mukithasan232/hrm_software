@@ -4,7 +4,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Search, Building2, User, Mail, UploadCloud, X,
-  RefreshCw, Key,  Building, CreditCard, ChevronDown, Activity, ListFilter, SlidersHorizontal, Loader2, ArrowRight
+  RefreshCw, Key,  Building, CreditCard, ChevronDown, Activity, ListFilter, SlidersHorizontal, Loader2, ArrowRight,
+  Send, Shield, Pencil, Trash2
 } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import api from '@/services/api';
@@ -394,7 +395,7 @@ export default function EmployeesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filtered.map(emp => (
+          {(filtered || []).map(emp => (
             <div
               key={emp.id}
               onClick={() => {

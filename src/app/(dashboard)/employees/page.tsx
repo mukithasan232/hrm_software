@@ -260,7 +260,7 @@ export default function EmployeesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filtered.map(emp => (
+          {(filtered || []).map(emp => (
             <div
               key={emp.id}
               className={`bg-white dark:bg-white/5 backdrop-blur-xl border rounded-2xl p-5 transition-all group relative shadow-sm dark:shadow-md ${

@@ -33,7 +33,7 @@ export default function Avatar({ src, alt, name, className, fallbackClassName }:
   const [imgError, setImgError] = useState(false);
   
   const parsedSrc = getAvatarUrl(src);
-  const initials = name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const initials = String(name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 
   // Reset error state if src changes
   useEffect(() => {
