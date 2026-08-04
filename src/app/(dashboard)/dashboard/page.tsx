@@ -84,6 +84,7 @@ export default function DashboardOverview() {
   } | null>(null);
 
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
+  const [myPunches, setMyPunches] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [weeklyAnalytics, setWeeklyAnalytics] = useState<any[]>([]);
   const [departmentData, setDepartmentData] = useState<any[]>([]);
@@ -215,6 +216,7 @@ export default function DashboardOverview() {
 
       const allLogs = presenceRes.data.recentAll || presenceRes.data.recent || [];
       setRecentAttendance(allLogs);
+      setMyPunches(presenceRes.data.myPunches || []);
 
       const recentPresent = presenceRes.data.recent || [];
       const presentEmps = recentPresent.map((log: any) => {
@@ -265,6 +267,7 @@ export default function DashboardOverview() {
       }
       const allLogs = res.data.recentAll || res.data.recent || [];
       setRecentAttendance(allLogs);
+      setMyPunches(res.data.myPunches || []);
       if (!isAdmin && user?.id) {
         setLatestPunch(deriveLatestPunch(null, allLogs, user.id));
       }
@@ -391,7 +394,7 @@ export default function DashboardOverview() {
   const widgetData = {
     user, isAdmin, stats, loading, punchStatus, latestPunch, assignedShift, todayWorkingHours,
     ANNUAL_LEAVE_QUOTA, announcements, handleClearBoard, handleDeleteNotice,
-    selectedDate, setSelectedDate, recentAttendance, chartData, departmentData, COLORS, t,
+    selectedDate, setSelectedDate, recentAttendance, myPunches, chartData, departmentData, COLORS, t,
     presentEmployees, absentEmployees, pendingLeavesList
   };
 

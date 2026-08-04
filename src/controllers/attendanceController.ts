@@ -398,11 +398,19 @@ export const getActivePresence = async (req: Request, res: Response) => {
 
     // 3. Absolute Latest for Current User (Cross-Midnight Bug Fix)
     let myAbsoluteLatest = null;
+    let myPunches: any[] = [];
     if (user?.id) {
       myAbsoluteLatest = await prisma.attendanceLog.findFirst({
         where: { employeeId: user.id },
         orderBy: { timestamp: 'desc' }
       });
+      
+      const rawMyPunches = await prisma.attendanceLog.findMany({
+        where: { employeeId: user.id, timestamp: { gte: start, lte: end } },
+        include: { user: { select: { name: true, profileImage: true } } },
+        orderBy: { timestamp: 'desc' }
+      });
+      myPunches = rawMyPunches.map(mapLog);
     }
 
     console.log('🔥 [active-today] todaysLogs count:', logsWithShifts.length, '| presentUserIds:', presentUserIds.size, '| activeNow:', currentlyPresentLogs.length);
@@ -416,6 +424,7 @@ export const getActivePresence = async (req: Request, res: Response) => {
       lateList: lateEmployees,
       recent: currentlyPresentLogs.map(mapLog),
       recentAll: allLatestPunchLogs.map(mapLog),
+      myPunches,
       myAbsoluteLatest
     });
   } catch (error: any) {

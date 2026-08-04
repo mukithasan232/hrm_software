@@ -173,8 +173,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 width={32}
                 height={32}
                 priority={true}
-                unoptimized={true}
-                className="h-8 w-8 object-contain"
+                className="h-8 w-8 object-contain shrink-0"
               />
             ) : (
               <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-extrabold text-lg shadow-md flex-shrink-0">
@@ -182,16 +181,17 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               </div>
             )
           ) : brand.logoUrl && !logoError ? (
-            <Image
-              src={brand.logoUrl}
-              alt={brand.companyName || 'Logo'}
-              width={140}
-              height={32}
-              priority={true}
-              unoptimized={true}
-              className="h-8 max-w-[140px] object-contain"
-              onError={() => setLogoError(true)}
-            />
+            <div className="w-[140px] h-8 relative flex items-center shrink-0">
+              <Image
+                src={brand.logoUrl}
+                alt={brand.companyName || 'Logo'}
+                width={140}
+                height={32}
+                priority={true}
+                className="object-contain"
+                onError={() => setLogoError(true)}
+              />
+            </div>
           ) : (
             <span className="text-slate-800 dark:text-white font-extrabold text-lg sm:text-2xl tracking-widest block py-1 sm:py-2 text-center leading-tight truncate w-full max-w-[140px] h-8 flex items-center overflow-hidden">
               {brand?.companyName || 'FIX ANY PHOTO'}

@@ -469,7 +469,8 @@ export const NoticeBoardWidget = ({ isCompact, data }: { isCompact: boolean, dat
 
 export const MyPunchesWidget = ({ isCompact, data }: { isCompact: boolean, data: any }) => {
   const { t } = useTranslation();
-  const { isAdmin, selectedDate, setSelectedDate, loading, recentAttendance } = data;
+  const { isAdmin, selectedDate, setSelectedDate, loading, myPunches } = data;
+  const punches = myPunches || [];
 
   if (isCompact) {
     return (
@@ -478,7 +479,7 @@ export const MyPunchesWidget = ({ isCompact, data }: { isCompact: boolean, data:
           <Clock className="w-4 h-4 text-indigo-500" />
           <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Activity</h3>
         </div>
-        <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{recentAttendance.length}</p>
+        <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{punches.length}</p>
         <p className="text-xs text-slate-400 mt-1">Punches logged today</p>
       </div>
     );
@@ -510,13 +511,13 @@ export const MyPunchesWidget = ({ isCompact, data }: { isCompact: boolean, data:
               </div>
             ))}
           </div>
-        ) : recentAttendance.length === 0 ? (
+        ) : punches.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-gray-500 gap-2 opacity-50 py-8">
             <Clock className="w-8 h-8" />
             <p className="text-sm italic">{t("waitingForPunches")}</p>
           </div>
         ) : (
-          recentAttendance.map((log: any, i: number) => {
+          punches.map((log: any, i: number) => {
             const isCheckIn = log.punchType?.toLowerCase().includes("in");
             return (
               <div key={log.id || i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10 animate-in slide-in-from-right-4 duration-300">

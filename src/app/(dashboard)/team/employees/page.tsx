@@ -312,11 +312,14 @@ export default function EmployeesPage() {
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const filtered = employees.filter(emp => {
-    const matchesSearch = emp.name.toLowerCase().includes(search.toLowerCase()) ||
-                          emp.employeeId.toLowerCase().includes(search.toLowerCase());
+    if (!emp) return false;
+    const empName = emp?.name || '';
+    const empId = emp?.employeeId || '';
+    const matchesSearch = empName.toLowerCase().includes(search.toLowerCase()) ||
+                          empId.toLowerCase().includes(search.toLowerCase());
     const matchesDept = departmentFilter === 'All' || 
-                        emp.department === departmentFilter || 
-                        emp.customDepartment?.name === departmentFilter;
+                        emp?.department === departmentFilter || 
+                        emp?.customDepartment?.name === departmentFilter;
     return matchesSearch && matchesDept;
   });
 
@@ -407,16 +410,16 @@ export default function EmployeesPage() {
               {/* Top row: avatar + badge */}
               <div className="flex items-start justify-between">
                 <Avatar 
-                  src={emp.profileImage} 
-                  name={emp.name} 
+                  src={emp?.profileImage} 
+                  name={emp?.name || 'Unknown'} 
                   className="h-12 w-12 rounded-full object-cover border-2 border-slate-100 dark:border-white/10" 
                   fallbackClassName="h-12 w-12 rounded-full bg-gradient-to-tr from-brand-primary to-brand-secondary flex items-center justify-center text-white font-bold text-base shadow-inner flex-shrink-0"
                 />
                 <div className="flex flex-col items-end gap-1">
                   <span className="px-2.5 py-1 bg-slate-100 dark:bg-black/30 text-[10px] uppercase tracking-wider rounded-lg text-slate-500 dark:text-gray-400 font-bold border border-slate-200 dark:border-white/5">
-                    {emp.employeeId}
+                    {emp?.employeeId || 'NO-ID'}
                   </span>
-                  {(emp.verificationStatus !== 'ACTIVE') && (
+                  {(emp?.verificationStatus !== 'ACTIVE') && (
                     <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 text-[9px] uppercase tracking-wider rounded font-bold border border-amber-200 dark:border-amber-500/30">
                       Pending Verif.
                     </span>
@@ -426,13 +429,13 @@ export default function EmployeesPage() {
 
               {/* Name + Designation */}
               <div className="mt-3 flex-1">
-                <h3 className="font-bold text-slate-800 dark:text-white text-base leading-tight truncate">{emp.name}</h3>
+                <h3 className="font-bold text-slate-800 dark:text-white text-base leading-tight truncate">{emp?.name || 'Unknown User'}</h3>
                 <p className="text-xs font-semibold text-brand-primary mt-1 truncate">
-                  {emp.designation?.name || <span className="text-slate-400 dark:text-gray-500 italic">No designation</span>}
+                  {emp?.designation?.name || <span className="text-slate-400 dark:text-gray-500 italic">No designation</span>}
                 </p>
-                {emp.department && (
+                {emp?.department && (
                   <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-0.5 truncate flex items-center gap-1">
-                    <Building2 className="w-3 h-3 flex-shrink-0" /> {emp.department}
+                    <Building2 className="w-3 h-3 flex-shrink-0" /> {emp?.department}
                   </p>
                 )}
               </div>
@@ -441,45 +444,45 @@ export default function EmployeesPage() {
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                    emp.employeeType === 'REMOTE'
+                    emp?.employeeType === 'REMOTE'
                       ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
-                      : emp.employeeType === 'HYBRID'
+                      : emp?.employeeType === 'HYBRID'
                       ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                       : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                   }`}
                 >
-                  {emp.employeeType === 'REMOTE' ? 'Remote' : emp.employeeType === 'HYBRID' ? 'Hybrid' : 'In-House'}
+                  {emp?.employeeType === 'REMOTE' ? 'Remote' : emp?.employeeType === 'HYBRID' ? 'Hybrid' : 'In-House'}
                 </span>
 
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleResendWelcome(emp); }}
-                    disabled={resendingEmailId === emp.id}
+                    disabled={resendingEmailId === emp?.id}
                     title="Resend Welcome Email"
                     className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-emerald-500 transition-colors border border-slate-100 dark:border-white/5 disabled:opacity-50"
                   >
-                    {resendingEmailId === emp.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    {resendingEmailId === emp?.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                   </button>
                   <a
-                    href={`mailto:${emp.email}`}
+                    href={`mailto:${emp?.email || ''}`}
                     onClick={(e) => e.stopPropagation()}
-                    title={`Email ${emp.name}`}
+                    title={`Email ${emp?.name || 'Unknown'}`}
                     className="p-1.5 rounded-lg bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-brand-primary transition-colors border border-slate-100 dark:border-white/5"
                   >
                     <Mail className="w-3.5 h-3.5" />
                   </a>
-                  {isAdmin && authUser?.id !== emp.id && (
+                  {isAdmin && authUser?.id !== emp?.id && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleRoleChange(emp); }}
-                      disabled={updatingRole === emp.id}
-                      title={String((emp as any).userType || emp.designation?.name || '').toUpperCase().includes('ADMIN') ? 'Revoke Admin' : 'Make Admin'}
+                      disabled={updatingRole === emp?.id}
+                      title={String((emp as any)?.userType || emp?.designation?.name || '').toUpperCase().includes('ADMIN') ? 'Revoke Admin' : 'Make Admin'}
                       className={`p-1.5 rounded-lg transition-colors border disabled:opacity-50 ${
-                        String((emp as any).userType || emp.designation?.name || '').toUpperCase().includes('ADMIN')
+                        String((emp as any)?.userType || emp?.designation?.name || '').toUpperCase().includes('ADMIN')
                           ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20'
                           : 'bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-indigo-500 border-slate-100 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10'
                       }`}
                     >
-                      {updatingRole === emp.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-4 h-4" />}
+                      {updatingRole === emp?.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-4 h-4" />}
                     </button>
                   )}
                   {canEditUser && (
