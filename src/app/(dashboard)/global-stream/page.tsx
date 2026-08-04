@@ -17,11 +17,16 @@ type StreamItem = {
 };
 
 export default function GlobalStreamPage() {
+  const [isMounted, setIsMounted] = useState(false);
   const [stream, setStream] = useState<StreamItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const loadingRef = useRef(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const fetchStream = async (pageToFetch = currentPage, silent = false) => {
     if (loadingRef.current) return;
@@ -87,6 +92,14 @@ export default function GlobalStreamPage() {
         return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
     }
   };
+
+  if (!isMounted) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-slate-50 dark:bg-slate-900">
+        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <PageGuard moduleName="Dashboard">
