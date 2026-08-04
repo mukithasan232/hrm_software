@@ -56,6 +56,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
   
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const { isBreakActive, activeBreak, timeRemaining } = useBreakTimer(userDept);
   
@@ -436,8 +437,13 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
             onClick={() => setShowProfile(!showProfile)}
             className={`flex items-center gap-2 p-1 rounded-full transition-all ${showProfile ? 'ring-2 ring-brand-primary/60' : ''}`}
           >
-            {avatarSrc ? (
-              <img src={avatarSrc} alt="avatar" className="h-8 w-8 rounded-full object-cover border-2 border-slate-200 dark:border-white/20" />
+            {avatarSrc && !imgError ? (
+              <img 
+                src={avatarSrc} 
+                alt="avatar" 
+                className="h-8 w-8 rounded-full object-cover border-2 border-slate-200 dark:border-white/20" 
+                onError={() => setImgError(true)}
+              />
             ) : (
               <div
                 className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white/20 bg-gradient-to-tr from-brand-primary to-brand-secondary"
@@ -469,6 +475,7 @@ export default function Navbar({ onMobileMenuToggleAction }: { onMobileMenuToggl
 
               <div className="p-2">
                 <Link
+                  prefetch={false}
                   href="/profile"
                   onClick={() => setShowProfile(false)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 dark:hover:text-white text-sm transition-colors duration-150"

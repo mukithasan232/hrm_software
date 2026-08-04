@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="text-blue-700 dark:text-blue-400 text-sm">Your documents is under review.</p>
                   </div>
                 </div>
-                <Link href="/onboarding" className="shrink-0 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                <Link prefetch={false} href="/onboarding" className="shrink-0 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
                   View Status
                 </Link>
               </div>
@@ -51,7 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="text-amber-700 dark:text-amber-600 text-sm">You need to submit your documents.</p>
                   </div>
                 </div>
-                <Link href="/onboarding" className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                <Link prefetch={false} href="/onboarding" className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
                   Upload Now
                 </Link>
               </div>

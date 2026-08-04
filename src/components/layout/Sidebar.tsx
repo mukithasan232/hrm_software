@@ -200,6 +200,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             const Icon = item.icon;
             return (
               <Link
+                prefetch={false}
                 key={item.key}
                 href={item.href}
                 onClick={onClose}
@@ -278,6 +279,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                     const SubIcon = sub.icon;
                     return (
                       <Link
+                        prefetch={false}
                         key={sub.key}
                         href={sub.href}
                         onClick={onClose}
@@ -344,6 +346,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                     const SubIcon = sub.icon;
                     return (
                       <Link
+                        prefetch={false}
                         key={sub.key}
                         href={sub.href}
                         onClick={onClose}
@@ -373,6 +376,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           {hasSettingsPermission && (
             <div className="pt-1">
               <Link
+                prefetch={false}
                 href="/settings"
                 onClick={onClose}
                 className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${pathname.startsWith('/settings')
