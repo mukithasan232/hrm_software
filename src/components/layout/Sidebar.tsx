@@ -223,12 +223,12 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 href={item.href}
                 onClick={onClose}
                 className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${isActive
-                    ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
-                    : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-brand-primary/10 text-brand-primary dark:text-white border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
+                    : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                   } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
               >
                 <Icon
-                  className={`h-5 w-5 flex-shrink-0 transition-colors ${isActive ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
+                  className={`h-5 w-5 flex-shrink-0 transition-colors ${isActive ? 'text-brand-primary dark:text-white' : 'text-slate-400 dark:text-gray-400 group-hover:text-slate-900 dark:group-hover:text-white'
                     }`}
                 />
                 {!collapsed && <span className="capitalize">{t(item.key as any)}</span>}
@@ -261,18 +261,18 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               <button
                 onClick={() => setTeamOpen(prev => !prev)}
                 className={`w-full flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${isTeamActive
-                    ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20'
-                    : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-indigo-500/10 text-indigo-500 dark:text-white border border-indigo-500/20'
+                    : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                   } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
               >
                 <UsersRound
-                  className={`h-5 w-5 flex-shrink-0 transition-colors ${isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
+                  className={`h-5 w-5 flex-shrink-0 transition-colors ${isTeamActive ? 'text-indigo-500 dark:text-white' : 'text-slate-400 dark:text-gray-400 group-hover:text-slate-900 dark:group-hover:text-white'
                     }`}
                 />
                 {!collapsed && <span className="flex-1 text-left capitalize">{t('team')}</span>}
                 {!collapsed && (
                   <ChevronDown
-                    className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''} ${isTeamActive ? 'text-indigo-500' : 'text-slate-400 dark:text-gray-500'
+                    className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''} ${isTeamActive ? 'text-indigo-500 dark:text-white' : 'text-slate-400 dark:text-gray-400'
                       }`}
                   />
                 )}
@@ -302,11 +302,11 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                         href={sub.href}
                         onClick={onClose}
                         className={`flex items-center gap-2.5 py-2 rounded-lg transition-all text-sm font-medium group relative ${isSubActive
-                            ? 'bg-indigo-500/10 text-indigo-500'
-                            : 'text-slate-500 dark:text-gray-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                            ? 'bg-indigo-500/10 text-indigo-500 dark:text-white'
+                            : 'text-slate-500 dark:text-gray-300 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                           } ${collapsed ? 'justify-center px-0' : 'px-3'}`}
                       >
-                        <SubIcon className={`h-4 w-4 flex-shrink-0 ${isSubActive ? 'text-indigo-500' : ''}`} />
+                        <SubIcon className={`h-4 w-4 flex-shrink-0 ${isSubActive ? 'text-indigo-500 dark:text-white' : ''}`} />
                         {!collapsed && <span className="capitalize">{(sub as any).label || t(sub.key as any)}</span>}
                         {!collapsed && isSubActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />}
 
@@ -329,18 +329,18 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               <button
                 onClick={() => setReportsOpen(prev => !prev)}
                 className={`w-full flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${isReportsActive
-                    ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20'
-                    : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-orange-500/10 text-orange-600 dark:text-white border border-orange-500/20'
+                    : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                   } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
               >
                 <BarChart
-                  className={`h-5 w-5 flex-shrink-0 transition-colors ${isReportsActive ? 'text-orange-600' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
+                  className={`h-5 w-5 flex-shrink-0 transition-colors ${isReportsActive ? 'text-orange-600 dark:text-white' : 'text-slate-400 dark:text-gray-400 group-hover:text-slate-900 dark:group-hover:text-white'
                     }`}
                 />
                 {!collapsed && <span className="flex-1 text-left capitalize">{t('reports' as any) || 'Reports'}</span>}
                 {!collapsed && (
                   <ChevronDown
-                    className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${reportsOpen ? 'rotate-180' : ''} ${isReportsActive ? 'text-orange-600' : 'text-slate-400 dark:text-gray-500'
+                    className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${reportsOpen ? 'rotate-180' : ''} ${isReportsActive ? 'text-orange-600 dark:text-white' : 'text-slate-400 dark:text-gray-400'
                       }`}
                   />
                 )}
@@ -369,11 +369,11 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                         href={sub.href}
                         onClick={onClose}
                         className={`flex items-center gap-2.5 py-2 rounded-lg transition-all text-sm font-medium group relative ${isSubActive
-                            ? 'bg-orange-500/10 text-orange-600'
-                            : 'text-slate-500 dark:text-gray-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                            ? 'bg-orange-500/10 text-orange-600 dark:text-white'
+                            : 'text-slate-500 dark:text-gray-300 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                           } ${collapsed ? 'justify-center px-0' : 'px-3'}`}
                       >
-                        <SubIcon className={`h-4 w-4 flex-shrink-0 ${isSubActive ? 'text-orange-600' : ''}`} />
+                        <SubIcon className={`h-4 w-4 flex-shrink-0 ${isSubActive ? 'text-orange-600 dark:text-white' : ''}`} />
                         {!collapsed && <span className="capitalize">{(sub as any).label || t(sub.key as any)}</span>}
                         {!collapsed && isSubActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-orange-600" />}
 
@@ -398,12 +398,12 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 href="/settings"
                 onClick={onClose}
                 className={`flex items-center gap-3 py-2.5 rounded-xl transition-all text-sm font-medium group relative ${pathname?.startsWith('/settings')
-                    ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
-                    : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-brand-primary/10 text-brand-primary dark:text-white border border-brand-primary/20 shadow-sm shadow-brand-primary/20'
+                    : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                   } ${collapsed ? 'justify-center px-0 mx-2' : 'px-4'}`}
               >
                 <Volume2
-                  className={`h-5 w-5 flex-shrink-0 transition-colors ${pathname?.startsWith('/settings') ? 'text-brand-primary' : 'text-slate-400 dark:text-gray-500 group-hover:text-slate-900 dark:group-hover:text-white'
+                  className={`h-5 w-5 flex-shrink-0 transition-colors ${pathname?.startsWith('/settings') ? 'text-brand-primary dark:text-white' : 'text-slate-400 dark:text-gray-400 group-hover:text-slate-900 dark:group-hover:text-white'
                     }`}
                 />
                 {!collapsed && <span className="capitalize">{t('adminSettings.title' as any)}</span>}
