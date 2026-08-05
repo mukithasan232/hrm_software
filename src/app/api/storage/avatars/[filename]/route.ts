@@ -12,9 +12,20 @@ export async function GET(
     // Define the actual path where avatars are uploaded on the server
     const filePath = path.join(process.cwd(), 'public', 'uploads', 'avatars', filename);
 
-    // Check if file exists on disk
+    // If file doesn't exist on disk, serve a default image with a 200 status
     if (!fs.existsSync(filePath)) {
-      return new NextResponse('Avatar not found', { status: 404 });
+      const defaultPath = path.join(process.cwd(), 'public', 'default-logo-placeholder.png'); 
+      if (fs.existsSync(defaultPath)) {
+        const fallbackBuffer = fs.readFileSync(defaultPath);
+        return new NextResponse(fallbackBuffer, {
+          headers: {
+            'Content-Type': 'image/png',
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          },
+        });
+      }
+      // Absolute worst-case scenario
+      return new NextResponse('Not found', { status: 404 });
     }
 
     // Read the file buffer

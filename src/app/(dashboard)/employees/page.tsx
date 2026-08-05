@@ -415,7 +415,8 @@ export default function EmployeesPage() {
                     <label className="text-xs text-slate-600 dark:text-gray-400 font-medium">Initial Password</label>
                     <div className="flex gap-2">
                       <input
-                        type="text"
+                        type="password"
+                        autoComplete="new-password"
                         value={form.password}
                         onChange={e => setForm({ ...form, password: e.target.value })}
                         placeholder="password123"

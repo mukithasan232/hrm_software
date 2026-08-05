@@ -9,6 +9,7 @@ interface PasswordInputWithValidatorProps {
   placeholder?: string;
   className?: string;
   onValidityChange?: (isValid: boolean) => void;
+  autoComplete?: string;
 }
 
 export default function PasswordInputWithValidator({
@@ -18,7 +19,8 @@ export default function PasswordInputWithValidator({
   disabled = false,
   placeholder = 'Enter password',
   className = '',
-  onValidityChange
+  onValidityChange,
+  autoComplete
 }: PasswordInputWithValidatorProps) {
   const [show, setShow] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -55,6 +57,7 @@ export default function PasswordInputWithValidator({
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           placeholder={placeholder}
+          autoComplete={autoComplete}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           className={`w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-850 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-primary/25 transition-all font-semibold ${className} ${onGenerate ? 'pr-20' : 'pr-10'}`}

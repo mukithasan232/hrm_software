@@ -1,108 +1,151 @@
-# HRM & Payroll Management Portal
+# 🚀 Fix Any Photo - HRM System
 
-A full-stack, comprehensive Human Resource Management and Payroll SaaS application built specifically for seamless employee tracking, automated payroll generation, and biometric hardware integration.
-
-## 🏗️ Architecture Overview
-
-The application is built on a modern, robust monolithic stack designed for maximum performance, SEO indexing, and type-safe database queries.
-
-* **Frontend:** [Next.js 16](https://nextjs.org/) (App Router), React 19, Tailwind CSS 4.
-* **Backend:** Next.js Route Handlers (Node.js).
-* **Database:** MariaDB/MySQL manipulated via [Prisma ORM](https://www.prisma.io/).
-* **Hardware Integration:** `zkteco-js` for real-time TCP/IP biometric device synchronization.
-* **Authentication:** Custom JWT stateless authentication with advanced Role-Based Access Control (RBAC).
+Welcome to the **Fix Any Photo - HRM (Human Resource Management) System**. This is a comprehensive, scalable, and highly customizable SaaS-ready HR application built to streamline operations, track attendance, manage payroll, evaluate performance, and orchestrate tasks within the organization.
 
 ---
 
-## 💻 Local Setup Instructions
+## ✨ Key Features
 
-### 1. Prerequisites
-- **Node.js**: `v22+` recommended (must support Next.js 15+ constraints).
-- **Package Manager**: `pnpm` (run `npm install -g pnpm` or `corepack enable pnpm`).
-- **Database**: A running instance of MySQL or MariaDB.
+- **📊 Dashboard Analytics**: Comprehensive overview of HR metrics, attendance trends, and real-time updates.
+- **⏱️ Real-time Attendance & Punches**: Biometric hardware integration (ZKTeco), manual punch handling, overtime calculation, early leave, and missing out detection.
+- **🌴 Leave Management**: Configurable leave policies (Sick, Casual, Annual, Emergency), multi-level approvals, and attachments.
+- **👥 Employee Management**: Centralized employee directory, detailed profiles, remote/in-house shift allocation, and document management.
+- **💰 Payroll Processing**: Automated calculations based on present/absent days, base salary, overtime, and deductions.
+- **🔐 Granular RBAC (Role-Based Access Control)**: Dynamic designation-based permissions and highly customizable user-role matrices.
+- **📈 Performance Management**: Task scores, manager ratings, punctuality metrics, and Employee of the Month (EOTM) tracking.
+- **✅ Task Management**: Todo/Kanban views, task prioritization, file attachments, and integrated comments.
+- **🏢 Organizational Structure**: Departments, shifts, and team hierarchies.
+- **📢 Announcements & Notifications**: Global, departmental, or individual announcements with in-app and email notifications.
+- **🤖 AI Assistant Integration**: Built-in AI chat assistant powered by Google/OpenAI for quick HR queries.
+- **🎨 White-Label & Customization**: Dynamic tenant branding (logo, primary/secondary colors) and dark mode support.
 
-### 2. Installation
-Clone the repository and install the strict dependencies:
+---
 
-```bash
-git clone <repository_url>
-cd fap-hrm
-pnpm install
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: [Next.js (v16+)](https://nextjs.org/) & React 19
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **UI Components**: Radix UI (via Shadcn/ui - inferred), Lucide React (Icons)
+- **State Management**: Zustand
+- **Data Fetching**: SWR
+
+### Backend
+- **Core Environment**: Node.js & Express (Custom Server)
+- **Database ORM**: [Prisma](https://www.prisma.io/)
+- **Database**: MySQL / MariaDB
+- **Real-time Communication**: Socket.io
+- **Background Jobs**: Node-cron (Scheduled tasks & workers)
+- **Hardware Integration**: `zkteco-js` & `node-zklib` for biometric synchronization
+
+---
+
+## 📂 Project Structure
+
+```text
+├── .github/                # GitHub Actions & CI/CD workflows
+├── prisma/                 # Database models and migrations
+│   └── schema.prisma       # Prisma Database schema
+├── public/                 # Static assets (images, fonts, etc.)
+├── scripts/                # Utility scripts (e.g., fetch ZKTeco users)
+├── src/
+│   └── app/                # Next.js App Router root
+│       ├── (auth)/         # Authentication routes
+│       ├── (dashboard)/    # Main Application Views
+│       │   ├── admin/      # Administrator controls
+│       │   ├── attendance/ # Attendance logs and punch syncing
+│       │   ├── dashboard/  # Main analytics widgets
+│       │   ├── employees/  # Employee directory & profiles
+│       │   ├── leaves/     # Leave requests & approvals
+│       │   ├── payroll/    # Salary & payroll processing
+│       │   ├── performance/# Performance reviews & ratings
+│       │   ├── reports/    # Generated HR reports
+│       │   ├── settings/   # Tenant, system & AI settings
+│       │   ├── tasks/      # Task boards & assignments
+│       │   └── team/       # Departments and designations
+│       └── api/            # Next.js API Routes
+├── workers/                # Background sync workers (e.g., ZK Sync)
+├── server.cjs              # Custom Express/Node server entry point
+├── package.json            # Project dependencies & scripts
+├── next.config.ts          # Next.js configuration
+└── tailwind.config.ts      # Tailwind CSS configuration
 ```
 
-### 3. Environment Variables
-Copy the example environment file and fill in your local details:
+---
+
+## 🚀 Local Setup & Installation
+
+Follow these steps to get the project running on your local machine.
+
+### 1. Clone the Repository
+
+```bash
+git clone <your-repository-url>
+cd hrm_software
+```
+
+### 2. Install Dependencies
+
+Since the project uses a `package-lock.json`, use `npm` to install packages:
+
+```bash
+npm install
+```
+
+### 3. Setup Environment Variables
+
+Copy the example environment file and configure your local settings:
 
 ```bash
 cp .env.example .env
 ```
+Make sure to provide the necessary keys inside `.env`, especially:
+- `DATABASE_URL` (Your MySQL/MariaDB connection string)
+- SMTP credentials for email notifications
+- Authentication secrets
 
-Ensure `DATABASE_URL` accurately points to your local MySQL instance.
+### 4. Setup Prisma & Database
 
-### 4. Database Bootstrap
-Initialize the database, push the schema, and seed the default admin account:
+Generate the Prisma client and push the schema to your local database:
 
 ```bash
-npm run db:bootstrap
+npx prisma generate
+npm run db:push
+```
+*(Optional)* If you need to seed initial admin data:
+```bash
+npm run db:seed
 ```
 
-> **Default Admin Credentials:**
-> - **Email:** `admin@example.com`
-> - **Password:** `admin123`
+### 5. Run the Development Server
 
-### 5. Running the Application
-Start the Next.js development server alongside the background worker process:
+Start the custom server and Next.js frontend:
 
 ```bash
 npm run dev
 ```
 
-The portal will be accessible at `http://localhost:3000`.
+Your application should now be running at `http://localhost:3000` (or the port specified in your `.env`).
 
 ---
 
-## 🗄️ Database Management & Migrations
+## 🌐 Deployment Guide
 
-Because the project uses Prisma ORM, your database schema is entirely managed by `prisma/schema.prisma`. 
+To deploy the application for production:
 
-### For Local Development (Rapid Prototyping)
-When you make a change to `schema.prisma`, sync it to your local database using:
-```bash
-npx prisma db push
-```
+1. **Build the application:**
+   ```bash
+   npm run build
+   ```
+   *This command generates the Prisma client, builds the Next.js app, and compiles the worker scripts.*
 
-### For Production Deployments (Data Preservation)
-> [!WARNING]
-> Do **not** use `db push` on a live production database that holds critical employee data, as it can forcefully drop columns and cause data loss during schema conflicts.
+2. **Start the production server:**
+   ```bash
+   npm run start
+   ```
+   *This automatically runs any pending DB schema pushes (with caution in production), starts the background ZK-sync workers, and boots up the main custom server.*
 
-Instead, generate a safe migration file before deploying:
-```bash
-npx prisma migrate dev --name describe_your_change
-```
-Then, on your production server during deployment, run:
-```bash
-npx prisma migrate deploy
-```
+For containerized deployments, a `Dockerfile` and `docker-compose.yml` are included in the root directory.
 
 ---
-
-## 🚀 Production Deployment (Docker / Coolify)
-
-This application is containerized and optimized for platforms like Coolify or standalone Docker Swarms. It uses a strict `npm install --legacy-peer-deps` within an Alpine Linux container to guarantee Next.js and React 19 stability.
-
-### Building the Image
-```bash
-docker build -t hrm-portal .
-```
-
-### Running the Container
-Ensure you pass the required `DATABASE_URL` during runtime.
-```bash
-docker run -p 3000:3000 -e DATABASE_URL="mysql://user:pass@host:3306/db" hrm-portal
-```
-
-### Coolify Integration
-If deploying via Coolify, simply connect the Git repository. The included `Dockerfile` and `entrypoint.sh` scripts are perfectly tailored to automatically:
-1. Bypass React 19 version mismatches.
-2. Synchronize the database schema.
-3. Boot the Next.js production server alongside the ZKTeco background worker using PM2.
+*Maintained by the Fix Any Photo Core Team.*

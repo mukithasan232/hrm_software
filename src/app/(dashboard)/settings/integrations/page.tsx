@@ -478,6 +478,7 @@ function EmailTab() {
                   <input
                     required
                     type="password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="App password or SMTP secret"
@@ -821,6 +822,7 @@ function AiConfigTab() {
               <div className="relative">
                 <input 
                   type="password"
+                  autoComplete="new-password"
                   value={aiApiKey}
                   onChange={e => setAiApiKey(e.target.value)}
                   className={inputCls} 

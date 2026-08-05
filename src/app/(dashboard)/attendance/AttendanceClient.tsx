@@ -263,7 +263,6 @@ function AttendancePageContent() {
       const data = res.data;
       const logsArray = Array.isArray(data) ? data : (data?.data || data?.logs || []);
       const summariesArray = Array.isArray(data?.summaries) ? data.summaries : [];
-      console.log("🚀 DATA RECEIVED IN FRONTEND:", { logs: logsArray, summaries: summariesArray, raw: data });
       
       setLogs(logsArray);
       setServerSummaries(summariesArray);

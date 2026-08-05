@@ -653,6 +653,7 @@ export default function ProfilePage() {
                 <div className="relative">
                   <input
                     type={showCurrentPassword ? "text" : "password"}
+                    autoComplete="current-password"
                     required
                     value={passwords.currentPassword}
                     onChange={e => setPasswords({ ...passwords, currentPassword: e.target.value })}
@@ -671,6 +672,7 @@ export default function ProfilePage() {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-650 dark:text-gray-400 font-semibold">New Password</label>
                   <PasswordInputWithValidator
+                    autoComplete="new-password"
                     value={passwords.newPassword}
                     onChange={val => setPasswords({ ...passwords, newPassword: val })}
                     onValidityChange={setIsNewPasswordValid}
@@ -683,6 +685,7 @@ export default function ProfilePage() {
                   <div className="relative">
                     <input
                       type={showConfirmPassword ? "text" : "password"}
+                      autoComplete="new-password"
                       required
                       value={passwords.confirmPassword}
                       onChange={e => setPasswords({ ...passwords, confirmPassword: e.target.value })}

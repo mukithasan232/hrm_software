@@ -774,6 +774,7 @@ export default function TeamUsersPage() {
                       <label className="text-xs font-semibold text-slate-600 dark:text-gray-400 uppercase tracking-wide">Initial Password *</label>
                       <div className="relative flex items-center">
                         <PasswordInputWithValidator
+                          autoComplete="new-password"
                           value={form.password}
                           onChange={val => setForm({ ...form, password: val })}
                           onGenerate={generatePassword}
