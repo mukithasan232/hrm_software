@@ -60,6 +60,13 @@ app.prepare()
       });
     });
 
+    io.on('connection', (socket) => {
+      socket.on('new-attendance', (data) => {
+        socket.broadcast.emit('new-attendance', data);
+        socket.broadcast.emit('attendanceUpdate', data);
+      });
+    });
+
     try {
       const { connectDB }              = require('./src/config/db');
       const { initRealtimeAttendance } = require('./src/services/realtimeService');

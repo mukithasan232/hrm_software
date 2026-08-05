@@ -282,7 +282,7 @@ export default function DashboardOverview() {
 
       const intervalId = setInterval(() => {
         pollLiveActivity();
-      }, 30000);
+      }, 5000);
 
       socket.on("attendanceUpdate", () => pollLiveActivity());
       socket.on("new-attendance", () => pollLiveActivity());

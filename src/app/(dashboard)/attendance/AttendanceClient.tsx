@@ -221,9 +221,9 @@ function AttendancePageContent() {
     timestamp: getBDNowLocal()
   });
   const [isOverrideMode, setIsOverrideMode] = useState(false);
-  const dateRange = searchParams.get('range') || 'all-time';
-  const customStartDate = searchParams.get('startDate') || getBDToday();
-  const customEndDate = searchParams.get('endDate') || getBDToday();
+  const dateRange = searchParams?.get('range') || 'all-time';
+  const customStartDate = searchParams?.get('startDate') || getBDToday();
+  const customEndDate = searchParams?.get('endDate') || getBDToday();
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [visibleCount, setVisibleCount] = useState(30);
 
@@ -349,10 +349,10 @@ function AttendancePageContent() {
     fetchEmployees();
     fetchDepartments();
 
-    // Polling every 10s as a fallback (Socket.IO is the primary real-time path)
+    // Polling every 5s as a fallback (Socket.IO is the primary real-time path)
     const intervalId = setInterval(() => {
       fetchLogs(true);
-    }, 10000);
+    }, 5000);
 
     // Socket.IO: instant table refresh when any punch or sync fires
     socket.on('attendanceUpdate', () => {
@@ -398,6 +398,7 @@ function AttendancePageContent() {
         toast.success(t('manual_entry_success') || 'Manual entry added successfully');
         setIsModalOpen(false);
         fetchLogs();
+        socket.emit('new-attendance');
       } catch (error: any) {
         toast.error(error.response?.data?.message || t('manual_entry_failed') || 'Failed to add manual entry');
       } finally {
@@ -430,6 +431,7 @@ function AttendancePageContent() {
           toast.success(t('manual_entry_success') || 'Manual entry added successfully');
           setIsModalOpen(false);
           fetchLogs();
+          socket.emit('new-attendance');
         } catch (error: any) {
           toast.dismiss('geo-fetch');
           toast.error(error.response?.data?.message || t('manual_entry_failed') || 'Failed to add manual entry');
@@ -449,6 +451,7 @@ function AttendancePageContent() {
                toast.success(t('manual_entry_success') || 'Manual entry added successfully (Fallback)');
                setIsModalOpen(false);
                fetchLogs();
+               socket.emit('new-attendance');
             })
             .catch((err: any) => {
                toast.error(err.response?.data?.message || t('manual_entry_failed') || 'Failed to add manual entry');
@@ -638,7 +641,7 @@ function AttendancePageContent() {
             <DateRangePicker
               value={{ range: dateRange, start: customStartDate, end: customEndDate }}
               onChange={(val) => {
-                const params = new URLSearchParams(searchParams.toString());
+                const params = new URLSearchParams(searchParams?.toString() || '');
                 if (val.range) params.set('range', val.range);
                 if (val.start) params.set('startDate', val.start);
                 if (val.end) params.set('endDate', val.end);
