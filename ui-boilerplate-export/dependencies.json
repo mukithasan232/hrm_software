@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "lucide-react": "latest",
+    "next-themes": "latest",
+    "clsx": "latest",
+    "tailwind-merge": "latest"
+  },
+  "devDependencies": {
+    "tailwindcss": "latest",
+    "@tailwindcss/typography": "latest"
+  }
+}
