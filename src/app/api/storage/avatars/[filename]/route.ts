@@ -4,9 +4,10 @@ import path from 'path';
 
 export async function GET(
   request: Request,
-  { params }: { params: { filename: string } }
+  context: any
 ) {
   try {
+    const params = await context.params;
     const filename = params.filename;
     
     // Define the actual path where avatars are uploaded on the server

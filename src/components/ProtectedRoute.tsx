@@ -95,16 +95,16 @@ export default function ProtectedRoute({ children, allowedDesignations }: Protec
   // Legacy override if explicit array is passed
   if (allowedDesignations && allowedDesignations.length > 0) {
     if (!allowedDesignations.includes(designation)) {
-      return getAccessDenied(designation, pathname);
+      return getAccessDenied(designation, pathname || '/');
     }
   }
 
   // Multi-Role Granular check
-  const moduleName = getRequiredModule(pathname);
+  const moduleName = getRequiredModule(pathname || '/');
 
   if (moduleName && moduleName !== 'Dashboard' && moduleName !== 'Profile') {
     if (!can(moduleName, 'canRead')) {
-      return getAccessDenied(designation, pathname);
+      return getAccessDenied(designation, pathname || '/');
     }
   }
 

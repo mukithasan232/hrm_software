@@ -467,10 +467,15 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
         {/* Dynamic Copyright Section */}
         {!collapsed && (
-          <div className="mt-auto pt-4 pb-1 px-4 text-center">
-            <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 leading-tight">
-              &copy; {new Date().getFullYear()} Fix Any Photo.<br />
-              All rights reserved.
+          <div className="mt-auto p-4 text-center text-xs">
+            {/* Dynamic text from Admin Settings */}
+            <p className="text-gray-400 dark:text-gray-500">
+              {brand?.copyrightText || "© 2026 Your Company. All rights reserved."}
+            </p>
+
+            {/* Permanent Developer Credit */}
+            <p className="mt-1 text-gray-500/70 dark:text-gray-600">
+              Developed by <a href="#" className="hover:text-primary transition-colors font-medium">Mukit Hasan</a>
             </p>
           </div>
         )}

@@ -1,4 +1,4 @@
-# 🚀 Smart Security HRM - Enterprise Human Resource Management System
+# 🚀 HRM System - Enterprise Human Resource Management System
 
 ![Next.js](https://img.shields.io/badge/Next.js-15+-black?style=for-the-badge&logo=next.js)
 ![React](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)
@@ -6,7 +6,7 @@
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue?style=for-the-badge&logo=typescript)
 
-Welcome to the **Smart Security HRM**, a comprehensive, highly scalable, and white-label SaaS-ready Human Resource Management application. Designed for modern enterprises, it streamlines organizational operations, automates attendance via hardware integration, manages payroll processing, evaluates performance, and orchestrates tasks seamlessly.
+Welcome to the **HRM System**, a comprehensive, highly scalable, and white-label SaaS-ready Human Resource Management application. Designed for modern enterprises, it streamlines organizational operations, automates attendance via hardware integration, manages payroll processing, evaluates performance, and orchestrates tasks seamlessly.
 
 ---
 
@@ -135,4 +135,4 @@ For deploying to production environments (VPS, AWS, Vercel/Render for Next.js co
 *(Note: If utilizing Docker, refer to the provided `Dockerfile` and `docker-compose.yml` in the repository.)*
 
 ---
-*Developed & Maintained by the Smart Security HRM Core Team.*
+*Developed & Maintained by the HRM System Core Team.*

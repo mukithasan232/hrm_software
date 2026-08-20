@@ -271,6 +271,7 @@ model TenantSettings {
   faviconUrl     String?  @db.LongText
   primaryColor   String   @default("#8b5cf6")
   secondaryColor String   @default("#06b6d4")
+  copyrightText  String?  @default("© 2026 Your Company. All rights reserved.")
   updatedAt      DateTime @updatedAt
 
   // AI Chat Assistant settings

@@ -30,13 +30,14 @@ function resolveToken(req: NextRequest): { id: string; designation: string } | n
 // ── GET /api/settings/appearance ─────────────────────────────────────────────
 
 const DEFAULT_SETTINGS = {
-  id:             'default',
-  companyName:    'HRM Portal',
-  logoUrl:        null as string | null,
-  faviconUrl:     null as string | null,
-  primaryColor:   '#8b5cf6',
+  id: 'default',
+  companyName: 'HRM Portal',
+  logoUrl: null as string | null,
+  faviconUrl: null as string | null,
+  primaryColor: '#8b5cf6',
   secondaryColor: '#06b6d4',
-  updatedAt:      new Date(),
+  copyrightText: '© 2026 Your Company. All rights reserved.',
+  updatedAt: new Date(),
 };
 
 export async function GET() {
@@ -49,11 +50,12 @@ export async function GET() {
       try {
         settings = await prisma.tenantSettings.create({
           data: {
-            companyName:    DEFAULT_SETTINGS.companyName,
-            primaryColor:   DEFAULT_SETTINGS.primaryColor,
+            companyName: DEFAULT_SETTINGS.companyName,
+            primaryColor: DEFAULT_SETTINGS.primaryColor,
             secondaryColor: DEFAULT_SETTINGS.secondaryColor,
-            logoUrl:        DEFAULT_SETTINGS.logoUrl,
-            faviconUrl:     DEFAULT_SETTINGS.faviconUrl,
+            logoUrl: DEFAULT_SETTINGS.logoUrl,
+            faviconUrl: DEFAULT_SETTINGS.faviconUrl,
+            copyrightText: DEFAULT_SETTINGS.copyrightText,
           },
         });
       } catch (createErr) {
@@ -109,13 +111,13 @@ export async function PUT(req: NextRequest) {
   // 🚀 FOOLPROOF GLOBAL GOD MODE
   if (!isAdmin && user.id) {
     const { prisma } = await import('@/lib/prisma');
-    const dbUser = await prisma.user.findUnique({ 
+    const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
       include: {
         roles: true
       }
     });
-    
+
     if (dbUser?.email === 'dev@fixanyphoto.com' || dbUser?.userType === 'SUPER_ADMIN' || dbUser?.designation === 'Super Admin' || dbUser?.roles?.some((r: any) => r?.name === 'SUPER_ADMIN')) {
       isAdmin = true;
     } else if (dbUser) {
@@ -127,7 +129,7 @@ export async function PUT(req: NextRequest) {
       if (Object.keys(perms).length === 0 && dbUser.permissions) {
         perms = typeof dbUser.permissions === 'string' ? JSON.parse(dbUser.permissions as any) : dbUser.permissions;
       }
-      
+
       isAdmin = checkPermission({ ...dbUser, permissions: perms }, 'manage_system_settings', 'edit');
     }
   }
@@ -139,13 +141,14 @@ export async function PUT(req: NextRequest) {
 
   try {
     const contentType = req.headers.get('content-type') || '';
-    
+
     let companyName: string | undefined;
     let companyAddress: string | undefined;
     let primaryColor: string | undefined;
     let secondaryColor: string | undefined;
     let logoUrl: string | undefined;
     let faviconUrl: string | undefined;
+    let copyrightText: string | undefined;
 
     if (contentType.includes('multipart/form-data')) {
       let formData: FormData;
@@ -155,13 +158,14 @@ export async function PUT(req: NextRequest) {
         console.error('[AppearancePUT] FormData parsing failed:', parseErr);
         return NextResponse.json({ message: 'Invalid form data payload. Ensure boundaries are correct.' }, { status: 400 });
       }
-      
-      companyName    = (formData.get('companyName') as string) ?? undefined;
-      companyAddress = (formData.get('companyAddress') as string) ?? undefined;
-      primaryColor   = (formData.get('primaryColor') as string) ?? undefined;
-      secondaryColor = (formData.get('secondaryColor') as string) ?? undefined;
 
-      const logoFile    = formData.get('logo') as File | null;
+      companyName = (formData.get('companyName') as string) ?? undefined;
+      companyAddress = (formData.get('companyAddress') as string) ?? undefined;
+      primaryColor = (formData.get('primaryColor') as string) ?? undefined;
+      secondaryColor = (formData.get('secondaryColor') as string) ?? undefined;
+      copyrightText = (formData.get('copyrightText') as string) ?? undefined;
+
+      const logoFile = formData.get('logo') as File | null;
       const faviconFile = formData.get('favicon') as File | null;
 
       const uploadDir = path.join(process.cwd(), 'public', 'uploads');
@@ -193,42 +197,45 @@ export async function PUT(req: NextRequest) {
         }
       }
     } else {
-      const body     = await req.json();
-      companyName    = body.companyName;
+      const body = await req.json();
+      companyName = body.companyName;
       companyAddress = body.companyAddress;
-      primaryColor   = body.primaryColor;
+      primaryColor = body.primaryColor;
       secondaryColor = body.secondaryColor;
-      logoUrl        = body.logoUrl;
-      faviconUrl     = body.faviconUrl;
+      logoUrl = body.logoUrl;
+      faviconUrl = body.faviconUrl;
+      copyrightText = body.copyrightText;
     }
 
     // Build partial update (only provided fields)
     // Colours are validated with sanitiseHex — strips whitespace and checks #rrggbb format
     const data: Record<string, any> = {};
-    if (companyName    !== undefined) data.companyName    = companyName.trim() || 'HRM Portal';
+    if (companyName !== undefined) data.companyName = companyName.trim() || 'HRM Portal';
     if (companyAddress !== undefined) data.companyAddress = companyAddress.trim() || null;
-    if (primaryColor   !== undefined) data.primaryColor   = sanitiseHex(primaryColor, '#8b5cf6');
+    if (primaryColor !== undefined) data.primaryColor = sanitiseHex(primaryColor, '#8b5cf6');
     if (secondaryColor !== undefined) data.secondaryColor = sanitiseHex(secondaryColor, '#06b6d4');
-    if (logoUrl        !== undefined) data.logoUrl        = logoUrl || null;
-    if (faviconUrl     !== undefined) data.faviconUrl     = faviconUrl || null;
+    if (logoUrl !== undefined) data.logoUrl = logoUrl || null;
+    if (faviconUrl !== undefined) data.faviconUrl = faviconUrl || null;
+    if (copyrightText !== undefined) data.copyrightText = copyrightText.trim() || '© 2026 Your Company. All rights reserved.';
 
     const existing = await prisma.tenantSettings.findFirst();
     const result = existing
       ? await prisma.tenantSettings.update({ where: { id: existing.id }, data })
       : await prisma.tenantSettings.create({
-          data: {
-            companyName:    data.companyName    ?? 'HRM Portal',
-            companyAddress: data.companyAddress ?? null,
-            primaryColor:   data.primaryColor   ?? '#8b5cf6',
-            secondaryColor: data.secondaryColor ?? '#06b6d4',
-            logoUrl:        data.logoUrl        ?? null,
-            faviconUrl:     data.faviconUrl     ?? null,
-          },
-        });
+        data: {
+          companyName: data.companyName ?? 'HRM Portal',
+          companyAddress: data.companyAddress ?? null,
+          primaryColor: data.primaryColor ?? '#8b5cf6',
+          secondaryColor: data.secondaryColor ?? '#06b6d4',
+          logoUrl: data.logoUrl ?? null,
+          faviconUrl: data.faviconUrl ?? null,
+          copyrightText: data.copyrightText ?? '© 2026 Your Company. All rights reserved.',
+        },
+      });
 
     // CACHE BUSTING: force Next.js to drop all server-rendered cache so the layout instantly picks up the new brand
     revalidatePath('/', 'layout');
-    
+
     return NextResponse.json({ message: 'Appearance settings saved', settings: result });
   } catch (error: any) {
     console.error('[AppearancePUT]', error);
@@ -246,21 +253,23 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
 
-    const companyName    = typeof body.companyName    === 'string' ? body.companyName.trim()    || 'HRM Portal'  : undefined;
-    const companyAddress = typeof body.companyAddress === 'string' ? body.companyAddress.trim() || null          : undefined;
-    const primaryColor   = sanitiseHex(body.primaryColor,   '#8b5cf6');
+    const companyName = typeof body.companyName === 'string' ? body.companyName.trim() || 'HRM Portal' : undefined;
+    const companyAddress = typeof body.companyAddress === 'string' ? body.companyAddress.trim() || null : undefined;
+    const primaryColor = sanitiseHex(body.primaryColor, '#8b5cf6');
     const secondaryColor = sanitiseHex(body.secondaryColor, '#06b6d4');
-    const logoUrl        = typeof body.logoUrl    === 'string' ? body.logoUrl    || null : undefined;
-    const faviconUrl     = typeof body.faviconUrl === 'string' ? body.faviconUrl || null : undefined;
+    const logoUrl = typeof body.logoUrl === 'string' ? body.logoUrl || null : undefined;
+    const faviconUrl = typeof body.faviconUrl === 'string' ? body.faviconUrl || null : undefined;
+    const copyrightText = typeof body.copyrightText === 'string' ? body.copyrightText.trim() || '© 2026 Your Company. All rights reserved.' : undefined;
 
     // Upsert: find the existing single-row or create it.
     const existing = await prisma.tenantSettings.findFirst();
 
     const updateData: Record<string, any> = { primaryColor, secondaryColor };
-    if (companyName    !== undefined) updateData.companyName    = companyName;
+    if (companyName !== undefined) updateData.companyName = companyName;
     if (companyAddress !== undefined) updateData.companyAddress = companyAddress;
-    if (logoUrl        !== undefined) updateData.logoUrl        = logoUrl;
-    if (faviconUrl     !== undefined) updateData.faviconUrl     = faviconUrl;
+    if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
+    if (faviconUrl !== undefined) updateData.faviconUrl = faviconUrl;
+    if (copyrightText !== undefined) updateData.copyrightText = copyrightText;
 
     let result;
     if (existing) {
@@ -271,12 +280,13 @@ export async function POST(req: NextRequest) {
     } else {
       result = await prisma.tenantSettings.create({
         data: {
-          companyName:    companyName    ?? 'HRM Portal',
+          companyName: companyName ?? 'HRM Portal',
           companyAddress: companyAddress ?? null,
           primaryColor,
           secondaryColor,
-          logoUrl:        logoUrl        ?? null,
-          faviconUrl:     faviconUrl     ?? null,
+          logoUrl: logoUrl ?? null,
+          faviconUrl: faviconUrl ?? null,
+          copyrightText: copyrightText ?? '© 2026 Your Company. All rights reserved.',
         },
       });
     }

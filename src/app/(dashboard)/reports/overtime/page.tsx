@@ -15,10 +15,9 @@ function OvertimeReportContent() {
   const [data, setData] = useState<any[]>([]);
   const [summary, setSummary] = useState({ totalPending: 0, totalApprovedMinutes: 0 });
   const [loading, setLoading] = useState(false);
-
-  const from = searchParams.get('startDate');
-  const to = searchParams.get('endDate');
-  const range = searchParams.get('range');
+  const from = searchParams?.get('startDate');
+  const to = searchParams?.get('endDate');
+  const range = searchParams?.get('range');
   
   const [customStartDate, setCustomStartDate] = useState(from || '');
   const [customEndDate, setCustomEndDate] = useState(to || '');
@@ -59,7 +58,7 @@ function OvertimeReportContent() {
       setCustomStartDate(val.start);
       setCustomEndDate(val.end);
     }
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || '');
     if (val.range) params.set('range', val.range);
     if (val.start) params.set('startDate', val.start);
     if (val.end) params.set('endDate', val.end);

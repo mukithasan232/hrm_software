@@ -11,6 +11,7 @@ export interface BrandSettings {
   faviconUrl:     string | null;
   primaryColor:   string;
   secondaryColor: string;
+  copyrightText:  string;
   updatedAt?:     string | null;
 }
 
@@ -29,6 +30,7 @@ const DEFAULTS: BrandSettings = {
   faviconUrl:     null,
   primaryColor:   '#8b5cf6',
   secondaryColor: '#06b6d4',
+  copyrightText:  '© 2026 Your Company. All rights reserved.',
   updatedAt:      null,
 };
 
@@ -91,6 +93,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
           faviconUrl:     res.data.faviconUrl     || null,
           primaryColor:   res.data.primaryColor   || DEFAULTS.primaryColor,
           secondaryColor: res.data.secondaryColor || DEFAULTS.secondaryColor,
+          copyrightText:  res.data.copyrightText  || DEFAULTS.copyrightText,
           updatedAt:      res.data.updatedAt      || null,
         });
       })

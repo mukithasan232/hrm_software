@@ -21,6 +21,7 @@ interface AppearanceSettings {
   faviconUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  copyrightText: string;
 }
 
 // ── preset palette ─────────────────────────────────────────────────────────────
@@ -243,6 +244,7 @@ export default function AppearancePage() {
     faviconUrl: null,
     primaryColor: '#8b5cf6',
     secondaryColor: '#06b6d4',
+    copyrightText: '© 2026 Your Company. All rights reserved.',
   });
   const { brand: globalBrand, refreshBrand } = useBrand();
   const [logoFile, setLogoFile]     = useState<File | null>(null);
@@ -257,6 +259,7 @@ export default function AppearancePage() {
         ...res.data,
         primaryColor:   res.data.primaryColor   || '#8b5cf6',
         secondaryColor: res.data.secondaryColor || '#06b6d4',
+        copyrightText:  res.data.copyrightText  || '© 2026 Your Company. All rights reserved.',
       })))
       .catch(() => {
         // API unreachable or error — silently use defaults so the page still renders
@@ -264,6 +267,7 @@ export default function AppearancePage() {
           ...prev,
           primaryColor:   prev.primaryColor   || '#8b5cf6',
           secondaryColor: prev.secondaryColor || '#06b6d4',
+          copyrightText:  prev.copyrightText  || '© 2026 Your Company. All rights reserved.',
         }));
       })
       .finally(() => setLoading(false));
@@ -284,6 +288,7 @@ export default function AppearancePage() {
       }
       fd.append('primaryColor',   settings.primaryColor);
       fd.append('secondaryColor', settings.secondaryColor);
+      fd.append('copyrightText',  settings.copyrightText);
       if (logoFile)    fd.append('logo',    logoFile);
       if (faviconFile) fd.append('favicon', faviconFile);
 
@@ -375,6 +380,19 @@ export default function AppearancePage() {
               className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 transition-all font-semibold resize-none"
             />
             <p className="text-xs text-slate-400 dark:text-gray-500">Shown in official documents like Salary Slips and Attendance Reports.</p>
+          </div>
+          <div className="space-y-1.5 pt-2">
+            <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
+              Custom Copyright Text
+            </label>
+            <input
+              type="text"
+              value={settings.copyrightText || ''}
+              onChange={e => setSettings(s => ({ ...s, copyrightText: e.target.value }))}
+              placeholder="e.g. © 2026 Your Company. All rights reserved."
+              className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-primary/40 transition-all font-semibold"
+            />
+            <p className="text-xs text-slate-400 dark:text-gray-500">Shown at the bottom of the sidebar navigation.</p>
           </div>
         </div>
 
